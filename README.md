@@ -23,8 +23,9 @@ beveiliging en Conditional Access op één scherm, met de geschiedenis van de or
 
 ## Open source
 
-Moss365 wordt open source. De licentie volgt bij de eerste code (zie de roadmap, hoofdstuk 11); tot dan zijn er nog geen
-rechten verleend. Ondersteuning, installatie en opleiding kunnen later betalend aangeboden worden; de app zelf blijft vrij.
+Moss365 wordt open source onder de **EUPL-1.2** (de open-sourcelicentie van de Europese Unie), met een
+bijdrageovereenkomst voor bijdragen van buitenaf. Het licentiebestand komt bij de eerste code (zie de roadmap,
+hoofdstuk 11 en 12); tot dan zijn er nog geen rechten verleend. Ondersteuning, installatie en opleiding kunnen later betalend aangeboden worden; de app zelf blijft vrij.
 
 Moss365 is niet verbonden met Microsoft. Microsoft 365, Entra ID en Exchange Online zijn merken van Microsoft.
 
@@ -32,6 +33,5 @@ Moss365 is niet verbonden met Microsoft. Microsoft 365, Entra ID en Exchange Onl
 
 Moss365 is a management app for Active Directory, Entra ID and Exchange Online, for IT teams managing one or more
 Microsoft 365 tenants. Every change is a plan you preview and confirm, everything is logged, and the app keeps snapshots
-of each organisation over time. The app and its documentation are in Dutch; English, Brazilian Portuguese, French and German are planned (following the
-Windows display language by default). See the
+of each organisation over time. Code and documentation are moving to English; the interface will be available in Dutch, English, Brazilian Portuguese, French and German (following the Windows display language by default). Licence: EUPL-1.2. See the
 roadmaps above (in Dutch). Moss365 is not affiliated with Microsoft.

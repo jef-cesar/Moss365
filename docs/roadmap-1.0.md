@@ -212,7 +212,7 @@ De databank bevat persoonsgegevens en de geschiedenis van een organisatie. Ze ka
 - Te onderzoeken: offline werken (een in het geheugen bewaarde, tijdelijk uitgepakte sleutel), sleutels roteren
   (`PRAGMA rekey`), en hoe dit op de Server werkt (dezelfde aanpak, of C met het serviceaccount).
 
-Voorstel: **A standaard**, B en C als keuze, **D na een geslaagde studie**.
+Beslist (U7): **standaard geen versleuteling**; per tenant aan te zetten met A, B of C. **D na een geslaagde studie**.
 
 ### Onderhoud
 
@@ -221,10 +221,10 @@ Een scherm **Databank** per tenant:
 - grootte per onderdeel (momentopnamen, logboek, technisch log, scriptruns, back-ups);
 - **compacteren** (`VACUUM`, ook automatisch na een opkuis);
 - **oude gegevens opkuisen** volgens een bewaartermijn per onderdeel, altijd eerst als voorbeeld en, voor het logboek,
-  eerst een archief (CSV of een aparte databank). Voorstel voor de standaarden:
-  - momentopnamen: alles 90 dagen, daarna één per week tot 1 jaar, daarna één per maand;
-  - logboek: 2 jaar (instelbaar; wat de organisatie met haar DPO afspreekt);
-  - technisch log: 30 dagen; scriptruns: 90 dagen;
+  eerst een archief (CSV of een aparte databank). De standaarden (U9), per tenant aan te passen:
+  - momentopnamen: dagelijks gedurende 1 jaar, daarna één per maand;
+  - logboek: 5 jaar (wat de organisatie met haar DPO afspreekt, kan korter of langer);
+  - technisch log: 90 dagen; scriptruns: 1 jaar;
 - **back-up en terugzetten** van een tenant (één bestand, versleuteld zoals de databank);
 - **controle** van de databank (`PRAGMA integrity_check`) en automatisch een kopie vóór elke migratie of update.
 
@@ -233,9 +233,9 @@ Een scherm **Databank** per tenant:
 - De bibliotheek staat in deze repository, in `scripts/`, met de kop `<#MOSS365 ... #>` (naam, omschrijving, verbinding,
   schrijft of niet, variabelen, minimumversie van de app).
 - De workflow test elk script (Pester: ASCII, `-WhatIf` voor scripts die wijzigen, geen namen of adressen), maakt een
-  **index** (naam, versie, SHA-256) en **ondertekent** de scripts en de index (Authenticode).
+  **index** (naam, versie, SHA-256). Vanaf 1.0 **ondertekent** ze ook de scripts en de index (Authenticode, U8).
 - In de app: **Bibliotheek bijwerken** toont wat nieuw of gewijzigd is (met het verschil), en downloadt na je bevestiging.
-  De app controleert handtekening en vingerafdruk, en weigert een script dat niet klopt.
+  De app controleert de vingerafdruk (en vanaf 1.0 de handtekening), en weigert een script dat niet klopt.
 - Een gedownload script draait nooit vanzelf: zoals nu eerst een voorbeeld (`-WhatIf`) en een bevestiging.
 - Per tenant kan je een versie vastzetten ("deze tenant blijft op versie X van dit script").
 - Eigen scripts blijven per tenant in de databank. Een eigen script delen met iedereen gebeurt via een pull request
@@ -245,14 +245,14 @@ Een scherm **Databank** per tenant:
 
 - Bij het opstarten kijkt de app (zonder het werk tegen te houden) of er op GitHub een nieuwere versie is.
 - Je ziet wat er nieuw is (de changelog van die versie) en kiest **Nu bijwerken** of **Later**.
-- De update is **ondertekend** (Authenticode) en heeft een gepubliceerde vingerafdruk; de app controleert beide.
+- De update heeft een gepubliceerde **vingerafdruk** (SHA-256) die de app controleert; vanaf 1.0 is ze ook **ondertekend**
+  (Authenticode, U8).
 - Nooit bijwerken terwijl een plan of taak loopt. Voor de update: een kopie van elke databank; na de update: de
   migraties.
 - Lukt de nieuwe versie niet, dan terug naar de vorige (blijft bewaard).
 - Kanalen: **stabiel** (standaard) en **voorvertoning**.
 - Voor organisaties zonder toegang tot GitHub: een eigen bron instellen (een gedeelde map met de releases).
-- Techniek: een updater zoals **Velopack** (open source, kleine delta-updates, werkt met een gewone installatie per
-  gebruiker) of **MSIX** met App Installer (keuze U4).
+- Techniek (U4): **Velopack** (open source, kleine delta-updates, installatie per gebruiker zonder beheerrechten).
 
 ## 9. Organisatie: universeel, functieprofielen en logonscripts
 
@@ -387,7 +387,7 @@ wachtwoorden, berichtsporen), komt in het toegangslog en vraagt de juiste rol.
 | **Datums, getallen en valuta** volgens de gekozen taal en regio | 05/11/2026 of 11/05/2026, 1.234,5 of 1,234.5 |
 | **Ontbrekende vertalingen** vallen terug op Engels (en een test meldt welke teksten nog niet vertaald zijn); een termenlijst houdt vaste begrippen gelijk (plan, momentopname, tenant, rol) | Nooit een lege knop; dezelfde woorden overal |
 | **Wat niet vertaald wordt**: gegevens uit AD en Microsoft 365 (namen van groepen, diensten, beleiden) en de inhoud van scripts | Dat zijn gegevens van de organisatie, geen tekst van de app |
-| De **documentatie** eerst in het Nederlands en het Engels, de andere talen als er vertalers zijn | Begin klein |
+| De **documentatie** in het Engels (U10); vertalingen als er vertalers zijn | Begin klein |
 
 ## 11. Open source, met ruimte voor ondersteuning
 
@@ -424,41 +424,36 @@ Laat de keuze door een jurist bevestigen voor de eerste release. Verder:
 
 ## 12. Keuzes
 
-### Beslist
+Alle keuzes zijn gemaakt (U1 tot U3 op 05/11/2026, de rest dezelfde dag interactief).
 
 | # | Keuze | Beslissing |
 | --- | --- | --- |
 | U1 | **Naam** | **Moss365**, overal (deze repository: `jef-cesar/Moss365`) |
-| U2 | **Open source** | **Open source, met de mogelijkheid om later ondersteuning en geld te vragen** (hoofdstuk 11). De precieze licentie: zie U12 |
+| U2 | **Open source** | **Open source, met de mogelijkheid om later ondersteuning en geld te vragen** (hoofdstuk 11) |
 | U3 | **Geschiedenis van de code** | **Een nieuwe start zonder geschiedenis**: de interne repository vermeldt de organisatie waar de app ontstond. De code komt over na een controle |
-
-### Nog te beslissen
-
-| # | Keuze | Voorstel |
-| --- | --- | --- |
-| U12 | **Licentie** | **EUPL-1.2 met een CLA** (hoofdstuk 11); alternatief Apache-2.0 |
-| U4 | **Bijwerken** | Velopack (installatie per gebruiker, delta-updates) of MSIX (App Installer) |
-| U5 | **Aanmelden bij een tenant** | Een eigen app-registratie `Moss365` per tenant (strengste scheiding, elke organisatie geeft zelf toestemming). Niet: één gedeelde multi-tenant app van de makers |
-| U6 | **Eerste aanmelding in de wizard** (er is nog geen app-registratie) | De openbare client van Microsoft Graph PowerShell (zoals `Connect-MgGraph`), met de link in de app; terugval: `Registreer-App.ps1` |
-| U7 | **Versleuteling** | A (Windows-account) standaard; B en C als keuze; D na de studie |
-| U8 | **Ondertekenen** van app, updates en scripts | Een codesigningcertificaat voor het project (Authenticode). Zonder certificaat: enkel vingerafdrukken (zwakker) |
-| U9 | **Bewaartermijnen** (standaard) | Zoals in hoofdstuk 6; per tenant aan te passen |
-| U10 | **Taal van de code en de documentatie** | Nederlands zoals nu; Engels erbij voor wie bijdraagt (README, bijdragegids); de app in vijf talen (R15) |
-| U11 | **Huisstijl** | Mosgroen en paars als standaard (past bij de naam), kleur en logo per tenant |
+| U12 | **Licentie** | **EUPL-1.2 met een bijdrageovereenkomst (CLA)** (hoofdstuk 11). Nog door een jurist te laten bevestigen vóór de eerste release met code |
+| U4 | **Bijwerken** | **Velopack**: installatie per gebruiker zonder beheerrechten, updates met enkel het verschil, terug naar de vorige versie |
+| U5 | **Aanmelden bij een tenant** | **Een eigen app-registratie `Moss365` per tenant**: elke organisatie geeft zelf toestemming en trekt ze zelf in; geen gedeelde app van de makers |
+| U6 | **Eerste aanmelding in de wizard** | **De openbare client van Microsoft Graph PowerShell** (zoals `Connect-MgGraph`), met de link in de app; terugval: `Registreer-App.ps1` |
+| U7 | **Versleuteling** | **Standaard geen versleuteling**; per tenant aan te zetten: Windows-account (A), wachtwoord met herstelsleutel (B) of AD-groep (C). Microsoft 365 via Key Vault (D) na de studie |
+| U8 | **Ondertekenen** | **Eerst zonder, later wel**: tot 1.0 controleren de app en de gebruiker de gepubliceerde vingerafdrukken (SHA-256); vanaf 1.0 een codesigningcertificaat (Authenticode) voor de app, de updates en de scripts |
+| U9 | **Bewaartermijnen** (standaard, per tenant aan te passen) | **Langer**: momentopnamen dagelijks 1 jaar, daarna één per maand; logboek 5 jaar; technisch log 90 dagen; scriptruns 1 jaar |
+| U10 | **Taal van de code en de documentatie** | **Alles Engels**: namen in de code, commentaar, tests, documentatie en deze roadmap gaan naar het Engels (bij R1). De interface in vijf talen via woordenboeken (R15), Nederlands is daar één van |
+| U11 | **Huisstijl** | **Mosgroen en paars** als standaard (past bij de naam), kleur en logo per tenant |
 
 ## 13. De stappen naar 1.0
 
 | Stap | Inhoud | Klaar als |
 | --- | --- | --- |
-| **R0 Repository** | Licentie (U12) en CLA, `SECURITY.md`, bijdragegids, issue-sjablonen, vermelding "niet verbonden met Microsoft", workflow (bouwen, testen, ondertekenen, release), geheimscanning en push-bescherming, CodeQL, Dependabot. Een controle in de workflow die persoonsgegevens en echte domeinen weigert | Een lege app bouwt, test en verschijnt als release |
-| **R1 Overzetten en Moss365 overal** | De code van 0.9 overzetten zonder geschiedenis (U3), na een controle: organisatie-specifieke instellingen, conventies en voorbeelden eruit, een verzonnen voorbeeldorganisatie erin. Alles hernoemen (hoofdstuk 2). Overzetten van een bestaande installatie | Alle tests groen; de oude projectnaam komt enkel nog voor in het overzetten; een bestaande installatie leest correct in |
+| **R0 Repository** | Licentie EUPL-1.2 en CLA (U12), `SECURITY.md`, bijdragegids, issue-sjablonen, vermelding "niet verbonden met Microsoft", workflow (bouwen, testen, ondertekenen, release), geheimscanning en push-bescherming, CodeQL, Dependabot. Een controle in de workflow die persoonsgegevens en echte domeinen weigert | Een lege app bouwt, test en verschijnt als release |
+| **R1 Overzetten en Moss365 overal** | De code van 0.9 overzetten zonder geschiedenis (U3), na een controle: organisatie-specifieke instellingen, conventies en voorbeelden eruit, een verzonnen voorbeeldorganisatie erin. Alles hernoemen (hoofdstuk 2). Code, tests en documentatie naar het Engels (U10), deze roadmap inbegrepen. Overzetten van een bestaande installatie | Alle tests groen; de oude projectnaam komt enkel nog voor in het overzetten; een bestaande installatie leest correct in |
 | **R2 Eén databank per tenant, alles erin** | `moss365.db` en `tenant.db`; inventarissen, technisch log, back-ups, scriptruns en instellingen in de databank; back-up en terugzetten van een tenant | Geen bestanden meer naast de databank (behalve de bibliotheek en de kopieën) |
 | **R3 Meerdere tenants** | Tenant kiezen bovenaan, kleur en naam, bevestiging met de naam, tokens per tenant, aanmelden per tenant (U5) | Twee tenants naast elkaar; een test bewijst dat geen lijst, plan, export of logboekregel ze mengt |
 | **R4 Momentopnamen en tijdlijn** | Objecten en relaties met versies; elke lezing een momentopname; de organisatie op een datum; verschillen tussen datums; tijdlijn per object; KPI's voor elke momentopname; Statistieken met verloop per dag, week, maand en jaar; terugzetten uit het verleden | Elke KPI toont zijn verloop; een scherm toont "zoals op" een datum; een test herbouwt de stand van een datum exact |
 | **R5 Omgeving** | Wizard per tenant (app-registratie `Moss365` opzoeken of maken, automatisch invullen, groepen, AD, hybride, Exchange, voorstellen voor de instellingen, noodaccounts); Deze computer met installeren | Een nieuwe testtenant is in minder dan 15 minuten klaar zonder iets in te tikken dat de app kon vinden |
-| **R6 Versleuteling en onderhoud** | Versleuteling A, B en C (U7), herstelsleutel, studie D; scherm Databank: grootte, compacteren, opkuis met voorbeeld en archief, controle | Een versleutelde tenant opent enkel met de juiste sleutel; opkuis verwijdert nooit zonder voorbeeld |
-| **R7 Bijwerken** | Nakijken bij het opstarten, ondertekende updates, kopie vóór migratie, terugval, kanalen, eigen bron (U4, U8) | Een update van de voorvertoning naar stabiel en terug werkt op een testpc |
-| **R8 Scripts uit de repository** | `scripts/` met index en handtekening, Bibliotheek bijwerken in de app, vastzetten per tenant | Een nieuw script in de repository verschijnt na Bijwerken in de app; een gewijzigd script zonder geldige handtekening wordt geweigerd |
+| **R6 Versleuteling en onderhoud** | Versleuteling A, B en C per tenant, standaard uit (U7), herstelsleutel, studie D; scherm Databank: grootte, compacteren, opkuis met voorbeeld en archief, controle | Een versleutelde tenant opent enkel met de juiste sleutel; opkuis verwijdert nooit zonder voorbeeld |
+| **R7 Bijwerken** | Velopack (U4): nakijken bij het opstarten, vingerafdruk (vanaf 1.0 ondertekend, U8), kopie vóór migratie, terugval, kanalen, eigen bron (U4, U8) | Een update van de voorvertoning naar stabiel en terug werkt op een testpc |
+| **R8 Scripts uit de repository** | `scripts/` met index en handtekening, Bibliotheek bijwerken in de app, vastzetten per tenant | Een nieuw script in de repository verschijnt na Bijwerken in de app; een gewijzigd script met een verkeerde vingerafdruk (vanaf 1.0: zonder geldige handtekening) wordt geweigerd |
 | **R9 Organisatie universeel** | Instellingen met voorstellen uit de gegevens, sjablonen, export en import; functieprofielen; logonscripts | Een voorbeeldorganisatie met andere naamregels, OU's en groepsnamen werkt zonder één aanpassing in de code |
 | **R10 Helpdesk** | Alles uit hoofdstuk 10, Helpdesk en dagelijks werk | Elk voorstel met tests, in het logboek of het toegangslog, met de juiste rol |
 | **R11 Beveiliging** | Alles uit hoofdstuk 10, Beveiliging (waarschuwingen bouwen op R4) | Idem; elke controle zegt "in orde", "aandacht" of "probleem", en "onbekend" als de gegevens niet volstaan |
@@ -466,7 +461,7 @@ Laat de keuze door een jurist bevestigen voor de eerste release. Verder:
 | **R13 Toestellen, Teams en SharePoint** | Alles uit hoofdstuk 10, Toestellen, Teams en SharePoint (de nodige rechten komen bij in de wizard, enkel lezen) | Idem |
 | **R14 Rapporteren en werken als team** | Alles uit hoofdstuk 10, Rapporteren en werken als team | Idem; een rapport per kwartaal komt uit de momentopnamen, ook voor een periode in het verleden |
 | **R15 Talen** | Woordenboeken voor de interface (een per taal, met een termenlijst); NL, EN, PT-BR, FR en DE; standaard de taal van het systeem, zelf in te stellen bij Instellingen; datums en getallen per taal; terugval op Engels | Elk scherm in vijf talen; de app volgt de taal van Windows en de keuze bij Instellingen gaat voor; een test vindt geen vaste tekst meer in de schermen en meldt ontbrekende vertalingen |
-| **1.0 Desktop** | Handleiding per rol, installatiegids, overzettingsgids, privacy-informatie (wat de app bewaart en waar), een model voor de DPIA | Een organisatie die Moss365 niet kent, installeert en gebruikt het met enkel de documentatie |
+| **1.0 Desktop** | Codesigningcertificaat voor app, updates en scripts (U8); handleiding per rol, installatiegids, overzettingsgids, privacy-informatie (wat de app bewaart en waar), een model voor de DPIA | Een organisatie die Moss365 niet kent, installeert en gebruikt het met enkel de documentatie |
 
 Volgorde: R0 en R1 eerst. R2 en R3 horen samen (een databank per tenant). R4 bouwt daarop, en R11 en R14 bouwen op R4.
 De andere stappen kunnen in een andere volgorde als dat beter uitkomt; elke stap is een eigen release (0.10, 0.11, ...).
@@ -477,7 +472,9 @@ Daarna de webversie: [roadmap-web.md](roadmap-web.md).
 | Risico | Aanpak |
 | --- | --- |
 | Organisatie-specifieke gegevens raken mee in de openbare repository | Nieuwe start zonder geschiedenis (U3), een controle in de workflow, geheimscanning met push-bescherming, verzonnen voorbeelden |
-| Een gekaapte update of een gekaapt script | Alles ondertekend, vingerafdrukken gecontroleerd, enkel uit de officiële bron, scripts draaien nooit vanzelf |
+| Een gekaapte update of een gekaapt script | Vingerafdrukken gecontroleerd en vanaf 1.0 alles ondertekend (U8), enkel uit de officiële bron, scripts draaien nooit vanzelf. Tot 1.0 waarschuwt Windows SmartScreen bij de installatie |
+| Een niet-versleutelde databank (standaard, U7) op een gestolen of gedeelde pc | BitLocker op de pc aanraden in de installatiegids; de wizard stelt versleuteling voor als de schijf niet versleuteld is |
+| Alles naar het Engels (U10) maakt R1 groot | Hernoemen met de hulpmiddelen van de IDE en de tests als vangnet; in kleine stukken |
 | Versleutelde databank, sleutel kwijt | Herstelsleutel bij het instellen; de gegevens van de tenant zelf zijn opnieuw te lezen (enkel logboek en geschiedenis zijn uniek) |
 | De momentopnamen worden te groot of te traag | Enkel wijzigingen bewaren, uitdunnen volgens de bewaartermijn, een KPI-tabel per dag, tests met een grote verzonnen organisatie |
 | Werken in de verkeerde tenant | Kleur en naam in de balk, bevestiging met de naam, één databank per tenant |
