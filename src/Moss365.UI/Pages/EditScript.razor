@@ -1,0 +1,232 @@
+@page "/scripts/bewerken"
+@inject ManagementState State
+@inject NavigationManager Nav
+
+<h1>@Title</h1>
+
+@if (builtInSource is not null)
+{
+    <div class="kb-melding">Een ingebouwd script pas je niet aan: dit is een kopie van <strong>@builtInSource</strong>. Bij Opslaan wordt het een eigen script.</div>
+}
+
+@if (changedOutsideApp)
+{
+    <div class="kb-melding kb-fout">Dit script werd buiten de app gewijzigd sinds het laatst opgeslagen werd. Kijk het na; Opslaan keurt deze versie goed.</div>
+}
+
+<div class="kb-script-bewerken">
+    <div class="kb-script-code">
+        <CodeEditor Text="@text" TextChanged="OnTextChanged" Errors="syntaxErrors" />
+    </div>
+    <div class="kb-script-paneel">
+        <section class="kb-kaart">
+            <h2>Eigenschappen</h2>
+            <label class="kb-veld"><span>Naam</span><input class="kb-invoer" value="@header.Name" @onchange="e => SetHeader(header with { Name = e.Value?.ToString() ?? string.Empty })" /></label>
+            <label class="kb-veld"><span>Wat het doet</span><textarea class="kb-invoer" rows="2" @onchange="e => SetHeader(header with { Description = e.Value?.ToString() ?? string.Empty })">@header.Description</textarea></label>
+            <div class="kb-veld">
+                <span>Verbinding</span>
+                <span class="kb-filters">
+                    @foreach (var v in new[] { ScriptConnection.Exchange, ScriptConnection.Graph, ScriptConnection.Ad, ScriptConnection.Local })
+                    {
+                        var flag = v;
+                        <label><input type="checkbox" checked="@header.Connection.HasFlag(flag)" @onchange="e => SetConnection(flag, e.Value is true)" /> @ScriptText.ConnectionText(flag)</label>
+                    }
+                </span>
+            </div>
+            <label class="kb-veld"><span><input type="checkbox" checked="@header.Writes" @onchange="e => SetHeader(header with { Writes = e.Value is true })" /> Dit script wijzigt iets (dan eerst een voorbeeld met -WhatIf)</span></label>
+            <div class="kb-rij">
+                <label class="kb-veld">
+                    <span>PowerShell</span>
+                    <select class="kb-invoer" value="@header.PowerShell" @onchange="e => SetHeader(header with { PowerShell = e.Value?.ToString() ?? string.Empty })">
+                        <option value="">7 als die er is</option>
+                        <option value="7">7</option>
+                        <option value="5.1">Windows PowerShell 5.1</option>
+                    </select>
+                </label>
+                <label class="kb-veld"><span>Maximale duur (minuten)</span><input class="kb-invoer" type="number" min="1" value="@header.DurationMinutes" @onchange="SetDuration" /></label>
+            </div>
+        </section>
+    </div>
+</div>
+
+<section class="kb-kaart">
+    <h2>Variabelen</h2>
+    <p class="kb-zacht">Wat het formulier vraagt bij het starten; de app geeft ze als parameters aan het script en onthoudt de laatst gebruikte waarden.</p>
+    <VariablesEditor Variables="header.Variables" VariablesChanged="v => SetHeader(header with { Variables = v })" />
+</section>
+
+@foreach (var w in warnings)
+{
+    <div class="kb-melding">@w</div>
+}
+
+@if (syntaxErrors.Count > 0)
+{
+    <div class="kb-melding kb-fout">
+        Syntaxfouten:
+        <ul>@foreach (var f in syntaxErrors) { <li>regel @f.Rule: @f.Text</li> }</ul>
+    </div>
+}
+
+@if (message is not null)
+{
+    <div class="kb-melding">@message</div>
+}
+
+<div class="kb-filters">
+    <button class="kb-knop" disabled="@busy" @onclick="Check">Controleren</button>
+    @if (!once)
+    {
+        <button class="kb-knop kb-primair" disabled="@busy" @onclick="() => Store(false)">Opslaan</button>
+        <button class="kb-knop" disabled="@busy" @onclick="() => Store(true)">Opslaan en starten</button>
+    }
+    <button class="kb-knop" disabled="@busy" @onclick="Once">Eenmalig uitvoeren (niet opslaan)</button>
+    <a class="kb-knop" href="scripts">Terug naar de scripts</a>
+</div>
+
+@if (onceScript is not null)
+{
+    <ScriptRunPanel @key="onceScript.Fingerprint" Script="onceScript" OneTimeText="@oneTimeText" />
+}
+
+@code {
+    [Parameter, SupplyParameterFromQuery(Name = "sleutel")] public string? Key { get; set; }
+    [Parameter, SupplyParameterFromQuery(Name = "eenmalig")] public int? OnceQuestion { get; set; }
+
+    private string text = string.Empty;
+    private ScriptHeader header = new();
+    private string? path;
+    private string? builtInSource;
+    private bool once;
+    private bool changedOutsideApp;
+    private bool busy;
+    private string? message;
+    private IReadOnlyList<string> warnings = Array.Empty<string>();
+    private IReadOnlyList<ScriptEvent> syntaxErrors = Array.Empty<ScriptEvent>();
+    private ScriptFile? onceScript;
+    private string? oneTimeText;
+    private string? loaded;
+
+    private string Title => once ? "Eenmalig script" : builtInSource is not null ? $"Kopie van {builtInSource}" : path is null ? "Nieuw script" : $"Script bewerken: {header.Name}";
+
+    protected override void OnParametersSet()
+    {
+        var question = $"{Key}|{OnceQuestion}";
+        if (loaded == question)
+        {
+            return;
+        }
+
+        loaded = question;
+        once = OnceQuestion == 1;
+        if (Key is { Length: > 0 } s && State.SearchScript(s) is { } script)
+        {
+            text = File.ReadAllText(script.FilePath);
+            if (script.BuiltIn)
+            {
+                builtInSource = script.Header.Name;
+                text = ScriptText.Write(script.Header with { Name = script.Header.Name + " (kopie)" }, text);
+            }
+            else
+            {
+                path = script.FilePath;
+                changedOutsideApp = ScriptLibrary.IsChangedOutsideApp(State.ScriptFolders, script);
+            }
+        }
+        else
+        {
+            text = ScriptLibrary.NewScript(once ? "Eenmalig" : "Nieuw script");
+        }
+
+        header = ScriptText.Read(text, path ?? "script.ps1");
+    }
+
+    private void OnTextChanged(string newValue)
+    {
+        text = newValue;
+        var read = ScriptText.Read(text, path ?? "script.ps1");
+        if (read.FromBlock)
+        {
+            header = read;
+        }
+    }
+
+    private void SetHeader(ScriptHeader newValue)
+    {
+        header = newValue;
+        text = ScriptText.Write(header, text);
+    }
+
+    private void SetConnection(ScriptConnection flag, bool enabled)
+        => SetHeader(header with { Connection = enabled ? header.Connection | flag : header.Connection & ~flag });
+
+    private void SetDuration(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var d) && d > 0)
+        {
+            SetHeader(header with { DurationMinutes = d });
+        }
+    }
+
+    private async Task<bool> Check()
+    {
+        busy = true;
+        message = null;
+        try
+        {
+            if (!header.FromBlock)
+            {
+                SetHeader(header);
+            }
+
+            warnings = ScriptText.Warnings(header, text);
+            syntaxErrors = await State.CheckScriptAsync(text);
+            if (syntaxErrors.Count == 0 && warnings.Count == 0)
+            {
+                message = "Geen fouten gevonden.";
+            }
+
+            return syntaxErrors.Count == 0 && header.Name.Trim().Length > 0;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task Store(bool start)
+    {
+        if (header.Name.Trim().Length == 0)
+        {
+            message = "Geef het script een naam.";
+            return;
+        }
+
+        var withoutErrors = await Check();
+        var file = ScriptLibrary.Store(State.ScriptFolders, ScriptText.Write(header, text), path);
+        path = file.FilePath;
+        builtInSource = null;
+        changedOutsideApp = false;
+        message = withoutErrors ? $"Opgeslagen als {Path.GetFileName(file.FilePath)}." : "Opgeslagen, maar met syntaxfouten: zo kan het niet draaien.";
+        if (start && withoutErrors)
+        {
+            Nav.NavigateTo($"scripts/starten/{Uri.EscapeDataString(file.Key)}");
+        }
+    }
+
+    private async Task Once()
+    {
+        if (!await Check())
+        {
+            message = "Los eerst de syntaxfouten op.";
+            return;
+        }
+
+        // The text that runs is fixed: changing it in the editor no longer affects this run
+        oneTimeText = ScriptText.Write(header, text);
+        var temporary = Path.Combine(Path.GetTempPath(), "Moss365", "eenmalig.ps1");
+        Directory.CreateDirectory(Path.GetDirectoryName(temporary)!);
+        File.WriteAllText(temporary, oneTimeText);
+        onceScript = ScriptLibrary.ReadFile(temporary, false);
+    }
+}

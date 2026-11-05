@@ -50,7 +50,7 @@ jobs:
       - name: Add tools and the script library
         shell: pwsh
         run: |
-          Copy-Item tools/Export-Inventaris.ps1, tools/Registreer-App.ps1 publish/
+          Copy-Item tools/Export-Inventaris.ps1, tools/Register-App.ps1 publish/
           Copy-Item scripts -Destination publish/scripts -Recurse
           Get-ChildItem publish -Recurse -File | ForEach-Object { Write-Host "  $($_.FullName)" }
 

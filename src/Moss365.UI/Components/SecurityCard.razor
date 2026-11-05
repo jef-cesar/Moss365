@@ -1,0 +1,140 @@
+@* MFA, admin roles, privileged AD groups and (live) sign-ins of one person *@
+@inject ManagementState State
+
+<section class="kb-kaart kb-beveiliging">
+    <h2>Beveiliging</h2>
+    <table class="kb-tabel kb-naast">
+        <tbody>
+            <tr>
+                <th>MFA</th>
+                <td>
+                    @if (Person.Entra is null)
+                    {
+                        <span class="kb-zacht">geen Entra-account</span>
+                    }
+                    else if (State.Data.Security is not { MfaKnown: true } b)
+                    {
+                        <span class="kb-zacht">onbekend (laad live: Verbindingen, Alles live laden)</span>
+                    }
+                    else if (b.MfaOf(Person.Entra.Id) is not { } m)
+                    {
+                        <span class="kb-zacht">niet in het rapport</span>
+                    }
+                    else if (m.MfaRegistered)
+                    {
+                        <span class="kb-label kb-label-goed">geregistreerd</span>
+                        <span>@string.Join(", ", m.Methods.Select(SecurityStatistics.MethodName))</span>
+                        @if (m.DefaultMethod.Length > 0) { <span class="kb-zacht">(standaard: @SecurityStatistics.MethodName(m.DefaultMethod))</span> }
+                    }
+                    else
+                    {
+                        <span class="kb-label kb-rood">⚠ geen MFA</span>
+                        @if (m.Methods.Count > 0) { <span class="kb-zacht">enkel: @string.Join(", ", m.Methods.Select(SecurityStatistics.MethodName))</span> }
+                    }
+                </td>
+            </tr>
+            <tr>
+                <th>Entra-beheerrollen</th>
+                <td>
+                    @if (State.Data.Security is not { RolesKnown: true } br)
+                    {
+                        <span class="kb-zacht">onbekend</span>
+                    }
+                    else if (br.RolesOf(Person.Entra?.Id).ToList() is { Count: > 0 } roles)
+                    {
+                        @foreach (var r in roles)
+                        {
+                            <span class="kb-label @(SecurityData.IsCriticalRole(r.Role) ? "kb-rood" : null)">@r.Role</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="kb-zacht">geen</span>
+                    }
+                </td>
+            </tr>
+            <tr>
+                <th>Bevoorrechte AD-groepen</th>
+                <td>
+                    @if (State.Data.AdGroupsOf(Person).Where(MirrorUser.IsPrivileged).ToList() is { Count: > 0 } groups)
+                    {
+                        @foreach (var g in groups)
+                        {
+                            <span class="kb-label kb-rood">@g.Name</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="kb-zacht">geen</span>
+                    }
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    @if (Person.Entra is { } entra)
+    {
+        <div class="kb-filters">
+            <button class="kb-knop" disabled="@busy" @onclick="() => Load(entra.Id)">Aanmeldingen laden (30 dagen)</button>
+            <label><input type="checkbox" @bind="onlyFailed" /> Alleen mislukte</label>
+        </div>
+        @if (error is not null)
+        {
+            <div class="kb-melding kb-fout">@error</div>
+        }
+        else if (signIns is not null)
+        {
+            <SignInList SignIns="signIns" WithUser="false" />
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = default!;
+
+    private IReadOnlyList<SignInEvent>? signIns;
+    private bool onlyFailed;
+    private bool busy;
+    private string? error;
+    private string? previous;
+
+    private string? logged;
+
+    protected override void OnParametersSet()
+    {
+        if (logged != Person.Key)
+        {
+            logged = Person.Key;
+            State.Access("Beveiliging bekeken", $"gebruiker {Person.Key}");
+        }
+
+        if (previous != Person.Key)
+        {
+            previous = Person.Key;
+            signIns = null;
+            error = null;
+        }
+    }
+
+    private async Task Load(string id)
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            signIns = await State.ReadSignInsAsync(id, 30, onlyFailed);
+            if (signIns is null)
+            {
+                error = "Vul eerst de Entra-gegevens in (scherm Verbindingen).";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = "Aanmeldingen lezen mislukt: " + ex.Message + " (nodig: rol Reports Reader of Security Reader, en Entra ID P1).";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

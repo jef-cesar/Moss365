@@ -1,0 +1,81 @@
+@* Finds a user, group, mailbox or room; Kinds limits what can be chosen *@
+@inject ManagementState State
+
+<div class="kb-kiezer">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label>@Label</label>
+    }
+    <div class="kb-filters">
+        <input class="kb-invoer kb-breed" placeholder="@Placeholder" @bind="search" @bind:event="oninput" aria-label="@(Label ?? Placeholder)" />
+    </div>
+    @if (Results.Count > 0)
+    {
+        <ul class="kb-keuzes">
+            @foreach (var r in Results)
+            {
+                <li>
+                    <button class="kb-link" @onclick="() => Choose(r)">@r.Name</button>
+                    <span class="kb-soort">@r.KindText</span>
+                    <span class="kb-zacht">@r.Detail</span>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Zoek op naam of adres";
+    [Parameter] public IReadOnlyCollection<ObjectKind>? Kinds { get; set; }
+    [Parameter] public EventCallback<ObjectRef> Selected { get; set; }
+
+    private string search = string.Empty;
+
+    private IReadOnlyList<ObjectRef> Results
+    {
+        get
+        {
+            var z = search.Trim();
+            if (z.Length < 2)
+            {
+                return Array.Empty<ObjectRef>();
+            }
+
+            bool Can(ObjectKind s) => Kinds is null || Kinds.Contains(s);
+            bool Past(params string?[] fields) => fields.Any(v => v?.Contains(z, StringComparison.OrdinalIgnoreCase) == true);
+            var d = State.Data;
+            var output = new List<ObjectRef>();
+            if (Can(ObjectKind.User))
+            {
+                output.AddRange(d.Persons.Where(p => !p.IsGuest && Past(p.Name, p.Upn, p.Ad?.SamAccountName, p.Entra?.Mail))
+                    .Where(p => d.Index.Find(p.Upn) is not { Kind: ObjectKind.Mailbox or ObjectKind.Room })
+                    .Select(d.Index.Ref));
+            }
+
+            if (Can(ObjectKind.Group))
+            {
+                output.AddRange(d.Index.Groups.Where(g => Past(g.Name, g.Mail, g.Ad?.SamAccountName)).Select(g => g.Ref));
+            }
+
+            if (Can(ObjectKind.Mailbox))
+            {
+                output.AddRange(d.Mailboxes.Where(p => Past(p.DisplayName, p.Smtp)).Select(p => new ObjectRef(ObjectKind.Mailbox, p.Smtp, p.DisplayName, p.Smtp)));
+            }
+
+            if (Can(ObjectKind.Room))
+            {
+                output.AddRange(d.Rooms.Where(r => Past(r.DisplayName, r.Smtp)).Select(r => new ObjectRef(ObjectKind.Room, r.Smtp, r.DisplayName, r.Smtp)));
+            }
+
+            return output.OrderBy(r => r.Name.StartsWith(z, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase).Take(12).ToList();
+        }
+    }
+
+    private async Task Choose(ObjectRef r)
+    {
+        search = string.Empty;
+        await Selected.InvokeAsync(r);
+    }
+}

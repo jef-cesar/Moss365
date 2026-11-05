@@ -1,0 +1,42 @@
+@* Desired room settings; leave empty = do not change *@
+<div class="kb-raster">
+    <label>Verwerking <select class="kb-invoer" @bind="Desired.AutomateProcessing"><option value="">(niet wijzigen)</option><option>AutoAccept</option><option>AutoUpdate</option><option>None</option></select></label>
+    <label>Boekingsvenster (dagen) <input class="kb-invoer" type="number" @bind="Desired.BookingWindowInDays" /></label>
+    <label>Maximale duur (min.) <input class="kb-invoer" type="number" @bind="Desired.MaximumDurationInMinutes" /></label>
+    <label>Conflicten toestaan <YesNo @bind-Value="Desired.AllowConflicts" /></label>
+    <label>Terugkerende vergaderingen <YesNo @bind-Value="Desired.AllowRecurringMeetings" /></label>
+    <label>Organisator in onderwerp <YesNo @bind-Value="Desired.AddOrganizerToSubject" /></label>
+    <label>Onderwerp wissen <YesNo @bind-Value="Desired.DeleteSubject" /></label>
+    <label>Standaardrecht agenda
+        <select class="kb-invoer" @bind="Desired.DefaultCalendarPermission">
+            <option value="">(niet wijzigen)</option><option>AvailabilityOnly</option><option>LimitedDetails</option><option>Reviewer</option>
+        </select>
+    </label>
+    <label>Gebouw <input class="kb-invoer" @bind="Desired.Building" /></label>
+    <label>Verdieping <input class="kb-invoer" @bind="Desired.Floor" /></label>
+    <label>Verdiepingslabel <input class="kb-invoer" @bind="Desired.FloorLabel" /></label>
+    <label>Capaciteit <input class="kb-invoer" type="number" @bind="Desired.Capacity" /></label>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public RoomDesired Desired { get; set; } = new();
+
+    /// <summary>Empty text fields mean "do not change".</summary>
+    public static RoomDesired Cleaned(RoomDesired g) => new()
+    {
+        AutomateProcessing = Empty(g.AutomateProcessing),
+        BookingWindowInDays = g.BookingWindowInDays,
+        MaximumDurationInMinutes = g.MaximumDurationInMinutes,
+        AllowConflicts = g.AllowConflicts,
+        AllowRecurringMeetings = g.AllowRecurringMeetings,
+        AddOrganizerToSubject = g.AddOrganizerToSubject,
+        DeleteSubject = g.DeleteSubject,
+        DefaultCalendarPermission = Empty(g.DefaultCalendarPermission),
+        Building = Empty(g.Building),
+        Floor = Empty(g.Floor),
+        FloorLabel = Empty(g.FloorLabel),
+        Capacity = g.Capacity,
+    };
+
+    private static string? Empty(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+}

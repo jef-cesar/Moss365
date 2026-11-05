@@ -1,0 +1,289 @@
+@page "/logboek"
+@inject ManagementState State
+@inject NavigationManager Nav
+
+<h1>Logboek</h1>
+
+<p class="kb-zacht">
+    Elke uitgevoerde wijziging: wie, wanneer, wat en met welk resultaat. Wachtwoorden staan er nooit in.
+    Bestanden: <code>@((State.ChangeLog as JsonlChangeLog)?.Folder)</code> (één per maand).
+</p>
+
+<div class="kb-filters">
+    <input class="kb-invoer kb-breed" placeholder="Filter op naam, groep, actie of resultaat" @bind="z.Filter" @bind:event="oninput" />
+    @if (ActiveKpi is null) { <label><input type="checkbox" @bind="z.OnlyErrors" /> Alleen mislukt</label> }
+    <button class="kb-knop" @onclick="Read">Vernieuwen</button>
+</div>
+
+<KpiFilter Kpi="ActiveKpi" Count="KpiRows().Count" Shown="Filtered().Count()" Cleared="() => z.Kpi = null" />
+
+@if (error is not null)
+{
+    <div class="kb-melding kb-fout">@error</div>
+}
+else if (rules.Count == 0)
+{
+    <div class="kb-melding">Nog niets uitgevoerd.</div>
+}
+else
+{
+    @if (State.Can(Permission.Manage))
+    {
+    <section class="kb-kaart">
+        <h2>Ongedaan maken</h2>
+        <p class="kb-zacht">
+            Vink de wijzigingen aan die je wil terugdraaien, of kies een heel plan. De app maakt het omgekeerde plan (in omgekeerde
+            volgorde) en toont het eerst; pas na <strong>Uitvoeren</strong> en een bevestiging verandert er iets. Aanmaken,
+            wachtwoorden, licenties en verwijderde gasten kunnen niet terug.
+        </p>
+        <div class="kb-filters">
+            <select class="kb-invoer" @onchange="ChoosePlan" aria-label="Heel plan kiezen">
+                <option value="">Heel plan kiezen...</option>
+                @foreach (var pl in Plans())
+                {
+                    <option value="@pl.Id">@pl.Text</option>
+                }
+            </select>
+            <button class="kb-knop kb-primair" disabled="@(selected.Count == 0)" @onclick="MakeUndoPlan">Gekozen wijzigingen ongedaan maken (@selected.Count)</button>
+            @if (selected.Count > 0)
+            {
+                <button class="kb-knop" @onclick="() => { selected.Clear(); reverse = null; }">Keuze wissen</button>
+            }
+        </div>
+    </section>
+    }
+
+    @if (reverse is not null)
+    {
+        @foreach (var n in reverse.NotReversible)
+        {
+            <div class="kb-melding">Niet terug te draaien: @n</div>
+        }
+
+        @if (reverse.Plan.Count > 0)
+        {
+            <PlanView Plan="reverse.Plan" Context="@reverseContext" Title="Ongedaan maken" Executed="AfterReverse" />
+        }
+    }
+
+    <KbTable Id="logboek" Items="Filtered()" Columns="columns" DefaultSorting="tijd"
+             Selectable="State.Can(Permission.Manage)" KeyOf="Key" Selected="selected" SelectionChanged="_ => reverse = null"
+             CanChoose="r => Undo.WhyNot(r) is null" WhyNot="WhyNotBack"
+             RowClass="@(r => r.Failed ? "kb-ontbreekt" : null)" />
+    <p class="kb-zacht">De laatste @rules.Count regels, nieuwste eerst.</p>
+}
+
+@if (State.Can(Permission.ChangeLogAll))
+{
+    <section class="kb-kaart">
+        <h2>Toegangslog</h2>
+        <p class="kb-zacht">Wie exporteerde en wie aanmeldingen of beveiligingsgegevens bekeek (de laatste 200). Enkel wat en hoeveel, nooit de inhoud.</p>
+        @if (access.Count == 0)
+        {
+            <p class="kb-zacht">Nog niets.</p>
+        }
+        else
+        {
+            <KbTable Id="toegangslog" Items="access" Columns="accessColumns" DefaultSorting="tijd" />
+        }
+    </section>
+}
+
+@if (State.Can(Permission.Manage))
+{
+    <section class="kb-kaart">
+        <h2>Bewaartermijn</h2>
+        <p class="kb-zacht">
+            Het logboek blijft @State.Config.ChangeLogSaveYears jaar in de databank (keuze K4, af te stemmen met de DPO; aan te passen in
+            <code>organisatie.json</code>). Oudere regels archiveer je eerst naar een CSV; pas daarna kan je ze uit de databank halen.
+        </p>
+        @if (tooOld == 0)
+        {
+            <p>Geen regels ouder dan @Limit.ToString("dd/MM/yyyy").</p>
+        }
+        else
+        {
+            <p><strong>@tooOld</strong> regels ouder dan @Limit.ToString("dd/MM/yyyy").</p>
+            <div class="kb-filters">
+                <button class="kb-knop" @onclick="Archive">Archiveren naar CSV</button>
+                @if (archive is not null)
+                {
+                    <span class="kb-ok">@archive.Value.Count regels in <code>@archive.Value.FilePath</code></span>
+                    @if (!removeConfirm)
+                    {
+                        <button class="kb-knop kb-gevaar" @onclick="() => removeConfirm = true">Uit de databank halen</button>
+                    }
+                    else
+                    {
+                        <span>@tooOld regels definitief uit de databank halen?</span>
+                        <button class="kb-knop kb-gevaar" @onclick="TakeAway">Ja, weghalen</button>
+                        <button class="kb-knop" @onclick="() => removeConfirm = false">Annuleren</button>
+                    }
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private IReadOnlyList<LogEntry> rules = Array.Empty<LogEntry>();
+    /// <summary>Search term and filters, kept while the app is open (Back, Forward, menu).</summary>
+    private sealed class Search { public string Filter { get; set; } = string.Empty; public bool OnlyErrors { get; set; } public string? Kpi { get; set; } }
+    private Search? _z;
+    private Search z => _z ??= State.PageState.Of<Search>("logboek");
+
+    /// <summary>From a KPI tile: logboek?kpi=mislukt-7 (see Core/Analysis/Kpis.cs).</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "kpi")] public string? KpiQuestion { get; set; }
+    private string? processedKpi;
+
+    protected override void OnParametersSet()
+    {
+        if (KpiQuestion != processedKpi)
+        {
+            processedKpi = KpiQuestion;
+            if (State.KpiArrival(KpiQuestion, Nav.Uri, "logboek", "logboek"))
+            {
+                _z = null;
+                z.Kpi = KpiQuestion;
+            }
+        }
+    }
+
+    private Kpi? ActiveKpi => Kpis.Find(z.Kpi) is { Items: KpiList.ChangeLog } k ? k : null;
+
+    /// <summary>The same entries as the tile (the last 2000), with what your profile may see.</summary>
+    private IReadOnlyList<LogEntry> KpiRows() => ActiveKpi is { } k
+        ? Kpis.LogLines(k, State.ChangeLogForKpi(), DateTimeOffset.Now).Where(CanSee).ToList()
+        : Array.Empty<LogEntry>();
+
+    private bool CanSee(LogEntry r) => State.Can(Permission.ChangeLogAll) || string.Equals(r.User, State.User, StringComparison.OrdinalIgnoreCase);
+    private string? error;
+    private IReadOnlyList<Column<LogEntry>> columns = Array.Empty<Column<LogEntry>>();
+
+    protected override void OnInitialized()
+    {
+        columns = new List<Column<LogEntry>>
+        {
+            // Time as the sort key: newest first is the default (the list already comes in that way)
+            new() { Key = "tijd", Title = "Tijd", Cell = r => @<text>@r.Time.ToString("yyyy-MM-dd HH:mm:ss")</text>, SortBy = r => -r.Time.UtcTicks, Text = r => r.Time.ToString("yyyy-MM-dd HH:mm:ss") },
+            new() { Key = "door", Title = "Door", Cell = r => @<text>@r.User</text>, SortBy = r => r.User },
+            new() { Key = "context", Title = "Context", Cell = r => @<text>@r.Context</text>, SortBy = r => r.Context },
+            new() { Key = "systeem", Title = "Systeem", Cell = r => @<text>@r.TargetSystem</text>, SortBy = r => r.TargetSystem },
+            new() { Key = "wijziging", Title = "Wijziging", Cell = r => @<text>@r.Description</text>, SortBy = r => r.Description },
+            new() { Key = "object", Title = "Object", Cell = r => @<ObjectLink Id="@r.Target" Text="@(r.TargetName.Length > 0 ? r.TargetName : null)" />, SortBy = r => r.TargetName, Text = r => r.TargetName.Length > 0 ? r.TargetName : r.Target },
+            new() { Key = "resultaat", Title = "Resultaat", Cell = r => @<text>@r.Status <span class="kb-zacht">@r.Message</span></text>, SortBy = r => r.Status, Text = r => r.Message.Length > 0 ? $"{r.Status}: {r.Message}" : r.Status },
+            new() { Key = "actie", Title = "Actie (technisch)", Hidden = true, Cell = r => @<code>@r.ChangeAction</code>, SortBy = r => r.ChangeAction },
+        };
+        Read();
+    }
+
+    private readonly HashSet<string> selected = new();
+    private ReverseOutcome? reverse;
+    private string reverseContext = string.Empty;
+
+    /// <summary>Unique key of a log entry (ChangeId since 0.5, otherwise time + target + action).</summary>
+    private static string Key(LogEntry r) => r.ChangeId?.ToString() ?? $"{r.Time.UtcTicks}|{r.Target}|{r.ChangeAction}|{r.Description}";
+
+    private sealed record PlanChoice(string Id, string Text);
+
+    private IEnumerable<PlanChoice> Plans()
+        => rules.Where(r => r.PlanId is not null)
+            .GroupBy(r => r.PlanId!.Value)
+            .Where(g => g.Any(Undo.CanReverse))
+            .Take(50)
+            .Select(g => new PlanChoice(g.Key.ToString(), $"{g.First().Time:dd/MM HH:mm} - {g.First().Context} ({g.Count(Undo.CanReverse)} terug te draaien)"));
+
+    private void ChoosePlan(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            foreach (var r in rules.Where(r => r.PlanId == id && Undo.CanReverse(r)))
+            {
+                selected.Add(Key(r));
+            }
+
+            reverse = null;
+        }
+    }
+
+    private static string? WhyNotBack(LogEntry r) => Undo.WhyNot(r) is { } reason ? $"Kan niet ongedaan gemaakt worden: {reason}" : null;
+
+    private void MakeUndoPlan()
+    {
+        var choice = rules.Where(r => selected.Contains(Key(r))).ToList();
+        reverse = Undo.Plan(choice, State.Data);
+        var contexts = choice.Select(r => r.Context).Distinct().ToList();
+        reverseContext = "Ongedaan maken: " + (contexts.Count == 1 ? contexts[0] : $"{choice.Count} wijzigingen");
+    }
+
+    private void AfterReverse(IReadOnlyList<ChangeResult> results)
+    {
+        selected.Clear();
+        Read();
+    }
+
+    private void Read()
+    {
+        try
+        {
+            // Without the permission "everything" (Helpdesk) only the own changes
+            ReadManagement();
+            rules = State.ChangeLog.Recent(500).Where(CanSee).ToList();
+            error = null;
+        }
+        catch (Exception ex)
+        {
+            error = "Logboek lezen mislukt: " + ex.Message;
+        }
+    }
+
+    private IEnumerable<LogEntry> Filtered()
+    {
+        var f = z.Filter.Trim();
+        var source = ActiveKpi is null ? rules : KpiRows();
+        return source.Where(r => (ActiveKpi is not null || !z.OnlyErrors || r.Failed)
+                                 && (f.Length == 0
+                                     || new[] { r.User, r.Context, r.TargetSystem, r.Description, r.TargetName, r.Status, r.Message }
+                                         .Any(t => t?.Contains(f, StringComparison.OrdinalIgnoreCase) == true)));
+    }
+
+    private IReadOnlyList<Moss365.Core.Storage.AccessEntry> access = Array.Empty<Moss365.Core.Storage.AccessEntry>();
+    private readonly IReadOnlyList<Column<Moss365.Core.Storage.AccessEntry>> accessColumns = new List<Column<Moss365.Core.Storage.AccessEntry>>
+    {
+        new() { Key = "tijd", Title = "Tijd", Cell = r => b => b.AddContent(0, r.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")), SortBy = r => r.Time },
+        new() { Key = "wie", Title = "Wie", Cell = r => b => b.AddContent(0, r.User), SortBy = r => r.User },
+        new() { Key = "wat", Title = "Wat", Cell = r => b => b.AddContent(0, r.What), SortBy = r => r.What },
+        new() { Key = "details", Title = "Details", Cell = r => b => b.AddContent(0, r.Details), SortBy = r => r.Details },
+    };
+
+    private int tooOld;
+    private (string FilePath, int Count)? archive;
+    private bool removeConfirm;
+
+    private DateTimeOffset Limit => Moss365.Core.Storage.Retention.Limit(DateTimeOffset.Now, State.Config.ChangeLogSaveYears);
+
+    private void ReadManagement()
+    {
+        if (State.Can(Permission.ChangeLogAll))
+        {
+            access = State.Database.ReadAccess(200);
+        }
+
+        tooOld = State.Database.CountLog(Limit);
+    }
+
+    private void Archive()
+    {
+        archive = Moss365.Core.Storage.Retention.Archive(State.Database, Limit, State.AppEnvironment.ExportFolder, DateTime.Now);
+        State.Access("Logboek gearchiveerd", $"{archive.Value.Count} regels ouder dan {Limit:yyyy-MM-dd}");
+    }
+
+    private void TakeAway()
+    {
+        var route = State.Database.RemoveLog(Limit);
+        State.Log.Information("Bewaartermijn: {Aantal} logboekregels uit de databank gehaald na archiveren", route);
+        archive = null;
+        removeConfirm = false;
+        Read();
+    }
+}

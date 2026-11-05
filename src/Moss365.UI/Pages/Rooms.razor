@@ -1,12 +1,12 @@
 @page "/rooms"
-@inherits VerversendePagina
+@inherits RefreshingPage
 @inject NavigationManager Nav
 
 <h1>Rooms</h1>
 
 <p class="kb-zacht">
     @State.Data.Rooms.Count vergaderruimtes uit
-    @(State.Data.Bronnen.FirstOrDefault(b => b.Bestand.Contains("rooms", StringComparison.OrdinalIgnoreCase))?.Map is { } m ? System.IO.Path.GetFileName(m) : "geen bron").
+    @(State.Data.Sources.FirstOrDefault(b => b.File.Contains("rooms", StringComparison.OrdinalIgnoreCase))?.Folder is { } m ? System.IO.Path.GetFileName(m) : "geen bron").
     Voor actuele waarden: <a href="verbindingen">Rooms laden uit Exchange</a>. Gemarkeerd = wijkt af van de standaard in de organisatie.
 </p>
 
@@ -16,110 +16,110 @@
 }
 else
 {
-    <KpiFilter Kpi="ActieveKpi" Aantal="Lijst.Count" Gewist="() => k.Kpi = null" />
+    <KpiFilter Kpi="ActiveKpi" Count="Items.Count" Cleared="() => k.Kpi = null" />
 
-    <KbTabel Id="rooms" Items="Lijst" Kolommen="kolommen" StandaardSortering="naam" Selecteerbaar SleutelVan="r => r.Smtp"
-             SelectieGewijzigd="_ => plan = null" RijKlasse="@(r => Afwijkingen(r).Count > 0 ? "kb-verschil" : null)" />
+    <KbTable Id="rooms" Items="Items" Columns="columns" DefaultSorting="naam" Selectable KeyOf="r => r.Smtp"
+             SelectionChanged="_ => plan = null" RowClass="@(r => Deviations(r).Count > 0 ? "kb-verschil" : null)" />
 
-    @if (State.Mag(Recht.Beheren))
+    @if (State.Can(Permission.Manage))
     {
     <section class="kb-kaart">
-        <h2>Wijzigen (@gekozen.Count geselecteerd)</h2>
+        <h2>Wijzigen (@selected.Count geselecteerd)</h2>
         <p class="kb-zacht">Leeg laten = niet wijzigen. Alleen wat verschilt met de huidige waarde komt in het plan.</p>
         <div class="kb-filters">
-            <button class="kb-knop" @onclick="StandaardInvullen">Standaard invullen</button>
-            <button class="kb-knop" @onclick="Leegmaken">Leegmaken</button>
+            <button class="kb-knop" @onclick="DefaultFill">Standaard invullen</button>
+            <button class="kb-knop" @onclick="Empty">Leegmaken</button>
         </div>
-        <RoomFormulier Gewenst="gewenst" />
+        <RoomForm Desired="desired" />
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" disabled="@(gekozen.Count == 0)" @onclick="MaakPlan">Plan maken</button>
+            <button class="kb-knop kb-primair" disabled="@(selected.Count == 0)" @onclick="MakePlan">Plan maken</button>
         </div>
     </section>
     }
 
     @if (plan is not null)
     {
-        <PlanWeergave Plan="plan" Context="@($"Rooms ({gekozen.Count})")" Titel="Wijzigingen aan de rooms" Uitgevoerd="NaUitvoeren" />
+        <PlanView Plan="plan" Context="@($"Rooms ({selected.Count})")" Title="Wijzigingen aan de rooms" Executed="AfterExecute" />
     }
 }
 
 @code {
-    // De gekozen rooms (ook na Terug of Vooruit) en het formulier, zolang de app open is
-    private HashSet<string> gekozen => State.TabelSessie("rooms").Gekozen;
+    // The chosen rooms (also after Back or Forward) and the form, while the app is open
+    private HashSet<string> selected => State.TableSession("rooms").Selected;
 
-    /// <summary>Vanuit een KPI-tegel: rooms?kpi=afwijkend (zie Core/Analyse/Kpis.cs).</summary>
-    [Parameter, SupplyParameterFromQuery(Name = "kpi")] public string? KpiVraag { get; set; }
-    private string? verwerkteKpi;
-    private KpiKeuze? _k;
-    private KpiKeuze k => _k ??= State.Paginastatus.Van<KpiKeuze>("rooms");
+    /// <summary>From a KPI tile: rooms?kpi=afwijkend (see Core/Analysis/Kpis.cs).</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "kpi")] public string? KpiQuestion { get; set; }
+    private string? processedKpi;
+    private KpiChoice? _k;
+    private KpiChoice k => _k ??= State.PageState.Of<KpiChoice>("rooms");
 
     protected override void OnParametersSet()
     {
-        if (KpiVraag != verwerkteKpi)
+        if (KpiQuestion != processedKpi)
         {
-            verwerkteKpi = KpiVraag;
-            if (State.KpiAankomst(KpiVraag, Nav.Uri, "rooms", "rooms"))
+            processedKpi = KpiQuestion;
+            if (State.KpiArrival(KpiQuestion, Nav.Uri, "rooms", "rooms"))
             {
                 _k = null;
-                k.Kpi = KpiVraag;
+                k.Kpi = KpiQuestion;
             }
         }
     }
 
-    private Kpi? ActieveKpi => Kpis.Zoek(k.Kpi) is { Lijst: KpiLijst.Rooms } x ? x : null;
-    private IReadOnlyList<Room> Lijst => ActieveKpi is { } x ? Kpis.Rooms(x, State.KpiBron) : State.Data.Rooms;
-    private const string Formulier = "rooms/wijzigen";
-    private IReadOnlyList<Kolom<Room>> kolommen = Array.Empty<Kolom<Room>>();
+    private Kpi? ActiveKpi => Kpis.Find(k.Kpi) is { Items: KpiList.Rooms } x ? x : null;
+    private IReadOnlyList<Room> Items => ActiveKpi is { } x ? Kpis.Rooms(x, State.KpiSource) : State.Data.Rooms;
+    private const string Form = "rooms/wijzigen";
+    private IReadOnlyList<Column<Room>> columns = Array.Empty<Column<Room>>();
 
-    protected override void OnInitialized() => kolommen = new List<Kolom<Room>>
+    protected override void OnInitialized() => columns = new List<Column<Room>>
     {
-        new() { Sleutel = "naam", Titel = "Room", Cel = r => @<text><ObjectLink Id="@r.Smtp" /><div class="kb-zacht">@r.Smtp</div></text>, SorteerOp = r => r.DisplayName, Tekst = r => $"{r.DisplayName} ({r.Smtp})" },
-        new() { Sleutel = "gebouw", Titel = "Gebouw", Cel = r => @<text>@r.Gebouw</text>, SorteerOp = r => r.Gebouw },
-        new() { Sleutel = "verdieping", Titel = "Verd.", Cel = r => @<text>@r.Verdieping</text>, SorteerOp = r => r.Verdieping },
-        new() { Sleutel = "capaciteit", Titel = "Cap.", Getal = true, Cel = r => @<text>@r.Capaciteit</text>, SorteerOp = r => r.Capaciteit },
-        new() { Sleutel = "verwerking", Titel = "Verwerking", Cel = r => @<text>@r.AutomateProcessing</text>, SorteerOp = r => r.AutomateProcessing },
-        new() { Sleutel = "venster", Titel = "Venster", Getal = true, Cel = r => @<text>@r.BookingWindowInDays</text>, SorteerOp = r => r.BookingWindowInDays },
-        new() { Sleutel = "recht", Titel = "Standaardrecht", Cel = r => @<text>@r.StandaardAgendaRecht</text>, SorteerOp = r => r.StandaardAgendaRecht },
-        new() { Sleutel = "afwijkingen", Titel = "Afwijkingen", Cel = r => @<span class="kb-zacht">@string.Join("; ", Afwijkingen(r))</span>, SorteerOp = r => Afwijkingen(r).Count, Tekst = r => string.Join("; ", Afwijkingen(r)) },
-        new() { Sleutel = "duur", Titel = "Max. duur", Verborgen = true, Getal = true, Cel = r => @<text>@r.MaximumDurationInMinutes</text>, SorteerOp = r => r.MaximumDurationInMinutes },
-        new() { Sleutel = "gedelegeerden", Titel = "Gedelegeerden", Verborgen = true, Cel = r => @<text>@r.ResourceDelegates.Replace("|", ", ")</text>, SorteerOp = r => r.ResourceDelegates, Tekst = r => r.ResourceDelegates.Replace("|", ", ") },
-        new() { Sleutel = "verborgen", Titel = "Verborgen", Verborgen = true, Cel = r => @<text>@(r.Verborgen ? "ja" : "")</text>, SorteerOp = r => r.Verborgen ? "ja" : "" },
-        new() { Sleutel = "entraid", Titel = "Entra-ID", Verborgen = true, Cel = r => @<code>@(State.Data.Index.AccountVan(r.Smtp, r.Alias)?.Entra?.Id)</code>, SorteerOp = r => State.Data.Index.AccountVan(r.Smtp, r.Alias)?.Entra?.Id },
+        new() { Key = "naam", Title = "Room", Cell = r => @<text><ObjectLink Id="@r.Smtp" /><div class="kb-zacht">@r.Smtp</div></text>, SortBy = r => r.DisplayName, Text = r => $"{r.DisplayName} ({r.Smtp})" },
+        new() { Key = "gebouw", Title = "Gebouw", Cell = r => @<text>@r.Building</text>, SortBy = r => r.Building },
+        new() { Key = "verdieping", Title = "Verd.", Cell = r => @<text>@r.Floor</text>, SortBy = r => r.Floor },
+        new() { Key = "capaciteit", Title = "Cap.", Number = true, Cell = r => @<text>@r.Capacity</text>, SortBy = r => r.Capacity },
+        new() { Key = "verwerking", Title = "Verwerking", Cell = r => @<text>@r.AutomateProcessing</text>, SortBy = r => r.AutomateProcessing },
+        new() { Key = "venster", Title = "Venster", Number = true, Cell = r => @<text>@r.BookingWindowInDays</text>, SortBy = r => r.BookingWindowInDays },
+        new() { Key = "recht", Title = "Standaardrecht", Cell = r => @<text>@r.DefaultCalendarPermission</text>, SortBy = r => r.DefaultCalendarPermission },
+        new() { Key = "afwijkingen", Title = "Afwijkingen", Cell = r => @<span class="kb-zacht">@string.Join("; ", Deviations(r))</span>, SortBy = r => Deviations(r).Count, Text = r => string.Join("; ", Deviations(r)) },
+        new() { Key = "duur", Title = "Max. duur", Hidden = true, Number = true, Cell = r => @<text>@r.MaximumDurationInMinutes</text>, SortBy = r => r.MaximumDurationInMinutes },
+        new() { Key = "gedelegeerden", Title = "Gedelegeerden", Hidden = true, Cell = r => @<text>@r.ResourceDelegates.Replace("|", ", ")</text>, SortBy = r => r.ResourceDelegates, Text = r => r.ResourceDelegates.Replace("|", ", ") },
+        new() { Key = "verborgen", Title = "Verborgen", Hidden = true, Cell = r => @<text>@(r.Hidden ? "ja" : "")</text>, SortBy = r => r.Hidden ? "ja" : "" },
+        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = r => @<code>@(State.Data.Index.AccountOf(r.Smtp, r.Alias)?.Entra?.Id)</code>, SortBy = r => State.Data.Index.AccountOf(r.Smtp, r.Alias)?.Entra?.Id },
     };
 
-    private IReadOnlyList<string> Afwijkingen(Room r) => PlanBouwer.RoomAfwijkingen(r, State.Config.Rooms.Standaard);
-    private RoomGewenst? _gewenst;
-    private RoomGewenst gewenst => _gewenst ??= State.Paginastatus.Formulier<RoomGewenst>(Formulier, "rooms", "Rooms", ingevuld: IsIngevuld);
+    private IReadOnlyList<string> Deviations(Room r) => PlanBuilder.RoomDeviations(r, State.Config.Rooms.Default);
+    private RoomDesired? _desired;
+    private RoomDesired desired => _desired ??= State.PageState.Form<RoomDesired>(Form, "rooms", "Rooms", filled: IsFilled);
 
-    // Ook de standaard invullen telt als een ingevuld formulier: er staat iets klaar om toe te passen
-    private static bool IsIngevuld(RoomGewenst g) => typeof(RoomGewenst).GetProperties().Any(p => p.GetValue(g) is not null);
-    private List<Wijziging>? plan;
+    // Filling in the default also counts as a filled-in form: something is ready to apply
+    private static bool IsFilled(RoomDesired g) => typeof(RoomDesired).GetProperties().Any(p => p.GetValue(g) is not null);
+    private List<Change>? plan;
 
-    private void Leegmaken()
+    private void Empty()
     {
-        State.Paginastatus.Vergeet(Formulier);
-        _gewenst = null;
+        State.PageState.Forget(Form);
+        _desired = null;
         plan = null;
     }
 
-    private void StandaardInvullen()
+    private void DefaultFill()
     {
-        State.Paginastatus.Vergeet(Formulier);
-        _gewenst = State.Paginastatus.Formulier(Formulier, "rooms", "Rooms", () => RoomGewenst.UitStandaard(State.Config.Rooms.Standaard), IsIngevuld);
+        State.PageState.Forget(Form);
+        _desired = State.PageState.Form(Form, "rooms", "Rooms", () => RoomDesired.FromDefault(State.Config.Rooms.Default), IsFilled);
         plan = null;
     }
 
-    private void NaUitvoeren(IReadOnlyList<WijzigingResultaat> resultaten)
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
     {
-        if (resultaten.Any(r => r.Status == ResultaatStatus.Gelukt))
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
         {
-            State.Paginastatus.Vergeet(Formulier);
+            State.PageState.Forget(Form);
         }
     }
 
-    private void MaakPlan()
+    private void MakePlan()
     {
-        var g = RoomFormulier.Opgeschoond(gewenst);
-        plan = State.Data.Rooms.Where(r => gekozen.Contains(r.Smtp)).SelectMany(r => PlanBouwer.Room(r, g)).ToList();
+        var g = RoomForm.Cleaned(desired);
+        plan = State.Data.Rooms.Where(r => selected.Contains(r.Smtp)).SelectMany(r => PlanBuilder.Room(r, g)).ToList();
     }
 }

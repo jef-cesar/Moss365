@@ -1,0 +1,53 @@
+@* How current an object is, with a button to read only this object again *@
+@implements IDisposable
+@inject ManagementState State
+@inject IJSRuntime JS
+
+<div class="kb-objectstatus @(State.IsChanged(Object) ? "kb-objectstatus-gewijzigd" : null)">
+    <span>Gegevens: @State.OriginOf(Object)</span>
+    @if (State.IsChanged(Object))
+    {
+        <span class="kb-label kb-label-let">gewijzigd, nog niet vernieuwd</span>
+    }
+    @if (State.TaskBusy && State.Job!.Name.StartsWith("Vernieuwen", StringComparison.Ordinal))
+    {
+        <span class="kb-zacht">@State.Job.Summary</span>
+    }
+    <button class="kb-knop kb-klein" disabled="@(!State.CanConnect || State.TaskBusy)" @onclick="Refresh"
+            title="@(State.CanConnect ? "Enkel dit object opnieuw lezen uit AD, Entra en/of Exchange" : "Enkel in de Windows-app met verbindingen")">&#x21bb; Vernieuwen</button>
+    @if (message is not null) { <span class="kb-zacht">@message</span> }
+    @if (State.Data.Index.EntraIdOf(Object) is { } id)
+    {
+        <span class="kb-entra-id" title="Object-ID in Entra (Azure)">Entra-ID <code>@id</code>
+            <button class="kb-knop kb-klein" @onclick="() => Copy(id)" aria-label="Entra-ID kopiëren">@(copied ? "Gekopieerd" : "Kopiëren")</button>
+        </span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ObjectRef Object { get; set; } = default!;
+
+    private string? message;
+    private bool copied;
+
+    private async Task Copy(string id)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("moss365.kopieer", id);
+            copied = true;
+        }
+        catch (Exception)
+        {
+            // Clipboard not available: the ID is there to select
+        }
+    }
+
+    protected override void OnInitialized() => State.Changed += Reload;
+
+    private void Reload() => _ = InvokeAsync(StateHasChanged);
+
+    private void Refresh() => message = State.StartRefresh(new[] { Object }) ? null : "Kon niet starten (verbinding ingesteld?).";
+
+    public void Dispose() => State.Changed -= Reload;
+}

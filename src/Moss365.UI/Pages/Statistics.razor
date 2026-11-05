@@ -1,0 +1,226 @@
+@page "/statistieken"
+@using Moss365.Core.Analysis
+@inherits RefreshingPage
+
+<h1>Statistieken</h1>
+
+<p class="kb-zacht">
+    Indicatoren uit de geladen gegevens (@State.OriginOf(new ObjectRef(ObjectKind.User, "", ""))). Klik op een tegel, een staaf of
+    een deel van een grafiek voor de lijst met precies de rijen erachter.
+</p>
+
+<section class="kb-kaart">
+    <h2>Accounts</h2>
+    <div class="kb-tegels">
+        <Tile Kpi="Kpis.Active" />
+        <Tile Kpi="Kpis.Disabled" />
+        <Tile Kpi="Kpis.Guests" />
+        <Tile Kpi="Kpis.AdAndEntra" />
+        <Tile Kpi="Kpis.OnlyAd" />
+        <Tile Kpi="Kpis.OnlyEntra" />
+        <Tile Kpi="Kpis.MailboxAccounts" />
+        <Tile Kpi="Kpis.SignInAllowed" />
+    </div>
+    <p class="kb-zacht">
+        Gedeelde postvakken, rooms en planningspostvakken hebben ook een account, maar niemand meldt zich ermee aan. Ze tellen
+        niet mee bij de medewerkers, de aanmeldingen en MFA.
+    </p>
+</section>
+
+<section class="kb-kaart">
+    <h2>Aandachtspunten</h2>
+    <p class="kb-zacht">Signalen om na te kijken, geen conclusies. Actieve accounts.</p>
+    <div class="kb-tegels">
+        <Tile Kpi="Kpis.Inactive90" />
+        <Tile Kpi="Kpis.Inactive180" />
+        <Tile Kpi="Kpis.NeverSignedIn" />
+        <Tile Kpi="Kpis.PasswordExpiresNever" />
+        <Tile Kpi="Kpis.Privileged" />
+        <Tile Count="s.DifferencesAdEntra.Sum(v => v.Count)" Label="verschillen AD en Entra" Link="vergelijk" />
+    </div>
+</section>
+
+<section class="kb-kaart">
+    <div class="kb-titelbalk">
+        <h2>Medewerkers in beeld</h2>
+        <label class="kb-schuif">
+            Afdeling
+            <select class="kb-invoer" @bind="f.Division" aria-label="Filter op afdeling">
+                <option value="">Alle afdelingen</option>
+                @foreach (var a in Divisions) { <option value="@a">@a</option> }
+            </select>
+        </label>
+    </div>
+    <p class="kb-zacht">
+        Actieve medewerkers@(Division is null ? "" : $" van {Division}"). De filter geldt voor de grafieken van deze kaart; de tegels hierboven tellen altijd alles.
+    </p>
+    <div class="kb-kolommen">
+        <div>
+            <h3>Laatste aanmelding</h3>
+            <Distribution Share="BiStatistics.SignInRecency(State.KpiSource, Division)" />
+        </div>
+        <div>
+            <h3>MFA</h3>
+            <Distribution Share="BiStatistics.Mfa(State.KpiSource, Division)" EmptyText="Geen actieve medewerkers." />
+            @if (State.Data.Security is null) { <p class="kb-zacht">MFA-registraties nog niet geladen: alles staat op onbekend.</p> }
+        </div>
+    </div>
+    <div class="kb-kolommen">
+        <div>
+            <h3>Leeftijd van het wachtwoord (AD)</h3>
+            <Distribution Share="BiStatistics.PasswordAge(State.KpiSource, Division)" EmptyText="Geen actieve AD-accounts." />
+        </div>
+        <div>
+            <h3>Per kantoor</h3>
+            <BarList Bars="PerOffice" />
+        </div>
+    </div>
+    <h3>Nieuwe accounts per maand</h3>
+    <ColumnChart Columns="BiStatistics.CreatedPerMonth(State.KpiSource, Division)" Title="Nieuwe accounts per maand, de laatste 12 maanden" ColumnTitle="Maand"
+                  Series="@(new[] { new ColumnChart.SeriesItem("Nieuwe accounts") })" />
+</section>
+
+<section class="kb-kaart">
+    <h2>Verloop</h2>
+    <p class="kb-zacht">
+        Na elk live laden bewaart de app de stand van de dag (enkel aantallen, geen namen). Elke KPI heeft zijn eigen schaal;
+        het verschil is met ongeveer 30 dagen geleden.
+    </p>
+    <div class="kb-verlopen">
+        @foreach (var v in trend)
+        {
+            <Sparkline Trend="v" />
+        }
+    </div>
+</section>
+
+<section class="kb-kaart">
+    <h2>Beveiliging</h2>
+    @if (s.Security is not { } bv)
+    {
+        <p class="kb-zacht">MFA en beheerrollen zijn nog niet geladen (Verbindingen, Alles live laden). <a href="beveiliging">Naar Beveiliging</a></p>
+    }
+    else
+    {
+        <div class="kb-tegels">
+            <Tile Kpi="Kpis.WithoutMfa" Label="@(bv.MfaKnown ? $"zonder MFA (van {bv.WithMfaData})" : "zonder MFA (onbekend)")" />
+            <Tile Kpi="Kpis.AdministratorsWithoutMfa" />
+            <Tile Kpi="Kpis.WithAdminRole" />
+            <Tile Kpi="Kpis.GlobalAdministrators" />
+        </div>
+        @if (bv.Methods.Count > 0)
+        {
+            <h3>Geregistreerde methodes</h3>
+            <BarList Bars="bv.Methods" />
+        }
+    }
+</section>
+
+<section class="kb-kaart">
+    <h2>Conditional Access</h2>
+    @if (State.Data.ConditionalAccess is not { Message: null } ca)
+    {
+        <p class="kb-zacht">Nog niet geladen of niet leesbaar. <a href="conditional-access">Naar Conditional Access</a></p>
+    }
+    else
+    {
+        <div class="kb-tegels">
+            <Tile Kpi="Kpis.CaOn" />
+            <Tile Kpi="Kpis.CaReport" />
+            <Tile Kpi="Kpis.CaProblems" />
+            <Tile Kpi="Kpis.CaAttention" />
+            <Tile Kpi="Kpis.OutsideMfaPolicy" />
+        </div>
+    }
+</section>
+
+<div class="kb-kolommen">
+    <section class="kb-kaart">
+        <h2>Licenties</h2>
+        @if (s.Licences.Count == 0)
+        {
+            <p class="kb-zacht">Geen licentiegegevens geladen.</p>
+        }
+        <BarList Bars="s.Licences" Warning="Statistic.AlmostFull" WarningText="bijna vol" />
+    </section>
+    <section class="kb-kaart">
+        <h2>Actieve medewerkers per afdeling</h2>
+        <BarList Bars="s.PerDivision" />
+    </section>
+</div>
+
+<div class="kb-kolommen">
+    <section class="kb-kaart">
+        <h2>Gedeelde postvakken (@s.SharedMailboxes)</h2>
+        <BarList Bars="s.PermissionModel" />
+        <div class="kb-tegels">
+            <Tile Kpi="Kpis.WithDirectPermissions" />
+            <Tile Kpi="Kpis.WithoutAccessGroup" />
+        </div>
+    </section>
+    <section class="kb-kaart">
+        <h2>Groepen (@s.Groups)</h2>
+        <BarList Bars="s.GroupsPerKind" />
+        <div class="kb-tegels">
+            <Tile Kpi="Kpis.DynamicGroups" />
+            <Tile Kpi="Kpis.EmptyGroups" />
+        </div>
+    </section>
+</div>
+
+<div class="kb-kolommen">
+    <section class="kb-kaart">
+        <h2>Rooms</h2>
+        <div class="kb-tegels">
+            <Tile Count="s.Rooms" Label="vergaderruimtes" Link="rooms" Attention="false" />
+            <Tile Kpi="Kpis.RoomsWithDeviation" />
+        </div>
+    </section>
+    <section class="kb-kaart">
+        <h2>Gastgebruikers per organisatie</h2>
+        <BarList Bars="GuestsPerDomain" />
+        @if (GuestsPerDomain.Count == 0) { <p class="kb-zacht">Geen gastgebruikers geladen.</p> }
+    </section>
+</div>
+
+<section class="kb-kaart">
+    <h2>Activiteit in de app</h2>
+    <div class="kb-tegels">
+        <Tile Kpi="Kpis.Succeeded7" />
+        <Tile Kpi="Kpis.Failed7" />
+        <Tile Count="State.CountFollowUpTasks" Label="opvolgtaken open" Link="opvolging" />
+    </div>
+    <h3>Wijzigingen per week</h3>
+    <ColumnChart Columns="perWeek" Title="Uitgevoerde wijzigingen per week, de laatste 12 weken" ColumnTitle="Week" EmptyText="Nog geen wijzigingen uitgevoerd in de laatste 12 weken."
+                  Series="@(new[] { new ColumnChart.SeriesItem("Gelukt", "goed"), new ColumnChart.SeriesItem("Mislukt", "kritiek") })" />
+</section>
+
+@code {
+    private Statistic s = Statistic.Compute(new InventoryData(), new Moss365.Core.Configuration.OrganisationConfig(), DateTime.Now);
+
+    /// <summary>The division filter above the charts, kept while the app is open.</summary>
+    private sealed class Filters { public string Division { get; set; } = string.Empty; }
+    private Filters? _f;
+    private Filters f => _f ??= State.PageState.Of<Filters>("statistieken");
+    private string? Division => f.Division.Length == 0 ? null : f.Division;
+
+    private IReadOnlyList<KpiTrend> trend = Array.Empty<KpiTrend>();
+    private IReadOnlyList<ChartColumn> perWeek = Array.Empty<ChartColumn>();
+
+    protected override void OnParametersSet()
+    {
+        s = Statistic.Compute(State.Data, State.Config, DateTime.Now);
+        trend = State.KpiTrend();
+        perWeek = BiStatistics.ChangeLogPerWeek(State.ChangeLog.Recent(5000), DateTime.Now);
+    }
+
+    private IEnumerable<string> Divisions => State.KpiSource.Staff
+        .Select(p => State.Config.DivisionFor(p.Department)?.Name ?? Statistic.NoDivision)
+        .Distinct().OrderBy(a => a, StringComparer.CurrentCultureIgnoreCase);
+
+    private IReadOnlyList<Bar> PerOffice => BiStatistics.PerOffice(State.KpiSource, Division)
+        .Select(d => new Bar(d.Name, d.Count, Link: d.Kpi?.Link)).ToList();
+
+    private IReadOnlyList<Bar> GuestsPerDomain => BiStatistics.GuestsPerDomain(State.KpiSource)
+        .Select(d => new Bar(d.Name, d.Count, Link: d.Kpi?.Link)).ToList();
+}

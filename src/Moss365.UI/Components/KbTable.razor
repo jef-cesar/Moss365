@@ -1,0 +1,663 @@
+@* Table with sorting (click a column header), showing/hiding and moving columns (drag or arrows), filtering per
+   column, pages (250, 500 or all) and selecting. Column choices and the number per page are saved per list (Id) and
+   survive a restart; filters, page and selection stay while the app is open (also after Back and Forward). *@
+@typeparam T
+@inject ManagementState State
+
+<div class="kb-tabel-balk">
+    @if (CountText is not null)
+    {
+        <span class="kb-zacht">@CountText</span>
+    }
+    @if (session.CountActive > 0)
+    {
+        <span class="kb-label kb-label-let">@session.CountActive @(session.CountActive == 1 ? "filter" : "filters"): @filtered.Count van @all.Count</span>
+        <button class="kb-knop kb-klein" @onclick="ClearFilters">Filters wissen</button>
+    }
+    @if (Selectable && SelectedSet.Count > 0)
+    {
+        <span class="kb-label">@SelectedSet.Count gekozen</span>
+        <button class="kb-knop kb-klein" @onclick="ClearSelection">Selectie wissen</button>
+    }
+    <span class="kb-tabel-knoppen">
+        <button class="kb-knop kb-klein @(session.ShowFilters ? "kb-primair" : null)" @onclick="() => session.ShowFilters = !session.ShowFilters" aria-expanded="@session.ShowFilters">Filteren</button>
+        @if (Selectable && SelectedSet.Count > 0 && State.Can(Permission.Export))
+        {
+            <button class="kb-knop kb-klein" @onclick="() => Export(true)" title="Enkel de gekozen rijen">Exporteren (gekozen)</button>
+        }
+        <button class="kb-knop kb-klein" hidden="@(!State.Can(Permission.Export))" @onclick="() => Export(false)" title="Alle (gefilterde) rijen, met de zichtbare kolommen, in deze volgorde en sortering, als CSV voor Excel">Exporteren</button>
+        <button class="kb-knop kb-klein" @onclick="() => panel = !panel" aria-expanded="@panel">Kolommen</button>
+    </span>
+</div>
+@if (export is not null)
+{
+    <div class="kb-melding kb-export" role="status">
+        @if (export.Error is null)
+        {
+            <span>@export.Count rijen geëxporteerd naar <code>@export.FilePath</code></span>
+            <button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(export.FilePath)">Tonen in Verkenner</button>
+        }
+        else
+        {
+            <span>Exporteren mislukt: @export.Error</span>
+        }
+        <button class="kb-knop kb-klein" @onclick="() => export = null" aria-label="Melding sluiten">&times;</button>
+    </div>
+}
+
+@if (panel)
+{
+    <div class="kb-kolompaneel" role="group" aria-label="Kolommen">
+        <ul>
+            @foreach (var (k, i) in Ordered.Select((k, i) => (k, i)))
+            {
+                <li>
+                    <label><input type="checkbox" checked="@(!IsHidden(k))" @onchange="e => Visible(k, e)" /> @k.Title</label>
+                    <button class="kb-knop kb-klein" disabled="@(i == 0)" @onclick="() => Move(k.Key, -1)" aria-label="@($"{k.Title} naar links")">&uarr;</button>
+                    <button class="kb-knop kb-klein" disabled="@(i == Ordered.Count - 1)" @onclick="() => Move(k.Key, 1)" aria-label="@($"{k.Title} naar rechts")">&darr;</button>
+                </li>
+            }
+        </ul>
+        <div class="kb-filters">
+            <button class="kb-knop kb-klein" @onclick="Restore">Standaard</button>
+            <span class="kb-zacht">Je kan kolommen ook verslepen in de kop van de tabel.</span>
+        </div>
+    </div>
+}
+
+@if (Selectable && AllOnPageSelected && SelectedSet.Count < filtered.Count(CanSelect))
+{
+    <div class="kb-melding">
+        De @currentPage.Count rijen op deze pagina zijn gekozen.
+        <button class="kb-link" @onclick="ChooseAll">Alle @filtered.Count(CanSelect)@(session.CountActive > 0 ? " gefilterde" : string.Empty) rijen kiezen</button>
+    </div>
+}
+
+<table class="kb-tabel" data-lijst="@Id">
+    <thead>
+        <tr>
+            @if (Selectable)
+            {
+                <th class="kb-kies"><input type="checkbox" checked="@AllOnPageSelected" @onchange="ChoosePage" aria-label="Alle rijen op deze pagina kiezen" title="Alle rijen op deze pagina" /></th>
+            }
+            @if (ForHeader is not null)
+            {
+                <th>@ForHeader</th>
+            }
+            @foreach (var k in Visible())
+            {
+                var active = Active == k.Key;
+                <th class="@(k.Number ? "kb-getal" : null) @(k.SortBy is null ? null : "kb-sorteerbaar") @(dragged == k.Key ? "kb-gesleept" : null)"
+                    draggable="true"
+                    @ondragstart="() => dragged = k.Key"
+                    @ondragend="() => dragged = null"
+                    @ondragover:preventDefault
+                    @ondrop="() => Place(k.Key)"
+                    @onclick="() => Sort(k)"
+                    aria-sort="@(active ? (view.Descending ? "descending" : "ascending") : "none")"
+                    title="@(k.SortBy is null ? "Sleep om te verplaatsen" : "Klik om te sorteren, sleep om te verplaatsen")">
+                    @k.Title@if (active) { <span class="kb-pijl">@(view.Descending ? " ▼" : " ▲")</span> }
+                    @if (session.Filters.TryGetValue(k.Key, out var f) && f.Active) { <span class="kb-filter-aan" title="Er staat een filter op deze kolom"> ⏷</span> }
+                </th>
+            }
+        </tr>
+        @if (session.ShowFilters)
+        {
+            <tr class="kb-filterrij">
+                @if (Selectable) { <th></th> }
+                @if (ForHeader is not null) { <th></th> }
+                @foreach (var k in Visible())
+                {
+                    var f = session.Filter(k.Key);
+                    var column = k;
+                    <th>
+                        @switch (KindOf(k))
+                        {
+                            case FilterKind.Text:
+                                <input class="kb-invoer kb-klein" placeholder="bevat..." value="@f.Text" @oninput="e => SetText(column, e)" aria-label="@($"Filter op {k.Title}")" />
+                                break;
+                            case FilterKind.Choice:
+                                <details class="kb-keuzefilter">
+                                    <summary>@(f.Choices.Count == 0 ? "(alle)" : f.Choices.Count == 1 ? f.Choices.First() : $"{f.Choices.Count} gekozen")</summary>
+                                    <div class="kb-keuzefilter-lijst">
+                                        @foreach (var w in Values(k))
+                                        {
+                                            var value = w;
+                                            <label><input type="checkbox" checked="@f.Choices.Contains(value)" @onchange="e => SetChoice(column, value, e)" /> @(value.Length == 0 ? "(leeg)" : value)</label>
+                                        }
+                                    </div>
+                                </details>
+                                break;
+                            case FilterKind.Scope:
+                                var date = IsDate(k);
+                                <span class="kb-bereik">
+                                    <input class="kb-invoer kb-klein" type="@(date ? "date" : "number")" value="@f.Of" @onchange="e => SetScope(column, e, true)" aria-label="@($"{k.Title} vanaf")" title="vanaf" />
+                                    <input class="kb-invoer kb-klein" type="@(date ? "date" : "number")" value="@f.Until" @onchange="e => SetScope(column, e, false)" aria-label="@($"{k.Title} tot en met")" title="tot en met" />
+                                </span>
+                                break;
+                        }
+                    </th>
+                }
+            </tr>
+        }
+    </thead>
+    <tbody>
+        @for (var r = 0; r < currentPage.Count; r++)
+        {
+            var item = currentPage[r];
+            var index = r;
+            var key = Selectable ? KeyOf!(item) : null;
+            <tr class="@RowClass?.Invoke(item) @(key is not null && SelectedSet.Contains(key) ? "kb-rij-gekozen" : null)">
+                @if (Selectable)
+                {
+                    <td class="kb-kies"><input type="checkbox" checked="@SelectedSet.Contains(key!)" @onclick="e => Choose(index, e)" aria-label="Kiezen"
+                                               disabled="@(!CanSelect(item))" title="@(CanSelect(item) ? null : WhyNot?.Invoke(item))" /></td>
+                }
+                @if (For is not null)
+                {
+                    <td>@For(item)</td>
+                }
+                @foreach (var k in Visible())
+                {
+                    <td class="@(k.Number ? "kb-getal" : null)">@k.Cell(item)</td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+@if (filtered.Count == 0 && all.Count > 0)
+{
+    <p class="kb-zacht">Geen rijen voor deze filters. <button class="kb-link" @onclick="ClearFilters">Filters wissen</button></p>
+}
+
+<div class="kb-pagineren">
+    @if (PerPage > 0 && filtered.Count > PerPage)
+    {
+        <button class="kb-knop kb-klein" disabled="@(session.Page == 0)" @onclick="() => ToPage(session.Page - 1)">&larr; Vorige</button>
+        <span>@(session.Page * PerPage + 1)–@Math.Min(filtered.Count, (session.Page + 1) * PerPage) van @filtered.Count.ToString("N0")</span>
+        <button class="kb-knop kb-klein" disabled="@((session.Page + 1) * PerPage >= filtered.Count)" @onclick="() => ToPage(session.Page + 1)">Volgende &rarr;</button>
+    }
+    @if (filtered.Count > 250 || view.PerPage is not null)
+    {
+        <label class="kb-zacht">
+            Per pagina
+            <select class="kb-invoer kb-klein" value="@PerPage" @onchange="SetPerPage" aria-label="Rijen per pagina">
+                <option value="250">250</option>
+                <option value="500">500</option>
+                <option value="0">alles</option>
+            </select>
+        </label>
+    }
+</div>
+
+@code {
+    /// <summary>Name under which the choices are saved, e.g. "gebruikers".</summary>
+    [Parameter, EditorRequired] public string Id { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public IEnumerable<T> Items { get; set; } = Array.Empty<T>();
+    [Parameter, EditorRequired] public IReadOnlyList<Column<T>> Columns { get; set; } = Array.Empty<Column<T>>();
+
+    /// <summary>Rows per page while the user chooses nothing (250 by default).</summary>
+    [Parameter] public int? Max { get; set; }
+
+    [Parameter] public Func<T, string?>? RowClass { get; set; }
+
+    /// <summary>Fixed first cell (e.g. a check box), not sortable or movable.</summary>
+    [Parameter] public RenderFragment<T>? For { get; set; }
+    [Parameter] public RenderFragment? ForHeader { get; set; }
+
+    /// <summary>Sorting while the user chooses nothing.</summary>
+    [Parameter] public string? DefaultSorting { get; set; }
+
+    /// <summary>Start of the file name when exporting (the Id by default), e.g. "Gebruikers".</summary>
+    [Parameter] public string? ExportName { get; set; }
+
+    /// <summary>Text above the table, e.g. "123 gevonden".</summary>
+    [Parameter] public string? CountText { get; set; }
+
+    /// <summary>Select rows with a check box (also all rows, across all pages); needs a key per row.</summary>
+    [Parameter] public bool Selectable { get; set; }
+    [Parameter] public Func<T, string>? KeyOf { get; set; }
+
+    /// <summary>Own set for the selected keys (e.g. kept as a form); that of the list by default.</summary>
+    [Parameter] public HashSet<string>? Selected { get; set; }
+
+    /// <summary>Can this row be selected (e.g. not undoable in the change log)? Everything by default.</summary>
+    [Parameter] public Func<T, bool>? CanChoose { get; set; }
+
+    /// <summary>Explanation for a row that cannot be selected.</summary>
+    [Parameter] public Func<T, string?>? WhyNot { get; set; }
+
+    /// <summary>Reported when the selection changes (the keys of the selected rows).</summary>
+    [Parameter] public EventCallback<IReadOnlyCollection<string>> SelectionChanged { get; set; }
+
+    private TableView view = new();
+    private TableSession session = new();
+    private bool panel;
+    private string? dragged;
+    private List<T> all = new();
+    private List<T> filtered = new();
+    private List<T> currentPage = new();
+    private int? lastClick;
+    private readonly Dictionary<string, FilterKind> kinds = new();
+    private readonly Dictionary<string, List<string>> values = new();
+    private object? valuesOf;
+
+    private int PerPage => view.PerPage ?? Max ?? 250;
+
+    private HashSet<string> SelectedSet => Selected ?? session.Selected;
+
+    private bool CanSelect(T item) => CanChoose?.Invoke(item) ?? true;
+
+    protected override void OnParametersSet()
+    {
+        view = State.View.Table(Id);
+        session = State.TableSession(Id);
+        Compute();
+    }
+
+    private void Compute()
+    {
+        var previousCount = all.Count;
+        all = Items.ToList();
+        if (!ReferenceEquals(valuesOf, Items))
+        {
+            valuesOf = Items;
+            kinds.Clear();
+            values.Clear();
+        }
+
+        filtered = Sorted(Filtered(all));
+
+        // Another search term or filter on the screen: back to page 1 (and never past the last page)
+        if (previousCount != 0 && previousCount != all.Count)
+        {
+            session.Page = 0;
+        }
+
+        if (PerPage > 0 && session.Page * PerPage >= filtered.Count)
+        {
+            session.Page = Math.Max(0, (filtered.Count - 1) / PerPage);
+        }
+
+        currentPage = PerPage > 0 ? filtered.Skip(session.Page * PerPage).Take(PerPage).ToList() : filtered;
+    }
+
+    // ------------------------------------------------------------------ columns
+
+    private bool IsHidden(Column<T> k)
+        => view.Hidden.Contains(k.Key) || (k.Hidden && !view.Shown.Contains(k.Key));
+
+    /// <summary>All columns in the chosen order; new columns (after an update) at the end.</summary>
+    private List<Column<T>> Ordered
+    {
+        get
+        {
+            var place = view.Order.Select((s, i) => (s, i)).ToDictionary(x => x.s, x => x.i);
+            return Columns.Select((k, i) => (k, i))
+                .OrderBy(x => place.TryGetValue(x.k.Key, out var p) ? p : 1000 + x.i)
+                .Select(x => x.k).ToList();
+        }
+    }
+
+    /// <summary>The column that is sorted on now: the choice of the user, otherwise the default.</summary>
+    private string? Active => view.Sort ?? DefaultSorting;
+
+    private IEnumerable<Column<T>> Visible() => Ordered.Where(k => !IsHidden(k));
+
+    // ------------------------------------------------------------------ filtering
+
+    private FilterKind KindOf(Column<T> k)
+    {
+        if (k.Filter != FilterKind.Automatic)
+        {
+            return k.Filter;
+        }
+
+        if (kinds.TryGetValue(k.Key, out var s))
+        {
+            return s;
+        }
+
+        if (k.SortBy is null && k.Text is null)
+        {
+            s = FilterKind.No;
+        }
+        else if (IsDate(k) || all.Select(x => k.SortBy?.Invoke(x)).FirstOrDefault(w => w is not null) is int or long or double or decimal)
+        {
+            s = FilterKind.Scope;
+        }
+        else
+        {
+            var different = Values(k).Count;
+            s = different <= 25 && all.Count > different ? FilterKind.Choice : FilterKind.Text;
+        }
+
+        kinds[k.Key] = s;
+        return s;
+    }
+
+    private bool IsDate(Column<T> k) => all.Select(x => k.SortBy?.Invoke(x)).FirstOrDefault(w => w is not null) is DateTime or DateTimeOffset;
+
+    private List<string> Values(Column<T> k)
+    {
+        if (!values.TryGetValue(k.Key, out var list))
+        {
+            list = all.Select(x => k.TextOf(x).Trim()).Distinct(StringComparer.CurrentCultureIgnoreCase)
+                .OrderBy(w => w, StringComparer.CurrentCultureIgnoreCase).Take(200).ToList();
+            values[k.Key] = list;
+        }
+
+        return list;
+    }
+
+    private List<T> Filtered(List<T> list)
+    {
+        foreach (var (key, f) in session.Filters.Where(x => x.Value.Active))
+        {
+            if (Columns.FirstOrDefault(k => k.Key == key) is not { } k)
+            {
+                continue;
+            }
+
+            if (f.Choices.Count > 0)
+            {
+                list = list.Where(x => f.Choices.Contains(k.TextOf(x).Trim())).ToList();
+            }
+
+            if (f.Text.Trim().Length > 0)
+            {
+                var t = f.Text.Trim();
+                list = list.Where(x => k.TextOf(x).Contains(t, StringComparison.CurrentCultureIgnoreCase)).ToList();
+            }
+
+            if (f.Of.Trim().Length > 0 || f.Until.Trim().Length > 0)
+            {
+                list = list.Where(x => InScope(k.SortBy?.Invoke(x), f)).ToList();
+            }
+        }
+
+        return list;
+    }
+
+    private static bool InScope(object? value, ColumnFilter f)
+    {
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        switch (value)
+        {
+            case DateTime or DateTimeOffset:
+                var d = value is DateTimeOffset o ? o.LocalDateTime.Date : ((DateTime)value).Date;
+                if (DateTime.TryParse(f.Of, inv, System.Globalization.DateTimeStyles.None, out var start) && d < start.Date) return false;
+                if (DateTime.TryParse(f.Until, inv, System.Globalization.DateTimeStyles.None, out var until) && d > until.Date) return false;
+                return true;
+            case null:
+                return false;
+            default:
+                if (!double.TryParse(Convert.ToString(value, inv), System.Globalization.NumberStyles.Any, inv, out var g)) return false;
+                if (double.TryParse(f.Of, System.Globalization.NumberStyles.Any, inv, out var min) && g < min) return false;
+                if (double.TryParse(f.Until, System.Globalization.NumberStyles.Any, inv, out var max) && g > max) return false;
+                return true;
+        }
+    }
+
+    private void SetText(Column<T> k, ChangeEventArgs e)
+    {
+        session.Filter(k.Key).Text = e.Value?.ToString() ?? string.Empty;
+        AfterFilter();
+    }
+
+    private void SetChoice(Column<T> k, string value, ChangeEventArgs e)
+    {
+        var f = session.Filter(k.Key);
+        if (e.Value is true)
+        {
+            f.Choices.Add(value);
+        }
+        else
+        {
+            f.Choices.Remove(value);
+        }
+
+        AfterFilter();
+    }
+
+    private void SetScope(Column<T> k, ChangeEventArgs e, bool start)
+    {
+        var f = session.Filter(k.Key);
+        if (start)
+        {
+            f.Of = e.Value?.ToString() ?? string.Empty;
+        }
+        else
+        {
+            f.Until = e.Value?.ToString() ?? string.Empty;
+        }
+
+        AfterFilter();
+    }
+
+    private void ClearFilters()
+    {
+        session.Filters.Clear();
+        AfterFilter();
+    }
+
+    private void AfterFilter()
+    {
+        session.Page = 0;
+        Compute();
+    }
+
+    // ------------------------------------------------------------------ pages
+
+    private void ToPage(int p)
+    {
+        session.Page = Math.Max(0, p);
+        Compute();
+    }
+
+    private void SetPerPage(ChangeEventArgs e)
+    {
+        view.PerPage = int.TryParse(e.Value?.ToString(), out var n) ? n : 250;
+        session.Page = 0;
+        State.View.Save();
+        Compute();
+    }
+
+    // ------------------------------------------------------------------ selecting
+
+    private bool AllOnPageSelected => Selectable && currentPage.Any(CanSelect) && currentPage.Where(CanSelect).All(x => SelectedSet.Contains(KeyOf!(x)));
+
+    private async Task Choose(int index, MouseEventArgs e)
+    {
+        var key = KeyOf!(currentPage[index]);
+        var enabled = !SelectedSet.Contains(key);
+
+        // Shift-click: everything between the previous click and this one
+        var start = e.ShiftKey && lastClick is { } l ? Math.Min(l, index) : index;
+        var until = e.ShiftKey && lastClick is { } l2 ? Math.Max(l2, index) : index;
+        for (var i = start; i <= until && i < currentPage.Count; i++)
+        {
+            if (!CanSelect(currentPage[i]))
+            {
+                continue;
+            }
+
+            var s = KeyOf!(currentPage[i]);
+            if (enabled)
+            {
+                SelectedSet.Add(s);
+            }
+            else
+            {
+                SelectedSet.Remove(s);
+            }
+        }
+
+        lastClick = index;
+        await SelectionChanged.InvokeAsync(SelectedSet.ToList());
+    }
+
+    private async Task ChoosePage(ChangeEventArgs e)
+    {
+        foreach (var s in currentPage.Where(CanSelect).Select(KeyOf!))
+        {
+            if (e.Value is true)
+            {
+                SelectedSet.Add(s);
+            }
+            else
+            {
+                SelectedSet.Remove(s);
+            }
+        }
+
+        await SelectionChanged.InvokeAsync(SelectedSet.ToList());
+    }
+
+    private async Task ChooseAll()
+    {
+        SelectedSet.UnionWith(filtered.Where(CanSelect).Select(KeyOf!));
+        await SelectionChanged.InvokeAsync(SelectedSet.ToList());
+    }
+
+    private async Task ClearSelection()
+    {
+        SelectedSet.Clear();
+        lastClick = null;
+        await SelectionChanged.InvokeAsync(SelectedSet.ToList());
+    }
+
+    // ------------------------------------------------------------------ sorting, exporting, columns
+
+    private sealed record ExportOutcome(string FilePath, int Count, string? Error);
+
+    private ExportOutcome? export;
+
+    /// <summary>The items in the chosen sorting.</summary>
+    private List<T> Sorted(List<T> list)
+    {
+        var key = Active;
+        var column = Columns.FirstOrDefault(k => k.Key == key && k.SortBy is not null);
+        if (column is not null)
+        {
+            // Empty values always at the end, also when sorting descending
+            var withValue = list.Select(x => (x, w: column.SortBy!(x))).ToList();
+            var empty = withValue.Where(x => x.w is null || x.w is string { Length: 0 }).Select(x => x.x);
+            var full = withValue.Where(x => !(x.w is null || x.w is string { Length: 0 }));
+            var sorted = view.Descending
+                ? full.OrderByDescending(x => x.w, SortComparer.Instance)
+                : full.OrderBy(x => x.w, SortComparer.Instance);
+            list = sorted.Select(x => x.x).Concat(empty).ToList();
+        }
+
+        return list;
+    }
+
+    /// <summary>Exports all filtered rows (or only the selected ones) with the visible columns to the export folder.</summary>
+    private void Export(bool onlySelected)
+    {
+        if (!State.Can(Permission.Export))
+        {
+            return;
+        }
+
+        var columns = Visible().ToList();
+        var rows = onlySelected ? filtered.Where(x => SelectedSet.Contains(KeyOf!(x))).ToList() : filtered;
+        var path = Path.Combine(State.AppEnvironment.ExportFolder, CsvWriter.FileName($"{ExportName ?? (Id.Length > 0 ? char.ToUpperInvariant(Id[0]) + Id[1..] : "Lijst")}-{DateTime.Now:yyyyMMdd-HHmmss}") + ".csv");
+        try
+        {
+            CsvWriter.Write(path, columns.Select(k => k.Title), rows.Select(r => columns.Select(k => k.TextOf(r))), forExcel: true);
+            export = new ExportOutcome(path, rows.Count, null);
+            State.Access("Export", $"{Id}: {rows.Count} rijen{(onlySelected ? " (gekozen)" : string.Empty)}, {columns.Count} kolommen");
+        }
+        catch (Exception ex)
+        {
+            export = new ExportOutcome(path, 0, ex.Message);
+        }
+    }
+
+    private void Sort(Column<T> k)
+    {
+        if (k.SortBy is null)
+        {
+            return;
+        }
+
+        if (Active == k.Key)
+        {
+            view.Sort = k.Key;
+            view.Descending = !view.Descending;
+        }
+        else
+        {
+            view.Sort = k.Key;
+            view.Descending = false;
+        }
+
+        State.View.Save();
+        Compute();
+    }
+
+    private void Visible(Column<T> k, ChangeEventArgs e)
+    {
+        var show = e.Value is true || string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        view.Hidden.Remove(k.Key);
+        view.Shown.Remove(k.Key);
+        if (!show)
+        {
+            view.Hidden.Add(k.Key);
+        }
+        else if (k.Hidden)
+        {
+            view.Shown.Add(k.Key);
+        }
+
+        State.View.Save();
+    }
+
+    private void Move(string key, int direction)
+    {
+        // Skip hidden columns, so that the step is also visible in the table
+        var ordered = Ordered;
+        var i = ordered.FindIndex(k => k.Key == key);
+        var j = i + direction;
+        while (j >= 0 && j < ordered.Count && IsHidden(ordered[j]) && !IsHidden(ordered[i]))
+        {
+            j += direction;
+        }
+
+        if (i < 0 || j < 0 || j >= ordered.Count)
+        {
+            return;
+        }
+
+        var order = ordered.Select(k => k.Key).ToList();
+        order.RemoveAt(i);
+        order.Insert(j, key);
+        view.Order = order;
+        State.View.Save();
+    }
+
+    private void Place(string target)
+    {
+        if (dragged is null || dragged == target)
+        {
+            dragged = null;
+            return;
+        }
+
+        var order = Ordered.Select(k => k.Key).ToList();
+        order.Remove(dragged);
+        order.Insert(order.IndexOf(target), dragged);
+        view.Order = order;
+        dragged = null;
+        State.View.Save();
+    }
+
+    private void Restore()
+    {
+        State.View.RestoreTable(Id);
+        view = State.View.Table(Id);
+        Compute();
+    }
+}

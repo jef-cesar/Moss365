@@ -1,0 +1,104 @@
+@* The variables of a script: name, question, kind, required, default and (for Choice) the options *@
+
+<table class="kb-tabel kb-variabelen">
+    <thead><tr><th>Naam</th><th>Vraag</th><th>Soort</th><th>Verplicht</th><th>Standaard</th><th></th></tr></thead>
+    <tbody>
+        @for (var i = 0; i < rows.Count; i++)
+        {
+            var r = rows[i];
+            var index = i;
+            <tr>
+                <td><input class="kb-invoer" value="@r.Name" @onchange="e => Set(index, r with { Name = Clean(e.Value) })" aria-label="Naam" placeholder="Postvak" /></td>
+                <td><input class="kb-invoer" value="@r.Question" @onchange="e => Set(index, r with { Question = e.Value?.ToString() ?? string.Empty })" aria-label="Vraag" placeholder="Welk postvak?" /></td>
+                <td>
+                    <select class="kb-invoer" value="@r.Kind" @onchange="e => Set(index, r with { Kind = Enum.Parse<VariableKind>(e.Value?.ToString() ?? nameof(VariableKind.Text)) })" aria-label="Soort">
+                        @foreach (var s in Enum.GetValues<VariableKind>())
+                        {
+                            <option value="@s">@KindName(s)</option>
+                        }
+                    </select>
+                    @if (r.Kind == VariableKind.Choice)
+                    {
+                        <input class="kb-invoer" value="@string.Join("; ", r.Options ?? Array.Empty<string>())" placeholder="optie 1; optie 2" aria-label="Opties"
+                               @onchange="e => Set(index, r with { Options = (e.Value?.ToString() ?? string.Empty).Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) })" />
+                    }
+                </td>
+                <td><input type="checkbox" checked="@r.Required" @onchange="e => Set(index, r with { Required = e.Value is true })" aria-label="Verplicht" /></td>
+                <td><input class="kb-invoer" value="@r.Default" @onchange="e => Set(index, r with { Default = string.IsNullOrWhiteSpace(e.Value?.ToString()) ? null : e.Value!.ToString() })" aria-label="Standaard" /></td>
+                <td class="kb-knoppen-klein">
+                    <button class="kb-knop kb-klein" title="Omhoog" disabled="@(index == 0)" @onclick="() => Move(index, -1)">&uarr;</button>
+                    <button class="kb-knop kb-klein" title="Omlaag" disabled="@(index == rows.Count - 1)" @onclick="() => Move(index, 1)">&darr;</button>
+                    <button class="kb-knop kb-klein" title="Verwijderen" @onclick="() => Remove(index)">&times;</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<button class="kb-knop" @onclick="New">+ Variabele</button>
+<p class="kb-zacht">
+    De naam is de parameter in het script (<code>$Naam</code>): enkel letters, cijfers en _. Een datum kan ook relatief zijn,
+    bv. <code>@@werkjaar.van</code> of <code>@@vorigemaand.tot</code>.
+</p>
+
+@code {
+    [Parameter] public IReadOnlyList<ScriptVariable> Variables { get; set; } = Array.Empty<ScriptVariable>();
+    [Parameter] public EventCallback<IReadOnlyList<ScriptVariable>> VariablesChanged { get; set; }
+
+    private List<ScriptVariable> rows = new();
+    private IReadOnlyList<ScriptVariable>? previous;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(previous, Variables))
+        {
+            previous = Variables;
+            rows = Variables.ToList();
+        }
+    }
+
+    public static string KindName(VariableKind s) => s switch
+    {
+        VariableKind.YesNo => "Ja/nee",
+        VariableKind.Items => "Lijst (meerdere)",
+        _ => s.ToString(),
+    };
+
+    private static string Clean(object? value)
+        => new string((value?.ToString() ?? string.Empty).Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
+
+    private Task Set(int i, ScriptVariable newValue)
+    {
+        rows[i] = newValue;
+        return Pass();
+    }
+
+    private Task New()
+    {
+        var n = 1;
+        while (rows.Any(r => r.Name.Equals($"Waarde{n}", StringComparison.OrdinalIgnoreCase)))
+        {
+            n++;
+        }
+
+        rows.Add(new ScriptVariable($"Waarde{n}", VariableKind.Text, false, string.Empty));
+        return Pass();
+    }
+
+    private Task Remove(int i)
+    {
+        rows.RemoveAt(i);
+        return Pass();
+    }
+
+    private Task Move(int i, int direction)
+    {
+        (rows[i], rows[i + direction]) = (rows[i + direction], rows[i]);
+        return Pass();
+    }
+
+    private async Task Pass()
+    {
+        previous = rows.ToList();
+        await VariablesChanged.InvokeAsync(previous);
+    }
+}

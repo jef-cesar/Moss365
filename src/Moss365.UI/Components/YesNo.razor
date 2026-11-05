@@ -1,0 +1,18 @@
+@* Choice for a yes/no value that can also be "do not change" (null) *@
+<select class="kb-invoer" @onchange="Change">
+    <option value="" selected="@(Value is null)">(niet wijzigen)</option>
+    <option value="true" selected="@(Value == true)">ja</option>
+    <option value="false" selected="@(Value == false)">nee</option>
+</select>
+
+@code {
+    [Parameter] public bool? Value { get; set; }
+    [Parameter] public EventCallback<bool?> ValueChanged { get; set; }
+
+    private Task Change(ChangeEventArgs e) => ValueChanged.InvokeAsync(e.Value?.ToString() switch
+    {
+        "true" => true,
+        "false" => false,
+        _ => null,
+    });
+}

@@ -1,0 +1,146 @@
+@page "/opkuis"
+@inherits RefreshingPage
+
+<h1>Opkuisronde</h1>
+
+<p class="kb-zacht">
+    Accounts die lang niet aangemeld zijn, om na te kijken. Vink aan wat weg mag: medewerkers worden <strong>uitgeschakeld</strong>
+    (met de reden in de omschrijving, nooit verwijderd; voor een volledige uitstroom gebruik je Uitstroom), gasten worden
+    <strong>verwijderd</strong>. Na het uitvoeren bewaart de app een rapport met elk nagekeken account en de beslissing, als
+    bewijs van de controle. Laatste aanmelding: de recentste uit AD en Entra.
+</p>
+
+@if (!State.IsLive)
+{
+    <div class="kb-melding">De gegevens zijn niet live. <a href="verbindingen">Laad eerst live</a>, zodat de laatste aanmeldingen kloppen.</div>
+}
+
+<div class="kb-filters">
+    <span class="kb-segment" role="group" aria-label="Soort">
+        <button class="kb-knop @(choice.Kind == CleanupKind.Staff ? "kb-primair" : null)" @onclick="() => Set(CleanupKind.Staff, choice.Days)">Medewerkers</button>
+        <button class="kb-knop @(choice.Kind == CleanupKind.Guests ? "kb-primair" : null)" @onclick="() => Set(CleanupKind.Guests, choice.Days)">Gasten</button>
+    </span>
+    <label>
+        Niet aangemeld in
+        <select class="kb-invoer" value="@choice.Days" @onchange="@(e => Set(choice.Kind, int.Parse(e.Value?.ToString() ?? "180")))">
+            @foreach (var d in new[] { 90, 180, 365, choice.Days }.Distinct().Order())
+            {
+                <option value="@d">@d @(d == 1 ? "dag" : "dagen")</option>
+            }
+        </select>
+    </label>
+    <button class="kb-knop" @onclick="ChooseAll">Alles aanvinken</button>
+    <button class="kb-knop" disabled="@(choice.Selected.Count == 0)" @onclick="() => { choice.Selected.Clear(); plan = null; }">Niets</button>
+    <button class="kb-knop kb-primair" disabled="@(choice.Selected.Count == 0)" @onclick="MakePlan">
+        @(choice.Kind == CleanupKind.Guests ? "Plan: verwijderen" : "Plan: uitschakelen") (@choice.Selected.Count)
+    </button>
+</div>
+
+<KbTable Id="@($"opkuis-{choice.Kind.ToString().ToLowerInvariant()}")" ExportName="@($"Opkuis-{choice.Kind}-{choice.Days}d")" Items="candidates" Columns="columns"
+         DefaultSorting="aanmelding" CountText="@($"{candidates.Count} accounts niet aangemeld in {choice.Days} {(choice.Days == 1 ? "dag" : "dagen")}")"
+         Selectable KeyOf="k => k.Person.Key" Selected="choice.Selected" SelectionChanged="_ => plan = null" />
+
+@foreach (var f in errors)
+{
+    <div class="kb-melding kb-fout">@f</div>
+}
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@($"Opkuisronde {choice.Kind.ToString().ToLowerInvariant()} ({choice.Days} dagen)")" Title="Opkuisronde" Executed="AfterExecute" />
+}
+
+@if (report is not null)
+{
+    <div class="kb-melding kb-goed kb-export">
+        <span>Rapport bewaard: <code>@report</code></span>
+        <button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(report)">Tonen in Verkenner</button>
+    </div>
+}
+
+@code {
+    [Parameter, SupplyParameterFromQuery(Name = "soort")] public string? KindQuestion { get; set; }
+    [Parameter, SupplyParameterFromQuery(Name = "dagen")] public int? DaysQuestion { get; set; }
+
+    /// <summary>Kind, days and the chosen accounts, kept while the app is open (Back, Forward, menu).</summary>
+    private sealed class Choices { public CleanupKind Kind { get; set; } = CleanupKind.Staff; public int Days { get; set; } = 180; public HashSet<string> Selected { get; } = new(StringComparer.OrdinalIgnoreCase); }
+    private Choices? _choice;
+    private Choices choice => _choice ??= State.PageState.Form<Choices>("opkuis", "opkuis", "Opkuisronde", filled: k => k.Selected.Count > 0);
+    private List<CleanupCandidate> candidates = new();
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private IReadOnlyList<CleanupCandidate> checkedValue = Array.Empty<CleanupCandidate>();
+    private HashSet<string> selectedAtPlan = new(StringComparer.OrdinalIgnoreCase);
+    private string? report;
+    private bool questionRead;
+    private IReadOnlyList<Column<CleanupCandidate>> columns = Array.Empty<Column<CleanupCandidate>>();
+
+    protected override void OnInitialized() => columns = new List<Column<CleanupCandidate>>
+    {
+        new() { Key = "naam", Title = "Naam", Cell = k => @<text><ObjectLink Object="State.Data.Index.Ref(k.Person)" /> @if (k.Privileged) { <span class="kb-label kb-rood">bevoorrecht</span> }</text>, SortBy = k => k.Person.Name },
+        new() { Key = "upn", Title = "UPN", Cell = k => @<text>@k.Person.Upn</text>, SortBy = k => k.Person.Upn },
+        new() { Key = "bron", Title = "Bron", Cell = k => @<text>@k.Person.Source</text>, SortBy = k => k.Person.Source },
+        new() { Key = "dienst", Title = "Dienst", Cell = k => @<text>@k.Person.Department</text>, SortBy = k => k.Person.Department },
+        new() { Key = "aanmelding", Title = "Laatste aanmelding", Cell = k => @<text>@(k.LastSignIn?.ToString("dd/MM/yyyy") ?? "nooit")</text>, SortBy = k => k.LastSignIn ?? DateTime.MinValue, Text = k => k.LastSignIn?.ToString("yyyy-MM-dd") ?? "nooit" },
+        new() { Key = "aangemaakt", Title = "Aangemaakt", Cell = k => @<text>@k.Created?.ToString("dd/MM/yyyy")</text>, SortBy = k => k.Created, Text = k => k.Created?.ToString("yyyy-MM-dd") },
+        new() { Key = "ou", Title = "OU", Hidden = true, Cell = k => @<text>@k.Person.Ad?.OuPath</text>, SortBy = k => k.Person.Ad?.OuPath },
+        new() { Key = "omschrijving", Title = "Omschrijving", Hidden = true, Cell = k => @<text>@k.Person.Ad?.Description</text>, SortBy = k => k.Person.Ad?.Description },
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (!questionRead)
+        {
+            questionRead = true;
+            if (string.Equals(KindQuestion, "gasten", StringComparison.OrdinalIgnoreCase)) choice.Kind = CleanupKind.Guests;
+            if (DaysQuestion is > 0) choice.Days = DaysQuestion.Value;
+        }
+
+        candidates = CleanupPlans.Candidates(State.Data, State.Config, choice.Kind, choice.Days, DateTime.Now).ToList();
+        choice.Selected.IntersectWith(candidates.Select(k => k.Person.Key));
+    }
+
+    private void Set(CleanupKind s, int d)
+    {
+        if (s != choice.Kind)
+        {
+            choice.Selected.Clear();
+        }
+
+        choice.Kind = s;
+        choice.Days = d;
+        plan = null;
+        report = null;
+        OnParametersSet();
+    }
+
+
+    private void ChooseAll()
+    {
+        choice.Selected.UnionWith(candidates.Select(k => k.Person.Key));
+        plan = null;
+    }
+
+    private void MakePlan()
+    {
+        var u = CleanupPlans.Plan(State.Data, choice.Kind, candidates.Where(k => choice.Selected.Contains(k.Person.Key)).Select(k => k.Person), DateOnly.FromDateTime(DateTime.Today));
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+        checkedValue = candidates.ToList();
+        selectedAtPlan = choice.Selected.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        report = null;
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        try
+        {
+            report = CleanupPlans.SaveReport(State.AppEnvironment.ExportFolder, choice.Kind, choice.Days, checkedValue, selectedAtPlan,
+                plan ?? Array.Empty<Change>(), results, State.User, DateTime.Now);
+        }
+        catch (Exception ex)
+        {
+            errors = new[] { "Rapport bewaren mislukt: " + ex.Message };
+        }
+    }
+}

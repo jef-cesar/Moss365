@@ -1,0 +1,246 @@
+@page "/postvak/{Smtp}"
+@inherits RefreshingPage
+
+@if (mailbox is null)
+{
+    <h1>Postvak niet gevonden</h1>
+    <p><a href="postvakken">Terug naar de postvakken</a></p>
+}
+else
+{
+    <h1>@mailbox.DisplayName</h1>
+    <ObjectStatus Object="State.Data.Index.Ref(mailbox.Smtp)" />
+    <p class="kb-zacht">
+        @mailbox.TypeText &middot; @mailbox.Smtp
+        @if (mailbox.Hidden) { <span class="kb-label">verborgen in de adreslijst</span> }
+        @if (mailbox.Forwarding.Length > 0) { <span class="kb-label">doorsturen: @mailbox.Forwarding</span> }
+    </p>
+
+    <section class="kb-kaart">
+        <h2>Aanmelden met het account</h2>
+        @if (State.Data.Index.AccountOf(mailbox.Smtp, mailbox.Alias) is not { } account)
+        {
+            <p class="kb-zacht">Het account van dit postvak staat niet in de geladen gegevens (AD of Entra).</p>
+        }
+        else
+        {
+            <table class="kb-tabel kb-naast">
+                <tbody>
+                    <tr>
+                        <th>Kan aanmelden</th>
+                        <td>
+                            @if (account.Enabled)
+                            {
+                                <span class="kb-label kb-label-let">⚠ ja</span> <span class="kb-zacht">niemand hoort zich met een gedeeld postvak aan te melden</span>
+                            }
+                            else
+                            {
+                                <span class="kb-label kb-label-goed">✓ nee, geblokkeerd</span> <span class="kb-zacht">het postvak werkt gewoon</span>
+                            }
+                        </td>
+                    </tr>
+                    <tr><th>Account</th><td><ObjectLink Object="State.Data.Index.Ref(account)" /> <span class="kb-zacht">@account.Source</span></td></tr>
+                    <tr><th>Laatste aanmelding</th><td>@(Statistic.LastSignIn(account)?.ToString("dd/MM/yyyy HH:mm") ?? "nooit (of onbekend)")</td></tr>
+                </tbody>
+            </table>
+            <div class="kb-filters" hidden="@(!State.Can(Permission.Manage))">
+                @if (account.Enabled)
+                {
+                    <button class="kb-knop kb-primair" @onclick="@(() => Plan(MailboxPlans.SignIn(State.Data, mailbox, false), "Aanmelden blokkeren"))">Aanmelden blokkeren</button>
+                }
+                else
+                {
+                    <button class="kb-knop" @onclick="@(() => Plan(MailboxPlans.SignIn(State.Data, mailbox, true), "Aanmelden toestaan"))">Aanmelden toestaan</button>
+                }
+            </div>
+        }
+    </section>
+
+    <div class="kb-kolommen">
+        <section class="kb-kaart">
+            <h2>Toegang</h2>
+            @if (groupValue is null)
+            {
+                <div class="kb-melding">Er is geen toegangsgroep. Volgens de afspraak heet die <code>@ObjectIndex.ExpectedAccessGroup(mailbox)</code>.</div>
+                <div class="kb-filters">
+                    <button class="kb-knop kb-primair" @onclick="@(() => Plan(MailboxPlans.CreateAccessGroup(State.Data, mailbox), "Toegangsgroep aanmaken"))">Toegangsgroep aanmaken</button>
+                </div>
+            }
+            else
+            {
+                <p>Via <ObjectLink Object="groupValue.Ref" /> (@groupMembers.Count leden)</p>
+                <ul class="kb-lijst-plat">
+                    @foreach (var l in groupMembers)
+                    {
+                        <li><ObjectLink Object="l.Object" />
+                            <button class="kb-knop kb-klein" @onclick="@(() => Plan(GroupPlans.RemoveMember(State.Data, groupValue, l.Object), "Toegang intrekken"))">weghalen</button></li>
+                    }
+                </ul>
+                <ObjectPicker Label="Toegang geven aan" Kinds="Persons" Selected="@(r => Plan(GroupPlans.AddMember(State.Data, groupValue, r), "Toegang geven"))" />
+            }
+        </section>
+
+        <section class="kb-kaart">
+            <h2>Lid van (@groups.Count)</h2>
+            @if (groups.Count == 0) { <p class="kb-zacht">Geen groepen.</p> }
+            <ul class="kb-lijst-plat">
+                @foreach (var g in groups)
+                {
+                    <li><ObjectLink Object="g.Object" /> <span class="kb-zacht">(@g.Layer)</span></li>
+                }
+            </ul>
+        </section>
+    </div>
+
+    <section class="kb-kaart">
+        <h2>Rechten (@permissions.Count)</h2>
+        @if (permissions.Count == 0)
+        {
+            <p class="kb-zacht">Geen expliciete rechten gekend.</p>
+        }
+        else
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>Wie</th><th>Soort</th><th>Recht</th><th>Hoe</th></tr></thead>
+                <tbody>
+                    @foreach (var r in permissions)
+                    {
+                        <tr class="@(r.Direct ? "kb-verschil" : null)">
+                            <td><ObjectLink Object="r.Who" /></td>
+                            <td>@r.Who.KindText</td>
+                            <td>@r.Permission</td>
+                            <td>@(r.Direct ? "rechtstreeks" : "via groep")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        @if (permissions.Any(r => r.Direct))
+        {
+            <p class="kb-zacht">
+                Opruimen: wie rechtstreeks een recht heeft, wordt lid van de toegangsgroep en verliest het rechtstreekse recht. De groep krijgt
+                eerst zelf FullAccess en SendAs als die ontbreken. Onbekende rechthebbenden (bv. verwijderde accounts) staan in het plan maar
+                zijn niet aangevinkt.
+            </p>
+            <div class="kb-filters">
+                <button class="kb-knop kb-primair" @onclick="@(() => Plan(MailboxPlans.CleanupDirectPermissions(State.Data, mailbox), "Rechtstreekse rechten naar de groep"))">Rechtstreekse rechten opruimen</button>
+            </div>
+        }
+    </section>
+
+    @if (State.Can(Permission.Manage))
+    {
+    <section class="kb-kaart">
+        <h2>Instellingen</h2>
+        @if (mailbox.AutoReply.Length == 0)
+        {
+            <p class="kb-zacht">Doorsturen en automatisch antwoord zijn niet live geladen; de huidige waarde is dan onbekend. <a href="verbindingen">Postvakken laden uit Exchange</a></p>
+        }
+        <div class="kb-raster">
+            <label>Weergavenaam <input class="kb-invoer" @bind="desired.DisplayName" /></label>
+            <label>Verbergen in de adreslijst <YesNo @bind-Value="desired.Hidden" /></label>
+            <label>Doorsturen naar (leeg = uit) <input class="kb-invoer" placeholder="@(mailbox.ForwardingTo.Length > 0 ? mailbox.ForwardingTo : "(niet wijzigen)")" @bind="extra.Forwarding" /></label>
+            <label>Ook bewaren bij doorsturen <YesNo @bind-Value="desired.SaveForwardingAnd" /></label>
+            <label>Automatisch antwoord
+                <select class="kb-invoer" @bind="extra.AutoReply">
+                    <option value="">(niet wijzigen)</option>
+                    <option value="Enabled">aan</option>
+                    <option value="Disabled">uit</option>
+                </select>
+            </label>
+        </div>
+        <label><input type="checkbox" @bind="extra.DisableForwarding" /> Doorsturen uitzetten</label>
+        @if (extra.AutoReply == "Enabled")
+        {
+            <div class="kb-raster kb-breed-raster">
+                <label>Tekst intern <textarea class="kb-invoer" rows="3" @bind="desired.AutoReplyInternal"></textarea></label>
+                <label>Tekst extern <textarea class="kb-invoer" rows="3" @bind="desired.AutoReplyExternal"></textarea></label>
+            </div>
+        }
+        <div class="kb-filters">
+            <button class="kb-knop kb-primair" @onclick="SettingsPlan">Plan maken</button>
+        </div>
+    </section>
+    }
+
+    @foreach (var f in errors)
+    {
+        <div class="kb-melding kb-fout">@f</div>
+    }
+    @if (plan is not null)
+    {
+        <PlanView Plan="plan" Context="@($"Postvak {mailbox.DisplayName}")" Title="@planTitle" Executed="AfterExecute" />
+    }
+}
+
+@code {
+    [Parameter] public string Smtp { get; set; } = string.Empty;
+
+    private static readonly ObjectKind[] Persons = { ObjectKind.User };
+
+    private Mailbox? mailbox;
+    private Group? groupValue;
+    private IReadOnlyList<Relation> groupMembers = Array.Empty<Relation>();
+    private IReadOnlyList<Relation> groups = Array.Empty<Relation>();
+    private IReadOnlyList<PermissionRule> permissions = Array.Empty<PermissionRule>();
+    private MailboxDesired desired = new();
+    // What you filled in is kept per mailbox until the plan has run (Back, Forward, menu)
+    private sealed class Extra { public string? Forwarding { get; set; } public bool DisableForwarding { get; set; } public string AutoReply { get; set; } = string.Empty; }
+    private Extra extra = new();
+    private string Form => $"postvakken/{loaded}/wijzigen";
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private string planTitle = string.Empty;
+    private string? loaded;
+
+    protected override void OnParametersSet()
+    {
+        var index = State.Data.Index;
+        var newValue = index.Mailbox(Smtp);
+        if (newValue?.Smtp != loaded)
+        {
+            loaded = newValue?.Smtp;
+            plan = null;
+            errors = Array.Empty<string>();
+            desired = newValue is null ? new() : State.PageState.Form(Form, "postvak/" + newValue.Smtp, $"Postvak {newValue.DisplayName}", () => new MailboxDesired
+            {
+                DisplayName = newValue.DisplayName,
+                AutoReplyInternal = newValue.AutoReplyInternal,
+                AutoReplyExternal = newValue.AutoReplyExternal,
+            });
+            extra = newValue is null ? new() : State.PageState.Form<Extra>(Form + "/extra", "postvak/" + newValue.Smtp, $"Postvak {newValue.DisplayName}");
+        }
+
+        mailbox = newValue;
+        if (mailbox is not null)
+        {
+            groupValue = index.AccessGroupOf(mailbox);
+            groupMembers = groupValue is null ? Array.Empty<Relation>() : index.UniqueMembersOf(groupValue);
+            groups = index.GroupsOfAddress(mailbox.Smtp);
+            permissions = index.PermissionsOn(mailbox);
+        }
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            State.PageState.Forget(Form);
+            State.PageState.Forget(Form + "/extra");
+        }
+    }
+
+    private void SettingsPlan()
+    {
+        desired.ForwardingTo = extra.DisableForwarding ? string.Empty : string.IsNullOrWhiteSpace(extra.Forwarding) ? null : extra.Forwarding;
+        desired.AutoReply = extra.AutoReply.Length == 0 ? null : extra.AutoReply;
+        Plan(MailboxPlans.Settings(mailbox!, desired), "Instellingen van het postvak");
+    }
+
+    private void Plan(PlanOutcome u, string title)
+    {
+        planTitle = title;
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 || u.Errors.Count == 0 ? u.Plan : null;
+    }
+}

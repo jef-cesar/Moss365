@@ -1,15 +1,15 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using Moss365.Core.Wijzigingen;
+using Moss365.Core.Changes;
 
 namespace Moss365.Connections.Updates;
 
 /// <summary>
-/// Vraagt de laatste release op bij GitHub (zonder aanmelding). Bij een privé-repo antwoordt GitHub dan "niet gevonden";
-/// de app toont in dat geval enkel de link naar de releases.
+/// Asks GitHub for the latest release (without signing in). For a private repository GitHub then answers "not found";
+/// in that case the app shows only the link to the releases.
 /// </summary>
-public sealed class GitHubUpdates : IUpdateControle
+public sealed class GitHubUpdates : IUpdateCheck
 {
     private readonly HttpClient _http;
     private readonly string _repo;
@@ -22,25 +22,25 @@ public sealed class GitHubUpdates : IUpdateControle
 
     public string ReleasesLink => $"https://github.com/{_repo}/releases/latest";
 
-    public async Task<UpdateInfo> ControleerAsync(CancellationToken annuleren)
+    public async Task<UpdateInfo> CheckAsync(CancellationToken cancel)
     {
         try
         {
-            using var verzoek = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{_repo}/releases/latest");
-            verzoek.Headers.UserAgent.Add(new ProductInfoHeaderValue("Moss365", "1.0"));
-            verzoek.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
-            using var antwoord = await _http.SendAsync(verzoek, annuleren);
-            if (antwoord.StatusCode == HttpStatusCode.NotFound)
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{_repo}/releases/latest");
+            request.Headers.UserAgent.Add(new ProductInfoHeaderValue("Moss365", "1.0"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+            using var answer = await _http.SendAsync(request, cancel);
+            if (answer.StatusCode == HttpStatusCode.NotFound)
             {
                 return new UpdateInfo(null, ReleasesLink, "De releases zijn niet openbaar (privé-repo): automatisch controleren kan niet.");
             }
 
-            if (!antwoord.IsSuccessStatusCode)
+            if (!answer.IsSuccessStatusCode)
             {
-                return new UpdateInfo(null, ReleasesLink, $"GitHub antwoordde {(int)antwoord.StatusCode}.");
+                return new UpdateInfo(null, ReleasesLink, $"GitHub antwoordde {(int)answer.StatusCode}.");
             }
 
-            using var doc = JsonDocument.Parse(await antwoord.Content.ReadAsStringAsync(annuleren));
+            using var doc = JsonDocument.Parse(await answer.Content.ReadAsStringAsync(cancel));
             var tag = doc.RootElement.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
             var link = doc.RootElement.TryGetProperty("html_url", out var l) ? l.GetString() : null;
             return new UpdateInfo(tag?.TrimStart('v', 'V'), link ?? ReleasesLink, tag is null ? "Geen versie in het antwoord." : null);

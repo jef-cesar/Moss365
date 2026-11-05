@@ -5,15 +5,17 @@ under the EUPL-1.2. Public repository: never add personal or organisation data (
 check in `.github/workflows/privacy.yml` refuses e-mail addresses outside the example domains, public IPs and a secret
 blocklist). The maintainer does not write code: changes must be tested, documented and built by GitHub Actions.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: step R1 part A is done (0.10.0); the code, comments
-and tests are still Dutch and move to English in R1 part B (0.11). Write new code in English from now on; keep
-identifiers consistent within a file until it is translated.
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: step R1 is done (0.11.0): code, comments and tests are
+in English. The interface texts are still Dutch and move to dictionaries in R15; the CSV inventory (file names) and the
+script header keys (`<#MOSS365 Naam: ... #>`) are renamed when R2 and R8 rework them. Data saved before 0.11 uses Dutch
+property and enum names: `Storage/LegacyNames.cs` reads them (use `WithLegacyNames()` on every `JsonSerializerOptions`
+that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as text).
 
 ## Layout
 
 - `src/Moss365.Core` (net8.0): all logic, no UI, no Windows dependencies, fully tested.
 - `src/Moss365.Connections` (net8.0): AD via LDAP, Graph via HttpClient + MSAL, Exchange via a separate PowerShell
-  process with the embedded `Exchange/Exchange.ps1` (fixed commands, ASCII only).
+  process with the embedded `Exchange/Exchange.ps1` (fixed commands, ASCII only), scripts via `Scripts/Startup.ps1`.
 - `src/Moss365.UI` (Razor class library): the screens; logic in screens limited to presentation.
 - `src/Moss365.Desktop` (net8.0-windows, WPF + BlazorWebView): the window and dependency injection only.
 - `tests/Moss365.Tests`: xUnit for the core, bUnit for the screens; `tests/powershell` and `tools/tests`: Pester.
@@ -31,13 +33,13 @@ dotnet publish src/Moss365.Desktop -c Release -r win-x64 --self-contained true -
 
 ## Rules (see also CONTRIBUTING.md)
 
-- Every write is a plan: preview (`PlanWeergave`), confirmation, execution (`PlanUitvoerder`), change log. Undo via
-  `Wijziging.Vorige` and `Terugdraaien`.
+- Every write is a plan: preview (`PlanView`), confirmation, execution (`PlanExecutor`), change log. Undo via
+  `Change.Previous` and `Undo`.
 - Never store or log secrets. The technical log holds no names, parameters or secrets (a test checks this).
-- Roles are enforced on the page (`Toegang.VoorPad`), the buttons (`State.Mag`) and in the engine (`weiger`).
-- Conditional Access: `CaVeiligheid` checks every write in the planner and in the engine; never delete a policy.
+- Roles are enforced on the page (`Access.ForPath`), the buttons (`State.Can`) and in the engine (`refuse`).
+- Conditional Access: `CaSafety` checks every write in the planner and in the engine; never delete a policy.
 - Scheduled actions never run by themselves. Offboarding never deletes accounts.
-- New `Actie` values are appended at the end (stored as numbers in older data).
-- Database schema changes: a migration appended to `Databank.Migraties`; never change an existing one.
+- New `ChangeAction` values are appended at the end (stored as numbers in older data, as names in the change log).
+- Database schema changes: a migration appended to `Database.Migrations`; never change an existing one.
 - PowerShell embedded in the app and in `scripts/` is ASCII only.
 - One branch: `main`.

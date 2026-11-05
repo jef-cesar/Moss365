@@ -7,11 +7,11 @@ public partial class App : Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {
-        DispatcherUnhandledException += OpOnverwachteFout;
+        DispatcherUnhandledException += OnUnexpectedError;
         base.OnStartup(e);
     }
 
-    private static void OpOnverwachteFout(object sender, DispatcherUnhandledExceptionEventArgs e)
+    private static void OnUnexpectedError(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         MessageBox.Show(e.Exception.Message, "Moss365 - onverwachte fout", MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;

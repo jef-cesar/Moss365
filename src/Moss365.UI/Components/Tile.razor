@@ -1,0 +1,32 @@
+@* An indicator. With Kpi the number, the label and the link come from the same computation as the list behind it. A
+   point of attention above zero gets the attention style with an icon and text (never colour alone). *@
+@inject ManagementState State
+
+@if (LinkTo is not null)
+{
+    <a class="kb-tegel @(Let ? "kb-tegel-let" : null)" href="@LinkTo">@Content</a>
+}
+else
+{
+    <div class="kb-tegel @(Let ? "kb-tegel-let" : null)">@Content</div>
+}
+
+@code {
+    [Parameter] public Kpi? Kpi { get; set; }
+    [Parameter] public int Count { get; set; }
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? Link { get; set; }
+    /// <summary>Without Kpi: above zero this is a point of attention (yes by default).</summary>
+    [Parameter] public bool Attention { get; set; } = true;
+
+    private int Number => Kpi is not null ? State.KpiCount(Kpi) : Count;
+    private string Text => Kpi is not null && Label.Length == 0 ? Kpi.Label : Label;
+    private string? LinkTo => Kpi?.Link ?? Link;
+    private bool Let => Number > 0 && (Kpi?.Attention ?? Attention);
+
+    private RenderFragment Content => @<text>
+        <div class="kb-tegel-getal">@Number</div>
+        <div>@Text</div>
+        @if (Let) { <div class="kb-status-let">⚠ nakijken</div> }
+    </text>;
+}

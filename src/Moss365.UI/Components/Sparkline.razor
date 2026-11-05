@@ -1,0 +1,62 @@
+@* The trend of one KPI (a small line from the snapshots saved per day), with the current value and the difference
+   with about 30 days ago. Small multiples: every KPI its own scale, never two scales in one chart. *@
+@inject ManagementState State
+
+<a class="kb-verloop" href="@Trend.Kpi.Link">
+    <span class="kb-verloop-label">@Trend.Kpi.Label</span>
+    <span class="kb-verloop-getal">@Now</span>
+    <span class="kb-zacht kb-verloop-verschil">@DifferenceText</span>
+    @if (Trend.Points.Count >= 2)
+    {
+        <svg viewBox="0 0 @B @H" class="kb-verloop-lijn" role="img" aria-label="@($"Verloop {Trend.Kpi.Label}: van {Trend.Points[0].Value} op {Trend.Points[0].Date:dd/MM} tot {Trend.Points[^1].Value} op {Trend.Points[^1].Date:dd/MM}")">
+            <path d="@Surface" class="kb-verloop-vlak" />
+            <path d="@Line" class="kb-verloop-pad" />
+            @foreach (var (d, w) in Trend.Points)
+            {
+                <circle cx="@F(X(d))" cy="@F(Y(w))" r="5" class="kb-raak"><title>@($"{d:dd/MM/yyyy}: {w}")</title></circle>
+            }
+            <circle cx="@F(X(Trend.Points[^1].Date))" cy="@F(Y(Trend.Points[^1].Value))" r="4" class="kb-verloop-punt" />
+        </svg>
+    }
+    else
+    {
+        <span class="kb-zacht kb-verloop-leeg">Nog geen verloop</span>
+    }
+</a>
+
+@code {
+    [Parameter, EditorRequired] public KpiTrend Trend { get; set; } = default!;
+
+    private const int B = 160, H = 40, M = 5;
+
+    private int Now => State.KpiCount(Trend.Kpi);
+
+    private string DifferenceText => Trend.Difference(30, Now) switch
+    {
+        null => Trend.Points.Count == 0 ? "" : $"sinds {Trend.Points[0].Date:dd/MM}: {Sign(Now - Trend.Points[0].Value)}",
+        0 => "gelijk t.o.v. 30 dagen",
+        var v => $"{Sign(v.Value)} t.o.v. 30 dagen",
+    };
+
+    private static string Sign(int v) => v > 0 ? $"▲ {v}" : v < 0 ? $"▼ {-v}" : "gelijk";
+
+    private double X(DateOnly d)
+    {
+        var first = Trend.Points[0].Date.DayNumber;
+        var last = Math.Max(first + 1, Trend.Points[^1].Date.DayNumber);
+        return M + (B - 2 * M) * (d.DayNumber - first) / (double)(last - first);
+    }
+
+    private double Y(int w)
+    {
+        var min = Trend.Points.Min(p => p.Value);
+        var max = Trend.Points.Max(p => p.Value);
+        return max == min ? H / 2.0 : H - M - (H - 2 * M) * (w - min) / (double)(max - min);
+    }
+
+    private static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string Line => "M" + string.Join(" L", Trend.Points.Select(p => $"{F(X(p.Date))},{F(Y(p.Value))}"));
+
+    private string Surface => Line + $" L{F(X(Trend.Points[^1].Date))},{H} L{F(X(Trend.Points[0].Date))},{H} Z";
+}

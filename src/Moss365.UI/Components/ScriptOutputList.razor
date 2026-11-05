@@ -1,0 +1,67 @@
+@* The output of a script: text, info, warnings and errors, with the progress; follows down by itself *@
+@inject IJSRuntime JS
+
+@if (Progress is not null)
+{
+    <div class="kb-voortgang-script">
+        <span>@Progress</span>
+        @if (Percent is int p)
+        {
+            <span class="kb-balk"><span style="width:@(p)%"></span></span><span>@p%</span>
+        }
+    </div>
+}
+<pre class="kb-uitvoer" @ref="box">@foreach (var g in Rules)
+{
+<span class="@Class(g)">@Prefix(g)@g.Text</span>@(g.Continue ? string.Empty : "\n")
+}@if (Rules.Count == 0) {<span class="kb-zacht">@EmptyText</span>}</pre>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ScriptEvent> Events { get; set; } = Array.Empty<ScriptEvent>();
+    [Parameter] public string? Progress { get; set; }
+    [Parameter] public int? Percent { get; set; }
+    [Parameter] public bool Follow { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "Nog geen uitvoer.";
+
+    private ElementReference box;
+
+    private IReadOnlyList<ScriptEvent> Rules => Events.Where(g => g.Kind is not (EventKind.Row or EventKind.Progress)).ToList();
+
+    protected override async Task OnAfterRenderAsync(bool firstTime)
+    {
+        if (Follow)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("moss365.naarOnder", box);
+            }
+            catch (Exception)
+            {
+            }
+        }
+    }
+
+    private static string Prefix(ScriptEvent g) => g.Kind switch
+    {
+        EventKind.Warning => "WAARSCHUWING: ",
+        EventKind.Error => "FOUT: ",
+        _ => string.Empty,
+    };
+
+    private static string? Class(ScriptEvent g) => g.Kind switch
+    {
+        EventKind.Info => "kb-uit-info",
+        EventKind.Warning => "kb-uit-waarschuwing",
+        EventKind.Error => "kb-uit-fout",
+        _ => g.Colour switch
+        {
+            "Green" or "DarkGreen" => "kb-uit-groen",
+            "Yellow" or "DarkYellow" => "kb-uit-geel",
+            "Red" or "DarkRed" => "kb-uit-rood",
+            "Cyan" or "DarkCyan" or "Blue" or "DarkBlue" => "kb-uit-blauw",
+            "Magenta" or "DarkMagenta" => "kb-uit-paars",
+            "Gray" or "DarkGray" => "kb-uit-grijs",
+            _ => null,
+        },
+    };
+}

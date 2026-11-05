@@ -1,0 +1,455 @@
+@* Managing Conditional Access (0.9), only for the profile Administrator. Every change is a plan with preview and
+   confirmation; a new policy always starts in report-only; enabling asks for an extra confirmation. The engine
+   refuses every policy that is on and does not exclude the emergency accounts or locks yourself out (CaSafety), also
+   on undo. *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>Beheren</h2>
+    <p class="kb-zacht">
+        Elke wijziging toont eerst een voorbeeld; pas na je bevestiging gaat ze naar Entra, en ze komt in het logboek (ongedaan te
+        maken). Je eigen account heeft de rol Conditional Access Administrator (of Security Administrator) nodig.
+        Wat je vooraf regelt: <code>docs/voorbereiding-0.9.md</code>.
+    </p>
+    @if (EmergencyError is { } emergencyError)
+    {
+        <div class="kb-melding kb-fout">@emergencyError Een nieuw beleid maken en een beleid aanzetten kan pas als dat in orde is.</div>
+    }
+    else
+    {
+        <p>Noodaccounts: @string.Join(", ", Emergency.Select(p => p.Name)). Elk nieuw beleid sluit ze uit; een beleid aanzetten dat ze niet uitsluit, weigert de app.</p>
+    }
+
+    <div class="kb-filters">
+        <span class="kb-segment" role="group" aria-label="Beheren">
+            @foreach (var (o, text) in new[] { (Section.Status, "Aan en uit"), (Section.Exclusions, "Uitzonderingen"), (Section.New, "Nieuw beleid"),
+                                                 (Section.Locations, "Benoemde locaties"), (Section.Backups, "Back-ups"), (Section.Audit, "Wie wijzigde wat") })
+            {
+                <button class="kb-knop @(component == o ? "kb-primair" : null)" @onclick="() => Choose(o)">@text</button>
+            }
+        </span>
+    </div>
+
+    @switch (component)
+    {
+        case Section.Status:
+            <p class="kb-zacht">
+                Een nieuw beleid laat je eerst in <strong>alleen rapport</strong> lopen (voorstel: 14 dagen) en je bekijkt het effect
+                (Beleiden > Effect laden). Pas dan zet je het aan.
+            </p>
+            <label class="kb-groot-plan"><input type="checkbox" @bind="effectViewed" /> Ik heb het effect in alleen rapport bekeken en wil een beleid <strong>aanzetten</strong></label>
+            <table class="kb-tabel">
+                <thead><tr><th>Beleid</th><th>Status</th><th>Vereist</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var b in Ca.Policies)
+                    {
+                        <tr>
+                            <td><a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Name</a></td>
+                            <td><CaLabel Status="b.Status" /></td>
+                            <td class="kb-zacht">@(b.Blocks ? "blokkeert" : string.Join(", ", b.Checks.Select(CaReader.CheckName)))</td>
+                            <td>
+                                <span class="kb-filters">
+                                    @foreach (var s in new[] { CaStatus.Report, CaStatus.On, CaStatus.Off }.Where(s => s != b.Status))
+                                    {
+                                        <button class="kb-knop kb-klein @(s == CaStatus.On ? "kb-gevaar" : null)" disabled="@(s == CaStatus.On && !effectViewed)"
+                                                title="@(s == CaStatus.On && !effectViewed ? "Vink eerst aan dat je het effect bekeken hebt" : null)"
+                                                @onclick="() => Status(b, s)">@ButtonText(s)</button>
+                                    }
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            break;
+
+        case Section.Exclusions:
+            <p class="kb-zacht">
+                Iemand tijdelijk uitsluiten van een beleid (bv. op reis buiten de toegelaten landen), met een einddatum. Op die datum
+                staat het terugzetten klaar bij <a href="gepland">Gepland</a>; de app voert het niet vanzelf uit.
+            </p>
+            <div class="kb-formulier">
+                <label>Beleid
+                    <select class="kb-invoer" @bind="exclusionPolicyId">
+                        <option value="">(kies een beleid)</option>
+                        @foreach (var b in Ca.Policies) { <option value="@b.Id">@b.Name</option> }
+                    </select>
+                </label>
+                <PersonPicker Label="Wie" @bind-Selected="exclusionPerson" />
+                <label>Tot en met <input type="date" class="kb-invoer" @bind="exclusionUntil" /></label>
+                <div class="kb-filters">
+                    <button class="kb-knop kb-primair" disabled="@(ExclusionPolicy is null || exclusionPerson is null)" @onclick="Exclude">Plan maken</button>
+                </div>
+            </div>
+            @if (ExclusionPolicy is { } selected)
+            {
+                <h3>Rechtstreeks uitgezonderd van "@selected.Name" (@selected.UsersOff.Count)</h3>
+                <ul class="kb-lijst-plat">
+                    @foreach (var id in selected.UsersOff)
+                    {
+                        var p = State.Data.Persons.FirstOrDefault(x => string.Equals(x.Entra?.Id, id, StringComparison.OrdinalIgnoreCase));
+                        <li>
+                            @if (p is not null) { <ObjectLink Object="State.Data.Index.Ref(p)" /> } else { <code>@id</code> }
+                            @if (p is not null && Emergency.Contains(p)) { <span class="kb-label">noodaccount</span> }
+                            else if (p is not null) { <button class="kb-knop kb-klein" @onclick="() => ExclusionRemoved(selected, p)">Weghalen</button> }
+                        </li>
+                    }
+                </ul>
+            }
+            break;
+
+        case Section.New:
+            <p class="kb-zacht">
+                Een nieuw beleid uit de aanbevelingen van Microsoft. Het komt altijd in <strong>alleen rapport</strong>, met de noodaccounts
+                uitgesloten. Met een pilotgroep geldt het eerst enkel voor die groep.
+            </p>
+            <div class="kb-formulier">
+                <label>Sjabloon
+                    <select class="kb-invoer" @bind="template">
+                        <option value="">(kies een sjabloon)</option>
+                        @foreach (var s in CaTemplates.All)
+                        {
+                            <option value="@s.Key" disabled="@Ca.Policies.Any(b => b.Name == s.Name)">@s.Name@(Ca.Policies.Any(b => b.Name == s.Name) ? " (bestaat al)" : "")</option>
+                        }
+                    </select>
+                </label>
+                @if (Template is { } sj)
+                {
+                    <p>@sj.Explanation</p>
+                    @if (sj.CanPilot)
+                    {
+                        <label>Pilotgroep (leeg = iedereen)
+                            <select class="kb-invoer" @bind="pilotGroup">
+                                <option value="">Iedereen</option>
+                                @foreach (var g in CloudGroups) { <option value="@g.Cloud!.Id">@g.Name</option> }
+                            </select>
+                        </label>
+                    }
+                    @if (sj.AsksCountriesLocation)
+                    {
+                        <label>Toegelaten landen
+                            <select class="kb-invoer" @bind="countries">
+                                <option value="">(kies een locatie met landen)</option>
+                                @foreach (var l in Ca.Locations.Where(l => !l.IsIp)) { <option value="@l.Id">@l.Name (@string.Join(", ", l.Values))</option> }
+                            </select>
+                        </label>
+                    }
+                    <div class="kb-filters">
+                        <button class="kb-knop kb-primair" disabled="@(EmergencyError is not null)" @onclick="New">Plan maken</button>
+                    </div>
+                }
+            </div>
+            break;
+
+        case Section.Locations:
+            <p class="kb-zacht">
+                IP-adressen van de gebouwen (CIDR, bv. <code>203.0.113.10/32</code>) of landen (code van twee letters, bv. <code>BE</code>), één per regel.
+                Een vertrouwde locatie met IP-adressen gebruik je voor "registreren enkel vanop kantoor".
+            </p>
+            <table class="kb-tabel">
+                <thead><tr><th>Locatie</th><th>Soort</th><th>Waarden</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var l in Ca.Locations)
+                    {
+                        <tr>
+                            <td>@l.Name</td>
+                            <td>@(l.IsIp ? (l.Trusted ? "IP-adressen, vertrouwd" : "IP-adressen") : "landen")</td>
+                            <td class="kb-zacht">@string.Join(", ", l.Values)</td>
+                            <td><button class="kb-knop kb-klein" @onclick="() => Edit(l)">Wijzigen</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <h3>@(location is null ? "Nieuwe locatie" : $"\"{location.Name}\" wijzigen")</h3>
+            <div class="kb-formulier">
+                <label>Naam <input class="kb-invoer" @bind="locName" /></label>
+                @if (location is null)
+                {
+                    <label><input type="radio" name="locsoort" checked="@locIp" @onchange="() => locIp = true" /> IP-adressen</label>
+                    <label><input type="radio" name="locsoort" checked="@(!locIp)" @onchange="() => locIp = false" /> Landen</label>
+                }
+                @if (locIp) { <label><input type="checkbox" @bind="locTrusted" /> Vertrouwde locatie (kantoor)</label> }
+                <label>@(locIp ? "IP-bereiken" : "Landen"), één per regel <textarea class="kb-invoer" rows="5" @bind="locValues"></textarea></label>
+                <div class="kb-filters">
+                    <button class="kb-knop kb-primair" @onclick="LocationPlan">Plan maken</button>
+                    @if (location is not null) { <button class="kb-knop" @onclick="() => Edit(null)">Nieuwe locatie</button> }
+                </div>
+            </div>
+            break;
+
+        case Section.Backups:
+            <p class="kb-zacht">
+                Na elk live laden bewaart de app een kopie van alle beleiden en locaties, als er iets veranderde. De bestanden staan in
+                <code>@State.CaBackupFolder</code>; ze bevatten id's van personen en groepen: hou ze lokaal en zet een kopie op een plek
+                met beperkte toegang.
+            </p>
+            <div class="kb-filters">
+                <button class="kb-knop" @onclick="BackupNow">Nu een back-up maken</button>
+                @if (backupMessage is not null) { <span class="kb-zacht">@backupMessage</span> }
+            </div>
+            @if (backups.Count == 0)
+            {
+                <p class="kb-zacht">Nog geen back-ups. Laad live (Verbindingen) of kies "Nu een back-up maken".</p>
+            }
+            else
+            {
+                <label>Back-up
+                    <select class="kb-invoer" value="@backupPath" @onchange="ChooseBackup">
+                        <option value="">(kies een back-up)</option>
+                        @foreach (var b in backups) { <option value="@b.FilePath">@b.Time.ToString("dd/MM/yyyy HH:mm") (@b.Policies beleiden)</option> }
+                    </select>
+                </label>
+            }
+            @if (backup is not null)
+            {
+                <h3>Verschillen met nu</h3>
+                @if (differences.Count == 0)
+                {
+                    <p>Geen verschillen: de beleiden zijn nu zoals in deze back-up.</p>
+                }
+                <table class="kb-tabel">
+                    <tbody>
+                        @foreach (var v in differences)
+                        {
+                            <tr>
+                                <td>@v.Name <span class="kb-label">@DifferenceText(v.Kind)</span></td>
+                                <td><ul class="kb-lijst-plat">@foreach (var d in v.Details) { <li>@d</li> }</ul></td>
+                                <td>
+                                    @if (v.Kind != "nieuw" && backup.Policies.FirstOrDefault(b => b.Id == v.PolicyId) is { } old)
+                                    {
+                                        <button class="kb-knop kb-klein" @onclick="() => Restore(old)">Terugzetten</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="kb-zacht">nieuw sinds de back-up; uitzetten bij Aan en uit</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            break;
+
+        default:
+            <p class="kb-zacht">Uit het auditlogboek van Entra: wie welk beleid of welke locatie maakte, wijzigde of verwijderde (de laatste 30 dagen).</p>
+            <div class="kb-filters">
+                <button class="kb-knop" disabled="@auditBusy" @onclick="LoadAudit">Auditlogboek laden</button>
+                @if (auditBusy) { <span class="kb-zacht">bezig...</span> }
+            </div>
+            @if (auditError is not null) { <div class="kb-melding kb-fout">@auditError</div> }
+            @if (audit is not null)
+            {
+                <KbTable Id="ca-audit" ExportName="Conditional-Access-audit" Items="audit" Columns="auditColumns" DefaultSorting="tijd" />
+            }
+            break;
+    }
+
+    @foreach (var f in errors)
+    {
+        <div class="kb-melding kb-fout">@f</div>
+    }
+</section>
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@planContext" Title="Wijziging aan Conditional Access" Executed="AfterExecute" />
+}
+
+@code {
+    private enum Section { Status, Exclusions, New, Locations, Backups, Audit }
+
+    [Parameter, EditorRequired] public CaData Ca { get; set; } = default!;
+
+    private Section component = Section.Status;
+    private IReadOnlyList<Change>? plan;
+    private string planContext = string.Empty;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private bool effectViewed;
+
+    // Exclusion
+    private string exclusionPolicyId = string.Empty;
+    private Person? exclusionPerson;
+    private DateOnly exclusionUntil = DateOnly.FromDateTime(DateTime.Today.AddDays(14));
+    private (string PolicyId, Person Person, DateOnly Until)? toSchedule;
+
+    // New policy
+    private string template = string.Empty;
+    private string pilotGroup = string.Empty;
+    private string countries = string.Empty;
+
+    // Locations
+    private NamedLocation? location;
+    private string locName = string.Empty;
+    private bool locIp = true;
+    private bool locTrusted = true;
+    private string locValues = string.Empty;
+
+    // Back-ups
+    private IReadOnlyList<Moss365.Core.Storage.CaBackupFile> backups = Array.Empty<Moss365.Core.Storage.CaBackupFile>();
+    private string backupPath = string.Empty;
+    private Moss365.Core.Storage.CaBackupContent? backup;
+    private IReadOnlyList<CaDifference> differences = Array.Empty<CaDifference>();
+    private string? backupMessage;
+
+    // Audit
+    private IReadOnlyList<CaAuditEntry>? audit;
+    private bool auditBusy;
+    private string? auditError;
+
+    private static readonly IReadOnlyList<Column<CaAuditEntry>> auditColumns = new List<Column<CaAuditEntry>>
+    {
+        new() { Key = "tijd", Title = "Tijd", Cell = a => b => b.AddContent(0, a.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")), SortBy = a => -a.Time.UtcTicks, Text = a => a.Time.LocalDateTime.ToString("yyyy-MM-dd HH:mm") },
+        new() { Key = "wie", Title = "Wie", Cell = a => b => b.AddContent(0, a.Who), SortBy = a => a.Who },
+        new() { Key = "wat", Title = "Wat", Cell = a => b => b.AddContent(0, a.Activity), SortBy = a => a.Activity },
+        new() { Key = "doel", Title = "Beleid of locatie", Cell = a => b => b.AddContent(0, a.TargetName), SortBy = a => a.TargetName },
+        new() { Key = "resultaat", Title = "Resultaat", Cell = a => b => b.AddContent(0, a.Result), SortBy = a => a.Result },
+    };
+
+    private (IReadOnlyList<Person> Accounts, string? Error) EmergencyInfo => CaSafety.EmergencyAccounts(State.Data, State.Config);
+    private IReadOnlyList<Person> Emergency => EmergencyInfo.Accounts;
+    private string? EmergencyError => EmergencyInfo.Error;
+
+    private CaPolicy? ExclusionPolicy => Ca.Policies.FirstOrDefault(b => b.Id == exclusionPolicyId);
+    private CaTemplate? Template => CaTemplates.All.FirstOrDefault(s => s.Key == template);
+    private IEnumerable<Group> CloudGroups => State.Data.Index.Groups.Where(g => g.Cloud is not null && !g.Dynamic).OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase);
+
+    private static string ButtonText(CaStatus s) => s switch { CaStatus.On => "Aanzetten", CaStatus.Report => "Alleen rapport", _ => "Uitzetten" };
+
+    private static string DifferenceText(string kind) => kind switch { "nieuw" => "nieuw sinds de back-up", "verdwenen" => "bestaat niet meer", _ => "gewijzigd" };
+
+    private void Choose(Section o)
+    {
+        component = o;
+        plan = null;
+        errors = Array.Empty<string>();
+        if (o == Section.Backups)
+        {
+            backups = State.CaBackups();
+        }
+    }
+
+    private void Show(PlanOutcome u, string context)
+    {
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+        planContext = context;
+        toSchedule = null;
+    }
+
+    private void Status(CaPolicy b, CaStatus s)
+        => Show(CaPlans.Status(b, s, State.Data, State.Config, State.OwnUpn), $"Conditional Access: {b.Name} {ButtonText(s).ToLowerInvariant()}");
+
+    private void Exclude()
+    {
+        if (ExclusionPolicy is not { } b || exclusionPerson is not { } p)
+        {
+            return;
+        }
+
+        if (exclusionUntil.ToDateTime(new TimeOnly(23, 59)) <= DateTime.Now)
+        {
+            errors = new[] { "Kies een einddatum in de toekomst." };
+            plan = null;
+            return;
+        }
+
+        Show(CaPlans.Exclusion(b, p, add: true, State.Data, State.Config, State.OwnUpn), $"Conditional Access: uitzondering tot {exclusionUntil:dd/MM/yyyy}");
+        if (plan is not null)
+        {
+            toSchedule = (b.Id, p, exclusionUntil);
+        }
+    }
+
+    private void ExclusionRemoved(CaPolicy b, Person p)
+        => Show(CaPlans.Exclusion(b, p, add: false, State.Data, State.Config, State.OwnUpn), "Conditional Access: uitzondering weghalen");
+
+    private void New()
+        => Show(CaTemplates.Plan(template, new CaTemplateOptions(pilotGroup.Length == 0 ? null : pilotGroup, countries.Length == 0 ? null : countries),
+            State.Data, State.Config, State.OwnUpn), "Conditional Access: nieuw beleid uit een sjabloon");
+
+    private void Edit(NamedLocation? l)
+    {
+        location = l;
+        locName = l?.Name ?? string.Empty;
+        locIp = l?.IsIp ?? true;
+        locTrusted = l?.Trusted ?? true;
+        locValues = l is null ? string.Empty : string.Join(Environment.NewLine, l.Values);
+        plan = null;
+        errors = Array.Empty<string>();
+    }
+
+    private void LocationPlan()
+        => Show(CaPlans.Location(location, locName, locIp, locValues.Split('\n', ',', ';'), locTrusted, State.Data), "Conditional Access: benoemde locatie");
+
+    private void BackupNow()
+    {
+        try
+        {
+            var path = Moss365.Core.Storage.CaBackup.Save(Ca, State.CaBackupFolder, DateTime.Now);
+            backupMessage = path is null
+                ? (Ca.Policies.Any(b => b.Json.Length == 0) ? "Geen back-up: de beleiden komen niet rechtstreeks uit Entra. Laad eerst live." : "Geen nieuwe back-up nodig: er veranderde niets sinds de vorige.")
+                : $"Bewaard: {Path.GetFileName(path)}";
+        }
+        catch (IOException ex)
+        {
+            backupMessage = "Mislukt: " + ex.Message;
+        }
+
+        backups = State.CaBackups();
+    }
+
+    private void ChooseBackup(ChangeEventArgs e)
+    {
+        backupPath = e.Value?.ToString() ?? string.Empty;
+        backup = backupPath.Length == 0 ? null : Moss365.Core.Storage.CaBackup.Read(backupPath);
+        differences = backup is null ? Array.Empty<CaDifference>() : CaComparison.Compare(backup.Policies, Ca.Policies, CaReader.Names(State.Data), Ca);
+        plan = null;
+        errors = Array.Empty<string>();
+    }
+
+    private void Restore(CaPolicy old)
+        => Show(CaPlans.Restore(old, Ca.Policies.FirstOrDefault(b => b.Id == old.Id), State.Data, State.Config, State.OwnUpn),
+            $"Conditional Access: terugzetten uit de back-up van {backup?.Time:dd/MM/yyyy HH:mm}");
+
+    private async Task LoadAudit()
+    {
+        auditBusy = true;
+        auditError = null;
+        try
+        {
+            audit = await State.ReadCaAuditAsync(30);
+            if (audit is null)
+            {
+                auditError = "Graph is niet ingesteld (Verbindingen).";
+            }
+        }
+        catch (NoPermissionError ex)
+        {
+            auditError = "Je account mag het auditlogboek niet lezen (rol Reports Reader, Security Reader of Global Reader nodig). " + ex.Message;
+        }
+        catch (Exception ex)
+        {
+            auditError = "Auditlogboek lezen mislukt: " + ex.Message;
+        }
+        finally
+        {
+            auditBusy = false;
+        }
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        // A successful exclusion with an end date: prepare the restore in Scheduled (never run it by itself)
+        if (toSchedule is { } x && results.Any(r => r.Status == ResultStatus.Succeeded)
+            && Ca.Policies.FirstOrDefault(b => b.Id == x.PolicyId) is { } policy)
+        {
+            var moment = x.Until.ToDateTime(new TimeOnly(23, 59));
+            State.Schedule(ScheduledPlans.CaExclusionEnd(policy, x.Person,
+                new DateTimeOffset(moment, TimeZoneInfo.Local.GetUtcOffset(moment)), State.User));
+            toSchedule = null;
+        }
+
+        effectViewed = false;
+    }
+}

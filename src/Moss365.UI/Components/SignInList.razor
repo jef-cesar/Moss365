@@ -1,0 +1,57 @@
+@* Table with sign-ins from Entra, newest first *@
+
+@if (SignIns.Count == 0)
+{
+    <p class="kb-zacht">Geen aanmeldingen in deze periode.</p>
+}
+else
+{
+    <table class="kb-tabel">
+        <thead>
+            <tr>
+                <th>Tijd</th>
+                @if (WithUser) { <th>Gebruiker</th> }
+                <th>App</th><th>Plaats</th><th>IP</th><th>Resultaat</th>
+                @if (WithCa) { <th>Conditional Access</th> }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in SignIns)
+            {
+                <tr class="@(a.Succeeded ? null : "kb-ontbreekt")">
+                    <td>@a.Time.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                    @if (WithUser) { <td><ObjectLink Id="@a.UserId" Text="@(a.Name.Length > 0 ? a.Name : a.Upn)" /></td> }
+                    <td>@a.App <span class="kb-zacht">@a.Client</span></td>
+                    <td>@a.Location</td>
+                    <td><code>@a.Ip</code></td>
+                    <td>@(a.Succeeded ? "gelukt" : $"mislukt ({a.ErrorCode})") <span class="kb-zacht">@a.Reason</span></td>
+                    @if (WithCa)
+                    {
+                        <td>
+                            @foreach (var c in (a.Ca ?? Array.Empty<CaApplication>()).Where(c => c.Result is "success" or "failure" or "reportOnlyFailure" or "reportOnlyInterrupted"))
+                            {
+                                <span class="kb-tag @(c.Result == "failure" ? "kb-rood" : null)" title="@CaResult(c.Result)">@c.Name <span class="kb-zacht">(@CaResult(c.Result))</span></span>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<SignInEvent> SignIns { get; set; } = Array.Empty<SignInEvent>();
+    [Parameter] public bool WithUser { get; set; } = true;
+
+    private bool WithCa => SignIns.Any(a => a.Ca is { Count: > 0 });
+
+    private static string CaResult(string r) => r switch
+    {
+        "success" => "voldaan",
+        "failure" => "tegengehouden",
+        "reportOnlyFailure" => "rapport: zou tegenhouden",
+        "reportOnlyInterrupted" => "rapport: zou extra stap vragen",
+        _ => r,
+    };
+}

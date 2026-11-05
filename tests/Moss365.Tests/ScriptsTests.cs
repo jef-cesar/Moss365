@@ -1,24 +1,24 @@
 using Moss365.Core.Scripts;
-using Moss365.Core.Wijzigingen;
+using Moss365.Core.Changes;
 using Xunit;
 
 namespace Moss365.Tests;
 
-/// <summary>Scripts (0.7): kop en param(), bibliotheek, laatste waarden, runs en inplannen.</summary>
+/// <summary>Scripts (0.7): header and param(), library, last values, runs and scheduling.</summary>
 public sealed class ScriptsTests : IDisposable
 {
-    private readonly string _map = Path.Combine(Path.GetTempPath(), "kb-scripts-" + Guid.NewGuid().ToString("N"));
-    private ScriptMappen Mappen => new(Path.Combine(_map, "ingebouwd"), Path.Combine(_map, "gegevens"));
+    private readonly string _folder = Path.Combine(Path.GetTempPath(), "kb-scripts-" + Guid.NewGuid().ToString("N"));
+    private ScriptFolders Folders => new(Path.Combine(_folder, "ingebouwd"), Path.Combine(_folder, "gegevens"));
 
     public void Dispose()
     {
-        if (Directory.Exists(_map))
+        if (Directory.Exists(_folder))
         {
-            Directory.Delete(_map, recursive: true);
+            Directory.Delete(_folder, recursive: true);
         }
     }
 
-    private const string MetKop = """
+    private const string WithHeader = """
         <#MOSS365
         Naam: Agenda-export
         Omschrijving: Alle afspraken van een postvak
@@ -36,25 +36,25 @@ public sealed class ScriptsTests : IDisposable
         """;
 
     [Fact]
-    public void KopLezen()
+    public void ReadHeader()
     {
-        var kop = ScriptTekst.Lees(MetKop, @"C:\x\Export-Agenda.ps1");
-        Assert.True(kop.UitBlok);
-        Assert.Equal("Agenda-export", kop.Naam);
-        Assert.Equal(ScriptVerbinding.Graph | ScriptVerbinding.Exchange, kop.Verbinding);
-        Assert.Equal("7", kop.PowerShell);
-        Assert.Equal(10, kop.DuurMinuten);
-        Assert.Equal(new[] { "Postvak", "Van", "Soort" }, kop.Variabelen.Select(v => v.Naam));
-        Assert.True(kop.Variabelen[0].Verplicht);
-        Assert.Equal(VariabeleSoort.Postvak, kop.Variabelen[0].Soort);
-        Assert.Equal("@werkjaar.van", kop.Variabelen[1].Standaard);
-        Assert.Equal(new[] { "CSV", "ICS" }, kop.Variabelen[2].Opties);
+        var header = ScriptText.Read(WithHeader, @"C:\x\Export-Agenda.ps1");
+        Assert.True(header.FromBlock);
+        Assert.Equal("Agenda-export", header.Name);
+        Assert.Equal(ScriptConnection.Graph | ScriptConnection.Exchange, header.Connection);
+        Assert.Equal("7", header.PowerShell);
+        Assert.Equal(10, header.DurationMinutes);
+        Assert.Equal(new[] { "Postvak", "Van", "Soort" }, header.Variables.Select(v => v.Name));
+        Assert.True(header.Variables[0].Required);
+        Assert.Equal(VariableKind.Mailbox, header.Variables[0].Kind);
+        Assert.Equal("@werkjaar.van", header.Variables[1].Default);
+        Assert.Equal(new[] { "CSV", "ICS" }, header.Variables[2].Options);
     }
 
     [Fact]
-    public void ZonderKopAfleidenUitParamEnHelp()
+    public void WithoutHeaderDeriveFromParamAndHelp()
     {
-        const string tekst = """
+        const string text = """
             <#
             .SYNOPSIS
                 Vergelijkt twee postvakken
@@ -73,54 +73,54 @@ public sealed class ScriptsTests : IDisposable
             )
             Get-Mailbox $Mailbox1
             """;
-        var kop = ScriptTekst.Lees(tekst, "Compare-MailboxAttributes.ps1");
-        Assert.False(kop.UitBlok);
-        Assert.Equal("Compare-MailboxAttributes", kop.Naam);
-        Assert.Equal("Vergelijkt twee postvakken en toont de verschillen.", kop.Omschrijving);
-        Assert.Equal(ScriptVerbinding.Exchange, kop.Verbinding);
-        Assert.True(kop.Schrijft);
+        var header = ScriptText.Read(text, "Compare-MailboxAttributes.ps1");
+        Assert.False(header.FromBlock);
+        Assert.Equal("Compare-MailboxAttributes", header.Name);
+        Assert.Equal("Vergelijkt twee postvakken en toont de verschillen.", header.Description);
+        Assert.Equal(ScriptConnection.Exchange, header.Connection);
+        Assert.True(header.Writes);
         Assert.Equal(
-            new[] { VariabeleSoort.Tekst, VariabeleSoort.Lijst, VariabeleSoort.JaNee, VariabeleSoort.Getal, VariabeleSoort.Keuze },
-            kop.Variabelen.Select(v => v.Soort));
-        Assert.Equal(new[] { "Reviewer", "LimitedDetails" }, kop.Variabelen[4].Opties);
+            new[] { VariableKind.Text, VariableKind.Items, VariableKind.YesNo, VariableKind.Number, VariableKind.Choice },
+            header.Variables.Select(v => v.Kind));
+        Assert.Equal(new[] { "Reviewer", "LimitedDetails" }, header.Variables[4].Options);
     }
 
     [Fact]
-    public void KopEnParamSchrijvenEnTerugLezen()
+    public void WriteHeaderAndParamAndReadBack()
     {
-        // Nieuw script met help bovenaan: het blok komt ervoor, het param()-blok erna
-        const string tekst = "<#\n.SYNOPSIS\n    Test.\n#>\n$ErrorActionPreference = 'Stop'\nGet-Mailbox $Postvak\n";
-        var kop = new ScriptKop
+        // New script with help at the top: the block goes before it, the param() block after it
+        const string text = "<#\n.SYNOPSIS\n    Test.\n#>\n$ErrorActionPreference = 'Stop'\nGet-Mailbox $Postvak\n";
+        var header = new ScriptHeader
         {
-            Naam = "Test",
-            Verbinding = ScriptVerbinding.Exchange,
-            Schrijft = true,
-            Variabelen = new[] { new ScriptVariabele("Postvak", VariabeleSoort.Postvak, true, "Welk postvak?"), new ScriptVariabele("Wie", VariabeleSoort.Lijst) },
+            Name = "Test",
+            Connection = ScriptConnection.Exchange,
+            Writes = true,
+            Variables = new[] { new ScriptVariable("Postvak", VariableKind.Mailbox, true, "Welk postvak?"), new ScriptVariable("Wie", VariableKind.Items) },
         };
-        var nieuw = ScriptTekst.Schrijf(kop, tekst);
-        Assert.StartsWith("<#MOSS365", nieuw);
-        Assert.True(nieuw.IndexOf(".SYNOPSIS", StringComparison.Ordinal) < nieuw.IndexOf("param(", StringComparison.Ordinal));
-        Assert.Contains("[CmdletBinding(SupportsShouldProcess = $true)]\r\nparam(\r\n    [string]$Postvak,\r\n    [string[]]$Wie\r\n)", nieuw);
-        Assert.Contains("Get-Mailbox $Postvak", nieuw);
+        var newValue = ScriptText.Write(header, text);
+        Assert.StartsWith("<#MOSS365", newValue);
+        Assert.True(newValue.IndexOf(".SYNOPSIS", StringComparison.Ordinal) < newValue.IndexOf("param(", StringComparison.Ordinal));
+        Assert.Contains("[CmdletBinding(SupportsShouldProcess = $true)]\r\nparam(\r\n    [string]$Postvak,\r\n    [string[]]$Wie\r\n)", newValue);
+        Assert.Contains("Get-Mailbox $Postvak", newValue);
 
-        var terug = ScriptTekst.Lees(nieuw, "Test.ps1");
-        Assert.Equal(kop.Variabelen, terug.Variabelen.Select(v => v with { Opties = null }).ToList());
-        Assert.True(terug.Schrijft);
+        var back = ScriptText.Read(newValue, "Test.ps1");
+        Assert.Equal(header.Variables, back.Variables.Select(v => v with { Options = null }).ToList());
+        Assert.True(back.Writes);
 
-        // Opnieuw schrijven met een andere soort en een variabele minder: geen tweede blok, attributen blijven
-        const string metAttribuut = "param([Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$Postvak, [int]$Weg)\n'x'";
-        var aangepast = ScriptTekst.Schrijf(kop with { Schrijft = false, Variabelen = new[] { new ScriptVariabele("Postvak", VariabeleSoort.Lijst) } }, metAttribuut);
-        Assert.Contains("[Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string[]]$Postvak", aangepast);
-        Assert.DoesNotContain("$Weg", aangepast);
-        Assert.Single(System.Text.RegularExpressions.Regex.Matches(ScriptTekst.Schrijf(kop, aangepast), "<#MOSS365"));
-        Assert.Single(System.Text.RegularExpressions.Regex.Matches(ScriptTekst.Schrijf(kop, aangepast), @"param\("));
+        // Writing again with another kind and one variable less: no second block, attributes stay
+        const string withAttribute = "param([Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$Postvak, [int]$Weg)\n'x'";
+        var modified = ScriptText.Write(header with { Writes = false, Variables = new[] { new ScriptVariable("Postvak", VariableKind.Items) } }, withAttribute);
+        Assert.Contains("[Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string[]]$Postvak", modified);
+        Assert.DoesNotContain("$Weg", modified);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(ScriptText.Write(header, modified), "<#MOSS365"));
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(ScriptText.Write(header, modified), @"param\("));
     }
 
     [Fact]
-    public void WaarschuwingenBijOpslaan()
+    public void WarningsOnStore()
     {
-        var kop = new ScriptKop { Naam = "x", Schrijft = true, Variabelen = new[] { new ScriptVariabele("Twee woorden"), new ScriptVariabele("a"), new ScriptVariabele("A") } };
-        var w = ScriptTekst.Waarschuwingen(kop, "param([string]$a)\n$x = Read-Host 'wat'\nConnect-ExchangeOnline\nAdd-DistributionGroupMember -Member jan.peeters@test.be");
+        var header = new ScriptHeader { Name = "x", Writes = true, Variables = new[] { new ScriptVariable("Twee woorden"), new ScriptVariable("a"), new ScriptVariable("A") } };
+        var w = ScriptText.Warnings(header, "param([string]$a)\n$x = Read-Host 'wat'\nConnect-ExchangeOnline\nAdd-DistributionGroupMember -Member jan.peeters@test.be");
         Assert.Contains(w, x => x.Contains("Read-Host"));
         Assert.Contains(w, x => x.Contains("Connect-ExchangeOnline"));
         Assert.Contains(w, x => x.Contains("-WhatIf"));
@@ -128,124 +128,125 @@ public sealed class ScriptsTests : IDisposable
         Assert.Contains(w, x => x.Contains("'Twee woorden'"));
         Assert.Contains(w, x => x.Contains("meer dan eens"));
 
-        // Het blok Get-ScriptWaarde mag Read-Host gebruiken
-        Assert.Empty(ScriptTekst.Waarschuwingen(new ScriptKop { Naam = "x" }, "function Get-ScriptWaarde { Read-Host 'x' }"));
+        // The Get-ScriptWaarde block may use Read-Host
+        Assert.Empty(ScriptText.Warnings(new ScriptHeader { Name = "x" }, "function Get-ScriptWaarde { Read-Host 'x' }"));
     }
 
     [Fact]
-    public void BibliotheekLadenOpslaanImporterenEnVerwijderen()
+    public void LibraryLoadSaveImportAndRemove()
     {
-        var m = Mappen;
-        Directory.CreateDirectory(Path.Combine(m.Ingebouwd, "Exchange"));
-        File.WriteAllText(Path.Combine(m.Ingebouwd, "Exchange", "Export-Agenda.ps1"), MetKop);
+        var m = Folders;
+        Directory.CreateDirectory(Path.Combine(m.BuiltIn, "Exchange"));
+        File.WriteAllText(Path.Combine(m.BuiltIn, "Exchange", "Export-Agenda.ps1"), WithHeader);
 
-        var eigen = ScriptBibliotheek.Opslaan(m, ScriptBibliotheek.NieuwScript("Mijn script"));
-        Assert.Equal("Mijn-script", eigen.Sleutel);
-        Assert.False(ScriptBibliotheek.IsGewijzigdBuitenApp(m, eigen));
+        var own = ScriptLibrary.Store(m, ScriptLibrary.NewScript("Mijn script"));
+        Assert.Equal("Mijn-script", own.Key);
+        Assert.False(ScriptLibrary.IsChangedOutsideApp(m, own));
 
-        // Een eigen script met de naam van een ingebouwd krijgt een andere bestandsnaam
-        var kopie = ScriptBibliotheek.Opslaan(m, MetKop);
-        Assert.Equal("Agenda-export", kopie.Sleutel);
-        var nogEen = ScriptBibliotheek.Opslaan(m, MetKop);
-        Assert.Equal("Agenda-export-2", nogEen.Sleutel);
+        // An own script with the name of a built-in one gets another file name
+        var copy = ScriptLibrary.Store(m, WithHeader);
+        Assert.Equal("Agenda-export", copy.Key);
+        var another = ScriptLibrary.Store(m, WithHeader);
+        Assert.Equal("Agenda-export-2", another.Key);
 
-        var alles = ScriptBibliotheek.Laad(m);
-        Assert.Equal(4, alles.Count);
-        var ingebouwd = Assert.Single(alles, s => s.Ingebouwd);
-        Assert.Equal("Exchange", ingebouwd.Map);
-        Assert.Throws<InvalidOperationException>(() => ScriptBibliotheek.Verwijder(m, ingebouwd));
+        var all = ScriptLibrary.Load(m);
+        Assert.Equal(4, all.Count);
+        var builtIn = Assert.Single(all, s => s.BuiltIn);
+        Assert.Equal("Exchange", builtIn.Folder);
+        Assert.Throws<InvalidOperationException>(() => ScriptLibrary.Remove(m, builtIn));
 
-        // Buiten de app gewijzigd: opnieuw goedkeuren
-        File.AppendAllText(eigen.Pad, "\nRemove-Item C:\\");
-        var gewijzigd = ScriptBibliotheek.LeesBestand(eigen.Pad, false);
-        Assert.True(ScriptBibliotheek.IsGewijzigdBuitenApp(m, gewijzigd));
-        ScriptBibliotheek.Keur(m, gewijzigd);
-        Assert.False(ScriptBibliotheek.IsGewijzigdBuitenApp(m, gewijzigd));
+        // Changed outside the app: approve again
+        File.AppendAllText(own.FilePath, "\nRemove-Item C:\\");
+        var changed = ScriptLibrary.ReadFile(own.FilePath, false);
+        Assert.True(ScriptLibrary.IsChangedOutsideApp(m, changed));
+        ScriptLibrary.Approve(m, changed);
+        Assert.False(ScriptLibrary.IsChangedOutsideApp(m, changed));
 
-        // Importeren van een script zonder kop: de kop wordt erbij gezet
-        var bron = Path.Combine(_map, "Oud.ps1");
-        File.WriteAllText(bron, "param([string]$Groep)\nGet-DistributionGroup $Groep");
-        var geimporteerd = ScriptBibliotheek.Importeer(m, bron);
-        Assert.True(geimporteerd.Kop.UitBlok);
-        Assert.Equal("Groep", Assert.Single(geimporteerd.Kop.Variabelen).Naam);
-        Assert.Equal(ScriptVerbinding.Exchange, geimporteerd.Kop.Verbinding);
+        // Importing a script without a header: the header is added
+        var source = Path.Combine(_folder, "Oud.ps1");
+        File.WriteAllText(source, "param([string]$Groep)\nGet-DistributionGroup $Groep");
+        var imported = ScriptLibrary.Import(m, source);
+        Assert.True(imported.Header.FromBlock);
+        Assert.Equal("Groep", Assert.Single(imported.Header.Variables).Name);
+        Assert.Equal(ScriptConnection.Exchange, imported.Header.Connection);
 
-        ScriptBibliotheek.Verwijder(m, geimporteerd);
-        Assert.False(File.Exists(geimporteerd.Pad));
-        Assert.Equal("Mijn-script.ps1", ScriptBibliotheek.Bestandsnaam("Mijn script"));
-        Assert.Equal("a_b.ps1", ScriptBibliotheek.Bestandsnaam("a/b"));
+        ScriptLibrary.Remove(m, imported);
+        Assert.False(File.Exists(imported.FilePath));
+        Assert.Equal("Mijn-script.ps1", ScriptLibrary.FileName("Mijn script"));
+        Assert.Equal("a_b.ps1", ScriptLibrary.FileName("a/b"));
     }
 
     [Fact]
-    public void IngebouwdZonderKopStaatNietInDeBibliotheek()
+    public void BuiltInWithoutHeaderIsNotInTheLibrary()
     {
-        var m = Mappen;
-        Directory.CreateDirectory(m.Ingebouwd);
-        File.WriteAllText(Path.Combine(m.Ingebouwd, "Oud.ps1"), "param([string]$x)\n'x'");
-        File.WriteAllText(Path.Combine(m.Ingebouwd, "Met.ps1"), MetKop);
-        Assert.Equal("Agenda-export", Assert.Single(ScriptBibliotheek.Laad(m)).Kop.Naam);
+        var m = Folders;
+        Directory.CreateDirectory(m.BuiltIn);
+        File.WriteAllText(Path.Combine(m.BuiltIn, "Oud.ps1"), "param([string]$x)\n'x'");
+        File.WriteAllText(Path.Combine(m.BuiltIn, "Met.ps1"), WithHeader);
+        Assert.Equal("Agenda-export", Assert.Single(ScriptLibrary.Load(m)).Header.Name);
     }
 
-    /// <summary>De ingebouwde bibliotheek in de repo: elke variabele in de kop is een parameter van het script.</summary>
+    /// <summary>The built-in library in the repository: every variable in the header is a parameter of the
+    /// script.</summary>
     [Fact]
-    public void BibliotheekInDeRepoKlopt()
+    public void LibraryInTheRepositoryIsValid()
     {
-        var map = new DirectoryInfo(AppContext.BaseDirectory);
-        while (map is not null && !Directory.Exists(Path.Combine(map.FullName, "scripts")))
+        var folder = new DirectoryInfo(AppContext.BaseDirectory);
+        while (folder is not null && !Directory.Exists(Path.Combine(folder.FullName, "scripts")))
         {
-            map = map.Parent;
+            folder = folder.Parent;
         }
 
-        Assert.NotNull(map);
-        var scripts = Directory.EnumerateFiles(Path.Combine(map!.FullName, "scripts"), "*.ps1", SearchOption.AllDirectories)
-            .Select(p => (Pad: p, Tekst: File.ReadAllText(p)))
-            .Select(x => (x.Pad, Kop: ScriptTekst.Lees(x.Tekst, x.Pad), Parameters: ScriptTekst.LeesParameters(x.Tekst).Select(p => p.Naam).ToHashSet(StringComparer.OrdinalIgnoreCase), x.Tekst))
-            .Where(x => x.Kop.UitBlok)
+        Assert.NotNull(folder);
+        var scripts = Directory.EnumerateFiles(Path.Combine(folder!.FullName, "scripts"), "*.ps1", SearchOption.AllDirectories)
+            .Select(p => (FilePath: p, Text: File.ReadAllText(p)))
+            .Select(x => (x.FilePath, Header: ScriptText.Read(x.Text, x.FilePath), Parameters: ScriptText.ReadParameters(x.Text).Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), x.Text))
+            .Where(x => x.Header.FromBlock)
             .ToList();
 
         Assert.NotEmpty(scripts);
         foreach (var s in scripts)
         {
-            foreach (var v in s.Kop.Variabelen)
+            foreach (var v in s.Header.Variables)
             {
-                Assert.True(s.Parameters.Contains(v.Naam), $"{Path.GetFileName(s.Pad)}: variabele {v.Naam} is geen parameter");
+                Assert.True(s.Parameters.Contains(v.Name), $"{Path.GetFileName(s.FilePath)}: variabele {v.Name} is geen parameter");
             }
 
-            if (s.Kop.Schrijft)
+            if (s.Header.Writes)
             {
-                Assert.Matches(@"SupportsShouldProcess\s*=\s*\$true", s.Tekst);
+                Assert.Matches(@"SupportsShouldProcess\s*=\s*\$true", s.Text);
             }
 
-            // In de app werkt Read-Host niet: enkel in het blok Get-ScriptWaarde of buiten Moss365
-            foreach (var regel in s.Tekst.Split('\n').Where(r => r.Contains("Read-Host") && !r.TrimStart().StartsWith('#')))
+            // Read-Host does not work in the app: only in the Get-ScriptWaarde block or outside Moss365
+            foreach (var rule in s.Text.Split('\n').Where(r => r.Contains("Read-Host") && !r.TrimStart().StartsWith('#')))
             {
-                Assert.True(regel.Contains("$antwoord = Read-Host") || regel.Contains("MossUitvoer") || regel.Contains("-or (Read-Host"),
-                    $"{Path.GetFileName(s.Pad)}: Read-Host zonder uitzondering voor Moss365: {regel.Trim()}");
+                Assert.True(rule.Contains("$antwoord = Read-Host") || rule.Contains("MossUitvoer") || rule.Contains("-or (Read-Host"),
+                    $"{Path.GetFileName(s.FilePath)}: Read-Host zonder uitzondering voor Moss365: {rule.Trim()}");
             }
         }
     }
 
     [Fact]
-    public void LaatsteWaardenZoalsGetScriptWaarde()
+    public void LastValuesLikeGetScriptValue()
     {
-        var m = Mappen;
-        Directory.CreateDirectory(m.Waarden);
+        var m = Folders;
+        Directory.CreateDirectory(m.Values);
 
-        // Zoals het blok in de scripts het schrijft (lijst als JSON-lijst)
-        File.WriteAllText(Path.Combine(m.Waarden, "AddToSignatureGroup.json"), """{ "Groep": "Signature_All", "Gebruikers": ["a@test.be", "b@test.be"] }""");
-        var w = ScriptWaarden.Lees(m, "AddToSignatureGroup");
+        // As the block in the scripts writes it (a list as a JSON list)
+        File.WriteAllText(Path.Combine(m.Values, "AddToSignatureGroup.json"), """{ "Groep": "Signature_All", "Gebruikers": ["a@test.be", "b@test.be"] }""");
+        var w = ScriptValues.Read(m, "AddToSignatureGroup");
         Assert.Equal("Signature_All", w["groep"]);
         Assert.Equal("a@test.be\nb@test.be", w["Gebruikers"]);
 
-        var kop = new ScriptKop { Variabelen = new[] { new ScriptVariabele("Groep"), new ScriptVariabele("Gebruikers", VariabeleSoort.Lijst) } };
-        ScriptWaarden.Bewaar(m, "AddToSignatureGroup", kop, new Dictionary<string, string> { ["Gebruikers"] = "c@test.be, d@test.be" });
-        var json = File.ReadAllText(Path.Combine(m.Waarden, "AddToSignatureGroup.json"));
+        var header = new ScriptHeader { Variables = new[] { new ScriptVariable("Groep"), new ScriptVariable("Gebruikers", VariableKind.Items) } };
+        ScriptValues.Save(m, "AddToSignatureGroup", header, new Dictionary<string, string> { ["Gebruikers"] = "c@test.be, d@test.be" });
+        var json = File.ReadAllText(Path.Combine(m.Values, "AddToSignatureGroup.json"));
         Assert.Contains("\"c@test.be\"", json);
         Assert.Contains("\"Groep\": \"Signature_All\"", json);
-        Assert.Equal("c@test.be\nd@test.be", ScriptWaarden.Lees(m, "AddToSignatureGroup")["Gebruikers"]);
+        Assert.Equal("c@test.be\nd@test.be", ScriptValues.Read(m, "AddToSignatureGroup")["Gebruikers"]);
 
-        File.WriteAllText(Path.Combine(m.Waarden, "kapot.json"), "{kapot");
-        Assert.Empty(ScriptWaarden.Lees(m, "kapot"));
+        File.WriteAllText(Path.Combine(m.Values, "kapot.json"), "{kapot");
+        Assert.Empty(ScriptValues.Read(m, "kapot"));
     }
 
     [Theory]
@@ -256,73 +257,73 @@ public sealed class ScriptsTests : IDisposable
     [InlineData("@dezemaand.tot", "2026-10-31")]
     [InlineData("@gisteren", "2026-10-29")]
     [InlineData("gewoon", "gewoon")]
-    public void RelatieveWaarden(string waarde, string verwacht)
-        => Assert.Equal(verwacht, ScriptWaarden.Los(waarde, new DateTime(2026, 10, 30, 9, 0, 0)));
+    public void RelativeValues(string value, string expected)
+        => Assert.Equal(expected, ScriptValues.Loose(value, new DateTime(2026, 10, 30, 9, 0, 0)));
 
     [Fact]
-    public void WaardenControleren()
+    public void CheckValues()
     {
-        var kop = ScriptTekst.Lees(MetKop, "x.ps1") with
+        var header = ScriptText.Read(WithHeader, "x.ps1") with
         {
-            Variabelen = new[]
+            Variables = new[]
             {
-                new ScriptVariabele("Postvak", VariabeleSoort.Postvak, true, "Welk postvak?"),
-                new ScriptVariabele("Aantal", VariabeleSoort.Getal),
-                new ScriptVariabele("Van", VariabeleSoort.Datum),
-                new ScriptVariabele("Soort", VariabeleSoort.Keuze, Opties: new[] { "CSV", "ICS" }),
+                new ScriptVariable("Postvak", VariableKind.Mailbox, true, "Welk postvak?"),
+                new ScriptVariable("Aantal", VariableKind.Number),
+                new ScriptVariable("Van", VariableKind.Date),
+                new ScriptVariable("Soort", VariableKind.Choice, Options: new[] { "CSV", "ICS" }),
             },
         };
-        var fouten = ScriptWaarden.Controleer(kop, new Dictionary<string, string> { ["Aantal"] = "drie", ["Van"] = "32/13/2026", ["Soort"] = "PDF" });
-        Assert.Equal(4, fouten.Count);
-        Assert.Empty(ScriptWaarden.Controleer(kop, new Dictionary<string, string> { ["Postvak"] = "x@test.be", ["Aantal"] = "3", ["Van"] = "@werkjaar.van", ["Soort"] = "ics" }));
+        var errors = ScriptValues.Check(header, new Dictionary<string, string> { ["Aantal"] = "drie", ["Van"] = "32/13/2026", ["Soort"] = "PDF" });
+        Assert.Equal(4, errors.Count);
+        Assert.Empty(ScriptValues.Check(header, new Dictionary<string, string> { ["Postvak"] = "x@test.be", ["Aantal"] = "3", ["Van"] = "@werkjaar.van", ["Soort"] = "ics" }));
     }
 
     [Fact]
-    public void RunsBewarenLijstenEnOpruimen()
+    public void RunsSaveListAndCleanup()
     {
-        var m = Mappen;
-        var nu = DateTimeOffset.Now;
-        var oud = new ScriptRun { Id = "oud", Sleutel = "A", Naam = "A", Start = nu.AddDays(-91), Resultaat = RunResultaat.Gelukt, Map = ScriptRuns.NieuweMap(m, "A", "oud") };
-        var nieuw = new ScriptRun { Id = "nieuw", Sleutel = "A", Naam = "A", Start = nu.AddDays(-1), Resultaat = RunResultaat.Fout, Map = ScriptRuns.NieuweMap(m, "A", "nieuw") };
-        var ander = new ScriptRun { Id = "x", Sleutel = "B", Naam = "B", Start = nu, Voorbeeld = true, Resultaat = RunResultaat.Gelukt, Map = ScriptRuns.NieuweMap(m, "B", "x") };
-        foreach (var r in new[] { oud, nieuw, ander })
+        var m = Folders;
+        var now = DateTimeOffset.Now;
+        var old = new ScriptRun { Id = "oud", Key = "A", Name = "A", Start = now.AddDays(-91), Result = RunResult.Succeeded, Folder = ScriptRuns.NewFolder(m, "A", "oud") };
+        var newValue = new ScriptRun { Id = "nieuw", Key = "A", Name = "A", Start = now.AddDays(-1), Result = RunResult.Error, Folder = ScriptRuns.NewFolder(m, "A", "nieuw") };
+        var other = new ScriptRun { Id = "x", Key = "B", Name = "B", Start = now, Preview = true, Result = RunResult.Succeeded, Folder = ScriptRuns.NewFolder(m, "B", "x") };
+        foreach (var r in new[] { old, newValue, other })
         {
-            ScriptRuns.Bewaar(r);
+            ScriptRuns.Save(r);
         }
 
-        Assert.True(Directory.Exists(Path.Combine(nieuw.Map, "bestanden")));
-        Assert.Equal(new[] { "x", "nieuw", "oud" }, ScriptRuns.Lijst(m).Select(r => r.Id));
-        Assert.Equal(new[] { "nieuw", "oud" }, ScriptRuns.Lijst(m, "A").Select(r => r.Id));
-        Assert.Equal("voorbeeld: gelukt", ScriptRuns.Lijst(m, "B").Single().ResultaatTekst);
+        Assert.True(Directory.Exists(Path.Combine(newValue.Folder, "bestanden")));
+        Assert.Equal(new[] { "x", "nieuw", "oud" }, ScriptRuns.Items(m).Select(r => r.Id));
+        Assert.Equal(new[] { "nieuw", "oud" }, ScriptRuns.Items(m, "A").Select(r => r.Id));
+        Assert.Equal("voorbeeld: gelukt", ScriptRuns.Items(m, "B").Single().ResultText);
 
-        Assert.Equal(1, ScriptRuns.Opruimen(m, nu));
-        Assert.Equal(new[] { "nieuw" }, ScriptRuns.Lijst(m, "A").Select(r => r.Id));
-        Assert.NotEqual(nieuw.Map, ScriptRuns.NieuweMap(m, "A", "nieuw"));
+        Assert.Equal(1, ScriptRuns.Cleanup(m, now));
+        Assert.Equal(new[] { "nieuw" }, ScriptRuns.Items(m, "A").Select(r => r.Id));
+        Assert.NotEqual(newValue.Folder, ScriptRuns.NewFolder(m, "A", "nieuw"));
     }
 
     [Fact]
-    public void InplannenMetHerhaling()
+    public void ScheduleWithRecurrence()
     {
         var start = new DateTimeOffset(2026, 1, 31, 8, 0, 0, TimeSpan.FromHours(1));
-        GeplandeActie Met(Herhaling h) => GeplandPlannen.Script("Export-Agenda", true, "Agenda-export", new Dictionary<string, string> { ["Van"] = "@werkjaar.van" }, start, h, "beheerder");
+        ScheduledAction With(Recurrence h) => ScheduledPlans.Script("Export-Agenda", true, "Agenda-export", new Dictionary<string, string> { ["Van"] = "@werkjaar.van" }, start, h, "beheerder");
 
-        Assert.Null(Met(Herhaling.Eenmalig).VolgendeKeer(start));
-        Assert.Equal(start.AddDays(1), Met(Herhaling.Dagelijks).VolgendeKeer(start));
-        Assert.Equal(start.AddDays(7), Met(Herhaling.Wekelijks).VolgendeKeer(start));
+        Assert.Null(With(Recurrence.Once).NextTime(start));
+        Assert.Equal(start.AddDays(1), With(Recurrence.Daily).NextTime(start));
+        Assert.Equal(start.AddDays(7), With(Recurrence.Weekly).NextTime(start));
 
-        // 31 januari, maandelijks: 28 februari, 31 maart (niet "de 28ste" voor altijd)
-        var maand = Met(Herhaling.Maandelijks);
-        Assert.Equal(new DateTimeOffset(2026, 2, 28, 8, 0, 0, start.Offset), maand.VolgendeKeer(start));
-        Assert.Equal(new DateTimeOffset(2026, 3, 31, 8, 0, 0, start.Offset), maand.VolgendeKeer(new DateTimeOffset(2026, 3, 1, 0, 0, 0, start.Offset)));
+        // 31 January, monthly: 28 February, 31 March (not "the 28th" forever)
+        var month = With(Recurrence.Monthly);
+        Assert.Equal(new DateTimeOffset(2026, 2, 28, 8, 0, 0, start.Offset), month.NextTime(start));
+        Assert.Equal(new DateTimeOffset(2026, 3, 31, 8, 0, 0, start.Offset), month.NextTime(new DateTimeOffset(2026, 3, 1, 0, 0, 0, start.Offset)));
 
-        // Weken gemist (app niet open): de volgende in de toekomst, niet alle gemiste
-        Assert.Equal(start.AddDays(21), Met(Herhaling.Wekelijks).VolgendeKeer(start.AddDays(15)));
+        // Weeks missed (app not open): the next one in the future, not all the missed ones
+        Assert.Equal(start.AddDays(21), With(Recurrence.Weekly).NextTime(start.AddDays(15)));
 
-        var opslag = new GeplandOpslag(Path.Combine(_map, "gepland.json"));
-        opslag.Voegtoe(maand);
-        var terug = Assert.Single(opslag.Lees());
-        Assert.Equal(GeplandSoort.Script, terug.Soort);
-        Assert.Equal(Herhaling.Maandelijks, terug.Herhaling);
-        Assert.Equal("@werkjaar.van", terug.ScriptWaarden["Van"]);
+        var storage = new ScheduledStorage(Path.Combine(_folder, "gepland.json"));
+        storage.Add(month);
+        var back = Assert.Single(storage.Read());
+        Assert.Equal(ScheduledKind.Script, back.Kind);
+        Assert.Equal(Recurrence.Monthly, back.Recurrence);
+        Assert.Equal("@werkjaar.van", back.ScriptValues["Van"]);
     }
 }

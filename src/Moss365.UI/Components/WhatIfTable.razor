@@ -1,0 +1,20 @@
+@* The policies of a "what if", with whether they apply and why *@
+
+<table class="kb-tabel">
+    <thead><tr><th>Beleid</th><th>Geldt</th><th>Waarom</th><th>Gevolg</th></tr></thead>
+    <tbody>
+        @foreach (var r in Rules.OrderBy(r => r.Answer.Applies).ThenBy(r => r.Policy.Name))
+        {
+            <tr class="@(r.Answer.Applies == CaApplies.No ? "kb-zacht" : null)">
+                <td><a href="@($"conditional-access/{Uri.EscapeDataString(r.Policy.Id)}")">@r.Policy.Name</a></td>
+                <td><CaLabel Applies="r.Answer.Applies" /></td>
+                <td>@r.Answer.Reason</td>
+                <td>@r.Consequence</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<CaWhatIfRow> Rules { get; set; } = Array.Empty<CaWhatIfRow>();
+}

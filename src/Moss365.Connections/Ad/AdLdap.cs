@@ -1,96 +1,96 @@
 using System.DirectoryServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using Moss365.Core.Inventaris;
-using Moss365.Core.Wijzigingen;
+using Moss365.Core.Inventory;
+using Moss365.Core.Changes;
 
 namespace Moss365.Connections.Ad;
 
 /// <summary>
-/// Leest en schrijft on-prem AD via LDAP (System.DirectoryServices). Werkt ook op een pc buiten het domein met een
-/// expliciete domeincontroller en een AD-account. Verkeer is ondertekend en versleuteld (Kerberos/NTLM sealing).
+/// Reads and writes on-premises AD via LDAP (System.DirectoryServices). Also works on a PC outside the domain with an
+/// explicit domain controller and an AD account. Traffic is signed and encrypted (Kerberos/NTLM sealing).
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed class AdLdap : IAdVerbinding, IUitvoerder
+public sealed class AdLdap : IAdConnection, IExecutor
 {
-    private const AuthenticationTypes Beveiligd = AuthenticationTypes.Secure | AuthenticationTypes.Signing | AuthenticationTypes.Sealing;
+    private const AuthenticationTypes Secured = AuthenticationTypes.Secure | AuthenticationTypes.Signing | AuthenticationTypes.Sealing;
 
-    // HRESULT van "het kenmerk of de waarde bestaat al" (lid van een groep die het al is)
-    private const int AlAanwezig = unchecked((int)0x80071392);
+    // HRESULT of "the attribute or value already exists" (member of a group it already is a member of)
+    private const int AlreadyPresent = unchecked((int)0x80071392);
 
     private readonly string _server;
-    private readonly string? _gebruiker;
-    private readonly string? _wachtwoord;
+    private readonly string? _user;
+    private readonly string? _password;
 
-    public AdLdap(string server, string? gebruiker, string? wachtwoord)
+    public AdLdap(string server, string? user, string? password)
     {
         _server = server;
-        _gebruiker = string.IsNullOrWhiteSpace(gebruiker) ? null : gebruiker.Trim();
-        _wachtwoord = _gebruiker is null ? null : wachtwoord;
+        _user = string.IsNullOrWhiteSpace(user) ? null : user.Trim();
+        _password = _user is null ? null : password;
     }
 
-    public Systeem Systeem => Systeem.ActiveDirectory;
+    public TargetSystem TargetSystem => TargetSystem.ActiveDirectory;
 
-    private DirectoryEntry Item(string dn) => new(AdLdapMapper.LdapPad(_server, dn), _gebruiker, _wachtwoord, Beveiligd);
+    private DirectoryEntry Item(string dn) => new(AdLdapMapper.LdapPath(_server, dn), _user, _password, Secured);
 
-    public string LeesDomeinDn()
+    public string ReadDomainDn()
     {
         using var root = Item("RootDSE");
         return root.Properties["defaultNamingContext"].Value?.ToString()
                ?? throw new InvalidOperationException("De domeincontroller gaf geen domein terug.");
     }
 
-    public Task<AdGegevens> LeesAsync(IProgress<string>? voortgang, CancellationToken annuleren) => LeesAsync(null, voortgang, annuleren);
+    public Task<AdData> ReadAsync(IProgress<string>? progress, CancellationToken cancel) => ReadAsync(null, progress, cancel);
 
-    private const string GebruikerFilter = "(&(objectCategory=person)(objectClass=user))";
-    private const string GroepFilter = "(objectClass=group)";
+    private const string UserFilter = "(&(objectCategory=person)(objectClass=user))";
+    private const string GroupFilter = "(objectClass=group)";
 
-    public Task<AdGegevens> LeesAsync(AdBasis? vorige, IProgress<string>? voortgang, CancellationToken annuleren) => Task.Run(() =>
+    public Task<AdData> ReadAsync(AdBase? previous, IProgress<string>? progress, CancellationToken cancel) => Task.Run(() =>
     {
-        voortgang?.Report("AD: verbinden met " + _server + "...");
-        var domeinDn = LeesDomeinDn();
+        progress?.Report("AD: verbinden met " + _server + "...");
+        var domainDn = ReadDomainDn();
 
-        // De stand vóór het lezen: wat tijdens het lezen verandert, komt de volgende keer opnieuw mee
-        var stand = LeesStand();
-        using var basis = Item(domeinDn);
+        // The state before reading: what changes during the read comes along again the next time
+        var snapshot = ReadSnapshot();
+        using var baseline = Item(domainDn);
 
-        if (vorige is not null && stand is not null && AdLdapMapper.KanVerderVan(vorige.Stand, stand))
+        if (previous is not null && snapshot is not null && AdLdapMapper.CanContinueFrom(previous.Snapshot, snapshot))
         {
-            var vanaf = $"(uSNChanged>={vorige.Stand.HoogsteUsn + 1})";
-            voortgang?.Report("AD: enkel de wijzigingen sinds de vorige lezing...");
-            var gewijzigdeGebruikers = Zoek(basis, $"(&{GebruikerFilter}{vanaf})", AdLdapMapper.GebruikerKenmerken, annuleren)
-                .Select(AdLdapMapper.NaarGebruiker).ToList();
-            var gewijzigdeGroepen = Zoek(basis, $"(&{GroepFilter}{vanaf})", AdLdapMapper.GroepKenmerken, annuleren)
-                .Select(AdLdapMapper.NaarGroep).ToList();
+            var since = $"(uSNChanged>={previous.Snapshot.HighestUsn + 1})";
+            progress?.Report("AD: enkel de wijzigingen sinds de vorige lezing...");
+            var changedUsers = Find(baseline, $"(&{UserFilter}{since})", AdLdapMapper.UserAttributes, cancel)
+                .Select(AdLdapMapper.ToUser).ToList();
+            var changedGroups = Find(baseline, $"(&{GroupFilter}{since})", AdLdapMapper.GroupAttributes, cancel)
+                .Select(AdLdapMapper.ToGroup).ToList();
 
-            // Alle namen (licht): wat ontbreekt is verwijderd, een andere DN is verplaatst
-            var alleGebruikers = Namen(basis, GebruikerFilter, annuleren);
-            var alleGroepen = Namen(basis, GroepFilter, annuleren);
-            var (g, gr) = AdDelta.Toepassen(vorige, gewijzigdeGebruikers, gewijzigdeGroepen, alleGebruikers, alleGroepen);
-            voortgang?.Report($"AD: {gewijzigdeGebruikers.Count} gewijzigde gebruikers en {gewijzigdeGroepen.Count} gewijzigde groepen bijgewerkt ({g.Count} en {gr.Count} in totaal).");
-            return new AdGegevens(g, gr, domeinDn, stand, Snel: true);
+            // All names (light): what is missing is deleted, another DN is moved
+            var allUsers = Names(baseline, UserFilter, cancel);
+            var allGroups = Names(baseline, GroupFilter, cancel);
+            var (g, gr) = AdDelta.Apply(previous, changedUsers, changedGroups, allUsers, allGroups);
+            progress?.Report($"AD: {changedUsers.Count} gewijzigde gebruikers en {changedGroups.Count} gewijzigde groepen bijgewerkt ({g.Count} en {gr.Count} in totaal).");
+            return new AdData(g, gr, domainDn, snapshot, Quick: true);
         }
 
-        voortgang?.Report("AD: gebruikers lezen...");
-        var gebruikers = Zoek(basis, GebruikerFilter, AdLdapMapper.GebruikerKenmerken, annuleren)
-            .Select(AdLdapMapper.NaarGebruiker).ToList();
+        progress?.Report("AD: gebruikers lezen...");
+        var users = Find(baseline, UserFilter, AdLdapMapper.UserAttributes, cancel)
+            .Select(AdLdapMapper.ToUser).ToList();
 
-        voortgang?.Report("AD: groepen lezen...");
-        var groepen = Zoek(basis, GroepFilter, AdLdapMapper.GroepKenmerken, annuleren)
-            .Select(AdLdapMapper.NaarGroep).ToList();
+        progress?.Report("AD: groepen lezen...");
+        var groups = Find(baseline, GroupFilter, AdLdapMapper.GroupAttributes, cancel)
+            .Select(AdLdapMapper.ToGroup).ToList();
 
-        voortgang?.Report($"AD: {gebruikers.Count} gebruikers en {groepen.Count} groepen gelezen.");
-        return new AdGegevens(gebruikers, groepen, domeinDn, stand);
-    }, annuleren);
+        progress?.Report($"AD: {users.Count} gebruikers en {groups.Count} groepen gelezen.");
+        return new AdData(users, groups, domainDn, snapshot);
+    }, cancel);
 
-    /// <summary>Welke domeincontroller antwoordt en tot waar hij bijgewerkt is; null als dat niet te lezen valt.</summary>
-    private AdStand? LeesStand()
+    /// <summary>Which domain controller answers and up to where it is updated; null when that cannot be read.</summary>
+    private AdSnapshot? ReadSnapshot()
     {
         try
         {
             using var root = Item("RootDSE");
             root.RefreshCache(new[] { "dsServiceName", "highestCommittedUSN" });
-            return AdLdapMapper.NaarStand(root.Properties["dsServiceName"].Value, root.Properties["highestCommittedUSN"].Value);
+            return AdLdapMapper.ToSnapshot(root.Properties["dsServiceName"].Value, root.Properties["highestCommittedUSN"].Value);
         }
         catch (Exception)
         {
@@ -98,231 +98,231 @@ public sealed class AdLdap : IAdVerbinding, IUitvoerder
         }
     }
 
-    private static Dictionary<string, string> Namen(DirectoryEntry basis, string filter, CancellationToken annuleren)
-        => Zoek(basis, filter, new[] { "sAMAccountName", "distinguishedName" }, annuleren)
-            .Select(AdLdapMapper.NaarGebruiker)
+    private static Dictionary<string, string> Names(DirectoryEntry baseline, string filter, CancellationToken cancel)
+        => Find(baseline, filter, new[] { "sAMAccountName", "distinguishedName" }, cancel)
+            .Select(AdLdapMapper.ToUser)
             .Select(u => (Sam: u.SamAccountName, Dn: u.DistinguishedName))
             .Where(x => x.Sam.Length > 0)
             .GroupBy(x => x.Sam, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Dn, StringComparer.OrdinalIgnoreCase);
 
-    public Task<AdGebruiker?> LeesGebruikerAsync(string samAccountName, CancellationToken annuleren) => Task.Run(() =>
+    public Task<AdUser?> ReadUserAsync(string samAccountName, CancellationToken cancel) => Task.Run(() =>
     {
-        using var basis = Item(LeesDomeinDn());
-        var filter = $"(&(objectCategory=person)(objectClass=user)(sAMAccountName={AdLdapMapper.Filterwaarde(samAccountName)}))";
-        return Zoek(basis, filter, AdLdapMapper.GebruikerKenmerken, annuleren).Select(AdLdapMapper.NaarGebruiker).FirstOrDefault();
-    }, annuleren);
+        using var baseline = Item(ReadDomainDn());
+        var filter = $"(&(objectCategory=person)(objectClass=user)(sAMAccountName={AdLdapMapper.FilterValue(samAccountName)}))";
+        return Find(baseline, filter, AdLdapMapper.UserAttributes, cancel).Select(AdLdapMapper.ToUser).FirstOrDefault();
+    }, cancel);
 
-    public Task<AdGroep?> LeesGroepAsync(string samAccountName, CancellationToken annuleren) => Task.Run(() =>
+    public Task<AdGroup?> ReadGroupAsync(string samAccountName, CancellationToken cancel) => Task.Run(() =>
     {
-        using var basis = Item(LeesDomeinDn());
-        var filter = $"(&(objectClass=group)(sAMAccountName={AdLdapMapper.Filterwaarde(samAccountName)}))";
-        return Zoek(basis, filter, AdLdapMapper.GroepKenmerken, annuleren).Select(AdLdapMapper.NaarGroep).FirstOrDefault();
-    }, annuleren);
+        using var baseline = Item(ReadDomainDn());
+        var filter = $"(&(objectClass=group)(sAMAccountName={AdLdapMapper.FilterValue(samAccountName)}))";
+        return Find(baseline, filter, AdLdapMapper.GroupAttributes, cancel).Select(AdLdapMapper.ToGroup).FirstOrDefault();
+    }, cancel);
 
-    private static IEnumerable<IReadOnlyDictionary<string, object?[]>> Zoek(DirectoryEntry basis, string filter, string[] kenmerken, CancellationToken annuleren)
+    private static IEnumerable<IReadOnlyDictionary<string, object?[]>> Find(DirectoryEntry baseline, string filter, string[] attributes, CancellationToken cancel)
     {
-        using var zoeker = new DirectorySearcher(basis, filter, kenmerken, SearchScope.Subtree) { PageSize = 500 };
-        using var resultaten = zoeker.FindAll();
-        var uit = new List<IReadOnlyDictionary<string, object?[]>>();
-        foreach (SearchResult r in resultaten)
+        using var searcher = new DirectorySearcher(baseline, filter, attributes, SearchScope.Subtree) { PageSize = 500 };
+        using var results = searcher.FindAll();
+        var output = new List<IReadOnlyDictionary<string, object?[]>>();
+        foreach (SearchResult r in results)
         {
-            annuleren.ThrowIfCancellationRequested();
+            cancel.ThrowIfCancellationRequested();
             var k = new Dictionary<string, object?[]>(StringComparer.OrdinalIgnoreCase);
-            foreach (string naam in r.Properties.PropertyNames)
+            foreach (string name in r.Properties.PropertyNames)
             {
-                var waarden = r.Properties[naam];
-                var lijst = new object?[waarden.Count];
-                waarden.CopyTo(lijst, 0);
-                k[naam] = lijst;
+                var values = r.Properties[name];
+                var list = new object?[values.Count];
+                values.CopyTo(list, 0);
+                k[name] = list;
             }
 
-            uit.Add(k);
+            output.Add(k);
         }
 
-        return uit;
+        return output;
     }
 
-    public Task<IReadOnlyList<WijzigingResultaat>> VoerUitAsync(IReadOnlyList<Wijziging> wijzigingen, CancellationToken annuleren)
-        => Task.Run<IReadOnlyList<WijzigingResultaat>>(() => wijzigingen.Select(w => Voer(w, annuleren)).ToList(), annuleren);
+    public Task<IReadOnlyList<ChangeResult>> ExecuteAsync(IReadOnlyList<Change> changes, CancellationToken cancel)
+        => Task.Run<IReadOnlyList<ChangeResult>>(() => changes.Select(w => Run(w, cancel)).ToList(), cancel);
 
-    private WijzigingResultaat Voer(Wijziging w, CancellationToken annuleren)
+    private ChangeResult Run(Change w, CancellationToken cancel)
     {
-        if (annuleren.IsCancellationRequested)
+        if (cancel.IsCancellationRequested)
         {
-            return WijzigingResultaat.Overslaan(w, "Geannuleerd.");
+            return ChangeResult.Skip(w, "Geannuleerd.");
         }
 
         try
         {
-            switch (w.Actie)
+            switch (w.ChangeAction)
             {
-                case Actie.AdGroepLidToevoegen:
+                case ChangeAction.AdAddGroupMember:
                 {
-                    using var groep = Item(w.P("groepDn"));
-                    groep.Properties["member"].Add(w.Doel);
-                    groep.CommitChanges();
-                    return WijzigingResultaat.Ok(w);
+                    using var groupValue = Item(w.P("groepDn"));
+                    groupValue.Properties["member"].Add(w.Target);
+                    groupValue.CommitChanges();
+                    return ChangeResult.Ok(w);
                 }
 
-                case Actie.AdGroepLidVerwijderen:
+                case ChangeAction.AdRemoveGroupMember:
                 {
-                    using var groep = Item(w.P("groepDn"));
-                    groep.Properties["member"].Remove(w.Doel);
-                    groep.CommitChanges();
-                    return WijzigingResultaat.Ok(w);
+                    using var groupValue = Item(w.P("groepDn"));
+                    groupValue.Properties["member"].Remove(w.Target);
+                    groupValue.CommitChanges();
+                    return ChangeResult.Ok(w);
                 }
 
-                case Actie.AdKenmerkenZetten:
+                case ChangeAction.AdSetAttributes:
                 {
-                    using var item = Item(w.Doel);
-                    foreach (var (naam, waarde) in w.Parameters)
+                    using var item = Item(w.Target);
+                    foreach (var (name, value) in w.Parameters)
                     {
-                        if (string.IsNullOrEmpty(waarde))
+                        if (string.IsNullOrEmpty(value))
                         {
-                            item.Properties[naam].Clear();
+                            item.Properties[name].Clear();
                         }
                         else
                         {
-                            item.Properties[naam].Value = waarde;
+                            item.Properties[name].Value = value;
                         }
                     }
 
                     item.CommitChanges();
-                    return WijzigingResultaat.Ok(w);
+                    return ChangeResult.Ok(w);
                 }
 
-                case Actie.AdGebruikerAanmaken:
-                    return Aanmaken(w);
+                case ChangeAction.AdCreateUser:
+                    return Create(w);
 
-                case Actie.AdGroepAanmaken:
+                case ChangeAction.AdCreateGroup:
                 {
                     using var ou = Item(w.P("ou"));
-                    using var groep = ou.Children.Add("CN=" + Core.Wijzigingen.PlanBouwer.EscapeCn(w.P("cn")), "group");
-                    foreach (var (naam, waarde) in w.Parameters)
+                    using var groupValue = ou.Children.Add("CN=" + Core.Changes.PlanBuilder.EscapeCn(w.P("cn")), "group");
+                    foreach (var (name, value) in w.Parameters)
                     {
-                        if (naam is "ou" or "cn" || string.IsNullOrWhiteSpace(waarde))
+                        if (name is "ou" or "cn" || string.IsNullOrWhiteSpace(value))
                         {
                             continue;
                         }
 
-                        groep.Properties[naam].Value = naam == "groupType" ? int.Parse(waarde, System.Globalization.CultureInfo.InvariantCulture) : waarde;
+                        groupValue.Properties[name].Value = name == "groupType" ? int.Parse(value, System.Globalization.CultureInfo.InvariantCulture) : value;
                     }
 
-                    groep.CommitChanges();
-                    return WijzigingResultaat.Ok(w, "Aangemaakt.");
+                    groupValue.CommitChanges();
+                    return ChangeResult.Ok(w, "Aangemaakt.");
                 }
 
-                case Actie.AdAccountUitschakelen:
+                case ChangeAction.AdDisableAccount:
                 {
-                    using var item = Item(w.Doel);
+                    using var item = Item(w.Target);
                     var uac = Convert.ToInt32(item.Properties["userAccountControl"].Value);
-                    item.Properties["userAccountControl"].Value = uac | AdLdapMapper.UacUitgeschakeld;
+                    item.Properties["userAccountControl"].Value = uac | AdLdapMapper.UacDisabled;
                     item.CommitChanges();
-                    return WijzigingResultaat.Ok(w);
+                    return ChangeResult.Ok(w);
                 }
 
-                case Actie.AdAccountInschakelen:
+                case ChangeAction.AdEnableAccount:
                 {
-                    using var item = Item(w.Doel);
+                    using var item = Item(w.Target);
                     var uac = Convert.ToInt32(item.Properties["userAccountControl"].Value);
-                    item.Properties["userAccountControl"].Value = uac & ~AdLdapMapper.UacUitgeschakeld;
+                    item.Properties["userAccountControl"].Value = uac & ~AdLdapMapper.UacDisabled;
                     item.CommitChanges();
-                    return WijzigingResultaat.Ok(w);
+                    return ChangeResult.Ok(w);
                 }
 
-                case Actie.AdAccountOntgrendelen:
+                case ChangeAction.AdUnlockAccount:
                 {
-                    using var item = Item(w.Doel);
+                    using var item = Item(w.Target);
                     item.Properties["lockoutTime"].Value = 0;
                     item.CommitChanges();
-                    return WijzigingResultaat.Ok(w);
+                    return ChangeResult.Ok(w);
                 }
 
-                case Actie.AdWachtwoordInstellen:
-                    return WachtwoordInstellen(w);
+                case ChangeAction.AdSetPassword:
+                    return ConfigurePassword(w);
 
-                case Actie.AdVerplaatsen:
+                case ChangeAction.AdMove:
                 {
-                    using var item = Item(w.Doel);
-                    using var doel = Item(w.P("doelOu"));
-                    item.MoveTo(doel);
-                    return WijzigingResultaat.Ok(w);
+                    using var item = Item(w.Target);
+                    using var target = Item(w.P("doelOu"));
+                    item.MoveTo(target);
+                    return ChangeResult.Ok(w);
                 }
 
                 default:
-                    return WijzigingResultaat.Fout(w, $"Actie {w.Actie} hoort niet bij AD.");
+                    return ChangeResult.Error(w, $"Actie {w.ChangeAction} hoort niet bij AD.");
             }
         }
-        catch (COMException ex) when (ex.HResult == AlAanwezig && w.Actie == Actie.AdGroepLidToevoegen)
+        catch (COMException ex) when (ex.HResult == AlreadyPresent && w.ChangeAction == ChangeAction.AdAddGroupMember)
         {
-            return WijzigingResultaat.Ok(w, "Was al lid.");
+            return ChangeResult.Ok(w, "Was al lid.");
         }
         catch (Exception ex)
         {
-            return WijzigingResultaat.Fout(w, ex.Message.Trim());
+            return ChangeResult.Error(w, ex.Message.Trim());
         }
     }
 
-    /// <summary>Nieuw wachtwoord (uit Geheim, nooit gelogd); eventueel wijzigen bij de volgende aanmelding.</summary>
-    private WijzigingResultaat WachtwoordInstellen(Wijziging w)
+    /// <summary>New password (from Secret, never logged); optionally change at the next sign-in.</summary>
+    private ChangeResult ConfigurePassword(Change w)
     {
-        if (string.IsNullOrEmpty(w.Geheim))
+        if (string.IsNullOrEmpty(w.Secret))
         {
-            return WijzigingResultaat.Fout(w, "Geen wachtwoord meegegeven (het leeft enkel in het geheugen; maak het plan opnieuw).");
+            return ChangeResult.Error(w, "Geen wachtwoord meegegeven (het leeft enkel in het geheugen; maak het plan opnieuw).");
         }
 
-        using var item = Item(w.Doel);
+        using var item = Item(w.Target);
         try
         {
-            item.Invoke("SetPassword", w.Geheim);
+            item.Invoke("SetPassword", w.Secret);
         }
         catch (System.Reflection.TargetInvocationException ex) when (ex.InnerException is not null)
         {
-            // Bv. het wachtwoord voldoet niet aan het wachtwoordbeleid van het domein
-            return WijzigingResultaat.Fout(w, ex.InnerException.Message.Trim());
+            // E.g. the password does not meet the password policy of the domain
+            return ChangeResult.Error(w, ex.InnerException.Message.Trim());
         }
 
-        var wijzigen = string.Equals(w.P("wijzigenBijAanmelding"), "True", StringComparison.OrdinalIgnoreCase);
-        item.Properties["pwdLastSet"].Value = wijzigen ? 0 : -1;
+        var change = string.Equals(w.P("wijzigenBijAanmelding"), "True", StringComparison.OrdinalIgnoreCase);
+        item.Properties["pwdLastSet"].Value = change ? 0 : -1;
         item.CommitChanges();
-        return WijzigingResultaat.Ok(w, wijzigen ? "Ingesteld; wijzigen bij de volgende aanmelding." : "Ingesteld.");
+        return ChangeResult.Ok(w, change ? "Ingesteld; wijzigen bij de volgende aanmelding." : "Ingesteld.");
     }
 
-    private WijzigingResultaat Aanmaken(Wijziging w)
+    private ChangeResult Create(Change w)
     {
-        if (string.IsNullOrEmpty(w.Geheim))
+        if (string.IsNullOrEmpty(w.Secret))
         {
-            return WijzigingResultaat.Fout(w, "Geen startwachtwoord: het account is niet aangemaakt.");
+            return ChangeResult.Error(w, "Geen startwachtwoord: het account is niet aangemaakt.");
         }
 
         using var ou = Item(w.P("ou"));
-        using var gebruiker = ou.Children.Add("CN=" + Core.Wijzigingen.PlanBouwer.EscapeCn(w.P("cn")), "user");
-        foreach (var (naam, waarde) in w.Parameters)
+        using var user = ou.Children.Add("CN=" + Core.Changes.PlanBuilder.EscapeCn(w.P("cn")), "user");
+        foreach (var (name, value) in w.Parameters)
         {
-            if (naam is "ou" or "cn" || string.IsNullOrWhiteSpace(waarde))
+            if (name is "ou" or "cn" || string.IsNullOrWhiteSpace(value))
             {
                 continue;
             }
 
-            gebruiker.Properties[naam].Value = waarde;
+            user.Properties[name].Value = value;
         }
 
-        gebruiker.CommitChanges();
+        user.CommitChanges();
 
         try
         {
-            gebruiker.Invoke("SetPassword", w.Geheim);
-            gebruiker.Properties["userAccountControl"].Value = AdLdapMapper.UacNormaalAccount;
-            gebruiker.Properties["pwdLastSet"].Value = 0; // wachtwoord wijzigen bij de eerste aanmelding
-            gebruiker.CommitChanges();
+            user.Invoke("SetPassword", w.Secret);
+            user.Properties["userAccountControl"].Value = AdLdapMapper.UacNormalAccount;
+            user.Properties["pwdLastSet"].Value = 0; // change the password at the first sign-in
+            user.CommitChanges();
         }
         catch (Exception ex)
         {
-            var reden = ex.InnerException?.Message ?? ex.Message;
-            return WijzigingResultaat.Fout(w, $"Account aangemaakt maar nog uitgeschakeld: wachtwoord instellen mislukt ({reden.Trim()}).");
+            var reason = ex.InnerException?.Message ?? ex.Message;
+            return ChangeResult.Error(w, $"Account aangemaakt maar nog uitgeschakeld: wachtwoord instellen mislukt ({reason.Trim()}).");
         }
 
-        return WijzigingResultaat.Ok(w, "Aangemaakt en ingeschakeld.");
+        return ChangeResult.Ok(w, "Aangemaakt en ingeschakeld.");
     }
 }

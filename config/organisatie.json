@@ -1,136 +1,136 @@
 {
-  "_uitleg": "Sample organisation (made up). Replace these values in the Organisation screen; from R9 a wizard suggests them from your own data.",
+  "_explanation": "Sample organisation (made up). Replace these values in the Organisation screen; from R9 a wizard suggests them from your own data.",
   "company": "Contoso",
-  "adDomein": "CONTOSO.LOCAL",
-  "gesynchroniseerdeOus": [
+  "adDomain": "CONTOSO.LOCAL",
+  "synchronisedOus": [
     "CONTOSO/USERS",
     "CONTOSO/EXTERNAL"
   ],
-  "populaties": [
+  "populations": [
     {
-      "naam": "Staff",
+      "name": "Staff",
       "ou": "CONTOSO/USERS",
-      "upnDomein": "contoso.com",
-      "standaardAdGroepen": [
+      "upnDomain": "contoso.com",
+      "defaultAdGroups": [
         "GG_WiFi_Internal"
       ]
     },
     {
-      "naam": "Volunteer",
+      "name": "Volunteer",
       "ou": "CONTOSO/EXTERNAL",
-      "upnDomein": "contoso.com",
+      "upnDomain": "contoso.com",
       "city": "intranet",
-      "geenLicentie": true,
-      "standaardAdGroepen": []
+      "noLicence": true,
+      "defaultAdGroups": []
     }
   ],
-  "afdelingen": [
+  "divisions": [
     {
-      "naam": "Finance",
-      "groep": "DIV_Finance"
+      "name": "Finance",
+      "group": "DIV_Finance"
     },
     {
-      "naam": "IT",
-      "groep": "DIV_IT"
+      "name": "IT",
+      "group": "DIV_IT"
     },
     {
-      "naam": "Operations",
-      "groep": "DIV_Operations"
+      "name": "Operations",
+      "group": "DIV_Operations"
     },
     {
-      "naam": "Social services",
-      "groep": "DIV_Social_Services"
+      "name": "Social services",
+      "group": "DIV_Social_Services"
     }
   ],
-  "diensten": [
+  "departments": [
     {
       "department": "accounting",
-      "afdeling": "Finance"
+      "division": "Finance"
     },
     {
       "department": "procurement",
-      "afdeling": "Finance"
+      "division": "Finance"
     },
     {
       "department": "helpdesk",
-      "afdeling": "IT",
-      "logonscript": "logon.bat"
+      "division": "IT",
+      "logonScript": "logon.bat"
     },
     {
       "department": "infrastructure",
-      "afdeling": "IT",
-      "logonscript": "logon.bat"
+      "division": "IT",
+      "logonScript": "logon.bat"
     },
     {
       "department": "facilities",
-      "afdeling": "Operations"
+      "division": "Operations"
     },
     {
       "department": "library",
-      "afdeling": "Operations",
-      "logonscript": "library.bat"
+      "division": "Operations",
+      "logonScript": "library.bat"
     },
     {
       "department": "youth",
-      "afdeling": "Social services"
+      "division": "Social services"
     },
     {
       "department": "home care",
-      "afdeling": "Social services"
+      "division": "Social services"
     }
   ],
-  "kantoren": [
+  "offices": [
     "head office",
     "library",
     "depot",
     "community centre"
   ],
-  "dynamischeRegels": [
+  "dynamicRules": [
     {
-      "groep": "SG-All-Staff",
-      "regel": "mail ends with contoso.com"
+      "group": "SG-All-Staff",
+      "rule": "mail ends with contoso.com"
     },
     {
-      "groep": "SG-HomeCare-Phones",
-      "regel": "department == home care"
+      "group": "SG-HomeCare-Phones",
+      "rule": "department == home care"
     }
   ],
-  "vrijwilligers": {
+  "volunteers": {
     "ou": "CONTOSO/EXTERNAL",
-    "upnDomein": "contoso.com",
+    "upnDomain": "contoso.com",
     "city": "intranet"
   },
-  "uitstroom": {
+  "offboarding": {
     "ou": "CONTOSO/DISABLED",
-    "verwijderen": false
+    "delete": false
   },
-  "gedeeldePostvakken": {
-    "groep": "SG-SM-<naam>-Full",
-    "rechten": [
+  "sharedMailboxes": {
+    "group": "SG-SM-<naam>-Full",
+    "permissions": [
       "FullAccess",
       "SendAs"
     ]
   },
-  "logonscripts": [
+  "logonScripts": [
     "logon.bat",
     "library.bat"
   ],
-  "licenties": [
+  "licences": [
     {
       "sku": "SPB",
-      "naam": "Microsoft 365 Business Premium (office)"
+      "name": "Microsoft 365 Business Premium (office)"
     },
     {
       "sku": "DESKLESSPACK",
-      "naam": "Office 365 F3 (frontline)"
+      "name": "Office 365 F3 (frontline)"
     },
     {
       "sku": "O365_BUSINESS_ESSENTIALS",
-      "naam": "Microsoft 365 Business Basic"
+      "name": "Microsoft 365 Business Basic"
     }
   ],
   "rooms": {
-    "standaard": {
+    "default": {
       "automateProcessing": "AutoAccept",
       "bookingWindowInDays": 180,
       "maximumDurationInMinutes": 1440,
@@ -138,8 +138,8 @@
       "allowRecurringMeetings": true,
       "addOrganizerToSubject": true,
       "deleteSubject": false,
-      "agendaRechtStandaard": "Reviewer"
+      "calendarPermissionDefault": "Reviewer"
     }
   },
-  "noodaccounts": []
+  "emergencyAccounts": []
 }

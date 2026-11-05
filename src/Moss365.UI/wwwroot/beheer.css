@@ -146,9 +146,9 @@ h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
 
 tr.kb-verschil td { background: var(--kb-verschil); }
 tr.kb-ontbreekt td { background: var(--kb-ontbreekt); }
-tr.kb-status-toevoegen td:nth-child(3) { font-weight: 600; color: var(--kb-accent); }
-tr.kb-status-nietkopieren td:nth-child(3) { color: var(--kb-rood); }
-tr.kb-status-automatisch td, tr.kb-status-reedslid td { color: var(--kb-zacht); }
+tr.kb-status-add td:nth-child(3) { font-weight: 600; color: var(--kb-accent); }
+tr.kb-status-donotcopy td:nth-child(3) { color: var(--kb-rood); }
+tr.kb-status-automatic td, tr.kb-status-alreadymember td { color: var(--kb-zacht); }
 
 .kb-filters, .kb-rij { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0.6rem 0; }
 .kb-rij label { min-width: 140px; color: var(--kb-zacht); }
@@ -255,8 +255,8 @@ tr.kb-uit td { color: var(--kb-zacht); text-decoration: line-through; }
 /* Objecten als link, met hun soort */
 a.kb-obj { text-decoration: none; border-bottom: 1px dotted currentColor; }
 a.kb-obj:hover { border-bottom-style: solid; }
-a.kb-obj-groep { color: var(--kb-merkkleur); }
-a.kb-obj-postvak, a.kb-obj-room { color: var(--kb-accent); }
+a.kb-obj-group { color: var(--kb-merkkleur); }
+a.kb-obj-mailbox, a.kb-obj-room { color: var(--kb-accent); }
 .kb-obj-los { color: var(--kb-zacht); }
 .kb-soort { font-size: 0.78em; color: var(--kb-zacht); border: 1px solid var(--kb-lijn); border-radius: 999px; padding: 0 0.45rem; margin-left: 0.3rem; white-space: nowrap; }
 .kb-lijst-plat { list-style: none; padding: 0; margin: 0.5rem 0; display: flex; flex-direction: column; gap: 0.35rem; }
@@ -300,15 +300,15 @@ textarea.kb-invoer { font: inherit; resize: vertical; }
 .kb-stap { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline; }
 .kb-stap-teken { width: 1.2rem; text-align: center; font-weight: 700; }
 .kb-stap-naam { font-weight: 600; min-width: 16rem; }
-.kb-stap-bezig .kb-stap-teken { color: var(--kb-paars); display: inline-block; animation: kb-draai 1.2s linear infinite; }
-.kb-stap-klaar .kb-stap-teken { color: var(--kb-accent); }
-.kb-stap-fout .kb-stap-teken, .kb-stap-fout .kb-stap-melding { color: var(--kb-rood); }
-.kb-stap-wacht { color: var(--kb-zacht); }
+.kb-stap-busy .kb-stap-teken { color: var(--kb-paars); display: inline-block; animation: kb-draai 1.2s linear infinite; }
+.kb-stap-done .kb-stap-teken { color: var(--kb-accent); }
+.kb-stap-error .kb-stap-teken, .kb-stap-error .kb-stap-melding { color: var(--kb-rood); }
+.kb-stap-wait { color: var(--kb-zacht); }
 .kb-stap-melding { font-size: 0.9em; color: var(--kb-zacht); }
 .kb-log-fout { color: var(--kb-rood); }
 details summary { cursor: pointer; color: var(--kb-zacht); margin: 0.4rem 0; }
 @keyframes kb-draai { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .kb-stap-bezig .kb-stap-teken { animation: none; } .kb-balk-vulling { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .kb-stap-busy .kb-stap-teken { animation: none; } .kb-balk-vulling { transition: none; } }
 
 /* Status van een object */
 .kb-objectstatus { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; font-size: 0.9em; color: var(--kb-zacht); margin: 0 0 0.6rem; }
@@ -353,12 +353,12 @@ a.kb-tegel:hover { border-color: var(--kb-accent); }
 .kb-staaf-getal .kb-status-let { margin-left: 0.4rem; }
 
 /* Controle van deze pc */
-.kb-controle-goed td:first-child { color: var(--kb-accent); font-weight: 700; }
-.kb-controle-waarschuwing td:first-child { color: var(--kb-let); font-weight: 700; }
-.kb-controle-fout td { background: var(--kb-fout-vlak); }
-.kb-controle-fout td:first-child { color: var(--kb-rood); font-weight: 700; }
-.kb-tegel.kb-controle-waarschuwing { border-color: var(--kb-let); }
-.kb-tegel.kb-controle-fout { border-color: var(--kb-rood); }
+.kb-controle-good td:first-child { color: var(--kb-accent); font-weight: 700; }
+.kb-controle-warning td:first-child { color: var(--kb-let); font-weight: 700; }
+.kb-controle-error td { background: var(--kb-fout-vlak); }
+.kb-controle-error td:first-child { color: var(--kb-rood); font-weight: 700; }
+.kb-tegel.kb-controle-warning { border-color: var(--kb-let); }
+.kb-tegel.kb-controle-error { border-color: var(--kb-rood); }
 
 /* Exporteren */
 .kb-tabel-knoppen { display: flex; gap: 0.4rem; margin-left: auto; }

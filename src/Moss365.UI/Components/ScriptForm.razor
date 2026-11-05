@@ -1,0 +1,131 @@
+@* The form with the variables of a script; the values are in a dictionary (name to text) *@
+@inject ManagementState State
+
+@if (Header.Variables.Count == 0)
+{
+    <p class="kb-zacht">Dit script heeft geen variabelen.</p>
+}
+else
+{
+    <div class="kb-formulier">
+        @foreach (var v in Header.Variables)
+        {
+            var name = v.Name;
+            <label class="kb-veld">
+                <span>@v.Label @if (v.Required) { <span class="kb-verplicht" title="verplicht">*</span> }</span>
+                @switch (v.Kind)
+                {
+                    case VariableKind.YesNo:
+                        <span><input type="checkbox" checked="@IsYes(name)" @onchange="e => SetYesNo(name, e)" /> ja</span>
+                        break;
+                    case VariableKind.Choice:
+                        <select class="kb-invoer" value="@Value(name)" @onchange="e => Set(name, e.Value?.ToString())">
+                            <option value="">(kies)</option>
+                            @foreach (var o in v.Options ?? Array.Empty<string>())
+                            {
+                                <option value="@o">@o</option>
+                            }
+                        </select>
+                        break;
+                    case VariableKind.Date:
+                        <span class="kb-rij">
+                            @if (!IsRelative(name))
+                            {
+                                <input class="kb-invoer" type="date" value="@IsoDate(Value(name))" @onchange="e => Set(name, e.Value?.ToString())" />
+                            }
+                            <select class="kb-invoer" value="@RelativeValue(name)" @onchange="e => SetRelative(name, e)" aria-label="Relatieve datum">
+                                @foreach (var (w, t) in Relative)
+                                {
+                                    <option value="@w">@t</option>
+                                }
+                            </select>
+                        </span>
+                        break;
+                    case VariableKind.Items:
+                        <textarea class="kb-invoer" rows="4" placeholder="een waarde per regel" @onchange="e => Set(name, e.Value?.ToString())">@Value(name)</textarea>
+                        break;
+                    case VariableKind.Number:
+                        <input class="kb-invoer" type="number" value="@Value(name)" @onchange="e => Set(name, e.Value?.ToString())" />
+                        break;
+                    default:
+                        <input class="kb-invoer" value="@Value(name)" list="@ListName(v.Kind)" @onchange="e => Set(name, e.Value?.ToString())"
+                               placeholder="@Hint(v.Kind)" />
+                        break;
+                }
+            </label>
+        }
+    </div>
+
+    @foreach (var kind in Header.Variables.Select(v => v.Kind).Distinct().Where(s => ListName(s) is not null))
+    {
+        <datalist id="@ListName(kind)">
+            @foreach (var o in Choices(kind))
+            {
+                <option value="@o.Value">@o.Text</option>
+            }
+        </datalist>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public ScriptHeader Header { get; set; } = new();
+    [Parameter, EditorRequired] public Dictionary<string, string> Values { get; set; } = new();
+    [Parameter] public EventCallback ValuesChanged { get; set; }
+
+    private static readonly (string Value, string Text)[] Relative =
+    {
+        (string.Empty, "(vaste datum)"), ("@vandaag", "vandaag"), ("@gisteren", "gisteren"), ("@werkjaar.van", "begin werkjaar (1/9)"),
+        ("@werkjaar.tot", "einde werkjaar (31/8)"), ("@dezemaand.van", "begin deze maand"), ("@dezemaand.tot", "einde deze maand"),
+        ("@vorigemaand.van", "begin vorige maand"), ("@vorigemaand.tot", "einde vorige maand"),
+    };
+
+    private string Value(string name) => Values.TryGetValue(name, out var w) ? w : string.Empty;
+
+    private bool IsYes(string name) => Value(name) is "true" or "True" or "ja";
+
+    private bool IsRelative(string name) => Value(name).StartsWith('@');
+
+    private string RelativeValue(string name) => IsRelative(name) ? Value(name) : string.Empty;
+
+    private Task SetYesNo(string name, ChangeEventArgs e) => Set(name, e.Value is true ? "true" : "false");
+
+    private Task SetRelative(string name, ChangeEventArgs e)
+        => Set(name, string.IsNullOrEmpty(e.Value?.ToString()) ? DateTime.Today.ToString("yyyy-MM-dd") : e.Value!.ToString());
+
+    private async Task Set(string name, string? value)
+    {
+        Values[name] = value ?? string.Empty;
+        await ValuesChanged.InvokeAsync();
+    }
+
+    private static string IsoDate(string w)
+        => DateTime.TryParseExact(w, new[] { "yyyy-MM-dd", "d/M/yyyy" }, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d)
+            ? d.ToString("yyyy-MM-dd") : string.Empty;
+
+    private static string? ListName(VariableKind s) => s is VariableKind.User or VariableKind.Group or VariableKind.Mailbox or VariableKind.Room
+        ? "kb-keuzes-" + s.ToString().ToLowerInvariant() : null;
+
+    private static string Hint(VariableKind s) => s switch
+    {
+        VariableKind.User => "UPN, bv. voornaam.naam@...",
+        VariableKind.Group => "naam of adres van de groep",
+        VariableKind.Mailbox => "adres van het postvak",
+        VariableKind.Room => "adres van de room",
+        VariableKind.File => "volledig pad naar een bestand",
+        VariableKind.Folder => "volledig pad naar een map",
+        _ => string.Empty,
+    };
+
+    private IEnumerable<(string Value, string Text)> Choices(VariableKind s)
+    {
+        var d = State.Data;
+        return s switch
+        {
+            VariableKind.User => d.Persons.Where(p => p.Upn.Length > 0).Select(p => (p.Upn, p.Name)),
+            VariableKind.Group => d.Index.Groups.Select(g => (g.Mail.Length > 0 ? g.Mail : g.Name, g.Name)),
+            VariableKind.Mailbox => d.Mailboxes.Select(p => (p.Smtp, p.DisplayName)),
+            VariableKind.Room => d.Rooms.Select(r => (r.Smtp, r.DisplayName)),
+            _ => Enumerable.Empty<(string, string)>(),
+        };
+    }
+}

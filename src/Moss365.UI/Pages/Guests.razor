@@ -1,0 +1,123 @@
+@page "/gasten"
+@inherits RefreshingPage
+
+<div class="kb-titelbalk">
+    <h1>Gastgebruikers</h1>
+    @if (State.Can(Permission.InviteGuests)) { <a class="kb-knop kb-primair" href="gasten#uitnodigen">+ Gast uitnodigen</a> }
+</div>
+
+<p class="kb-zacht">
+    Externe gebruikers (B2B-gasten) in Entra. Uitnodigen en verwijderen gaan, zoals elke wijziging, via een plan met
+    bevestiging. Een verwijderde gast staat nog 30 dagen bij de verwijderde gebruikers in Entra en kan daar teruggezet worden.
+</p>
+
+<div class="kb-tegels">
+    <div class="kb-tegel"><div class="kb-tegel-getal">@All.Count</div><div>gasten</div></div>
+    <div class="kb-tegel"><div class="kb-tegel-getal">@All.Count(p => !p.Enabled)</div><div>geblokkeerd</div></div>
+    <a class="kb-tegel" href="opkuis?soort=gasten&amp;dagen=180"><div class="kb-tegel-getal">@All.Count(p => Inactive(p))</div><div>niet aangemeld in 180 dagen</div></a>
+</div>
+
+@if (State.Can(Permission.InviteGuests))
+{
+<section class="kb-kaart" id="uitnodigen">
+    <h2>Gast uitnodigen</h2>
+    <div class="kb-raster">
+        <label>E-mailadres <input class="kb-invoer" type="email" placeholder="naam@example.com" @bind="input.Address" /></label>
+        <label>Naam <input class="kb-invoer" placeholder="Voornaam Achternaam (Bedrijf)" @bind="input.Name" /></label>
+    </div>
+    <label><input type="checkbox" @bind="input.Message" /> Uitnodiging per e-mail sturen</label>
+    <div class="kb-filters">
+        <button class="kb-knop kb-primair" @onclick="Invite">Plan maken</button>
+    </div>
+</section>
+}
+
+<div class="kb-filters kb-plak">
+    <input class="kb-invoer kb-breed" placeholder="Zoek op naam of adres" @bind="input.Find" @bind:event="oninput" aria-label="Zoeken" />
+    <button class="kb-knop" hidden="@(!State.Can(Permission.Manage))" disabled="@(selected.Count == 0)" @onclick="Delete">Gekozen gasten verwijderen (@selected.Count)</button>
+</div>
+
+<KbTable Id="gasten" Items="Items" Columns="columns" DefaultSorting="naam" CountText="@($"{Items.Count} gasten")"
+         Selectable KeyOf="p => p.Key" Selected="selected" SelectionChanged="_ => { }"
+         RowClass="@(p => Inactive(p) ? "kb-verschil" : null)" />
+
+@foreach (var f in errors)
+{
+    <div class="kb-melding kb-fout">@f</div>
+}
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="Gastgebruikers" Title="Gastgebruikers" Executed="AfterExecute" />
+}
+
+@code {
+    /// <summary>Search term and the invitation being filled in, kept while the app is open (Back, Forward, menu).</summary>
+    private sealed class Input { public string Find { get; set; } = string.Empty; public string Address { get; set; } = string.Empty; public string Name { get; set; } = string.Empty; public bool Message { get; set; } = true; }
+    private Input? _input;
+    private Input input => _input ??= State.PageState.Form<Input>("gasten", "gasten", "Gast uitnodigen", filled: i => i.Address.Trim().Length > 0 || i.Name.Trim().Length > 0);
+    private readonly HashSet<string> selected = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private IReadOnlyList<Column<Person>> columns = Array.Empty<Column<Person>>();
+
+    private List<Person> All => State.Data.Persons.Where(p => p.IsGuest).ToList();
+
+    private List<Person> Items
+    {
+        get
+        {
+            var z = input.Find.Trim();
+            return All.Where(p => z.Length == 0 || p.Name.Contains(z, StringComparison.OrdinalIgnoreCase)
+                                   || (p.Entra?.Mail.Contains(z, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+        }
+    }
+
+    protected override void OnInitialized() => columns = new List<Column<Person>>
+    {
+        new() { Key = "naam", Title = "Naam", Cell = p => @<ObjectLink Object="State.Data.Index.Ref(p)" />, SortBy = p => p.Name },
+        new() { Key = "mail", Title = "E-mailadres", Cell = p => @<text>@p.Entra?.Mail</text>, SortBy = p => p.Entra?.Mail },
+        new() { Key = "domein", Title = "Domein", Cell = p => @<text>@Domain(p)</text>, SortBy = p => Domain(p) },
+        new() { Key = "status", Title = "Status", Cell = p => @<text>@(p.Enabled ? "actief" : "geblokkeerd")</text>, SortBy = p => p.Enabled ? "actief" : "geblokkeerd" },
+        new() { Key = "aangemaakt", Title = "Uitgenodigd", Cell = p => @<text>@Date(p.Entra?.CreatedDateTime)</text>, SortBy = p => p.Entra?.CreatedDateTime },
+        new() { Key = "aanmelding", Title = "Laatste aanmelding", Cell = p => @<text>@Date(p.Entra?.LastSignIn)</text>, SortBy = p => p.Entra?.LastSignIn },
+        new() { Key = "groepen", Title = "Groepen", Number = true, Cell = p => @<text>@State.Data.CloudGroupsOf(p).Count()</text>, SortBy = p => State.Data.CloudGroupsOf(p).Count() },
+        new() { Key = "upn", Title = "UPN", Hidden = true, Cell = p => @<text>@p.Upn</text>, SortBy = p => p.Upn },
+        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = p => @<code>@(p.Entra?.Id)</code>, SortBy = p => p.Entra?.Id },
+    };
+
+    private static string Domain(Person p) => p.Entra?.Mail is { } m && m.Contains('@') ? m[(m.IndexOf('@') + 1)..] : string.Empty;
+
+    private static string Date(string? d) => string.IsNullOrEmpty(d) ? string.Empty : d.Length >= 10 ? d[..10] : d;
+
+    /// <summary>Not signed in for 180 days (or never, when the invitation is older than 180 days).</summary>
+    private static bool Inactive(Person p)
+    {
+        var limit = DateTime.Now.AddDays(-180);
+        if (DateTime.TryParse(p.Entra?.LastSignIn, out var last))
+        {
+            return last < limit;
+        }
+
+        return DateTime.TryParse(p.Entra?.CreatedDateTime, out var created) && created < limit;
+    }
+
+    private void Invite() => Show(GuestPlans.Invite(State.Data, input.Address, input.Name, input.Message));
+
+    private void Delete() => Show(GuestPlans.Delete(State.Data, All.Where(p => selected.Contains(p.Key))));
+
+    // After a successful invitation the form is empty again (the search term stays)
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            input.Address = string.Empty;
+            input.Name = string.Empty;
+        }
+    }
+
+    private void Show(PlanOutcome u)
+    {
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+    }
+}

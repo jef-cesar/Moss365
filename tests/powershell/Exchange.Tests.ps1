@@ -1,7 +1,7 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 
-# Pester-tests voor Exchange.ps1 (het script dat de app in een apart PowerShell-proces start).
-# De Exchange-cmdlets worden nagebootst; het script draait met -ZonderVerbinding.
+# Pester tests for Exchange.ps1 (the script the app starts in a separate PowerShell process).
+# The Exchange cmdlets are faked; the script runs with -ZonderVerbinding.
 
 BeforeAll {
     $script:Script = Join-Path $PSScriptRoot '..\..\src\Moss365.Connections\Exchange\Exchange.ps1'
@@ -88,7 +88,7 @@ AfterAll {
 }
 
 Describe 'Exchange.ps1' {
-    It 'voegt een lid toe en behandelt "al lid" als gelukt' {
+    It 'adds a member and treats "already a member" as succeeded' {
         $r = Voer @(
             @{ id = '1'; op = 'LidToevoegen'; params = @{ Identity = 'sg@test.be'; Member = 'eva@test.be' } }
             @{ id = '2'; op = 'LidToevoegen'; params = @{ Identity = 'sg@test.be'; Member = 'al@test.be' } }
@@ -100,26 +100,26 @@ Describe 'Exchange.ps1' {
         $global:ExoAanroepen | Should -Contain 'Add sg@test.be eva@test.be'
     }
 
-    It 'zet getallen en ja/nee-waarden om naar het juiste type' {
+    It 'converts numbers and yes/no values to the right type' {
         $r = Voer @(@{ id = 'c'; op = 'Agendaverwerking'; params = @{ Identity = 'rm@test.be'; BookingWindowInDays = '180'; DeleteSubject = 'False' } })
         $r[0].status | Should -Be 'Gelukt'
         $global:ExoAanroepen[0] | Should -Be 'Cal rm@test.be Int32=180 Boolean=False'
     }
 
-    It 'weigert een opdracht of parameter die niet toegestaan is' {
+    It 'refuses a command or parameter that is not allowed' {
         $r = Voer @(
             @{ id = 'x'; op = 'Remove-Mailbox'; params = @{ Identity = 'iemand@test.be' } }
             @{ id = 'y'; op = 'LidToevoegen'; params = @{ Identity = 'sg@test.be'; Member = 'eva@test.be'; Confirm = 'False' } }
             @{ id = 'z'; op = 'Agendaverwerking'; params = @{ Identity = 'rm@test.be'; BookingWindowInDays = '1; Remove-Mailbox x' } }
         )
         $r | ForEach-Object { $_.status | Should -Be 'Mislukt' }
-        $r[0].melding | Should -Match 'niet toegestaan'
-        $r[1].melding | Should -Match 'niet toegestaan'
-        $r[2].melding | Should -Match 'geen geheel getal'
+        $r[0].melding | Should -Match 'not allowed'
+        $r[1].melding | Should -Match 'not allowed'
+        $r[2].melding | Should -Match 'not a whole number'
         $global:ExoAanroepen.Count | Should -Be 0
     }
 
-    It 'zet het agendarecht op de Nederlandse map als Calendar niet bestaat, en weigert onbekende rechten' {
+    It 'sets the calendar permission on the Dutch folder when Calendar does not exist, and refuses unknown permissions' {
         $r = Voer @(
             @{ id = 'p'; op = 'AgendaRecht'; params = @{ Identity = 'rm@test.be'; User = 'Default'; AccessRights = 'Reviewer' } }
             @{ id = 'q'; op = 'AgendaRecht'; params = @{ Identity = 'rm@test.be'; User = 'Default'; AccessRights = 'Alles' } }
@@ -129,7 +129,7 @@ Describe 'Exchange.ps1' {
         $r[1].status | Should -Be 'Mislukt'
     }
 
-    It 'leest de rooms in het formaat van de app' {
+    It 'reads the rooms in the format of the app' {
         $r = Voer @(@{ id = 'rooms'; op = 'LeesRooms'; params = @{} })
         $r[0].status | Should -Be 'Gelukt'
         $room = @($r[0].data)[0]
@@ -140,7 +140,7 @@ Describe 'Exchange.ps1' {
         $room.AgendaRechten | Should -Be 'Default=Reviewer|Anonymous=None'
     }
 
-    It 'zet een postvak om naar gedeeld en verwijdert een lid' {
+    It 'converts a mailbox to shared and removes a member' {
         $r = Voer @(
             @{ id = 'm'; op = 'NaarGedeeld'; params = @{ Identity = 'eva@test.be' } }
             @{ id = 'n'; op = 'LidVerwijderen'; params = @{ Identity = 'sg@test.be'; Member = 'eva@test.be' } }
@@ -150,7 +150,7 @@ Describe 'Exchange.ps1' {
         $global:ExoAanroepen | Should -Contain 'Remove sg@test.be eva@test.be'
     }
 
-    It 'beheert rechten op een postvak, ook net na het aanmaken' {
+    It 'manages permissions on a mailbox, also right after creating it' {
         $global:NieuwBestaat = $false
         $r = Voer @(
             @{ id = 'a'; op = 'PostvakAanmaken'; params = @{ Name = 'Nieuw'; DisplayName = 'Nieuw'; Alias = 'nieuw'; PrimarySmtpAddress = 'nieuw@test.be' } }
@@ -163,7 +163,7 @@ Describe 'Exchange.ps1' {
         )
         ($r | Where-Object status -eq 'Gelukt').Count | Should -Be 6
         ($r | Where-Object id -eq 'f').melding | Should -Match 'al niet meer'
-        ($r | Where-Object id -eq 'g').melding | Should -Match 'Onbekend postvakrecht'
+        ($r | Where-Object id -eq 'g').melding | Should -Match 'Unknown mailbox permission'
         $global:ExoAanroepen | Should -Contain 'NewMbx Shared=True nieuw@test.be nieuw'
         $global:ExoAanroepen | Should -Contain 'NewDg Security SG-SM-nieuw-Full sg-sm-nieuw-full@test.be Closed'
         $global:ExoAanroepen | Should -Contain 'AddFull nieuw@test.be sg-sm-nieuw-full@test.be AutoMapping=False'
@@ -171,17 +171,17 @@ Describe 'Exchange.ps1' {
         $global:ExoAanroepen | Should -Contain 'DelSendAs info@test.be bo@test.be'
     }
 
-    It 'maakt een distributielijst, en weigert een onbekend type groep (0.8)' {
+    It 'creates a distribution list, and refuses an unknown group type (0.8)' {
         $r = Voer @(
             @{ id = 'a'; op = 'GroepAanmaken'; params = @{ Name = 'Feest'; DisplayName = 'Feest'; Alias = 'feest'; PrimarySmtpAddress = 'feest@test.be'; Type = 'Distribution' } }
             @{ id = 'b'; op = 'GroepAanmaken'; params = @{ Name = 'X'; DisplayName = 'X'; Alias = 'x'; PrimarySmtpAddress = 'x@test.be'; Type = 'Dynamic' } }
         )
         ($r | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
-        ($r | Where-Object id -eq 'b').melding | Should -Match 'Onbekend type'
+        ($r | Where-Object id -eq 'b').melding | Should -Match 'Unknown group type'
         $global:ExoAanroepen | Should -Contain 'NewDg Distribution Feest feest@test.be Closed'
     }
 
-    It 'stelt een postvak en een groep in' {
+    It 'configures a mailbox and a group' {
         $r = Voer @(
             @{ id = 'a'; op = 'PostvakInstellen'; params = @{ Identity = 'info@test.be'; ForwardingSmtpAddress = ''; HiddenFromAddressListsEnabled = 'True' } }
             @{ id = 'b'; op = 'AutoAntwoord'; params = @{ Identity = 'info@test.be'; AutoReplyState = 'Enabled'; InternalMessage = 'Afwezig' } }
@@ -196,7 +196,7 @@ Describe 'Exchange.ps1' {
         $global:ExoAanroepen | Should -Contain 'Beheer sg@test.be Add=an@test.be'
     }
 
-    It 'leest gedeelde postvakken met rechten en groepen' {
+    It 'reads shared mailboxes with permissions and groups' {
         $r = Voer @(@{ id = 'p'; op = 'LeesPostvakken'; params = @{} })
         $r[0].status | Should -Be 'Gelukt'
         $d = $r[0].data
@@ -210,7 +210,7 @@ Describe 'Exchange.ps1' {
         $d.Groepen[0].Leden[0].Smtp | Should -Be 'an@test.be'
     }
 
-    It 'leest enkele objecten opnieuw volgens hun soort, en meldt wat niet meer bestaat' {
+    It 'reads a few objects again according to their kind, and reports what no longer exists' {
         $r = Voer @(@{ id = 'o'; op = 'LeesObjecten'; params = @{ Adressen = 'rm-a@test.be|info@test.be|sg@test.be|weg@test.be' } })
         $r[0].status | Should -Be 'Gelukt'
         $d = $r[0].data
@@ -224,7 +224,7 @@ Describe 'Exchange.ps1' {
         @($d.NietGevonden) | Should -Be @('weg@test.be')
     }
 
-    It 'geeft lege lijsten zonder adressen' {
+    It 'returns empty lists without addresses' {
         $r = Voer @(@{ id = 'o'; op = 'LeesObjecten'; params = @{ Adressen = '' } })
         $r[0].status | Should -Be 'Gelukt'
         @($r[0].data.Rooms).Count | Should -Be 0
@@ -234,26 +234,26 @@ Describe 'Exchange.ps1' {
 
     Context 'Aanmelden' {
         BeforeAll {
-            # Alleen de functie laden, zonder het script uit te voeren
+            # Load only the function, without running the script
             $ast = [System.Management.Automation.Language.Parser]::ParseFile($script:Script, [ref]$null, [ref]$null)
             $f = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'New-ExoAanmelding' }, $true)
             . ([scriptblock]::Create($f.Extent.Text))
         }
 
-        It 'schakelt WAM uit als de module dat kent (proces zonder venster)' {
+        It 'turns WAM off when the module knows it (process without a window)' {
             $a = New-ExoAanmelding -Upn 'beheer@test.be' -BeschikbareParameters @('UserPrincipalName', 'ShowBanner', 'DisableWAM')
             $a['DisableWAM'] | Should -BeTrue
             $a['UserPrincipalName'] | Should -Be 'beheer@test.be'
             $a['ShowBanner'] | Should -BeFalse
         }
 
-        It 'gebruikt het token van de app als dat er is' {
+        It 'uses the token of the app when there is one' {
             $a = New-ExoAanmelding -Upn 'beheer@test.be' -Token 'abc' -BeschikbareParameters @('UserPrincipalName', 'ShowBanner', 'DisableWAM', 'AccessToken')
             $a['AccessToken'] | Should -Be 'abc'
             $a.ContainsKey('DisableWAM') | Should -BeFalse
         }
 
-        It 'laat DisableWAM weg bij een oudere module' {
+        It 'leaves out DisableWAM for an older module' {
             $a = New-ExoAanmelding -Upn '' -BeschikbareParameters @('UserPrincipalName', 'ShowBanner')
             $a.ContainsKey('DisableWAM') | Should -BeFalse
             $a.ContainsKey('UserPrincipalName') | Should -BeFalse
@@ -261,12 +261,12 @@ Describe 'Exchange.ps1' {
     }
 }
 
-Describe 'Registreer-App.ps1' {
+Describe 'Register-App.ps1' {
     BeforeAll {
-        . (Join-Path $PSScriptRoot '..\..\tools\Registreer-App.ps1')
+        . (Join-Path $PSScriptRoot '..\..\tools\Register-App.ps1')
     }
 
-    It 'vindt de id van elk gevraagd recht' {
+    It 'finds the id of every requested permission' {
         $sp = [pscustomobject]@{ Oauth2PermissionScopes = @(
                 [pscustomobject]@{ Value = 'User.ReadWrite.All'; Id = 'id-1' }
                 [pscustomobject]@{ Value = 'Group.ReadWrite.All'; Id = 'id-2' }) }
@@ -276,28 +276,28 @@ Describe 'Registreer-App.ps1' {
         $r[0].Type | Should -Be 'Scope'
     }
 
-    It 'vraagt in een keer de rechten tot en met 0.9, en niets daarbuiten' {
+    It 'asks for the permissions up to and including 0.9 at once, and nothing beyond' {
         @($Rechten) | Sort-Object | Should -Be (@(
             'Application.Read.All', 'AuditLog.Read.All', 'Calendars.Read.Shared', 'Directory.Read.All', 'Group.ReadWrite.All',
             'GroupMember.ReadWrite.All', 'OnPremDirectorySynchronization.Read.All', 'Policy.Read.All',
             'Policy.ReadWrite.ConditionalAccess', 'User.ReadWrite.All') | Sort-Object)
-        # Geen rechten die meer kunnen dan nodig (bv. alle mail lezen, of de hele directory schrijven)
+        # No permissions that can do more than needed (e.g. read all mail, or write the whole directory)
         @($Rechten | Where-Object { $_ -in 'Mail.Read', 'Mail.ReadWrite', 'Directory.ReadWrite.All', 'RoleManagement.ReadWrite.Directory' }).Count | Should -Be 0
     }
 
-    It 'stopt bij een onbekend recht' {
+    It 'stops at an unknown permission' {
         { Get-ScopeIds -GraphSp ([pscustomobject]@{ Oauth2PermissionScopes = @() }) -Namen 'Bestaat.Niet' } | Should -Throw '*Bestaat.Niet*'
     }
 
-    It 'maakt de vijf profielen met dezelfde id als de app (0.8)' {
-        $code = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\..\src\Moss365.Core\Rechten\Rechten.cs') -Raw
+    It 'creates the five profiles with the same id as the app (0.8)' {
+        $code = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\..\src\Moss365.Core\Permissions\Permissions.cs') -Raw
         @($Profielen).Count | Should -Be 5
         foreach ($p in $Profielen) {
-            $code | Should -Match ([regex]::Escape("(""$($p.Waarde)"", Rol.$($p.Naam), ""$($p.Groep)"", ""$($p.Id)"")"))
+            $code | Should -Match ([regex]::Escape("(""$($p.Waarde)"", Role.$($p.Naam), ""$($p.Groep)"", ""$($p.Id)"")"))
         }
     }
 
-    It 'houdt andere app-rollen en werkt de profielen bij zonder ze dubbel te maken' {
+    It 'keeps other app roles and updates the profiles without duplicating them' {
         $bestaand = @(
             [pscustomobject]@{ Id = 'aaaaaaaa-0000-0000-0000-000000000001'; Value = 'Ander.Recht'; DisplayName = 'Ander'; Description = 'x'; IsEnabled = $true; AllowedMemberTypes = @('User') }
             [pscustomobject]@{ Id = $Profielen[0].Id; Value = 'Moss365.Lezer'; DisplayName = 'oud'; Description = 'oud'; IsEnabled = $true; AllowedMemberTypes = @('User') }
@@ -305,29 +305,29 @@ Describe 'Registreer-App.ps1' {
         $r = @(Get-AppRollen -Bestaand $bestaand)
         $r.Count | Should -Be 6
         @($r | Where-Object { $_.Id -eq $Profielen[0].Id }).Count | Should -Be 1
-        ($r | Where-Object { $_.Id -eq $Profielen[0].Id }).DisplayName | Should -Be 'Moss365 Lezer'
+        ($r | Where-Object { $_.Id -eq $Profielen[0].Id }).DisplayName | Should -Be 'Moss365 Reader'
         @($r | Where-Object { $_.Value -eq 'Ander.Recht' }).Count | Should -Be 1
     }
 
-    It 'is ASCII-only' {
-        $pad = Join-Path $PSScriptRoot '..\..\tools\Registreer-App.ps1'
+    It 'is ASCII only' {
+        $pad = Join-Path $PSScriptRoot '..\..\tools\Register-App.ps1'
         @([System.IO.File]::ReadAllBytes($pad) | Where-Object { $_ -gt 127 }).Count | Should -Be 0
     }
 }
 
-Describe 'Controle.ps1' {
+Describe 'Check.ps1' {
     BeforeAll {
-        $script:Controle = Join-Path $PSScriptRoot '..\..\src\Moss365.Connections\Controle\Controle.ps1'
+        $script:Controle = Join-Path $PSScriptRoot '..\..\src\Moss365.Connections\Check\Check.ps1'
     }
 
-    It 'is ASCII-only (Windows PowerShell 5.1)' {
+    It 'is ASCII only (Windows PowerShell 5.1)' {
         foreach ($pad in $script:Controle, (Join-Path $PSScriptRoot '..\..\src\Moss365.Connections\Exchange\Exchange.ps1'),
-            (Join-Path $PSScriptRoot '..\..\src\Moss365.Connections\Scripts\Opstart.ps1')) {
+            (Join-Path $PSScriptRoot '..\..\src\Moss365.Connections\Scripts\Startup.ps1')) {
             @([System.IO.File]::ReadAllBytes($pad) | Where-Object { $_ -gt 127 }).Count | Should -Be 0
         }
     }
 
-    It 'meldt de PowerShell-versie en de modules' {
+    It 'reports the PowerShell version and the modules' {
         $uit = Join-Path $TestDrive 'controle.json'
         & $script:Controle -Uitvoer $uit
         $r = Get-Content -LiteralPath $uit -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -337,9 +337,9 @@ Describe 'Controle.ps1' {
         $r.Installatie | Should -BeNullOrEmpty
     }
 
-    It 'installeert alleen toegestane modules' {
+    It 'installs only allowed modules' {
         $uit = Join-Path $TestDrive 'installeer.json'
         & $script:Controle -Uitvoer $uit -Installeer 'Iets.Anders'
-        (Get-Content -LiteralPath $uit -Raw -Encoding UTF8 | ConvertFrom-Json).Installatie | Should -Match 'niet toegestaan'
+        (Get-Content -LiteralPath $uit -Raw -Encoding UTF8 | ConvertFrom-Json).Installatie | Should -Match 'not allowed'
     }
 }

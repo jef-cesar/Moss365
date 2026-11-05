@@ -1,0 +1,257 @@
+@* Shows a plan, lets you choose and runs after confirmation. While the plan is ready, it registers itself with
+   ManagementState.Pending: the work area gets a tint and a bar, the menu a dot. *@
+@implements IDisposable
+@inject ManagementState State
+@inject NavigationManager Nav
+
+@if (!discarded)
+{
+<section class="kb-kaart kb-plan" id="@anchor">
+    <h2>@Title</h2>
+    @if (Plan.Count == 0)
+    {
+        <p class="kb-zacht">Er is niets te wijzigen.</p>
+    }
+    else
+    {
+        @if (results is null)
+        {
+            <p class="kb-zacht">
+                Vink aan wat er moet gebeuren. Er wordt pas iets gewijzigd na <strong>Uitvoeren</strong> en een bevestiging.
+                Alles komt in het logboek.
+                @if (Plan.Any(w => w.TargetSystem == TargetSystem.Exchange && w.Selected))
+                {
+                    <br />@("Exchange gebruikt dezelfde aanmelding; verschijnt bovenaan een aanmeldlink, kopieer die naar je browser.")
+                }
+            </p>
+            @if (State.MissingConnections(Plan) is { Count: > 0 } ontbreekt)
+            {
+                <div class="kb-melding kb-fout">
+                    Geen verbinding ingesteld voor: @string.Join(", ", ontbreekt.Select(SystemName)). <a href="verbindingen">Verbindingen instellen</a>
+                </div>
+            }
+        }
+
+        <table class="kb-tabel">
+            <thead>
+                <tr>
+                    <th>@if (results is null) { <input type="checkbox" title="Alles" checked="@Plan.All(w => w.Selected)" @onchange="AllOnOff" /> }</th>
+                    <th>Systeem</th><th>Wijziging</th><th>Object</th><th>Nu</th><th>Wordt</th>
+                    @if (results is not null) { <th>Resultaat</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in Plan)
+                {
+                    var r = results?.FirstOrDefault(x => x.ChangeId == w.Id);
+                    <tr class="@RowClass(w, r)">
+                        <td>
+                            @if (results is null)
+                            {
+                                <input type="checkbox" aria-label="@w.Description" checked="@w.Selected" @onchange="e => Set(w, e)" disabled="@(busy || Refused(w) is not null)" />
+                            }
+                        </td>
+                        <td>@w.SystemText</td>
+                        <td>
+                            @w.Description
+                            @if (w.Warning is not null) { <div class="kb-waarschuwing">@w.Warning</div> }
+                            @if (results is null && Refused(w) is { } reason) { <div class="kb-waarschuwing kb-geweigerd">Niet voor jouw profiel: @reason</div> }
+                        </td>
+                        <td><ObjectLink Id="@w.Target" Text="@(w.TargetName.Length > 0 ? w.TargetName : null)" /></td>
+                        <td class="kb-zacht">@w.CurrentValue</td>
+                        <td>@w.NewValue</td>
+                        @if (results is not null)
+                        {
+                            <td>@(r is null ? "niet uitgevoerd" : r.Status switch { ResultStatus.Succeeded => "gelukt", ResultStatus.Failed => "mislukt", _ => "overgeslagen" }) <span class="kb-zacht">@r?.Message</span></td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (results is null)
+        {
+            <div class="kb-filters">
+                @if (!confirm)
+                {
+                    <button class="kb-knop kb-primair" disabled="@(Selected == 0 || busy)" @onclick="() => confirm = true">Uitvoeren (@Selected)</button>
+                }
+                else
+                {
+                    <span><strong>@Selected wijziging(en)</strong> in @string.Join(", ", Plan.Where(w => w.Selected).Select(w => w.SystemText).Distinct()) uitvoeren?</span>
+                    @if (Selected > BulkPlans.LargePlan)
+                    {
+                        <label class="kb-groot-plan"><input type="checkbox" @bind="largeConfirmed" /> Ja, ik heb nagekeken dat deze <strong>@Selected</strong> wijzigingen kloppen</label>
+                    }
+                    <button class="kb-knop kb-gevaar" disabled="@(busy || (Selected > BulkPlans.LargePlan && !largeConfirmed))" @onclick="Execute">Ja, uitvoeren</button>
+                    <button class="kb-knop" disabled="@busy" @onclick="() => confirm = false">Annuleren</button>
+                }
+                @if (progress is not null) { <span class="kb-zacht">@progress</span> }
+            </div>
+            @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
+        }
+        else
+        {
+            <div class="kb-melding @(results.All(r => r.Status == ResultStatus.Succeeded) ? "kb-goed" : "kb-fout")">
+                @results.Count(r => r.Status == ResultStatus.Succeeded) gelukt,
+                @results.Count(r => r.Status == ResultStatus.Failed) mislukt,
+                @results.Count(r => r.Status == ResultStatus.Skipped) overgeslagen.
+                @if (State.TaskBusy)
+                {
+                    <text>De betrokken objecten worden nu opnieuw gelezen (zie onderaan het menu); de pagina werkt zichzelf bij.</text>
+                }
+                else
+                {
+                    <text>De betrokken objecten zijn opnieuw gelezen, of staan gemarkeerd als "gewijzigd, nog niet vernieuwd".</text>
+                }
+            </div>
+        }
+    }
+</section>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Change> Plan { get; set; } = Array.Empty<Change>();
+    [Parameter] public string Title { get; set; } = "Voorbeeld van de wijzigingen";
+    [Parameter, EditorRequired] public string Context { get; set; } = string.Empty;
+    [Parameter] public EventCallback<IReadOnlyList<ChangeResult>> Executed { get; set; }
+
+    private IReadOnlyList<ChangeResult>? results;
+    private bool confirm;
+    private bool busy;
+    private string? progress;
+    private string? error;
+    private IReadOnlyList<Change>? previousPlan;
+
+    private int Selected => Plan.Count(w => w.Selected);
+
+    private string? Refused(Change w) => PermissionTable.Refusal(State.Roles, w, State.Data);
+
+    private readonly string anchor = "plan-" + Guid.NewGuid().ToString("N")[..8];
+    private bool discarded;
+    private bool largeConfirmed;
+    private string? path;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(previousPlan, Plan))
+        {
+            previousPlan = Plan;
+            results = null;
+            confirm = false;
+            error = null;
+            progress = null;
+            discarded = false;
+            largeConfirmed = false;
+
+            // What the profile does not allow is off (the engine would refuse it anyway)
+            foreach (var w in Plan.Where(w => Refused(w) is not null))
+            {
+                w.Selected = false;
+            }
+        }
+
+        Report();
+    }
+
+    /// <summary>Register with or unregister from Pending: registered while something is ready that has not run or been discarded.</summary>
+    private void Report()
+    {
+        var now = Pending.Normalise(Nav.ToBaseRelativePath(Nav.Uri));
+        if (path is not null && path != now)
+        {
+            State.Pending.Route(path, OpenKind.Plan, this);
+        }
+
+        path = now;
+        if (discarded || results is not null || Plan.Count == 0)
+        {
+            State.Pending.Route(path, OpenKind.Plan, this);
+            return;
+        }
+
+        State.Pending.Set(new OpenItem(path, OpenKind.Plan, $"Plan klaar, nog niet uitgevoerd: {Selected} {(Selected == 1 ? "wijziging" : "wijzigingen")}")
+        {
+            Count = Selected,
+            Screen = Title,
+            Anchor = "#" + anchor,
+            Discard = Discard,
+        }, this);
+    }
+
+    private Task Discard() => InvokeAsync(() =>
+    {
+        discarded = true;
+        Report();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        if (path is not null)
+        {
+            State.Pending.Route(path, OpenKind.Plan, this);
+        }
+    }
+
+    private static string SystemName(TargetSystem s) => s switch
+    {
+        TargetSystem.ActiveDirectory => "AD",
+        TargetSystem.Graph => "Entra (Graph)",
+        _ => "Exchange",
+    };
+
+    private static string? RowClass(Change w, ChangeResult? r) => r?.Status switch
+    {
+        ResultStatus.Succeeded => "kb-gelukt",
+        ResultStatus.Failed => "kb-ontbreekt",
+        ResultStatus.Skipped => "kb-zacht",
+        _ => w.Selected ? null : "kb-uit",
+    };
+
+    private void Set(Change w, ChangeEventArgs e)
+    {
+        w.Selected = e.Value is true || string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        confirm = false;
+        Report();
+    }
+
+    private void AllOnOff(ChangeEventArgs e)
+    {
+        var enabled = e.Value is true || string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        foreach (var w in Plan)
+        {
+            w.Selected = enabled && Refused(w) is null;
+        }
+
+        confirm = false;
+        Report();
+    }
+
+    private async Task Execute()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            var reporter = new Progress<string>(t =>
+            {
+                progress = t;
+                _ = InvokeAsync(StateHasChanged);
+            });
+            results = await State.ExecuteAsync(Plan, Context, reporter);
+            Report();
+            await Executed.InvokeAsync(results);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+            confirm = false;
+            progress = null;
+        }
+    }
+}

@@ -1,0 +1,152 @@
+@* Editing attributes of a user (0.8): the app chooses the route (AD for synchronised accounts, otherwise Graph),
+   shows the plan with now and to be, and puts the previous values in the change log (can be undone). *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>Gegevens bewerken</h2>
+    @if (!open)
+    {
+        <p class="kb-zacht">
+            @(AttributePlans.ViaAd(Person) ? "Dit account komt uit AD: de app wijzigt het in AD, Entra volgt na de synchronisatie." : "Cloudaccount: de app wijzigt het via Microsoft Graph.")
+            UPN en e-mailadres pas je hier niet aan.
+        </p>
+        <button class="kb-knop" @onclick="Open">Bewerken</button>
+    }
+    else
+    {
+        <div class="kb-raster">
+            <label>Weergavenaam <input class="kb-invoer" @bind="desired.DisplayName" /></label>
+            <label>Voornaam <input class="kb-invoer" @bind="desired.GivenName" /></label>
+            <label>Achternaam <input class="kb-invoer" @bind="desired.Surname" /></label>
+            <label>Functie <input class="kb-invoer" @bind="desired.JobTitle" /></label>
+            <label>
+                Dienst
+                <select class="kb-invoer" @bind="desired.Department">
+                    <option value="">(leeg)</option>
+                    @foreach (var d in Choices(State.Config.Departments.Select(d => d.Department), desired.Department))
+                    {
+                        <option value="@d">@d</option>
+                    }
+                </select>
+                @if (State.Config.DivisionFor(desired.Department) is { } a) { <span class="kb-zacht">afdeling @a.Name</span> }
+            </label>
+            <label>
+                Kantoor
+                <select class="kb-invoer" @bind="desired.Office">
+                    <option value="">(leeg)</option>
+                    @foreach (var k in Choices(State.Config.Offices, desired.Office))
+                    {
+                        <option value="@k">@k</option>
+                    }
+                </select>
+            </label>
+            <label>Stad <input class="kb-invoer" @bind="desired.City" /></label>
+            <label>Telefoon <input class="kb-invoer" type="tel" @bind="desired.Phone" /></label>
+            <label>Gsm <input class="kb-invoer" type="tel" @bind="desired.Mobile" /></label>
+            @if (AttributePlans.ViaAd(Person))
+            {
+                <label>Omschrijving <input class="kb-invoer" @bind="desired.Description" /></label>
+                <label>
+                    Logonscript
+                    <select class="kb-invoer" @bind="desired.LogonScript">
+                        <option value="">(geen)</option>
+                        @foreach (var s in Choices(State.Config.LogonScripts, desired.LogonScript))
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                </label>
+            }
+        </div>
+        <PersonPicker Label="Manager" Selected="@(string.IsNullOrEmpty(desired.Manager) ? null : State.Data.SearchPerson(desired.Manager))" SelectedChanged="ChooseManager" />
+        @if (!string.IsNullOrEmpty(desired.Manager))
+        {
+            <button class="kb-knop kb-klein" @onclick="() => desired.Manager = string.Empty">Geen manager</button>
+        }
+        <div class="kb-filters">
+            <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
+            <button class="kb-knop" @onclick="Empty">Herstellen</button>
+            <button class="kb-knop" @onclick="() => open = false">Sluiten</button>
+        </div>
+        @foreach (var f in errors)
+        {
+            <div class="kb-melding">@f</div>
+        }
+    }
+</section>
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@($"Gegevens {Person.Name}")" Title="Gegevens bewerken" Executed="AfterExecute" />
+}
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = default!;
+
+    private bool open;
+    private UserDesired desired = new();
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private string? loaded;
+
+    private string Form => $"gebruiker/{Person.Key}/bewerken";
+
+    protected override void OnParametersSet()
+    {
+        if (loaded != Person.Key)
+        {
+            loaded = Person.Key;
+            open = State.PageState.Has(Form);
+            desired = open ? Saved() : new();
+            plan = null;
+            errors = Array.Empty<string>();
+        }
+    }
+
+    // What you filled in is kept until the plan has run (Back, Forward, menu)
+    private UserDesired Saved() => State.PageState.Form(Form, "gebruiker/" + Person.Key, $"Gegevens {Person.Name}", () => UserDesired.Of(Person, State.Data));
+
+    private void ChooseManager(Person? p) => desired.Manager = p?.Key ?? string.Empty;
+
+    private void Open()
+    {
+        desired = Saved();
+        open = true;
+    }
+
+    private void Empty()
+    {
+        State.PageState.Forget(Form);
+        desired = Saved();
+        plan = null;
+        errors = Array.Empty<string>();
+    }
+
+    /// <summary>The choice list, with the current value added when it is not (yet) in it.</summary>
+    private static IEnumerable<string> Choices(IEnumerable<string> list, string? current)
+    {
+        var l = list.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+        if (!string.IsNullOrWhiteSpace(current) && !l.Contains(current, StringComparer.OrdinalIgnoreCase))
+        {
+            l.Insert(0, current);
+        }
+
+        return l;
+    }
+
+    private void MakePlan()
+    {
+        var u = AttributePlans.User(State.Data, State.Config, Person, desired);
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            State.PageState.Forget(Form);
+            open = false;
+        }
+    }
+}

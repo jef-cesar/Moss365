@@ -1,0 +1,46 @@
+@* Choose a date and hour to run an action later (after your confirmation at that moment). *@
+
+<div class="kb-inplannen">
+    <label>Datum <input class="kb-invoer" type="date" @bind="date" /></label>
+    <label>Uur <input class="kb-invoer" type="time" @bind="hour" /></label>
+    <button class="kb-knop" @onclick="Confirm">Inplannen</button>
+    @if (error is not null) { <span class="kb-fout-tekst">@error</span> }
+</div>
+
+@code {
+    [Parameter] public DateOnly? Default { get; set; }
+    [Parameter] public EventCallback<DateTimeOffset> Selected { get; set; }
+
+    private DateOnly date = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+    private TimeOnly hour = new(17, 0);
+    private DateOnly? previousDefault;
+    private string? error;
+
+    protected override void OnParametersSet()
+    {
+        if (Default is { } s && s != previousDefault)
+        {
+            previousDefault = s;
+            date = s;
+
+            // If the suggested hour has already passed today, then tomorrow (otherwise Schedule refuses right away)
+            if (date.ToDateTime(hour) <= DateTime.Now)
+            {
+                date = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+            }
+        }
+    }
+
+    private async Task Confirm()
+    {
+        var moment = new DateTimeOffset(date.ToDateTime(hour), TimeZoneInfo.Local.GetUtcOffset(date.ToDateTime(hour)));
+        if (moment <= DateTimeOffset.Now)
+        {
+            error = "Kies een moment in de toekomst (of voer het plan nu uit).";
+            return;
+        }
+
+        error = null;
+        await Selected.InvokeAsync(moment);
+    }
+}

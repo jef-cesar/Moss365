@@ -1,0 +1,99 @@
+@* PowerShell editor: Monaco (the editor of VS Code, built in); if that fails, a plain text box *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (withoutEditor)
+{
+    <textarea class="kb-invoer kb-code" spellcheck="false" rows="28" readonly="@ReadOnly" value="@Text" @oninput="TextBoxChanged" aria-label="Script"></textarea>
+}
+else
+{
+    <div class="kb-editor" @ref="box"></div>
+}
+
+@code {
+    [Parameter] public string Text { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Errors to underline (line, column, text).</summary>
+    [Parameter] public IReadOnlyList<ScriptEvent>? Errors { get; set; }
+
+    private ElementReference box;
+    private DotNetObjectReference<CodeEditor>? self;
+    private bool done;
+    private bool withoutEditor;
+    private string last = string.Empty;
+    private IReadOnlyList<ScriptEvent>? shownErrors;
+
+    protected override async Task OnAfterRenderAsync(bool firstTime)
+    {
+        if (firstTime && !withoutEditor)
+        {
+            try
+            {
+                self = DotNetObjectReference.Create(this);
+                done = await JS.InvokeAsync<bool>("mossEditor.maak", box, Text, self, ReadOnly);
+                last = Text;
+            }
+            catch (Exception)
+            {
+                done = false;
+            }
+
+            if (!done)
+            {
+                withoutEditor = true;
+                StateHasChanged();
+            }
+        }
+        else if (done)
+        {
+            if (Text != last)
+            {
+                last = Text;
+                await JS.InvokeVoidAsync("mossEditor.zet", box, Text);
+            }
+
+            if (!ReferenceEquals(Errors, shownErrors))
+            {
+                shownErrors = Errors;
+                await JS.InvokeVoidAsync("mossEditor.markeer", box,
+                    (Errors ?? Array.Empty<ScriptEvent>()).Select(f => new { rule = f.Rule ?? 1, column = f.Column ?? 1, text = f.Text }).ToArray());
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task Changed(string text)
+    {
+        last = text;
+        Text = text;
+        await TextChanged.InvokeAsync(text);
+    }
+
+    private async Task TextBoxChanged(ChangeEventArgs e)
+    {
+        Text = e.Value?.ToString() ?? string.Empty;
+        await TextChanged.InvokeAsync(Text);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (done)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("mossEditor.weg", box);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+
+        self?.Dispose();
+    }
+}

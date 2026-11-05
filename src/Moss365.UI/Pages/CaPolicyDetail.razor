@@ -1,0 +1,152 @@
+@page "/conditional-access/{Id}"
+@inherits RefreshingPage
+
+@if (State.Data.ConditionalAccess is not { } ca || ca.Policies.FirstOrDefault(b => b.Id == Id) is not { } b)
+{
+    <h1>Beleid niet gevonden</h1>
+    <p><a href="conditional-access">Terug naar Conditional Access</a></p>
+}
+else
+{
+    var name = CaReader.Names(State.Data);
+    var u = CaReader.Explanation(b, ca, name);
+    <h1>@b.Name</h1>
+    <p class="kb-zacht">
+        <CaLabel Status="b.Status" />
+        @if (b.Created is { } a) { <span>aangemaakt @a.LocalDateTime.ToString("dd/MM/yyyy")</span> }
+        @if (b.Changed is { } g) { <span>&middot; gewijzigd @g.LocalDateTime.ToString("dd/MM/yyyy")</span> }
+        @if (b.Status == CaStatus.Report) { <span>&middot; alleen rapport: Entra meet wat dit beleid zou doen, maar dwingt niets af.</span> }
+    </p>
+
+    <section class="kb-kaart">
+        <h2>Wat het beleid doet</h2>
+        <dl class="kb-uitleg">
+            <dt>Wie</dt><dd><ul>@foreach (var x in u.Who) { <li>@x</li> }</ul></dd>
+            <dt>Apps</dt><dd><ul>@foreach (var x in u.Apps) { <li>@x</li> }</ul></dd>
+            <dt>Voorwaarden</dt><dd><ul>@foreach (var x in u.Conditions) { <li>@x</li> }</ul></dd>
+            <dt>Gevolg</dt><dd><strong>@u.Consequence</strong></dd>
+            @if (u.Session.Count > 0)
+            {
+                <dt>Sessie</dt><dd><ul>@foreach (var x in u.Session) { <li>@x</li> }</ul></dd>
+            }
+        </dl>
+    </section>
+
+    @if (b.UsersIn.Concat(b.UsersOff).Concat(b.GroupsIn).Concat(b.GroupsOff).Any(Real))
+    {
+        <section class="kb-kaart">
+            <h2>Opgenomen en uitgezonderd</h2>
+            <table class="kb-tabel">
+                <thead><tr><th></th><th>Gebruikers</th><th>Groepen</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <th>Opgenomen</th>
+                        <td>@Links(b.UsersIn)</td>
+                        <td>@Links(b.GroupsIn)</td>
+                    </tr>
+                    <tr>
+                        <th>Uitgezonderd</th>
+                        <td>@Links(b.UsersOff)</td>
+                        <td>@Links(b.GroupsOff)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    }
+
+    <section class="kb-kaart">
+        <h2>Wie valt eronder (@Under.Count)</h2>
+        <p class="kb-zacht">
+            Personen met een Entra-account voor wie het deel "wie" klopt; of het beleid bij een aanmelding echt meespeelt, hangt ook af
+            van de app en de voorwaarden.
+        </p>
+        <KbTable Id="ca-eronder" ExportName="@($"CA-{b.Name}")" Items="Under" Columns="columns" DefaultSorting="naam" />
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Effect</h2>
+        <div class="kb-filters">
+            <button class="kb-knop" disabled="@busy" @onclick="LoadEffect">Effect laden (aanmeldingen van 7 dagen)</button>
+            @if (busy) { <span class="kb-zacht">bezig...</span> }
+        </div>
+        @if (error is not null)
+        {
+            <div class="kb-melding kb-fout">@error</div>
+        }
+        else if (State.CaEffect?.FirstOrDefault(e => e.PolicyId == b.Id) is { } e)
+        {
+            <p class="kb-zacht">@State.CaEffectExplanation</p>
+            <table class="kb-tabel kb-naast">
+                <tbody>
+                    @if (b.Status == CaStatus.Report)
+                    {
+                        <tr><th>Zou toegestaan hebben</th><td class="kb-getal">@e.ReportSucceeded</td></tr>
+                        <tr><th>Zou tegengehouden hebben</th><td class="kb-getal">@e.ReportFailed</td></tr>
+                        <tr><th>Zou om een extra stap gevraagd hebben</th><td class="kb-getal">@e.ReportInterrupted</td></tr>
+                    }
+                    else
+                    {
+                        <tr><th>Toegepast (voldaan)</th><td class="kb-getal">@e.Applied</td></tr>
+                        <tr><th>Tegengehouden</th><td class="kb-getal">@e.Failed</td></tr>
+                    }
+                    <tr><th>Niet van toepassing</th><td class="kb-getal">@e.NotApplicable</td></tr>
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private bool busy;
+    private string? error;
+    private IReadOnlyList<Column<(Person Person, CaAnswer Answer)>> columns = Array.Empty<Column<(Person, CaAnswer)>>();
+
+    private IReadOnlyList<(Person Person, CaAnswer Answer)> Under
+        => State.Data.ConditionalAccess?.Policies.FirstOrDefault(b => b.Id == Id) is { } b ? CaReader.WhoFallsUnder(b, State.Data) : Array.Empty<(Person, CaAnswer)>();
+
+    private static bool Real(string id) => id is not ("All" or "None" or "GuestsOrExternalUsers");
+
+    protected override void OnInitialized()
+    {
+        columns = new List<Column<(Person Person, CaAnswer Answer)>>
+        {
+            new() { Key = "naam", Title = "Naam", Cell = x => @<ObjectLink Object="State.Data.Index.Ref(x.Person)" />, SortBy = x => x.Person.Name },
+            new() { Key = "upn", Title = "UPN", Cell = x => @<text>@x.Person.Upn</text>, SortBy = x => x.Person.Upn },
+            new() { Key = "bron", Title = "Bron", Cell = x => @<text>@x.Person.Source</text>, SortBy = x => x.Person.Source },
+            new() { Key = "geldt", Title = "Geldt", Cell = x => @<CaLabel Applies="x.Answer.Applies" />, SortBy = x => (int)x.Answer.Applies, Text = x => x.Answer.Applies == CaApplies.Yes ? "ja" : "misschien" },
+            new() { Key = "reden", Title = "Waarom", Cell = x => @<text>@x.Answer.Reason</text>, SortBy = x => x.Answer.Reason },
+            new() { Key = "staat", Title = "Account", Cell = x => @<text>@(x.Person.Enabled ? "ingeschakeld" : "uitgeschakeld")</text>, SortBy = x => x.Person.Enabled, Text = x => x.Person.Enabled ? "ingeschakeld" : "uitgeschakeld" },
+        };
+    }
+
+    private RenderFragment Links(IReadOnlyList<string> ids) => @<text>
+        @foreach (var id in ids.Where(Real))
+        {
+            <div><ObjectLink Object="State.Data.Index.Ref(id)" /></div>
+        }
+        @if (!ids.Any(Real))
+        {
+            <span class="kb-zacht">&mdash;</span>
+        }
+    </text>;
+
+    private async Task LoadEffect()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await State.LoadCaEffectAsync(7);
+        }
+        catch (Exception ex)
+        {
+            error = "Aanmeldingen lezen mislukt: " + ex.Message + " (nodig: rol Reports Reader of Security Reader, en Entra ID P1).";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

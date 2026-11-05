@@ -1,0 +1,143 @@
+@page "/verbindingen"
+@implements IDisposable
+@inject ManagementState State
+
+<h1>Verbindingen</h1>
+
+<LeaveConfirm Active="State.SettingsChanged" Saving="Save" Discard="State.DiscardSettings"
+                   Text="Je hebt de verbindingsinstellingen aangepast maar nog niet bewaard. Het AD-wachtwoord wordt nooit bewaard." />
+
+<p class="kb-zacht">
+    Met deze gegevens leest de app live uit AD, Entra en Exchange, en voert hij goedgekeurde wijzigingen uit.
+    Wachtwoorden worden nooit bewaard. De instellingen staan in de databank <code>@State.Database.FilePath</code>.
+</p>
+
+@if (!State.CanConnect)
+{
+    <div class="kb-melding">Live verbinden is enkel beschikbaar in de Windows-app.</div>
+}
+
+<section class="kb-kaart">
+    <h2>On-prem AD</h2>
+    <div class="kb-rij">
+        <label>Domeincontroller</label>
+        <input class="kb-invoer kb-breed" placeholder="naam of IP-adres, bv. 10.103.17.3" @bind="State.Settings.AdServer" />
+    </div>
+    <div class="kb-rij">
+        <label>AD-account</label>
+        <input class="kb-invoer kb-breed" placeholder="bv. CONTOSO\naam (leeg = Windows-aanmelding, enkel op een domein-pc)" @bind="State.Settings.AdUser" />
+    </div>
+    <div class="kb-rij">
+        <label>Wachtwoord</label>
+        <input class="kb-invoer" type="password" autocomplete="off" @bind="State.AdPassword" />
+        <span class="kb-zacht">alleen voor deze sessie</span>
+    </div>
+    <p class="kb-zacht">
+        De app praat via LDAP (ondertekend en versleuteld) met de domeincontroller. Voor wijzigingen heeft het account rechten nodig
+        op de OU's en groepen; om te lezen volstaan gewone leesrechten.
+    </p>
+</section>
+
+<section class="kb-kaart">
+    <h2>Entra ID en Exchange Online</h2>
+    <div class="kb-rij">
+        <label>Tenant ID</label>
+        <input class="kb-invoer kb-breed" @bind="State.Settings.TenantId" />
+    </div>
+    <div class="kb-rij">
+        <label>Client ID</label>
+        <input class="kb-invoer kb-breed" placeholder="Application (client) ID van de app-registratie" @bind="State.Settings.ClientId" />
+    </div>
+    <div class="kb-rij">
+        <label>Beheeraccount</label>
+        <input class="kb-invoer kb-breed" placeholder="bv. naam@contoso.com" @bind="State.Settings.ManagementUpn" />
+    </div>
+    <p class="kb-zacht">
+        Tenant ID en Client ID krijg je met <code>Register-App.ps1</code> (eenmalig, als Global Administrator). Dat maakt de
+        app-registratie "Moss365" aan met enkel gedelegeerde rechten en alleen toegewezen beheerders.
+        Bij de eerste actie verschijnt bovenaan een aanmeldlink: kopieer hem naar de browser van je keuze. Exchange gebruikt
+        dezelfde aanmelding (module ExchangeOnlineManagement nodig).
+    </p>
+</section>
+
+<div class="kb-filters">
+    <button class="kb-knop" @onclick="Save">Instellingen bewaren</button>
+    <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Everything)">Alles live laden</button>
+    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">Live laden (AD en Entra)</button>
+    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Rooms)">Rooms laden uit Exchange</button>
+    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Mailboxes)">Postvakken en groepen laden uit Exchange</button>
+    @if (message is not null) { <span class="kb-ok">@message</span> }
+</div>
+<p class="kb-zacht">Het laden loopt op de achtergrond: je kan intussen andere schermen gebruiken. Onderaan het menu zie je de status. Na het laden bewaart de app de gegevens als inventaris, zodat hij de volgende keer al met recente gegevens start.</p>
+<label>
+    <input type="checkbox" @bind="State.Settings.RefreshAuto" @bind:after="State.SaveSettings" />
+    Elke 15 minuten vernieuwen (AD en Entra) zolang de app open is
+    <span class="kb-zacht">(enkel als je aangemeld bent; er verschijnt nooit vanzelf een aanmeldlink)</span>
+</label>
+<label>
+    <input type="checkbox" @bind="State.Settings.QuickLoad" @bind:after="State.SaveSettings" />
+    Snel laden: enkel wat veranderde sinds de vorige keer
+    <span class="kb-zacht">
+        (AD: @(State.AdCanQuick ? "kan" : "volgende keer alles"); Entra-groepen: @(State.EntraCanQuick ? "kan" : "volgende keer alles").
+        Gebruikers in Entra en Exchange lezen altijd alles; minstens één keer per week leest de app alles.)
+    </span>
+</label>
+@if (State.Error is not null) { <div class="kb-melding kb-fout">@State.Error</div> }
+@if (State.ExchangeMessage is { } exo) { <div class="kb-melding">@exo</div> }
+
+<TaskProgress />
+
+<section class="kb-kaart">
+    <h2>Huidige gegevens</h2>
+    <p>Aangemeld als: @State.User</p>
+    <ul class="kb-lijst-plat">
+        @foreach (var part in new[] { "AD", "Entra", "Rooms", "Postvakken" })
+        {
+            <li><strong>@part</strong>: @(State.LiveOn.TryGetValue(part, out var t) ? $"live geladen om {t:HH:mm}" : "uit de inventaris")</li>
+        }
+        @if (State.SavedInventory is { } folder) { <li class="kb-zacht">Laatst bewaard als inventaris: @System.IO.Path.GetFileName(folder)</li> }
+    </ul>
+    <table class="kb-tabel">
+        <thead><tr><th>Bron</th><th>Uit</th><th class="kb-getal">Rijen</th></tr></thead>
+        <tbody>
+            @foreach (var b in State.Data.Sources)
+            {
+                <tr><td>@b.File</td><td>@(b.Folder is null ? "niet gevonden" : System.IO.Path.GetFileName(b.Folder))</td><td class="kb-getal">@b.Rows</td></tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+@code {
+    private string? message;
+
+    protected override void OnInitialized() => State.Changed += Reload;
+
+    private void Reload() => _ = InvokeAsync(StateHasChanged);
+
+    // After every change in a field: update the indication at the top and in the menu
+    private bool previousChanged;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (State.SettingsChanged != previousChanged)
+        {
+            previousChanged = State.SettingsChanged;
+            State.Pending.Reload();
+        }
+    }
+
+    public void Dispose() => State.Changed -= Reload;
+
+    private void Save()
+    {
+        State.SaveSettings();
+        message = "Bewaard (zonder wachtwoord).";
+    }
+
+    private void Load(LoadKind kind)
+    {
+        State.SaveSettings();
+        message = State.StartLoading(kind) ? null : State.TaskBusy ? "Er loopt al een taak." : null;
+    }
+}

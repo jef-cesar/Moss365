@@ -1,0 +1,112 @@
+@page "/uitstroom"
+@page "/uitstroom/{Sleutel}"
+@inject ManagementState State
+@inject NavigationManager Nav
+
+<h1>Uitstroom</h1>
+
+<p class="kb-zacht">
+    Het account wordt uitgeschakeld en naar <code>@(State.Config.Offboarding?.Ou ?? "(geen OU ingesteld)")</code> verplaatst,
+    nooit verwijderd. Bevoorrechte groepen worden altijd verwijderd. Kies hieronder wat er verder moet gebeuren; in het plan
+    kan je elke stap nog aan- of uitvinken.
+</p>
+
+<PersonPicker Label="Gebruiker" Selected="person" SelectedChanged="Choose" />
+
+@if (person is not null)
+{
+    @if (!person.Enabled)
+    {
+        <div class="kb-melding">Dit account is al uitgeschakeld.</div>
+    }
+
+    <section class="kb-kaart">
+        <h2>Opties</h2>
+        <div class="kb-raster">
+            <label>Datum uit dienst <input class="kb-invoer" type="date" @bind="options.Date" @bind:after="Clear" /></label>
+        </div>
+        <div class="kb-keuzelijst">
+            <label><input type="checkbox" @bind="options.Disable" @bind:after="Clear" /> Account uitschakelen</label>
+            <label><input type="checkbox" @bind="options.CompleteDescription" @bind:after="Clear" /> Datum in de omschrijving zetten</label>
+            <label><input type="checkbox" @bind="options.Move" @bind:after="Clear" /> Verplaatsen naar de uitstroom-OU</label>
+            <label><input type="checkbox" @bind="options.RevokeSessions" @bind:after="Clear" /> Aanmeldsessies intrekken</label>
+            <label><input type="checkbox" @bind="options.AdRemoveGroups" @bind:after="Clear" /> Uit alle AD-groepen halen</label>
+            <label><input type="checkbox" @bind="options.RemoveCloudGroups" @bind:after="Clear" /> Uit alle cloudgroepen halen</label>
+            <label><input type="checkbox" @bind="options.ToSharedMailbox" @bind:after="Clear" /> Postvak omzetten naar een gedeeld postvak</label>
+            <label><input type="checkbox" @bind="options.RemoveLicences" @bind:after="Clear" /> Licenties verwijderen</label>
+        </div>
+        <div class="kb-filters">
+            <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
+        </div>
+        <details class="kb-later">
+            <summary>Later uitvoeren (bv. op de laatste werkdag)</summary>
+            <p class="kb-zacht">
+                Op het gekozen moment staat de uitstroom bij <a href="gepland">Gepland</a> klaar. De app berekent het plan dan
+                opnieuw uit de gegevens van dat moment (laad eerst live) en voert niets uit zonder jouw bevestiging.
+            </p>
+            <Schedule Default="options.Date" Selected="PlanIn" />
+            @if (scheduled is not null) { <div class="kb-melding kb-goed">Ingepland op @scheduled.Value.ToString("dd/MM/yyyy HH:mm").</div> }
+        </details>
+    </section>
+
+    @if (plan is not null)
+    {
+        <PlanView Plan="plan" Context="@($"Uitstroom {person.Name}")" Title="Uitstroom" Executed="AfterExecute" />
+    }
+}
+
+@code {
+    [Parameter] public string? Key { get; set; }
+
+    private Person? person;
+    private OffboardingOptions options = new();
+    private IReadOnlyList<Change>? plan;
+
+    protected override void OnParametersSet()
+    {
+        var newValue = Key is null ? null : State.Data.SearchPerson(Key);
+        if (newValue?.Key != person?.Key)
+        {
+            person = newValue;
+            options = person is null ? new() : State.PageState.Form<OffboardingOptions>(Form, Form, $"Uitstroom {person.Name}");
+            plan = null;
+        }
+    }
+
+    private void Choose(Person? p) => Nav.NavigateTo(p is null ? "uitstroom" : "uitstroom/" + Uri.EscapeDataString(p.Key));
+
+    private DateTimeOffset? scheduled;
+
+    private void Clear()
+    {
+        plan = null;
+        scheduled = null;
+    }
+
+    private void PlanIn(DateTimeOffset whenValue)
+    {
+        if (person is null)
+        {
+            return;
+        }
+
+        State.Schedule(ScheduledPlans.Offboarding(person, options, whenValue, State.User));
+        scheduled = whenValue;
+        var date = options.Date;
+        State.PageState.Forget(Form);
+        options = State.PageState.Form(Form, Form, $"Uitstroom {person.Name}", () => new OffboardingOptions { Date = date });
+    }
+
+    // The options are kept per person until you run or schedule the offboarding
+    private string Form => "uitstroom/" + person?.Key;
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            State.PageState.Forget(Form);
+        }
+    }
+
+    private void MakePlan() => plan = person is null ? null : PlanBuilder.Offboarding(State.Data, State.Config, person, options);
+}

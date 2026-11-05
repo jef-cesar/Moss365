@@ -1,0 +1,138 @@
+@* Reset the password, unlock and enable an AD account. The password lives only in this screen. *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>Helpdesk</h2>
+    @if (Person.Ad is not { } ad)
+    {
+        <p class="kb-zacht">
+            Geen AD-account. Het wachtwoord van een cloudaccount stel je in via het Entra-portaal (Gebruikers &gt; Wachtwoord
+            opnieuw instellen).
+        </p>
+    }
+    else
+    {
+        <p>
+            @if (ad.LockedOut) { <span class="kb-label kb-rood">vergrendeld</span> }
+            @if (!ad.Enabled) { <span class="kb-label">uitgeschakeld</span> }
+            <span class="kb-zacht">Wachtwoord laatst ingesteld: @(string.IsNullOrEmpty(ad.PasswordLastSet) ? "onbekend" : ad.PasswordLastSet)</span>
+        </p>
+        <div class="kb-filters">
+            <button class="kb-knop" @onclick="NewPassword">Wachtwoord opnieuw instellen</button>
+            <button class="kb-knop" @onclick="() => Show(HelpdeskPlans.Unlock(Person))">Ontgrendelen</button>
+            @if (!ad.Enabled)
+            {
+                <button class="kb-knop" @onclick="() => Show(HelpdeskPlans.Enable(Person))">Inschakelen</button>
+            }
+        </div>
+
+        @if (passwordForm)
+        {
+            <div class="kb-raster kb-helpdesk-velden">
+                <div class="kb-veld">
+                    <span>Voorgesteld wachtwoord</span>
+                    <CopyField Value="@password" Label="Voorgesteld wachtwoord" Secret="true" />
+                </div>
+                <label class="kb-veld">
+                    <span>Of zelf kiezen (minstens @HelpdeskPlans.MinimumLength tekens)</span>
+                    <input class="kb-invoer" type="password" autocomplete="new-password" @bind="own" @bind:event="oninput" />
+                </label>
+            </div>
+            <label><input type="checkbox" @bind="change" /> De gebruiker moet het wijzigen bij de volgende aanmelding</label>
+            <label><input type="checkbox" @bind="unlock" /> Account ook ontgrendelen</label>
+            <div class="kb-filters">
+                <button class="kb-knop" @onclick="() => { password = NameRules.InitialPassword(); plan = null; }">Ander wachtwoord</button>
+                <button class="kb-knop kb-primair" @onclick="MakePasswordPlan">Plan maken</button>
+            </div>
+            <p class="kb-zacht">
+                Geef het wachtwoord mondeling of via een apart kanaal door, nooit in dezelfde mail als de gebruikersnaam. De app
+                bewaart het nergens; na het verlaten van deze pagina is het weg. Met Entra Connect is het binnen enkele minuten
+                ook in Microsoft 365 actief.
+            </p>
+        }
+
+        @foreach (var f in errors)
+        {
+            <div class="kb-melding kb-fout">@f</div>
+        }
+
+        @if (plan is not null)
+        {
+            <PlanView Plan="plan" Context="@($"Helpdesk {Person.Name}")" Title="Helpdesk" Executed="AfterExecute" />
+        }
+
+        @if (pass is not null)
+        {
+            <section class="kb-kaart kb-geheim">
+                <h3>Nieuw wachtwoord voor @Person.Name</h3>
+                <CopyField Value="@pass" Label="Nieuw wachtwoord" Secret="true" />
+            </section>
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = default!;
+
+    private bool passwordForm;
+    private string password = string.Empty;
+    private string own = string.Empty;
+    private bool change = true;
+    private bool unlock = true;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private string? pass;
+    private string? previousKey;
+
+    protected override void OnParametersSet()
+    {
+        // Another user: take nothing along from the previous one (certainly no password)
+        if (previousKey != Person.Key)
+        {
+            previousKey = Person.Key;
+            passwordForm = false;
+            password = own = string.Empty;
+            plan = null;
+            errors = Array.Empty<string>();
+            pass = null;
+        }
+    }
+
+    private void NewPassword()
+    {
+        passwordForm = true;
+        password = NameRules.InitialPassword();
+        own = string.Empty;
+        plan = null;
+        pass = null;
+    }
+
+    private string Selected => own.Length > 0 ? own : password;
+
+    private void MakePasswordPlan() => Show(HelpdeskPlans.ConfigurePassword(State.Data, Person, Selected, change, unlock));
+
+    private void Show(PlanOutcome u)
+    {
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+        pass = null;
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        var configure = plan?.FirstOrDefault(w => w.ChangeAction == ChangeAction.AdSetPassword);
+        if (configure is not null && results.Any(r => r.ChangeId == configure.Id && r.Status == ResultStatus.Succeeded))
+        {
+            pass = configure.Secret;
+            passwordForm = false;
+        }
+
+        // Do not leave the secret in the plan longer than needed
+        foreach (var w in plan ?? Array.Empty<Change>())
+        {
+            w.Secret = null;
+        }
+
+        password = own = string.Empty;
+    }
+}

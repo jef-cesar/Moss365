@@ -1,0 +1,173 @@
+@page "/beveiliging"
+@inherits RefreshingPage
+
+<h1>Beveiliging</h1>
+
+<p class="kb-zacht">
+    MFA-registraties en beheerrollen uit Entra (@(State.Data.Security is null ? "niet geladen" : State.OriginOf(new ObjectRef(ObjectKind.User, "", "")))),
+    en bevoorrechte AD-groepen. Mislukte aanmeldingen lees je live. Signalen om na te kijken, geen conclusies.
+</p>
+
+@if (State.Data.Security is not { } b)
+{
+    <div class="kb-melding">
+        Nog geen beveiligingsgegevens. Kies op <a href="verbindingen">Verbindingen</a> <strong>Alles live laden</strong> of
+        <strong>Live laden (AD en Entra)</strong>; de stap "Beveiliging lezen" haalt MFA en beheerrollen op. Daarvoor heeft je
+        account de rol Reports Reader, Security Reader of Global Reader nodig, en de tenant Entra ID P1 (zit in Business Premium).
+    </div>
+}
+else
+{
+    @foreach (var m in new[] { b.MfaMessage, b.RolesMessage }.Where(m => m is not null))
+    {
+        <div class="kb-melding kb-fout">@m</div>
+    }
+
+    <div class="kb-tegels">
+        <Tile Kpi="Kpis.WithoutMfa" />
+        <Tile Kpi="Kpis.AdministratorsWithoutMfa" />
+        <Tile Kpi="Kpis.WithAdminRole" />
+        <Tile Kpi="Kpis.GlobalAdministrators" />
+        <Tile Kpi="Kpis.PrivilegedAll" />
+    </div>
+
+    <section class="kb-kaart">
+        <h2>Actieve medewerkers zonder MFA (@WithoutMfa.Count)</h2>
+        @if (!b.MfaKnown)
+        {
+            <p class="kb-zacht">Onbekend: de MFA-registraties konden niet gelezen worden.</p>
+        }
+        else
+        {
+            <KbTable Id="zonder-mfa" ExportName="Zonder-MFA" Items="WithoutMfa" Columns="mfaColumns" DefaultSorting="naam" />
+        }
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Entra-beheerrollen (@b.Roles.Count)</h2>
+        <p class="kb-zacht">Actieve roltoewijzingen. Wie via PIM enkel in aanmerking komt (nog niet geactiveerd), staat hier niet.</p>
+        <KbTable Id="beheerrollen" ExportName="Beheerrollen" Items="b.Roles" Columns="roleColumns" DefaultSorting="rol" />
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Bevoorrechte AD-groepen (@AdPrivileged.Count)</h2>
+        <ul class="kb-lijst-plat">
+            @foreach (var (p, groups) in AdPrivileged)
+            {
+                <li><ObjectLink Object="State.Data.Index.Ref(p)" /> <span class="kb-zacht">@string.Join(", ", groups)</span> @if (!p.Enabled) { <span class="kb-label">uitgeschakeld</span> }</li>
+            }
+        </ul>
+    </section>
+}
+
+<section class="kb-kaart">
+    <h2>Mislukte aanmeldingen</h2>
+    <div class="kb-filters">
+        <select class="kb-invoer" @bind="days" aria-label="Periode">
+            <option value="1">laatste 24 uur</option>
+            <option value="7">laatste 7 dagen</option>
+            <option value="30">laatste 30 dagen</option>
+        </select>
+        <button class="kb-knop" disabled="@busy" @onclick="LoadSignIns">Live laden</button>
+        @if (busy) { <span class="kb-zacht">bezig...</span> }
+    </div>
+    @if (error is not null)
+    {
+        <div class="kb-melding kb-fout">@error</div>
+    }
+    else if (failed is not null)
+    {
+        <p class="kb-zacht">@failed.Count mislukte aanmeldingen (de nieuwste 500), samengevat per account.</p>
+        <table class="kb-tabel">
+            <thead><tr><th>Account</th><th class="kb-getal">Aantal</th><th>Laatste</th><th>Reden (laatste)</th><th>Plaatsen</th></tr></thead>
+            <tbody>
+                @foreach (var g in failed.GroupBy(a => a.Upn).OrderByDescending(g => g.Count()))
+                {
+                    var last = g.First();
+                    <tr>
+                        <td><ObjectLink Id="@last.UserId" Text="@(last.Name.Length > 0 ? last.Name : last.Upn)" /></td>
+                        <td class="kb-getal">@g.Count()</td>
+                        <td>@last.Time.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                        <td>@last.Reason <span class="kb-zacht">(@last.ErrorCode)</span></td>
+                        <td class="kb-zacht">@string.Join(", ", g.Select(a => a.Location).Where(l => l.Length > 0).Distinct().Take(3))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <details>
+            <summary>Alle mislukte aanmeldingen</summary>
+            <SignInList SignIns="failed" />
+        </details>
+    }
+</section>
+
+@code {
+    private int days = 7;
+    private bool busy;
+    private string? error;
+    private IReadOnlyList<SignInEvent>? failed;
+    private IReadOnlyList<Column<Person>> mfaColumns = Array.Empty<Column<Person>>();
+    private IReadOnlyList<Column<RoleMember>> roleColumns = Array.Empty<Column<RoleMember>>();
+
+    /// <summary>The same list as the tile (Core/Analysis/Kpis.cs).</summary>
+    private IReadOnlyList<Person> WithoutMfa => Kpis.Persons(Kpis.WithoutMfa, State.KpiSource);
+
+    private List<(Person Person, List<string> Groups)> AdPrivileged => State.Data.Persons
+        .Select(p => (p, State.Data.AdGroupsOf(p).Where(MirrorUser.IsPrivileged).Select(g => g.Name).ToList()))
+        .Where(x => x.Item2.Count > 0)
+        .OrderBy(x => x.p.Name, StringComparer.CurrentCultureIgnoreCase)
+        .ToList();
+
+    protected override void OnInitialized()
+    {
+        State.Access("Beveiliging bekeken", "MFA, beheerrollen en bevoorrechte groepen");
+        mfaColumns = new List<Column<Person>>
+        {
+            new() { Key = "naam", Title = "Naam", Cell = p => @<ObjectLink Object="State.Data.Index.Ref(p)" />, SortBy = p => p.Name },
+            new() { Key = "upn", Title = "UPN", Cell = p => @<text>@p.Upn</text>, SortBy = p => p.Upn },
+            new() { Key = "dienst", Title = "Dienst", Cell = p => @<text>@p.Department</text>, SortBy = p => p.Department },
+            new() { Key = "methodes", Title = "Wel geregistreerd", Cell = p => @<text>@Methods(p)</text>, SortBy = p => Methods(p) },
+            new() { Key = "aanmelding", Title = "Laatste aanmelding", Cell = p => @<text>@Statistic.LastSignIn(p)?.ToString("dd/MM/yyyy")</text>, SortBy = p => Statistic.LastSignIn(p), Text = p => Statistic.LastSignIn(p)?.ToString("yyyy-MM-dd") },
+        };
+        roleColumns = new List<Column<RoleMember>>
+        {
+            new() { Key = "rol", Title = "Rol", Cell = r => @<text>@r.Role @if (SecurityData.IsCriticalRole(r.Role)) { <span class="kb-label kb-rood">kritiek</span> }</text>, SortBy = r => r.Role },
+            new() { Key = "wie", Title = "Wie", Cell = r => @<ObjectLink Id="@r.MemberId" Text="@(r.MemberName.Length > 0 ? r.MemberName : r.MemberUpn)" />, SortBy = r => r.MemberName, Text = r => r.MemberName },
+            new() { Key = "upn", Title = "UPN", Cell = r => @<text>@r.MemberUpn</text>, SortBy = r => r.MemberUpn },
+            new() { Key = "soort", Title = "Soort", Cell = r => @<text>@r.MemberKind</text>, SortBy = r => r.MemberKind },
+            new() { Key = "mfa", Title = "MFA", Cell = r => @<text>@Mfa(r.MemberId)</text>, SortBy = r => Mfa(r.MemberId) },
+        };
+    }
+
+    private string Methods(Person p)
+        => State.Data.Security?.MfaOf(p.Entra?.Id) is { } m ? string.Join(", ", m.Methods.Select(SecurityStatistics.MethodName)) : string.Empty;
+
+    private string Mfa(string id) => State.Data.Security?.MfaOf(id) switch
+    {
+        null => "onbekend",
+        { MfaRegistered: true } => "ja",
+        _ => "NEE",
+    };
+
+    private async Task LoadSignIns()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            failed = await State.ReadSignInsAsync(null, days, onlyFailed: true);
+            if (failed is null)
+            {
+                error = "Vul eerst de Entra-gegevens in (scherm Verbindingen).";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = "Aanmeldingen lezen mislukt: " + ex.Message + " (nodig: rol Reports Reader of Security Reader, en Entra ID P1).";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

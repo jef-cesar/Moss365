@@ -1,0 +1,141 @@
+@* Columns over time (one or two stacked series), in SVG. Thin columns (at most 24), rounded at the top, a hairline
+   grid, a legend from two series on, the value only at the highest column, and a table as an alternative. A column
+   with a KPI opens the list with exactly those rows. *@
+@inject NavigationManager Nav
+
+@if (Columns.Count > 0 && Max == 0)
+{
+    <p class="kb-zacht">@EmptyText</p>
+}
+else if (Columns.Count > 0)
+{
+    <svg class="kb-kolomgrafiek" viewBox="0 0 @B @H" role="img" aria-label="@Title">
+        @foreach (var t in Ticks)
+        {
+            var y = Y(t);
+            <line x1="@F(L)" x2="@F(B - R)" y1="@F(y)" y2="@F(y)" class="@(t == 0 ? "kb-as" : "kb-raster")" />
+            <g><text x="@F(L - 6)" y="@F(y + 4)" text-anchor="end" class="kb-as-tekst">@Short(t)</text></g>
+        }
+        @for (var i = 0; i < Columns.Count; i++)
+        {
+            var k = Columns[i];
+            var midden = L + Band * (i + 0.5);
+            var hoogsteReeks = Enumerable.Range(0, k.Values.Count).LastOrDefault(r => k.Values[r] > 0, -1);
+            var opgeteld = 0;
+            var vorigeTop = Y(0);
+            var first = true;
+            for (var r = 0; r < k.Values.Count; r++)
+            {
+                if (k.Values[r] == 0) { continue; }
+                opgeteld += k.Values[r];
+                var top = Y(opgeteld);
+                var bodem = first ? Y(0) : vorigeTop - 2; // 2px oppervlak tussen de delen
+                <path d="@Column(midden - Width / 2, bodem, Width, Math.Max(0, bodem - top), r == hoogsteReeks)" class="kb-kleur-@(Series.ElementAtOrDefault(r)?.Colour ?? "reeks")" />
+                vorigeTop = top;
+                first = false;
+            }
+            if (k.Total == Max && Max > 0 && i == Columns.ToList().FindLastIndex(x => x.Total == Max))
+            {
+                <g><text x="@F(midden)" y="@F(Y(k.Total) - 6)" text-anchor="middle" class="kb-waarde-tekst">@k.Total</text></g>
+            }
+            if (i % LabelStep == 0 || i == Columns.Count - 1)
+            {
+                <g><text x="@F(midden)" y="@F(H - 6)" text-anchor="middle" class="kb-as-tekst">@k.Label</text></g>
+            }
+            <rect x="@F(L + Band * i)" y="@F(T)" width="@F(Band)" height="@F(H - T - Under)" class="kb-raak @(k.Kpi is not null ? "kb-klikbaar" : null)"
+                  tabindex="@(k.Kpi is not null ? 0 : -1)" @onclick="() => Open(k)" @onkeydown="e => Key(e, k)">
+                <title>@k.Tip</title>
+            </rect>
+        }
+    </svg>
+    @if (Series.Count > 1)
+    {
+        <ul class="kb-legende" role="list">
+            @foreach (var r in Series)
+            {
+                <li><span class="kb-sleutel kb-kleur-@r.Colour" aria-hidden="true"></span> @r.Name</li>
+            }
+        </ul>
+    }
+    <details class="kb-als-tabel">
+        <summary>Als tabel</summary>
+        <table class="kb-tabel">
+            <thead><tr><th>@ColumnTitle</th>@foreach (var r in Series) { <th class="kb-getal">@r.Name</th> }</tr></thead>
+            <tbody>
+                @foreach (var k in Columns)
+                {
+                    <tr>
+                        <td>@if (k.Kpi is not null) { <a href="@k.Kpi.Link">@k.Tip.Split(':')[0]</a> } else { @k.Tip.Split(':')[0] }</td>
+                        @foreach (var w in k.Values) { <td class="kb-getal">@w</td> }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </details>
+}
+
+@code {
+    public sealed record SeriesItem(string Name, string Colour = "reeks");
+
+    [Parameter, EditorRequired] public IReadOnlyList<ChartColumn> Columns { get; set; } = Array.Empty<ChartColumn>();
+    [Parameter] public IReadOnlyList<SeriesItem> Series { get; set; } = new[] { new SeriesItem("Aantal") };
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string ColumnTitle { get; set; } = "Periode";
+    [Parameter] public string EmptyText { get; set; } = "Nog niets in deze periode.";
+
+    // Sizes in the units of the viewBox
+    private const int B = 640, H = 200, L = 40, R = 8, T = 14, Under = 24;
+    private double Band => (B - L - R) / (double)Columns.Count;
+    private double Width => Math.Min(24, Band * 0.6);
+    private int LabelStep => Band >= 40 ? 1 : Band >= 20 ? 2 : 3;
+    private int Max => Columns.Count == 0 ? 0 : Columns.Max(k => k.Total);
+
+    /// <summary>Round steps (1, 2 or 5 times a power of ten), at most five lines.</summary>
+    private IReadOnlyList<int> Ticks
+    {
+        get
+        {
+            var max = Math.Max(1, Max);
+            var step = 1;
+            foreach (var baseline in new[] { 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000 })
+            {
+                step = baseline;
+                if (max / baseline <= 4) { break; }
+            }
+
+            var top = (int)Math.Ceiling(max / (double)step) * step;
+            return Enumerable.Range(0, top / step + 1).Select(i => i * step).ToList();
+        }
+    }
+
+    private double Y(int value) => H - Under - (H - Under - T) * value / (double)Math.Max(1, Ticks[^1]);
+
+    private static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Short(int v) => v >= 1000 ? (v / 1000.0).ToString("0.#", System.Globalization.CultureInfo.GetCultureInfo("nl-BE")) + "K" : v.ToString();
+
+    /// <summary>A column with a straight base and (for the top part) a top with a rounding of 4.</summary>
+    private static string Column(double x, double under, double width, double height, bool roundTop)
+    {
+        var r = roundTop ? Math.Min(4, Math.Min(width / 2, height)) : 0;
+        var above = under - height;
+        return string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"M{x:0.##},{under:0.##} V{above + r:0.##} Q{x:0.##},{above:0.##} {x + r:0.##},{above:0.##} H{x + width - r:0.##} Q{x + width:0.##},{above:0.##} {x + width:0.##},{above + r:0.##} V{under:0.##} Z");
+    }
+
+    private void Open(ChartColumn k)
+    {
+        if (k.Kpi is not null)
+        {
+            Nav.NavigateTo(k.Kpi.Link);
+        }
+    }
+
+    private void Key(KeyboardEventArgs e, ChartColumn k)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            Open(k);
+        }
+    }
+}

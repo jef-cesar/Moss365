@@ -1,0 +1,69 @@
+@* Asks for confirmation when you leave a screen with unsaved settings: Save, Discard or Stay. *@
+@implements IDisposable
+@inject NavigationManager Nav
+
+@if (target is not null)
+{
+    <div class="kb-dialoog-achter">
+        <div class="kb-dialoog" role="alertdialog" aria-labelledby="kb-weggaan-titel">
+            <h2 id="kb-weggaan-titel">Niet bewaard</h2>
+            <p>@Text</p>
+            <div class="kb-filters">
+                <button class="kb-knop kb-primair" disabled="@(!CanSave)" @onclick="SaveAndGo">Bewaren</button>
+                <button class="kb-knop" @onclick="DiscardAndGo">Verwerpen</button>
+                <button class="kb-knop" @onclick="() => target = null">Blijven</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Something is not saved: leaving is asked first.</summary>
+    [Parameter] public bool Active { get; set; }
+    [Parameter] public bool CanSave { get; set; } = true;
+    [Parameter] public string Text { get; set; } = "Je hebt niet-bewaarde wijzigingen.";
+    [Parameter] public EventCallback Saving { get; set; }
+    [Parameter] public EventCallback Discard { get; set; }
+
+    private IDisposable? registration;
+    private string? target;
+    private bool letThrough;
+
+    protected override void OnInitialized() => registration = Nav.RegisterLocationChangingHandler(Changes);
+
+    private ValueTask Changes(Microsoft.AspNetCore.Components.Routing.LocationChangingContext context)
+    {
+        if (Active && !letThrough)
+        {
+            context.PreventNavigation();
+            target = context.TargetLocation;
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    private async Task SaveAndGo()
+    {
+        await Saving.InvokeAsync();
+        Go();
+    }
+
+    private async Task DiscardAndGo()
+    {
+        await Discard.InvokeAsync();
+        Go();
+    }
+
+    private void Go()
+    {
+        if (target is { } d)
+        {
+            target = null;
+            letThrough = true;
+            Nav.NavigateTo(d);
+        }
+    }
+
+    public void Dispose() => registration?.Dispose();
+}

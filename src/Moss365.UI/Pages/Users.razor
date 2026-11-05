@@ -1,0 +1,107 @@
+@page "/gebruikers"
+@inherits RefreshingPage
+@inject NavigationManager Nav
+
+<div class="kb-titelbalk">
+    <h1>Gebruikers</h1>
+    @if (State.Can(Permission.Actions)) { <a class="kb-knop kb-primair" href="nieuw">+ Nieuwe gebruiker</a> }
+</div>
+
+<KpiFilter Kpi="ActiveKpi" Count="KpiRows.Count" Shown="Filtered.Count" Cleared="() => z.Kpi = null">
+    @if (Cleanup is { } link) { <a class="kb-knop" href="@link">Opkuisronde voor deze accounts</a> }
+    @if (LicenceDifference is { } difference) { <span class="kb-zacht">@difference</span> }
+</KpiFilter>
+
+<div class="kb-filters">
+    <input class="kb-invoer kb-breed" placeholder="Zoek op naam, UPN, sAMAccountName, e-mail of dienst" @bind="z.Find" @bind:event="oninput" />
+    @if (ActiveKpi is null)
+    {
+        <label><input type="checkbox" @bind="z.WithGuests" /> Gasten tonen</label>
+        <label><input type="checkbox" @bind="z.OnlyEnabled" /> Actieve gebruikers</label>
+        <select class="kb-invoer" @bind="z.Source">
+            <option value="">Alle bronnen</option>
+            <option>AD + Entra</option>
+            <option>Alleen AD</option>
+            <option>Alleen Entra</option>
+            <option>Gast</option>
+        </select>
+    }
+</div>
+
+<KbTable Id="gebruikers" Items="Filtered" Columns="columns" Selectable KeyOf="p => p.Key" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@($"{Filtered.Count} gevonden")" />
+
+<BulkTasks Items="gebruikers" Count="CountSelected" />
+
+@code {
+    /// <summary>Search term and filters, kept while the app is open (Back, Forward, menu).</summary>
+    private sealed class Search { public string Find { get; set; } = string.Empty; public bool WithGuests { get; set; } public bool OnlyEnabled { get; set; } = true; public string Source { get; set; } = string.Empty; public string? Kpi { get; set; } }
+    private Search? _z;
+    private Search z => _z ??= State.PageState.Of<Search>("gebruikers");
+
+    /// <summary>From a KPI tile: gebruikers?kpi=uitgeschakeld (see Core/Analysis/Kpis.cs).</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "kpi")] public string? KpiQuestion { get; set; }
+    private string? processedKpi;
+
+    protected override void OnParametersSet()
+    {
+        if (KpiQuestion != processedKpi)
+        {
+            processedKpi = KpiQuestion;
+            if (State.KpiArrival(KpiQuestion, Nav.Uri, "gebruikers", "gebruikers"))
+            {
+                _z = null;
+                z.Kpi = KpiQuestion;
+            }
+        }
+    }
+
+    private Kpi? ActiveKpi => Kpis.Find(z.Kpi) is { Items: KpiList.Users } k ? k : null;
+    private IReadOnlyList<Person> KpiRows => ActiveKpi is { } k ? Kpis.Persons(k, State.KpiSource) : Array.Empty<Person>();
+
+    /// <summary>For a licence: Microsoft counts the assigned licences itself; says so when that differs from the list.</summary>
+    private string? LicenceDifference => ActiveKpi is { } k && k.Key.StartsWith("licentie:", StringComparison.Ordinal)
+        && State.Data.Licences.FirstOrDefault(l => l.SkuPartNumber == k.Value) is { } l && l.Assigned != KpiRows.Count
+            ? $"Microsoft telt {l.Assigned} toegewezen; het verschil zijn accounts die niet geladen zijn."
+            : null;
+
+    private string? Cleanup => ActiveKpi?.Key switch
+    {
+        "inactief-90" or "nooit-aangemeld" => "opkuis?dagen=90",
+        "inactief-180" => "opkuis?dagen=180",
+        _ => null,
+    };
+
+    private IReadOnlyList<Column<Person>> columns = Array.Empty<Column<Person>>();
+
+    protected override void OnInitialized() => columns = new List<Column<Person>>
+    {
+        new() { Key = "naam", Title = "Naam", Cell = p => @<a href="@Searcher.Link(p)">@p.Name</a>, SortBy = p => p.Name },
+        new() { Key = "upn", Title = "UPN", Cell = p => @<text>@p.Upn</text>, SortBy = p => p.Upn },
+        new() { Key = "bron", Title = "Bron", Cell = p => @<text>@p.Source</text>, SortBy = p => p.Source },
+        new() { Key = "ou", Title = "OU", Cell = p => @<text>@p.Ad?.OuPath</text>, SortBy = p => p.Ad?.OuPath },
+        new() { Key = "dienst", Title = "Dienst", Cell = p => @<text>@p.Department</text>, SortBy = p => p.Department },
+        new() { Key = "afdeling", Title = "Afdeling", Cell = p => @<text>@(State.Config.DivisionFor(p.Department)?.Name)</text>, SortBy = p => State.Config.DivisionFor(p.Department)?.Name },
+        new() { Key = "status", Title = "Status", Cell = p => @<text>@(p.Enabled ? "ingeschakeld" : "uitgeschakeld")</text>, SortBy = p => p.Enabled ? "ingeschakeld" : "uitgeschakeld" },
+        new() { Key = "sam", Title = "sAMAccountName", Hidden = true, Cell = p => @<text>@p.Ad?.SamAccountName</text>, SortBy = p => p.Ad?.SamAccountName },
+        new() { Key = "mail", Title = "E-mail", Hidden = true, Cell = p => @<text>@(p.Entra?.Mail ?? p.Ad?.EmailAddress)</text>, SortBy = p => p.Entra?.Mail ?? p.Ad?.EmailAddress },
+        new() { Key = "functie", Title = "Functie", Hidden = true, Cell = p => @<text>@(p.Ad?.Title ?? p.Entra?.JobTitle)</text>, SortBy = p => p.Ad?.Title ?? p.Entra?.JobTitle },
+        new() { Key = "kantoor", Title = "Kantoor", Hidden = true, Cell = p => @<text>@(p.Ad?.Office ?? p.Entra?.OfficeLocation)</text>, SortBy = p => p.Ad?.Office ?? p.Entra?.OfficeLocation },
+        new() { Key = "aanmelding", Title = "Laatste aanmelding", Hidden = true, Cell = p => @<text>@LastSignIn(p)</text>, SortBy = p => LastSignIn(p) },
+        new() { Key = "licenties", Title = "Licenties", Hidden = true, Cell = p => @<text>@(p.Entra is null ? null : string.Join(", ", p.Entra.Licences))</text>, SortBy = p => p.Entra is null ? null : string.Join(", ", p.Entra.Licences) },
+        new() { Key = "aangemaakt", Title = "Aangemaakt", Hidden = true, Cell = p => @<text>@(p.Ad?.WhenCreated ?? p.Entra?.CreatedDateTime)</text>, SortBy = p => p.Ad?.WhenCreated ?? p.Entra?.CreatedDateTime },
+        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = p => @<code>@(p.Entra?.Id)</code>, SortBy = p => p.Entra?.Id },
+    };
+
+    /// <summary>The most recent of AD and Entra (ISO dates sort correctly as text).</summary>
+    private static string LastSignIn(Person p)
+        => new[] { p.Ad?.LastLogonDate, p.Entra?.LastSignIn }.Where(d => !string.IsNullOrWhiteSpace(d)).OrderByDescending(d => d, StringComparer.Ordinal).FirstOrDefault() ?? string.Empty;
+
+    private List<Person> Filtered => ActiveKpi is not null
+        ? Searcher.Find(KpiRows, z.Find, withGuests: true).ToList()
+        : Searcher.Find(State.Data.Persons, z.Find, z.WithGuests || z.Source == "Gast")
+            .Where(p => !z.OnlyEnabled || p.Enabled)
+            .Where(p => z.Source.Length == 0 || p.Source == z.Source)
+            .ToList();
+
+    private int CountSelected => State.TableSession("gebruikers").Selected.Count;
+}

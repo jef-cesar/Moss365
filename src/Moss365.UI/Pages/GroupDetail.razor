@@ -1,0 +1,268 @@
+@page "/groep/{Sleutel}"
+@inherits RefreshingPage
+
+@if (groupValue is null)
+{
+    <h1>Groep niet gevonden</h1>
+    <p><a href="groepen">Terug naar de groepen</a></p>
+}
+else
+{
+    <h1>@groupValue.Name</h1>
+    <ObjectStatus Object="groupValue.Ref" />
+    <p class="kb-zacht">
+        @groupValue.KindText &middot; @groupValue.Layers &middot; wijzigen via @RouteText(groupValue)
+        @if (groupValue.Dynamic) { <span class="kb-label">dynamisch</span> }
+        @if (groupValue.Ad is { } bev && Moss365.Core.Analysis.MirrorUser.IsPrivileged(bev)) { <span class="kb-label kb-rood">bevoorrecht</span> }
+    </p>
+
+    <div class="kb-kolommen">
+        <section class="kb-kaart">
+            <h2>Gegevens</h2>
+            <table class="kb-tabel kb-naast">
+                <tbody>
+                    <tr><th>E-mailadres</th><td>@groupValue.Mail</td></tr>
+                    <tr><th>Omschrijving</th><td>@groupValue.Description</td></tr>
+                    @if (groupValue.Ad is { } ad)
+                    {
+                        <tr><th>sAMAccountName</th><td>@ad.SamAccountName</td></tr>
+                        <tr><th>OU</th><td>@ad.OuPath</td></tr>
+                        <tr><th>Soort in AD</th><td>@ad.Category, @ad.Scope</td></tr>
+                    }
+                    @if (groupValue.Cloud is { } cloud)
+                    {
+                        <tr><th>Soort in Entra</th><td>@cloud.TypeText @(cloud.FromAd ? "(uit AD)" : null)</td></tr>
+                        @if (cloud.Dynamic) { <tr><th>Regel</th><td><code>@cloud.MembershipRule</code></td></tr> }
+                        @if (cloud.GroupLicence) { <tr><th>Licentie</th><td>Kent een licentie toe aan de leden</td></tr> }
+                    }
+                    @if (groupValue.Exo is { } exo)
+                    {
+                        <tr><th>Soort in Exchange</th><td>@exo.TypeText</td></tr>
+                        <tr><th>Lid worden</th><td>@exo.MemberJoinRestriction</td></tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="kb-kaart">
+            <h2>Beheerders en eigenaars</h2>
+            @if (administrators.Count == 0 && owners is null)
+            {
+                <p class="kb-zacht">Geen beheerder gekend.</p>
+            }
+            <ul class="kb-lijst-plat">
+                @foreach (var b in administrators)
+                {
+                    <li><ObjectLink Object="b.Object" ShowKind="true" /> <span class="kb-zacht">(@b.Layer)</span>
+                        <button class="kb-knop kb-klein" @onclick="() => Plan(GroupPlans.Administrator(State.Data, groupValue, b.Object, false))">weghalen</button></li>
+                }
+                @foreach (var e in owners ?? Array.Empty<GraphOwner>())
+                {
+                    var r = State.Data.Index.Ref(e.Id.Length > 0 ? e.Id : e.Upn);
+                    <li><ObjectLink Object="r" Text="@(e.Name.Length > 0 ? e.Name : null)" /> <span class="kb-zacht">(eigenaar in Entra)</span>
+                        <button class="kb-knop kb-klein" @onclick="() => Plan(GroupPlans.Administrator(State.Data, groupValue, r, false))">weghalen</button></li>
+                }
+            </ul>
+            @if (groupValue.Cloud is { } c && groupValue.Ad is null && groupValue.Route == Moss365.Core.Analysis.WriteRoute.Graph)
+            {
+                <div class="kb-filters">
+                    <button class="kb-knop" disabled="@(!State.CanConnect || busy)" @onclick="() => LoadOwners(c.Id)">Eigenaars live laden</button>
+                    @if (message is not null) { <span class="kb-zacht">@message</span> }
+                </div>
+            }
+            <ObjectPicker Label="Beheerder of eigenaar toevoegen" Kinds="Persons" Selected="r => Plan(GroupPlans.Administrator(State.Data, groupValue, r, true))" />
+        </section>
+    </div>
+
+    <section class="kb-kaart">
+        <h2>Leden (@members.Count)</h2>
+        @if (groupValue.Dynamic)
+        {
+            <div class="kb-melding">Dynamische groep: de leden volgen uit de regel. Wijzig de gegevens van de gebruiker (bv. kantoor of dienst) in plaats van de groep.</div>
+        }
+        else if (State.Can(Permission.GroupMembers))
+        {
+            <ObjectPicker Label="Lid toevoegen" Kinds="MemberKinds" Selected="r => Plan(GroupPlans.AddMember(State.Data, groupValue, r))" />
+        }
+        @if (members.Count > 0)
+        {
+            <table class="kb-tabel">
+                <thead><tr>@if (!groupValue.Dynamic) { <th></th> }<th>Lid</th><th>Soort</th><th>Waar</th><th>Details</th></tr></thead>
+                <tbody>
+                    @foreach (var l in members)
+                    {
+                        <tr>
+                            @if (!groupValue.Dynamic)
+                            {
+                                <td><input type="checkbox" aria-label="@($"{l.Object.Name} kiezen")" checked="@selected.Contains(l.Object)" @onchange="e => Choose(l.Object, e)" disabled="@(l.Object.Kind == ObjectKind.Unknown)" /></td>
+                            }
+                            <td><ObjectLink Object="l.Object" /></td>
+                            <td>@l.Object.KindText</td>
+                            <td>@l.Layer</td>
+                            <td class="kb-zacht">@l.Object.Detail</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (!groupValue.Dynamic && State.Can(Permission.GroupMembers))
+            {
+                <div class="kb-filters">
+                    <button class="kb-knop" disabled="@(selected.Count == 0)" @onclick="RemoveSelected">Gekozen leden verwijderen (@selected.Count)</button>
+                </div>
+            }
+        }
+    </section>
+
+    <div class="kb-kolommen">
+        <section class="kb-kaart">
+            <h2>Lid van (@memberOf.Count)</h2>
+            @if (memberOf.Count == 0) { <p class="kb-zacht">Deze groep is geen lid van andere groepen.</p> }
+            <ul class="kb-lijst-plat">
+                @foreach (var o in memberOf)
+                {
+                    <li><ObjectLink Object="o.Object" /> <span class="kb-zacht">(@o.Layer)</span></li>
+                }
+            </ul>
+        </section>
+        <section class="kb-kaart">
+            <h2>Rechten op postvakken (@permissions.Count)</h2>
+            @if (permissions.Count == 0) { <p class="kb-zacht">Geen FullAccess of SendAs op gedeelde postvakken.</p> }
+            <ul class="kb-lijst-plat">
+                @foreach (var r in permissions)
+                {
+                    <li><ObjectLink Id="@r.Mailbox.Smtp" /> <span class="kb-soort">@r.Permission</span></li>
+                }
+            </ul>
+        </section>
+    </div>
+
+    @if (!groupValue.Dynamic && State.Can(Permission.Manage))
+    {
+        <section class="kb-kaart">
+            <h2>Naam en omschrijving</h2>
+            <div class="kb-raster">
+                <label>Weergavenaam <input class="kb-invoer" @bind="desired.DisplayName" /></label>
+                <label>Omschrijving <input class="kb-invoer" @bind="desired.Description" /></label>
+                @if (groupValue.Route == Moss365.Core.Analysis.WriteRoute.Exchange)
+                {
+                    <label>E-mailadres <input class="kb-invoer" @bind="desired.Mail" /></label>
+                }
+            </div>
+            <div class="kb-filters">
+                <button class="kb-knop kb-primair" @onclick="() => Plan(GroupPlans.Attributes(groupValue, desired))">Plan maken</button>
+            </div>
+        </section>
+    }
+
+    @foreach (var f in errors)
+    {
+        <div class="kb-melding kb-fout">@f</div>
+    }
+    @if (plan is not null)
+    {
+        <PlanView Plan="plan" Context="@($"Groep {groupValue.Name}")" Title="Wijzigingen aan de groep" Executed="AfterExecute" />
+    }
+}
+
+@code {
+    [Parameter] public string Key { get; set; } = string.Empty;
+
+    private static readonly ObjectKind[] Persons = { ObjectKind.User };
+    private static readonly ObjectKind[] MemberKinds = { ObjectKind.User, ObjectKind.Group, ObjectKind.Mailbox, ObjectKind.Room };
+
+    private Group? groupValue;
+    private IReadOnlyList<Relation> members = Array.Empty<Relation>();
+    private IReadOnlyList<Relation> memberOf = Array.Empty<Relation>();
+    private IReadOnlyList<Relation> administrators = Array.Empty<Relation>();
+    private IReadOnlyList<PermissionRule> permissions = Array.Empty<PermissionRule>();
+    private IReadOnlyList<GraphOwner>? owners;
+    private readonly HashSet<ObjectRef> selected = new();
+    private GroupDesired desired = new();
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private bool busy;
+    private string? message;
+    private string? loaded;
+
+    private string Form => $"groepen/{loaded}/wijzigen";
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            State.PageState.Forget(Form);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        var index = State.Data.Index;
+        var newValue = index.Group(Key);
+        if (newValue?.Key != loaded)
+        {
+            loaded = newValue?.Key;
+            plan = null;
+            errors = Array.Empty<string>();
+            selected.Clear();
+            owners = null;
+            message = null;
+            // What you filled in is kept per group until the plan has run
+            desired = newValue is null ? new() : State.PageState.Form(Form, "groep/" + newValue.Key, $"Groep {newValue.Name}", () => new GroupDesired { DisplayName = newValue.Name, Description = newValue.Description, Mail = newValue.Mail });
+        }
+
+        groupValue = newValue;
+        if (groupValue is not null)
+        {
+            members = index.UniqueMembersOf(groupValue);
+            memberOf = index.MemberOf(groupValue);
+            administrators = index.AdministratorsOf(groupValue);
+            permissions = index.PermissionsOf(groupValue.Ref);
+        }
+    }
+
+    private static string RouteText(Group g) => g.Route switch
+    {
+        Moss365.Core.Analysis.WriteRoute.ActiveDirectory => "AD",
+        Moss365.Core.Analysis.WriteRoute.Graph => "Entra (Graph)",
+        Moss365.Core.Analysis.WriteRoute.Exchange => "Exchange",
+        _ => "niet (automatisch)",
+    };
+
+    private void Choose(ObjectRef r, ChangeEventArgs e)
+    {
+        if (e.Value is true) selected.Add(r); else selected.Remove(r);
+    }
+
+    private void RemoveSelected()
+    {
+        var outcomes = selected.Select(r => GroupPlans.RemoveMember(State.Data, groupValue!, r)).ToList();
+        Show(outcomes.SelectMany(u => u.Plan).ToList(), outcomes.SelectMany(u => u.Errors).ToList());
+    }
+
+    private void Plan(PlanOutcome u) => Show(u.Plan, u.Errors);
+
+    private void Show(IReadOnlyList<Change> p, IReadOnlyList<string> f)
+    {
+        errors = f;
+        plan = p.Count > 0 || f.Count == 0 ? p : null;
+    }
+
+    private async Task LoadOwners(string id)
+    {
+        busy = true;
+        message = null;
+        try
+        {
+            owners = await State.ReadOwnersAsync(id);
+            message = owners is null ? "Vul eerst de Entra-gegevens in (Verbindingen)." : owners.Count == 0 ? "Geen eigenaars." : null;
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

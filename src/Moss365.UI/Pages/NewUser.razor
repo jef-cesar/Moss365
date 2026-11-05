@@ -1,0 +1,285 @@
+@page "/nieuw"
+@inject ManagementState State
+
+<h1>Nieuwe gebruiker</h1>
+
+<p class="kb-zacht">
+    Vul de gegevens in en kies <strong>Voorbeeld</strong>. De app leidt de namen af, controleert of ze al bestaan en toont wat er
+    gebeurt. Het account wordt in AD aangemaakt; licentie en cloudgroepen volgen na de synchronisatie naar Entra (scherm
+    <a href="opvolging">Opvolging</a>).
+</p>
+
+@if (State.Config.Populations.Count == 0)
+{
+    <div class="kb-melding kb-fout">
+        Er zijn geen soorten (gemeente, OCMW, vrijwilliger) in de organisatie, dus kan je nog geen gebruiker aanmaken.
+        Bron: <code>@(State.ConfigSource ?? "geen organisatie.json gevonden")</code>. Zie <a href="organisatie">Organisatie</a>.
+    </div>
+}
+
+<section class="kb-kaart">
+    <h2>Gegevens</h2>
+    <div class="kb-raster">
+        <label>Soort
+            <select class="kb-invoer" @bind="request.Population" @bind:after="Clear">
+                <option value="">(kies)</option>
+                @foreach (var p in State.Config.Populations)
+                {
+                    <option value="@p.Name">@p.Name (@p.Ou)</option>
+                }
+            </select>
+        </label>
+        <label>Voornaam <input class="kb-invoer" @bind="request.GivenName" @bind:after="Clear" /></label>
+        <label>Achternaam <input class="kb-invoer" @bind="request.Surname" @bind:after="Clear" /></label>
+        @if (!IsVolunteer)
+        {
+            <label>Dienst
+                <select class="kb-invoer" @bind="request.Department" @bind:after="DepartmentSelected">
+                    <option value="">(kies)</option>
+                    @foreach (var d in State.Config.Departments.OrderBy(d => d.Department, StringComparer.OrdinalIgnoreCase))
+                    {
+                        <option value="@d.Department">@d.Department@(string.IsNullOrWhiteSpace(d.Division) ? null : $" ({d.Division})")</option>
+                    }
+                </select>
+            </label>
+            <label>Kantoor
+                <select class="kb-invoer" @bind="request.Office" @bind:after="Clear">
+                    <option value="">(kies)</option>
+                    @foreach (var k in State.Config.Offices)
+                    {
+                        <option value="@k">@k</option>
+                    }
+                </select>
+            </label>
+        }
+        <label>Functie <input class="kb-invoer" @bind="request.JobTitle" @bind:after="Clear" /></label>
+        <label>Logonscript
+            <select class="kb-invoer" @bind="request.LogonScript" @bind:after="Clear">
+                <option value="">(geen)</option>
+                @foreach (var s in LogonScripts)
+                {
+                    <option value="@s">@s</option>
+                }
+            </select>
+        </label>
+        <label>Licentie
+            <select class="kb-invoer" @bind="request.LicenceSku" @bind:after="Clear">
+                <option value="">(geen)</option>
+                @foreach (var l in State.Config.Licences)
+                {
+                    <option value="@l.Sku">@l.Name @FreeText(l.Sku)</option>
+                }
+            </select>
+        </label>
+    </div>
+    <div class="kb-filters">
+        <label><input type="checkbox" @bind="request.DefaultAdGroups" @bind:after="Clear" /> Standaardgroepen van de soort toevoegen</label>
+    </div>
+    <PersonPicker Label="Groepen overnemen van (optioneel, spiegelgebruiker)" Selected="request.Mirror" SelectedChanged="ChooseMirror" />
+    <div class="kb-filters">
+        <button class="kb-knop kb-primair" @onclick="MakeProposal">Voorbeeld</button>
+        <button class="kb-knop" @onclick="Empty">Leegmaken</button>
+    </div>
+</section>
+
+@if (proposal is not null)
+{
+    <section class="kb-kaart">
+        <h2>Voorstel</h2>
+        @foreach (var f in proposal.Errors)
+        {
+            <div class="kb-melding kb-fout">@f</div>
+        }
+        @foreach (var w in proposal.Warnings)
+        {
+            <div class="kb-melding">@w</div>
+        }
+        @if (proposal.CanBeExecuted)
+        {
+            <table class="kb-tabel kb-naast">
+                <tbody>
+                    <tr><th>Weergavenaam</th><td>@proposal.ViewName</td></tr>
+                    <tr><th>Aanmeldnaam (UPN)</th><td>@proposal.Upn</td></tr>
+                    <tr><th>sAMAccountName</th><td>@proposal.Sam</td></tr>
+                    <tr><th>Locatie in AD</th><td>@proposal.Dn</td></tr>
+                </tbody>
+            </table>
+        }
+    </section>
+
+    @if (proposal.CanBeExecuted)
+    {
+        <PlanView Plan="proposal.Now" Context="@($"Nieuwe gebruiker {proposal.Upn}")" Title="Nu in AD" Executed="AfterExecute" />
+
+        @if (!showPassword)
+        {
+            <details class="kb-later">
+                <summary>Later uitvoeren (bv. op de eerste werkdag)</summary>
+                <p class="kb-zacht">
+                    Op het gekozen moment staat de instroom bij <a href="gepland">Gepland</a> klaar. Het startwachtwoord maakt de app
+                    pas dan; het wachtwoord hierboven vervalt. Er gebeurt niets zonder jouw bevestiging.
+                </p>
+                <Schedule Selected="PlanIn" />
+                @if (scheduled is not null) { <div class="kb-melding kb-goed">Ingepland op @scheduled.Value.ToString("dd/MM/yyyy HH:mm").</div> }
+            </details>
+        }
+
+        @if (showPassword)
+        {
+            <section class="kb-kaart">
+                <h2>Startwachtwoord</h2>
+                <p><code class="kb-wachtwoord">@proposal.Password</code></p>
+                <p class="kb-zacht">
+                    Geef dit door aan de gebruiker; het moet gewijzigd worden bij de eerste aanmelding. De app bewaart het nergens en
+                    toont het niet opnieuw.
+                </p>
+            </section>
+        }
+
+        <section class="kb-kaart">
+            <h2>Na de synchronisatie naar Entra (@proposal.AfterSynchronisation.Count)</h2>
+            @if (proposal.AfterSynchronisation.Count == 0)
+            {
+                <p class="kb-zacht">Geen licentie of cloudgroepen.</p>
+            }
+            else
+            {
+                <table class="kb-tabel">
+                    <thead><tr><th>Systeem</th><th>Wijziging</th><th>Wordt</th></tr></thead>
+                    <tbody>
+                        @foreach (var w in proposal.AfterSynchronisation)
+                        {
+                            <tr><td>@w.SystemText</td><td>@w.Description</td><td>@w.NewValue</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <p class="kb-zacht">
+                    @if (followUpSaved)
+                    {
+                        <span class="kb-ok">Bewaard als opvolgtaak.</span>
+                    }
+                    else
+                    {
+                        @("Deze stappen worden een opvolgtaak zodra het account in AD aangemaakt is.")
+                    }
+                    Entra Connect synchroniseert standaard om de 30 minuten; werk ze daarna af in <a href="opvolging">Opvolging</a>.
+                </p>
+            }
+        </section>
+    }
+}
+
+@code {
+    // The form is kept until you run, schedule or clear it (never the initial password)
+    private const string Form = "nieuw";
+    private NewUserRequest request = new();
+    private NewUserProposal? proposal;
+    private string? password;
+    private bool showPassword;
+    private bool followUpSaved;
+
+    protected override void OnInitialized() => request = Saved();
+
+    private NewUserRequest Saved() => State.PageState.Form<NewUserRequest>(Form, "nieuw", "Nieuwe gebruiker");
+
+    // Also show the script of the department when it is not in the list
+    private IEnumerable<string> LogonScripts => string.IsNullOrWhiteSpace(request.LogonScript) || State.Config.LogonScripts.Contains(request.LogonScript, StringComparer.OrdinalIgnoreCase)
+        ? State.Config.LogonScripts
+        : State.Config.LogonScripts.Append(request.LogonScript);
+
+    private bool IsVolunteer => State.Config.SearchPopulation(request.Population)?.City is not null;
+
+    private string FreeText(string sku)
+    {
+        var l = State.Data.Licences.FirstOrDefault(x => string.Equals(x.SkuPartNumber, sku, StringComparison.OrdinalIgnoreCase));
+        return l is null ? string.Empty : $"({l.Free} vrij van {l.Total})";
+    }
+
+    private DateTimeOffset? scheduled;
+
+    private void PlanIn(DateTimeOffset whenValue)
+    {
+        if (proposal is null)
+        {
+            return;
+        }
+
+        State.Schedule(ScheduledPlans.Onboarding(proposal, whenValue, State.User));
+        scheduled = whenValue;
+        password = null;
+        State.PageState.Forget(Form);
+    }
+
+    private void Clear()
+    {
+        scheduled = null;
+        proposal = null;
+        showPassword = false;
+        followUpSaved = false;
+    }
+
+    private void DepartmentSelected()
+    {
+        // The logon script of the department as a suggestion
+        if (State.Config.SearchDepartment(request.Department)?.LogonScript is { Length: > 0 } script)
+        {
+            request.LogonScript = script;
+        }
+
+        Clear();
+    }
+
+    private void ChooseMirror(Person? p)
+    {
+        request.Mirror = p;
+        Clear();
+    }
+
+    private void Empty()
+    {
+        State.PageState.Forget(Form);
+        request = Saved();
+        password = null;
+        Clear();
+    }
+
+    private void MakeProposal()
+    {
+        if (request.LicenceSku?.Length == 0) request.LicenceSku = null;
+        if (request.LogonScript?.Length == 0) request.LogonScript = null;
+
+        // One initial password per request, so that it does not change with every preview
+        proposal = PlanBuilder.NewUser(State.Data, State.Config, request, password);
+        password = proposal.Password;
+        showPassword = false;
+        followUpSaved = false;
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (proposal is null)
+        {
+            return;
+        }
+
+        var create = proposal.Now.First(w => w.ChangeAction == ChangeAction.AdCreateUser);
+        if (results.Any(r => r.ChangeId == create.Id && r.Status == ResultStatus.Succeeded))
+        {
+            showPassword = true;
+            State.PageState.Forget(Form);
+            if (proposal.AfterSynchronisation.Count > 0)
+            {
+                State.AddFollowUp(new FollowUpTask
+                {
+                    Upn = proposal.Upn,
+                    Description = $"Nieuwe gebruiker {proposal.ViewName}",
+                    Changes = proposal.AfterSynchronisation.ToList(),
+                });
+                followUpSaved = true;
+            }
+
+            // A next request gets a new password
+            password = null;
+        }
+    }
+}

@@ -1,73 +1,73 @@
 @page "/scripts/run/{Sleutel}/{Id}"
-@inherits VerversendePagina
+@inherits RefreshingPage
 @inject NavigationManager Nav
 
 @if (run is null)
 {
     <h1>Run niet gevonden</h1>
-    <p class="kb-zacht">Runs worden @ScriptRuns.BewaarDagen dagen bewaard. <a href="scripts">Terug naar de scripts</a></p>
+    <p class="kb-zacht">Runs worden @ScriptRuns.SaveDays dagen bewaard. <a href="scripts">Terug naar de scripts</a></p>
 }
 else
 {
-    <h1>@run.Naam <span class="kb-zacht">@run.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</span></h1>
+    <h1>@run.Name <span class="kb-zacht">@run.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</span></h1>
     <p>
-        <RunLabel Run="run" /> <span class="kb-zacht">@run.Melding</span>
-        @if (!run.Eenmalig && State.ZoekScript(run.Sleutel) is not null)
+        <RunLabel Run="run" /> <span class="kb-zacht">@run.Message</span>
+        @if (!run.Once && State.SearchScript(run.Key) is not null)
         {
-            <button class="kb-knop kb-klein" @onclick="Opnieuw">Opnieuw starten met dezelfde waarden</button>
+            <button class="kb-knop kb-klein" @onclick="Again">Opnieuw starten met dezelfde waarden</button>
         }
     </p>
 
     @if (Live is { } s)
     {
-        <ScriptUitvoerLijst Gebeurtenissen="s.Gebeurtenissen" Voortgang="s.Voortgang" Procent="s.Procent" Volgen="true" LeegTekst="Starten..." />
-        <div class="kb-filters"><button class="kb-knop" @onclick="State.AnnuleerScript">Annuleren</button></div>
+        <ScriptOutputList Events="s.Events" Progress="s.Voortgang" Percent="s.Percent" Follow="true" EmptyText="Starten..." />
+        <div class="kb-filters"><button class="kb-knop" @onclick="State.CancelScript">Annuleren</button></div>
     }
     else
     {
-        <ScriptResultaat @key="run.Map" Run="run" Gebeurtenissen="gebeurtenissen" />
+        <ScriptResult @key="run.Folder" Run="run" Events="events" />
     }
 
-    @if (run.Eenmalig && File.Exists(Path.Combine(run.Map, "script.ps1")))
+    @if (run.Once && File.Exists(Path.Combine(run.Folder, "script.ps1")))
     {
         <details class="kb-kaart">
             <summary>Het script van deze eenmalige run</summary>
-            <pre class="kb-uitvoer">@File.ReadAllText(Path.Combine(run.Map, "script.ps1"))</pre>
+            <pre class="kb-uitvoer">@File.ReadAllText(Path.Combine(run.Folder, "script.ps1"))</pre>
         </details>
     }
 }
 
 @code {
-    [Parameter] public string Sleutel { get; set; } = string.Empty;
+    [Parameter] public string Key { get; set; } = string.Empty;
     [Parameter] public string Id { get; set; } = string.Empty;
 
     private ScriptRun? run;
-    private IReadOnlyList<ScriptGebeurtenis> gebeurtenissen = Array.Empty<ScriptGebeurtenis>();
+    private IReadOnlyList<ScriptEvent> events = Array.Empty<ScriptEvent>();
 
-    /// <summary>Deze run draait nog: de live uitvoer tonen.</summary>
-    private ScriptRunStatus? Live => State.ScriptRun is { Klaar: false } s && run is not null && s.Run.Map == run.Map ? s : null;
+    /// <summary>This run is still running: show the live output.</summary>
+    private ScriptRunStatus? Live => State.ScriptRun is { Done: false } s && run is not null && s.Run.Folder == run.Folder ? s : null;
 
-    protected override void OnParametersSet() => Laad();
+    protected override void OnParametersSet() => Load();
 
-    protected override void OnAfterRender(bool eersteKeer)
+    protected override void OnAfterRender(bool firstTime)
     {
-        // Net klaar: de bewaarde run opnieuw lezen
-        if (run is { Resultaat: RunResultaat.Bezig } && Live is null)
+        // Just finished: read the saved run again
+        if (run is { Result: RunResult.Busy } && Live is null)
         {
-            Laad();
+            Load();
             StateHasChanged();
         }
     }
 
-    private void Laad()
+    private void Load()
     {
-        run = ScriptRuns.Lijst(State.ScriptMappen, Sleutel).FirstOrDefault(r => Path.GetFileName(r.Map) == Id);
-        gebeurtenissen = run is null ? Array.Empty<ScriptGebeurtenis>() : ScriptUitvoer.LeesBestand(Path.Combine(run.Map, "uitvoer.jsonl"));
+        run = ScriptRuns.Items(State.ScriptFolders, Key).FirstOrDefault(r => Path.GetFileName(r.Folder) == Id);
+        events = run is null ? Array.Empty<ScriptEvent>() : ScriptOutput.ReadFile(Path.Combine(run.Folder, "uitvoer.jsonl"));
     }
 
-    private void Opnieuw()
+    private void Again()
     {
-        State.ScriptVoorinvulling = run!.Waarden;
-        Nav.NavigateTo($"scripts/starten/{Uri.EscapeDataString(run.Sleutel)}");
+        State.ScriptPrefill = run!.Values;
+        Nav.NavigateTo($"scripts/starten/{Uri.EscapeDataString(run.Key)}");
     }
 }

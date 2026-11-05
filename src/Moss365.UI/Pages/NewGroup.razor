@@ -1,0 +1,151 @@
+@page "/groepen/nieuw"
+@inject ManagementState State
+
+<h1>Nieuwe groep</h1>
+
+<p class="kb-zacht">
+    Kies eerst de soort: die bepaalt waar de groep komt. Het plan maakt de groep aan en daarna de beheerder of eigenaar en de
+    eerste leden. Lukt het aanmaken niet, dan worden die stappen overgeslagen.
+</p>
+
+<section class="kb-kaart">
+    <h2>Soort</h2>
+    <div class="kb-keuzes">
+        @foreach (var (kind, title, explanation) in Kinds)
+        {
+            <label class="kb-keuze @(request.Kind == kind ? "kb-actief" : null)">
+                <input type="radio" name="soort" checked="@(request.Kind == kind)" @onchange="() => ChooseKind(kind)" />
+                <strong>@title</strong>
+                <span class="kb-zacht">@explanation</span>
+            </label>
+        }
+    </div>
+</section>
+
+<section class="kb-kaart">
+    <h2>Gegevens</h2>
+    <div class="kb-raster">
+        <label>Naam <input class="kb-invoer" placeholder="@($"bv. {NewGroupPlans.Prefix(request.Kind)}...")" @bind="request.Name" @bind:after="Clear" /></label>
+        <label>Omschrijving <input class="kb-invoer" @bind="request.Description" @bind:after="Clear" /></label>
+        @if (NewGroupPlans.WithMail(request.Kind))
+        {
+            <label>E-mailadres <input class="kb-invoer" type="email" placeholder="naam@contoso.com" @bind="request.Mail" @bind:after="Clear" /></label>
+        }
+        @if (request.Kind == NewGroupKind.AdSecurity)
+        {
+            <label>
+                Bereik
+                <select class="kb-invoer" @bind="request.Scope" @bind:after="Clear">
+                    <option value="Global">Global (standaard)</option>
+                    <option value="Universal">Universal</option>
+                </select>
+            </label>
+        }
+    </div>
+    @if (request.Kind == NewGroupKind.AdSecurity)
+    {
+        <p class="kb-zacht">In de OU <strong>@(string.IsNullOrWhiteSpace(State.Config.GroupsOu) ? "(nog niet ingesteld bij Organisatie)" : State.Config.GroupsOu)</strong>.</p>
+    }
+
+    <PersonPicker Label="@(request.Kind is NewGroupKind.CloudSecurity or NewGroupKind.Microsoft365 ? "Eigenaar" : "Beheerder")"
+                   Selected="@(request.Administrator.Length == 0 ? null : State.Data.SearchPerson(request.Administrator))" SelectedChanged="ChooseAdministrator" />
+
+    <ObjectPicker Label="Eerste leden" Kinds="Persons" Selected="AddMember" />
+    @if (request.Members.Count > 0)
+    {
+        <ul class="kb-lijst">
+            @foreach (var l in request.Members.ToList())
+            {
+                <li>@(State.Data.SearchPerson(l)?.Name ?? l) <button class="kb-knop kb-klein" @onclick="() => { request.Members.Remove(l); Clear(); }" aria-label="Weghalen">&times;</button></li>
+            }
+        </ul>
+    }
+
+    <div class="kb-filters">
+        <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
+        <button class="kb-knop" @onclick="Empty">Leegmaken</button>
+    </div>
+    @foreach (var f in errors)
+    {
+        <div class="kb-melding kb-fout">@f</div>
+    }
+</section>
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@($"Nieuwe groep {request.Name.Trim()}")" Title="Nieuwe groep" Executed="AfterExecute" />
+}
+
+@code {
+    private static readonly ObjectKind[] Persons = { ObjectKind.User };
+
+    private static readonly (NewGroupKind, string, string)[] Kinds =
+    {
+        (NewGroupKind.AdSecurity, "AD-beveiligingsgroep", "Voor rechten op mappen, programma's en toestellen; gesynchroniseerd naar Entra."),
+        (NewGroupKind.CloudSecurity, "Beveiligingsgroep in de cloud", "Voor rechten en licenties in Microsoft 365, zonder AD."),
+        (NewGroupKind.Microsoft365, "Microsoft 365-groep", "Samenwerken: gedeelde mailbox, agenda, bestanden; Teams mogelijk."),
+        (NewGroupKind.MailSecurity, "Mail-beveiligingsgroep", "Rechten én mail, bv. toegang tot een gedeeld postvak (via Exchange)."),
+        (NewGroupKind.Distribution, "Distributielijst", "Enkel mail naar een groep mensen (via Exchange)."),
+    };
+
+    private const string Form = "groepen/nieuw";
+    private NewGroupRequest request = new();
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+
+    // The form is kept until you run or clear it
+    protected override void OnInitialized() => request = Saved();
+
+    private NewGroupRequest Saved() => State.PageState.Form<NewGroupRequest>(Form, Form, "Nieuwe groep",
+        filled: a => a.Name.Trim().Length > 0 || a.Members.Count > 0);
+
+    private void Clear()
+    {
+        plan = null;
+        errors = Array.Empty<string>();
+    }
+
+    private void ChooseKind(NewGroupKind kind)
+    {
+        request.Kind = kind;
+        Clear();
+    }
+
+    private void ChooseAdministrator(Person? p)
+    {
+        request.Administrator = p?.Key ?? string.Empty;
+        Clear();
+    }
+
+    private void AddMember(ObjectRef r)
+    {
+        if (!request.Members.Contains(r.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            request.Members.Add(r.Key);
+        }
+
+        Clear();
+    }
+
+    private void Empty()
+    {
+        State.PageState.Forget(Form);
+        request = Saved();
+        Clear();
+    }
+
+    private void MakePlan()
+    {
+        var u = NewGroupPlans.Plan(State.Data, State.Config, request);
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            State.PageState.Forget(Form);
+        }
+    }
+}

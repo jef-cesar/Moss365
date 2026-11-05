@@ -1,0 +1,119 @@
+@page "/spiegel"
+@inject ManagementState State
+@inject NavigationManager Nav
+
+<h1>Spiegelgebruiker</h1>
+
+<p class="kb-zacht">
+    Kies een referentiegebruiker (de spiegel) en een doelgebruiker. De app toont per groep, in AD en in de cloud, wat er zou
+    moeten gebeuren en via welke weg. Met <strong>Plan maken</strong> zie je eerst de wijzigingen; er gebeurt pas iets na
+    bevestiging. Bevoorrechte en dynamische groepen worden nooit gekopieerd.
+</p>
+
+<div class="kb-kolommen">
+    <PersonPicker Label="Referentie (spiegel)" Selected="reference" SelectedChanged="ChooseReference" />
+    <PersonPicker Label="Doel" Selected="target" SelectedChanged="ChooseTarget" />
+</div>
+
+@if (reference is not null && target is not null)
+{
+    @if (reference.Key == target.Key)
+    {
+        <div class="kb-melding">Referentie en doel zijn dezelfde gebruiker.</div>
+    }
+    else
+    {
+        <div class="kb-tegels">
+            @foreach (var g in rules.GroupBy(r => r.StatusText))
+            {
+                <div class="kb-tegel"><div class="kb-tegel-getal">@g.Count()</div><div>@g.Key</div></div>
+            }
+        </div>
+
+        <div class="kb-filters">
+            <label><input type="checkbox" @bind="hideAlreadyMember" /> Verberg "Reeds lid"</label>
+            @if (State.Can(Permission.Actions))
+            {
+                <button class="kb-knop kb-primair" disabled="@(!rules.Any(r => r.Status == MirrorStatus.Add))" @onclick="MakePlan">Plan maken</button>
+            }
+        </div>
+
+        @foreach (var layer in new[] { "AD", "Cloud" })
+        {
+            <section class="kb-kaart">
+                <h2>@(layer == "AD" ? "On-prem AD" : "Cloud (Entra en Exchange)")</h2>
+                <table class="kb-tabel">
+                    <thead><tr><th>Groep</th><th>Soort</th><th>Status</th><th>Via</th><th>Opmerking</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in rules.Where(r => r.Layer == layer && (!hideAlreadyMember || r.Status != MirrorStatus.AlreadyMember)))
+                        {
+                            <tr class="kb-status-@r.Status.ToString().ToLowerInvariant()">
+                                <td><ObjectLink Id="@r.GroupId" Text="@r.Group" /></td>
+                                <td>@r.Type</td>
+                                <td>@r.StatusText</td>
+                                <td>@r.RouteText</td>
+                                <td>@r.Remark</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+        }
+
+        @if (plan is not null)
+        {
+            <PlanView Plan="plan" Context="@($"Spiegel {reference.Name} naar {target.Name}")" Title="Groepen toevoegen" />
+        }
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "referentie")] public string? ReferenceKey { get; set; }
+    [SupplyParameterFromQuery(Name = "doel")] public string? TargetKey { get; set; }
+
+    private Person? reference;
+    private Person? target;
+    private bool hideAlreadyMember = true;
+    private IReadOnlyList<MirrorRule> rules = Array.Empty<MirrorRule>();
+    private IReadOnlyList<Change>? plan;
+    private string? planKey;
+
+    protected override void OnParametersSet()
+    {
+        reference = ReferenceKey is null ? reference : State.Data.SearchPerson(ReferenceKey);
+        target = TargetKey is null ? target : State.Data.SearchPerson(TargetKey);
+        Compute();
+    }
+
+    private void ChooseReference(Person? p) => To(p, target);
+
+    private void ChooseTarget(Person? p) => To(reference, p);
+
+    private void To(Person? r, Person? d)
+    {
+        var share = new List<string>();
+        if (r is not null) share.Add("referentie=" + Uri.EscapeDataString(r.Key));
+        if (d is not null) share.Add("doel=" + Uri.EscapeDataString(d.Key));
+        reference = r;
+        target = d;
+        Nav.NavigateTo("spiegel" + (share.Count > 0 ? "?" + string.Join('&', share) : string.Empty));
+        Compute();
+    }
+
+    private void MakePlan() => plan = target is null ? null : PlanBuilder.Mirror(State.Data, rules, target);
+
+    private void Compute()
+    {
+        // The plan stays as long as reference and target are the same (also after running)
+        var key = $"{reference?.Key}|{target?.Key}";
+        if (key != planKey)
+        {
+            plan = null;
+            planKey = key;
+        }
+
+        rules = reference is not null && target is not null && reference.Key != target.Key
+            ? MirrorUser.Compute(State.Data, State.Config, reference, target)
+            : Array.Empty<MirrorRule>();
+    }
+}

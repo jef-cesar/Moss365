@@ -12,8 +12,8 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Exchange\Exchange.ps1" LogicalName="Exchange.ps1" />
-    <EmbeddedResource Include="Controle\Controle.ps1" LogicalName="Controle.ps1" />
-    <EmbeddedResource Include="Scripts\Opstart.ps1" LogicalName="Opstart.ps1" />
+    <EmbeddedResource Include="Check\Check.ps1" LogicalName="Check.ps1" />
+    <EmbeddedResource Include="Scripts\Startup.ps1" LogicalName="Startup.ps1" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Moss365.Tests" />

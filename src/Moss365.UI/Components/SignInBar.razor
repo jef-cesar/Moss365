@@ -1,0 +1,73 @@
+@* Shows the sign-in link of a sign-in at Microsoft in progress, to copy into a browser of choice *@
+@implements IDisposable
+@inject ManagementState State
+@inject IJSRuntime JS
+
+@if (State.SignInEvent.Link is { } link)
+{
+    <div class="kb-aanmelden" role="alert">
+        <div class="kb-aanmelden-tekst">
+            <strong>Aanmelden bij Microsoft</strong>
+            <span>Kopieer de link en open hem in de browser van je keuze, op deze pc. Na het aanmelden gaat de app vanzelf verder.</span>
+        </div>
+        <div class="kb-filters">
+            <input class="kb-invoer kb-breed kb-link-veld" readonly value="@link.AbsoluteUri" @onfocus="Select" aria-label="Aanmeldlink" @ref="field" />
+            <button class="kb-knop kb-primair" @onclick="() => Copy(link)">@(copied ? "Gekopieerd" : "Kopiëren")</button>
+            <button class="kb-knop" @onclick="() => Open(link)" title="Opent de standaardbrowser van Windows">Standaardbrowser</button>
+            <button class="kb-knop" @onclick="State.SignInEvent.Cancel">Annuleren</button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool copied;
+    private ElementReference field;
+
+    protected override void OnInitialized() => State.SignInEvent.Changed += Reload;
+
+    private void Reload()
+    {
+        copied = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Copy(Uri link)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("moss365.kopieer", link.AbsoluteUri);
+            copied = true;
+        }
+        catch (Exception)
+        {
+            // Clipboard not available: the link is selected in the field (Ctrl+C)
+            await Select();
+        }
+    }
+
+    private async Task Select()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("moss365.selecteer", field);
+        }
+        catch (Exception)
+        {
+            // No problem: the field can simply be selected
+        }
+    }
+
+    private static void Open(Uri link)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(link.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            // No default browser: copying stays possible
+        }
+    }
+
+    public void Dispose() => State.SignInEvent.Changed -= Reload;
+}

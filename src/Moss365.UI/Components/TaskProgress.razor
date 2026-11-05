@@ -1,0 +1,72 @@
+@* Progress of the background task: bar, steps with their status, and the text log *@
+@implements IDisposable
+@inject ManagementState State
+
+@if (State.Job is { } task)
+{
+    <section class="kb-kaart kb-taak @(task.Busy ? "kb-taak-bezig" : task.WithErrors ? "kb-taak-fout" : task.Cancelled ? null : "kb-taak-klaar")" aria-live="polite">
+        <div class="kb-taak-kop">
+            <h2>@task.Name</h2>
+            <span class="kb-zacht">
+                gestart @task.Start.ToString("HH:mm:ss")
+                @if (task.End is { } end) { <text> &middot; @(task.Cancelled ? "geannuleerd" : task.WithErrors ? "klaar met fouten" : "klaar") om @end.ToString("HH:mm:ss")</text> }
+            </span>
+            @if (task.Busy)
+            {
+                <button class="kb-knop kb-klein" @onclick="State.CancelTask">Annuleren</button>
+            }
+        </div>
+        <div class="kb-balk" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@((int)(task.Progress * 100))">
+            <div class="kb-balk-vulling" style="width: @((int)(task.Progress * 100))%"></div>
+        </div>
+        <ol class="kb-stappen">
+            @foreach (var s in task.Steps)
+            {
+                <li class="kb-stap kb-stap-@s.Status.ToString().ToLowerInvariant()">
+                    <span class="kb-stap-teken" aria-hidden="true">@Sign(s.Status)</span>
+                    <span class="kb-stap-naam">@s.Name</span>
+                    <span class="kb-zacht">@StatusText(s)</span>
+                    @if (s.Message is not null) { <span class="kb-stap-melding">@s.Message</span> }
+                </li>
+            }
+        </ol>
+        <details open="@ShowLog">
+            <summary>Tekstlog (@task.Log.Count regels)</summary>
+            <ul class="kb-log">
+                @foreach (var rule in task.Log.TakeLast(300))
+                {
+                    <li class="@(rule.Contains("MISLUKT") ? "kb-log-fout" : null)">@rule</li>
+                }
+            </ul>
+        </details>
+    </section>
+}
+
+@code {
+    /// <summary>The text log open by default (Connections screen) or closed.</summary>
+    [Parameter] public bool ShowLog { get; set; } = true;
+
+    protected override void OnInitialized() => State.Changed += Reload;
+
+    private void Reload() => _ = InvokeAsync(StateHasChanged);
+
+    private static string Sign(StepStatus s) => s switch
+    {
+        StepStatus.Busy => "⟳",
+        StepStatus.Done => "✓",
+        StepStatus.Error => "✗",
+        StepStatus.Cancelled => "–",
+        _ => "○",
+    };
+
+    private static string StatusText(TaskStep s) => s.Status switch
+    {
+        StepStatus.Wait => "wacht",
+        StepStatus.Busy => $"bezig ({s.Duration:mm\\:ss})",
+        StepStatus.Done => $"klaar ({s.Duration:mm\\:ss})",
+        StepStatus.Error => "mislukt",
+        _ => "geannuleerd",
+    };
+
+    public void Dispose() => State.Changed -= Reload;
+}

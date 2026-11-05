@@ -1,0 +1,135 @@
+@page "/opvolging"
+@inject ManagementState State
+
+<h1>Opvolging</h1>
+
+<p class="kb-zacht">
+    Stappen die wachten tot een nieuwe gebruiker in Entra bestaat (licentie, cloudgroepen). Entra Connect synchroniseert
+    standaard om de 30 minuten. <strong>Afwerken</strong> controleert eerst of de gebruiker er al is en voert dan de
+    resterende stappen uit; die stonden al in het voorbeeld bij het aanmaken.
+</p>
+
+@if (done is not null)
+{
+    <div class="kb-melding kb-goed">@done</div>
+}
+
+@if (tasks.Count == 0)
+{
+    <div class="kb-melding">Er staat niets open.</div>
+}
+
+@foreach (var t in tasks)
+{
+    <section class="kb-kaart">
+        <h2>@t.Description</h2>
+        <p class="kb-zacht">
+            <ObjectLink Id="@t.Upn" Text="@t.Upn" /> &middot; aangemaakt @t.Created.ToString("yyyy-MM-dd HH:mm")
+            @if (t.LastChecked is { } c) { <text> &middot; gecontroleerd @c.ToString("yyyy-MM-dd HH:mm")</text> }
+        </p>
+        @if (t.LastMessage is not null)
+        {
+            <div class="kb-melding">@t.LastMessage</div>
+        }
+        <table class="kb-tabel">
+            <thead><tr><th>Systeem</th><th>Wijziging</th><th>Wordt</th></tr></thead>
+            <tbody>
+                @foreach (var w in t.Changes)
+                {
+                    <tr><td>@w.SystemText</td><td>@w.Description</td><td>@w.NewValue</td></tr>
+                }
+            </tbody>
+        </table>
+        <div class="kb-filters">
+            @if (confirm == t.Id)
+            {
+                <span><strong>@t.Changes.Count wijziging(en)</strong> uitvoeren als de gebruiker in Entra bestaat?</span>
+                <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="() => Finish(t.Id)">Ja, afwerken</button>
+                <button class="kb-knop" disabled="@busy" @onclick="() => confirm = null">Annuleren</button>
+            }
+            else if (remove == t.Id)
+            {
+                <span>Taak verwijderen zonder uit te voeren?</span>
+                <button class="kb-knop kb-gevaar" @onclick="() => Remove(t.Id)">Ja, verwijderen</button>
+                <button class="kb-knop" @onclick="() => remove = null">Annuleren</button>
+            }
+            else
+            {
+                <button class="kb-knop kb-primair" disabled="@(busy || !State.CanConnect)" @onclick="() => { confirm = t.Id; remove = null; }">Afwerken</button>
+                <button class="kb-knop" disabled="@busy" @onclick="() => { remove = t.Id; confirm = null; }">Verwijderen</button>
+            }
+            @if (busy && active == t.Id && progress is not null) { <span class="kb-zacht">@progress</span> }
+        </div>
+    </section>
+}
+
+@if (error is not null)
+{
+    <div class="kb-melding kb-fout">@error</div>
+}
+
+@code {
+    private List<FollowUpTask> tasks = new();
+    private Guid? confirm;
+    private Guid? remove;
+    private Guid? active;
+    private bool busy;
+    private string? progress;
+    private string? error;
+    private string? done;
+
+    protected override void OnInitialized() => Read();
+
+    private void Read()
+    {
+        try
+        {
+            tasks = State.FollowUp.Read().OrderBy(t => t.Created).ToList();
+        }
+        catch (Exception ex)
+        {
+            error = "Opvolging lezen mislukt: " + ex.Message;
+        }
+    }
+
+    private async Task Finish(Guid id)
+    {
+        busy = true;
+        active = id;
+        error = null;
+        done = null;
+        try
+        {
+            var p = new Progress<string>(t =>
+            {
+                progress = t;
+                _ = InvokeAsync(StateHasChanged);
+            });
+            var message = await State.CompleteFollowUpAsync(id, p);
+            Read();
+            if (tasks.All(t => t.Id != id))
+            {
+                // Finished tasks disappear from the list; show the result anyway
+                done = message;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+            confirm = null;
+            active = null;
+            progress = null;
+        }
+    }
+
+    private void Remove(Guid id)
+    {
+        State.RemoveFollowUp(id);
+        remove = null;
+        Read();
+    }
+}

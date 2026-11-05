@@ -1,0 +1,99 @@
+@page "/postvakken/nieuw"
+@inject ManagementState State
+
+<h1>Nieuw gedeeld postvak</h1>
+
+<p class="kb-zacht">
+    Het plan maakt het postvak aan (zonder licentie), dan de toegangsgroep <code>SG-SM-&lt;adres&gt;-Full</code>, geeft die groep
+    FullAccess en SendAs en maakt de gekozen mensen lid. Lukt een stap niet, dan worden de stappen die erop wachten overgeslagen.
+</p>
+
+<section class="kb-kaart">
+    <h2>Gegevens</h2>
+    <div class="kb-raster">
+        <label>Weergavenaam <input class="kb-invoer" placeholder="bv. Jeugddienst" @bind="request.DisplayName" @bind:after="Clear" /></label>
+        <label>Adres (voor de @@) <input class="kb-invoer" placeholder="bv. jeugddienst" @bind="request.LocalPart" @bind:after="Clear" /></label>
+        <label>Domein
+            <select class="kb-invoer" @bind="request.Domain" @bind:after="Clear">
+                @foreach (var d in Domains)
+                {
+                    <option value="@d">@d</option>
+                }
+            </select>
+        </label>
+    </div>
+    @if (request.LocalPart.Trim().Length > 0)
+    {
+        <p class="kb-zacht">Adres <strong>@($"{request.LocalPart.Trim().ToLowerInvariant()}@{request.Domain}")</strong>, toegangsgroep <strong>@($"SG-SM-{request.LocalPart.Trim().ToLowerInvariant()}-Full")</strong>.</p>
+    }
+
+    <ObjectPicker Label="Wie krijgt toegang?" Kinds="Persons" Selected="Add" />
+    @if (request.Members.Count > 0)
+    {
+        <ul class="kb-lijst">
+            @foreach (var l in request.Members)
+            {
+                <li>@l.Name <button class="kb-knop kb-klein" @onclick="() => { request.Members.Remove(l); Clear(); }" aria-label="@($"{l.Name} weghalen")">&times;</button></li>
+            }
+        </ul>
+    }
+
+    <div class="kb-filters">
+        <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
+    </div>
+</section>
+
+@foreach (var f in errors)
+{
+    <div class="kb-melding kb-fout">@f</div>
+}
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@($"Nieuw gedeeld postvak {request.LocalPart}")" Title="Nieuw gedeeld postvak" />
+}
+
+@code {
+    private static readonly ObjectKind[] Persons = { ObjectKind.User };
+
+    private readonly NewMailboxRequest request = new();
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+
+    /// <summary>Domains of the existing shared mailboxes and of the populations, most used first.</summary>
+    private IReadOnlyList<string> Domains
+    {
+        get
+        {
+            var fromMailboxes = State.Data.Mailboxes.Where(p => p.IsShared && p.Smtp.Contains('@'))
+                .Select(p => p.Smtp[(p.Smtp.IndexOf('@') + 1)..].ToLowerInvariant());
+            var fromConfig = State.Config.Populations.Select(p => p.UpnDomain.ToLowerInvariant()).Where(d => d.Length > 0);
+            var list = fromMailboxes.Concat(fromConfig).GroupBy(d => d).OrderByDescending(g => g.Count()).Select(g => g.Key).ToList();
+            return list.Count > 0 ? list : new[] { "contoso.com" };
+        }
+    }
+
+    protected override void OnInitialized() => request.Domain = Domains[0];
+
+    private void Add(ObjectRef r)
+    {
+        if (!request.Members.Any(l => l.IsSame(r)))
+        {
+            request.Members.Add(r);
+        }
+
+        Clear();
+    }
+
+    private void Clear()
+    {
+        plan = null;
+        errors = Array.Empty<string>();
+    }
+
+    private void MakePlan()
+    {
+        var u = MailboxPlans.NewMailbox(State.Data, request);
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+    }
+}

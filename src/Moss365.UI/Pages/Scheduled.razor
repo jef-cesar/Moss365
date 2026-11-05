@@ -1,0 +1,193 @@
+@page "/gepland"
+@inherits RefreshingPage
+
+<h1>Gepland</h1>
+
+<p class="kb-zacht">
+    Uit- en instroom, scripts en het einde van een tijdelijke uitzondering op een Conditional Access-beleid, klaargezet voor later. De app voert niets vanzelf uit: is het moment voorbij, dan staat de actie
+    hier klaar en verschijnt er een melding onderaan het menu. Kies <strong>Plan tonen</strong>, kijk het na en voer het uit.
+    Een uitstroom wordt dan opnieuw berekend uit de gegevens van dat moment; laad daarom eerst live.
+</p>
+
+@if (!State.IsLive && actions.Any(a => a.IsDue(DateTimeOffset.Now)))
+{
+    <div class="kb-melding">De gegevens zijn niet live. <a href="verbindingen">Laad eerst live</a>, zodat het plan klopt met de huidige toestand.</div>
+}
+
+@if (actions.Count == 0)
+{
+    <div class="kb-melding">Niets gepland. Inplannen doe je bij <a href="uitstroom">Uitstroom</a>, <a href="nieuw">Nieuwe gebruiker</a> of <a href="scripts">Scripts</a>.</div>
+}
+else
+{
+    <table class="kb-tabel">
+        <thead><tr><th>Wanneer</th><th>Wat</th><th>Ingepland door</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var a in actions)
+            {
+                var done = a.IsDue(DateTimeOffset.Now);
+                <tr class="@(done ? "kb-vervallen" : null)">
+                    <td>@a.When.ToString("ddd dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.GetCultureInfo("nl-BE")) @if (done) { <span class="kb-label kb-label-let">klaar om uit te voeren</span> }</td>
+                    <td>
+                        @if (a.Kind == ScheduledKind.Script)
+                        {
+                            @a.Title <span class="kb-zacht">@RecurrenceText(a.Recurrence)</span>
+                        }
+                        else if (a.Kind == ScheduledKind.Offboarding && a.PersonKey is { } key && State.Data.SearchPerson(key) is { } p)
+                        {
+                            <text>Uitstroom van </text><ObjectLink Object="State.Data.Index.Ref(p)" />
+                        }
+                        else
+                        {
+                            @a.Title
+                        }
+                    </td>
+                    <td class="kb-zacht">@a.CreatedBy, @a.Created.ToString("dd/MM HH:mm")</td>
+                    <td>
+                        <span class="kb-filters">
+                            @if (a.Kind == ScheduledKind.Script)
+                            {
+                                <a class="kb-knop kb-klein @(done ? "kb-primair" : null)" href="@($"scripts/starten/{Uri.EscapeDataString(a.ScriptKey ?? string.Empty)}?gepland={a.Id}")">Starten</a>
+                            }
+                            else
+                            {
+                                <button class="kb-knop kb-klein @(done ? "kb-primair" : null)" @onclick="() => Show(a)">Plan tonen</button>
+                            }
+                            @if (remove == a.Id)
+                            {
+                                <button class="kb-knop kb-klein kb-gevaar" @onclick="() => Remove(a)">Ja, schrappen</button>
+                                <button class="kb-knop kb-klein" @onclick="() => remove = null">Nee</button>
+                            }
+                            else
+                            {
+                                <button class="kb-knop kb-klein" @onclick="() => remove = a.Id">Schrappen</button>
+                            }
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (selected is not null && outcome is not null)
+{
+    @if (!selected.IsDue(DateTimeOffset.Now))
+    {
+        <div class="kb-melding">Het geplande moment (@selected.When.ToString("dd/MM/yyyy HH:mm")) is nog niet voorbij. Je kan het plan nu al bekijken, of vervroegd uitvoeren.</div>
+    }
+
+    @foreach (var f in outcome.Errors)
+    {
+        <div class="kb-melding kb-fout">@f</div>
+    }
+
+    @if (outcome.Plan.Count > 0)
+    {
+        <PlanView Plan="outcome.Plan" Context="@($"{selected.Title} (gepland)")" Title="@selected.Title" Executed="AfterExecute" />
+    }
+
+    @if (password is not null)
+    {
+        <section class="kb-kaart kb-geheim">
+            <h2>Startwachtwoord</h2>
+            <CopyField Value="@password" Label="Startwachtwoord" Secret="true" />
+            <p class="kb-zacht">Geef dit door aan de gebruiker; het moet gewijzigd worden bij de eerste aanmelding. De app bewaart het nergens.</p>
+        </section>
+    }
+
+    @if (message is not null)
+    {
+        <div class="kb-melding kb-goed">@message</div>
+    }
+}
+
+@code {
+    private List<ScheduledAction> actions = new();
+    private ScheduledAction? selected;
+    private ScheduledPlan? outcome;
+    private string? password;
+    private string? message;
+    private Guid? remove;
+
+    protected override void OnParametersSet()
+    {
+        try
+        {
+            actions = State.Scheduled.Read().OrderBy(a => a.When).ToList();
+        }
+        catch (Exception ex)
+        {
+            actions = new();
+            message = "Gepland lezen mislukt: " + ex.Message;
+        }
+    }
+
+    private void Show(ScheduledAction a)
+    {
+        selected = a;
+        outcome = ScheduledPlans.PlanFor(a, State.Data, State.Config);
+        password = null;
+        message = null;
+    }
+
+    private void Remove(ScheduledAction a)
+    {
+        State.RemoveScheduled(a.Id);
+        remove = null;
+        if (selected?.Id == a.Id)
+        {
+            selected = null;
+            outcome = null;
+        }
+
+        OnParametersSet();
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (selected is null || outcome is null)
+        {
+            return;
+        }
+
+        var succeeded = results.Count(r => r.Status == ResultStatus.Succeeded);
+        if (succeeded == 0)
+        {
+            message = "Niets gelukt; de actie blijft gepland.";
+            return;
+        }
+
+        if (selected.Kind == ScheduledKind.Onboarding)
+        {
+            var create = outcome.Plan.FirstOrDefault(w => w.ChangeAction == ChangeAction.AdCreateUser);
+            if (create is not null && results.Any(r => r.ChangeId == create.Id && r.Status == ResultStatus.Succeeded))
+            {
+                password = create.Secret;
+                if (selected.AfterSynchronisation.Count > 0 && selected.Upn is { } upn)
+                {
+                    State.AddFollowUp(new FollowUpTask { Upn = upn, Description = selected.Title, Changes = selected.AfterSynchronisation.ToList() });
+                }
+            }
+
+            foreach (var w in outcome.Plan)
+            {
+                w.Secret = null;
+            }
+        }
+
+        State.RemoveScheduled(selected.Id);
+        message = selected.AfterSynchronisation.Count > 0 && selected.Kind == ScheduledKind.Onboarding
+            ? "Uitgevoerd en uit Gepland gehaald. De stappen na de synchronisatie staan bij Opvolging."
+            : "Uitgevoerd en uit Gepland gehaald.";
+        OnParametersSet();
+    }
+
+    private static string RecurrenceText(Recurrence h) => h switch
+    {
+        Recurrence.Daily => "(elke dag)",
+        Recurrence.Weekly => "(elke week)",
+        Recurrence.Monthly => "(elke maand)",
+        _ => string.Empty,
+    };
+}

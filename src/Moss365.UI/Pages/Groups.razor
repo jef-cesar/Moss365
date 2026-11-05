@@ -1,0 +1,105 @@
+@page "/groepen"
+@inherits RefreshingPage
+@inject NavigationManager Nav
+
+<div class="kb-titelbalk">
+    <h1>Groepen</h1>
+    @if (State.Can(Permission.Manage)) { <a class="kb-knop kb-primair" href="groepen/nieuw">+ Nieuwe groep</a> }
+</div>
+
+<p class="kb-zacht">
+    Alle groepen uit AD, Entra en Exchange. Een uit AD gesynchroniseerde groep staat er één keer, met zijn AD- en cloudkant samen.
+</p>
+
+<div class="kb-tegels">
+    @foreach (var (label, count, filter) in Tiles())
+    {
+        <button class="kb-tegel @(z.Kind == filter ? "kb-actief" : null)" @onclick="() => { z.Kpi = null; z.Kind = z.Kind == filter ? null : filter; }">
+            <div class="kb-tegel-getal">@count</div><div>@label</div>
+        </button>
+    }
+</div>
+
+<KpiFilter Kpi="ActiveKpi" Count="KpiRows.Count" Shown="Items.Count" Cleared="() => z.Kpi = null" />
+
+<div class="kb-filters kb-plak">
+    <input class="kb-invoer kb-breed" placeholder="Zoek op naam, adres of sAMAccountName" @bind="z.Find" @bind:event="oninput" aria-label="Zoeken" />
+</div>
+
+<KbTable Id="groepen" Items="Items" Columns="columns" Selectable KeyOf="g => g.Key" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@($"{Items.Count} groepen")" />
+
+<BulkTasks Items="groepen" Count="CountSelected" />
+
+@code {
+    /// <summary>Search term and filters, kept while the app is open (Back, Forward, menu).</summary>
+    private sealed class Search { public string Find { get; set; } = string.Empty; public string? Kind { get; set; } public string? Kpi { get; set; } }
+    private Search? _z;
+    private Search z => _z ??= State.PageState.Of<Search>("groepen");
+
+    /// <summary>From a KPI tile: groepen?kpi=zonder-leden (see Core/Analysis/Kpis.cs).</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "kpi")] public string? KpiQuestion { get; set; }
+    private string? processedKpi;
+
+    protected override void OnParametersSet()
+    {
+        if (KpiQuestion != processedKpi)
+        {
+            processedKpi = KpiQuestion;
+            if (State.KpiArrival(KpiQuestion, Nav.Uri, "groepen", "groepen"))
+            {
+                _z = null;
+                z.Kpi = KpiQuestion;
+            }
+        }
+    }
+
+    private Kpi? ActiveKpi => Kpis.Find(z.Kpi) is { Items: KpiList.Groups } k ? k : null;
+    private IReadOnlyList<Group> KpiRows => ActiveKpi is { } k ? Kpis.Groups(k, State.KpiSource) : Array.Empty<Group>();
+    private IReadOnlyList<Column<Group>> columns = Array.Empty<Column<Group>>();
+
+    protected override void OnInitialized() => columns = new List<Column<Group>>
+    {
+        new() { Key = "naam", Title = "Groep", Cell = g => @<ObjectLink Object="g.Ref" />, SortBy = g => g.Name },
+        new() { Key = "soort", Title = "Soort", Cell = g => @<text>@g.KindText</text>, SortBy = g => g.KindText },
+        new() { Key = "waar", Title = "Waar", Cell = g => @<text>@g.Layers</text>, SortBy = g => g.Layers },
+        new() { Key = "mail", Title = "E-mailadres", Cell = g => @<text>@g.Mail</text>, SortBy = g => g.Mail },
+        new() { Key = "leden", Title = "Leden", Number = true, Cell = g => @<text>@Members(g)</text>, SortBy = g => Members(g) },
+        new() { Key = "omschrijving", Title = "Omschrijving", Cell = g => @<span class="kb-zacht">@g.Description</span>, SortBy = g => g.Description },
+        new() { Key = "sam", Title = "sAMAccountName", Hidden = true, Cell = g => @<text>@g.Ad?.SamAccountName</text>, SortBy = g => g.Ad?.SamAccountName },
+        new() { Key = "ou", Title = "OU", Hidden = true, Cell = g => @<text>@g.Ad?.OuPath</text>, SortBy = g => g.Ad?.OuPath },
+        new() { Key = "weg", Title = "Wijzigen via", Hidden = true, Cell = g => @<text>@g.Route</text>, SortBy = g => g.Route.ToString() },
+        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = g => @<code>@(g.Cloud?.Id)</code>, SortBy = g => g.Cloud?.Id },
+    };
+
+    private static int? Members(Group g) => g.Cloud?.CountMembers ?? g.Exo?.CountMembers ?? g.Ad?.CountMembers;
+
+    private static string Category(Group g) => g.Dynamic ? "dynamisch"
+        : g.Ad is not null ? (g.Cloud is not null ? "ad-sync" : "ad")
+        : g.Cloud is { Type: CloudGroupType.Microsoft365 } ? "m365"
+        : g.Route == Moss365.Core.Analysis.WriteRoute.Exchange ? "mail"
+        : "cloud";
+
+    private IEnumerable<(string Label, int Count, string Filter)> Tiles()
+    {
+        var all = State.Data.Index.Groups.ToList();
+        foreach (var (label, filter) in new[] { ("Alleen AD", "ad"), ("AD, gesynchroniseerd", "ad-sync"), ("Microsoft 365", "m365"), ("Mailgroepen", "mail"), ("Cloudbeveiliging", "cloud"), ("Dynamisch", "dynamisch") })
+        {
+            yield return (label, all.Count(g => Category(g) == filter), filter);
+        }
+    }
+
+    private IReadOnlyList<Group> Items
+    {
+        get
+        {
+            var term = z.Find.Trim();
+            return (ActiveKpi is null ? State.Data.Index.Groups : KpiRows)
+                .Where(g => z.Kind is null || Category(g) == z.Kind)
+                .Where(g => term.Length == 0 || new[] { g.Name, g.Mail, g.Ad?.SamAccountName, g.Ad?.Name, g.Description }.Any(v => v?.Contains(term, StringComparison.OrdinalIgnoreCase) == true))
+                .OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+    }
+
+    private int CountSelected => State.TableSession("groepen").Selected.Count;
+}

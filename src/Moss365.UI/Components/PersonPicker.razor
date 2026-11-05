@@ -1,0 +1,45 @@
+@inject ManagementState State
+
+<div class="kb-kiezer">
+    <label>@Label</label>
+    @if (Selected is not null)
+    {
+        <div class="kb-gekozen">
+            <strong>@Selected.Name</strong> <span class="kb-zacht">@Selected.Upn &middot; @Selected.Source</span>
+            <button class="kb-knop kb-klein" @onclick="Clear">Wijzig</button>
+        </div>
+    }
+    else
+    {
+        <input class="kb-invoer" placeholder="Zoek op naam, UPN of sAMAccountName" @bind="search" @bind:event="oninput" />
+        @if (Results.Count > 0)
+        {
+            <ul class="kb-keuzes">
+                @foreach (var p in Results)
+                {
+                    <li><button class="kb-link" @onclick="() => Choose(p)">@p.Name <span class="kb-zacht">@p.Upn &middot; @p.Source</span></button></li>
+                }
+            </ul>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Gebruiker";
+    [Parameter] public Person? Selected { get; set; }
+    [Parameter] public EventCallback<Person?> SelectedChanged { get; set; }
+
+    private string search = string.Empty;
+
+    private IReadOnlyList<Person> Results => search.Trim().Length < 2
+        ? Array.Empty<Person>()
+        : Searcher.Find(State.Data.Persons, search, withGuests: false).Take(8).ToList();
+
+    private async Task Choose(Person p)
+    {
+        search = string.Empty;
+        await SelectedChanged.InvokeAsync(p);
+    }
+
+    private Task Clear() => SelectedChanged.InvokeAsync(null);
+}

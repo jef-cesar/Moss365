@@ -1,0 +1,28 @@
+@* Horizontal bars (one series): name, bar and the number next to it. With Total the bar shows the share of it. *@
+<ul class="kb-staven" role="list">
+    @foreach (var s in Bars)
+    {
+        var width = s.Total is > 0 ? s.Part : Max == 0 ? 0 : (double)s.Count / Max;
+        var warning = Warning?.Invoke(s) == true;
+        <li class="kb-staaf @(warning ? "kb-staaf-let" : null)" title="@Title(s)">
+            <span class="kb-staaf-naam">@if (s.Link is not null) { <a href="@s.Link">@s.Name</a> } else { @s.Name }</span>
+            <span class="kb-staaf-spoor"><span class="kb-staaf-vulling" style="width: @((width * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></span></span>
+            <span class="kb-staaf-getal">
+                @(s.Total is { } t ? $"{s.Count} / {t}" : s.Count.ToString())
+                @if (warning) { <span class="kb-status-let">⚠ @WarningText</span> }
+            </span>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Bar> Bars { get; set; } = Array.Empty<Bar>();
+    [Parameter] public Func<Bar, bool>? Warning { get; set; }
+    [Parameter] public string WarningText { get; set; } = "let op";
+
+    private int Max => Bars.Count == 0 ? 0 : Bars.Max(s => s.Count);
+
+    private static string Title(Bar s) => s.Total is { } t
+        ? $"{s.Name}: {s.Count} van {t} ({s.Part:P0}), {t - s.Count} vrij"
+        : $"{s.Name}: {s.Count}";
+}

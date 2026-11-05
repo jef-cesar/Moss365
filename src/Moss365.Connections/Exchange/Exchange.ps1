@@ -1,33 +1,33 @@
 <#
 .SYNOPSIS
-    Voert Exchange Online-opdrachten uit voor de beheer-app Moss365.
+    Runs Exchange Online commands for the management app Moss365.
 
 .DESCRIPTION
-    De app start dit script in een apart PowerShell-proces (Microsoft.Graph en ExchangeOnlineManagement storen elkaar
-    in hetzelfde proces). Het script leest een JSON-lijst opdrachten, voert ze uit en schrijft per opdracht het resultaat
-    terug als JSON.
+    The app starts this script in a separate PowerShell process (Microsoft.Graph and ExchangeOnlineManagement disturb
+    each other in the same process). The script reads a JSON list of commands, runs them and writes the result of each
+    command back as JSON.
 
-    Veiligheid: alleen de opdrachten en parameters in $Toegestaan zijn mogelijk. Waarden worden als parameters
-    doorgegeven (splatting), nooit als scripttekst uitgevoerd. Getallen en ja/nee-waarden zet het script zelf om.
+    Safety: only the commands and parameters in $Toegestaan are possible. Values are passed as parameters (splatting),
+    never run as script text. The script converts numbers and yes/no values itself.
 
 .PARAMETER Opdrachten
-    JSON-bestand: [ { "id": "...", "op": "LidToevoegen", "params": { "Identity": "...", "Member": "..." } }, ... ]
+    JSON file: [ { "id": "...", "op": "LidToevoegen", "params": { "Identity": "...", "Member": "..." } }, ... ]
 
 .PARAMETER Uitvoer
-    JSON-bestand waarin de resultaten komen: [ { "id", "status" (Gelukt/Mislukt), "melding", "data" } ]
+    JSON file for the results: [ { "id", "status" (Gelukt/Mislukt), "melding", "data" } ]
 
 .PARAMETER Upn
-    Beheeraccount om de aanmelding vooraf in te vullen.
+    Admin account to fill in the sign-in beforehand.
 
 .PARAMETER ZonderVerbinding
-    Voor tests: geen module laden en niet aanmelden (de cmdlets zijn dan nagebootst).
+    For tests: do not load the module and do not sign in (the cmdlets are faked then).
 
 .PARAMETER WachtSeconden
-    Wachttijd tussen nieuwe pogingen als een net aangemaakt object nog niet gevonden wordt (replicatie).
+    Wait between retries when an object that was just created is not found yet (replication).
 
 .NOTES
-    Aanmelden: de app geeft een toegangstoken mee in de omgevingsvariabele MOSS365_EXO_TOKEN (nooit op de
-    opdrachtregel of op schijf). Zonder token meldt de module zelf aan via de browser.
+    Signing in: the app passes an access token in the environment variable MOSS365_EXO_TOKEN (never on the command
+    line or on disk). Without a token the module signs in by itself via the browser.
 #>
 [CmdletBinding()]
 param(
@@ -72,16 +72,16 @@ function ConvertTo-OpdrachtParameters {
     if ($null -eq $Ruw) { return $uit }
     foreach ($eigenschap in $Ruw.PSObject.Properties) {
         if ($Toegestaan[$Op] -notcontains $eigenschap.Name) {
-            throw "Parameter '$($eigenschap.Name)' is niet toegestaan voor '$Op'."
+            throw "Parameter '$($eigenschap.Name)' is not allowed for '$Op'."
         }
         $waarde = [string]$eigenschap.Value
         if ($Getallen -contains $eigenschap.Name) {
             $getal = 0
-            if (-not [int]::TryParse($waarde, [ref]$getal)) { throw "'$waarde' is geen geheel getal voor $($eigenschap.Name)." }
+            if (-not [int]::TryParse($waarde, [ref]$getal)) { throw "'$waarde' is not a whole number for $($eigenschap.Name)." }
             $uit[$eigenschap.Name] = $getal
         }
         elseif ($JaNee -contains $eigenschap.Name) {
-            if ($waarde -notin @('True', 'False', 'true', 'false')) { throw "'$waarde' is geen ja/nee-waarde voor $($eigenschap.Name)." }
+            if ($waarde -notin @('True', 'False', 'true', 'false')) { throw "'$waarde' is not a yes/no value for $($eigenschap.Name)." }
             $uit[$eigenschap.Name] = ($waarde -eq 'True' -or $waarde -eq 'true')
         }
         else {
@@ -110,7 +110,7 @@ function Get-AgendaRechtenTekst {
 }
 
 function Get-RoomsVoorApp {
-    # Zonder lijst: alle rooms; met lijst: enkel die (bij het opnieuw lezen van enkele objecten)
+    # Without a list: all rooms; with a list: only those (when reading a few objects again)
     param([object[]]$Lijst)
     $rooms = if ($PSBoundParameters.ContainsKey('Lijst')) { @($Lijst) } else {
         @(Get-EXOMailbox -RecipientTypeDetails RoomMailbox -ResultSize Unlimited -Properties DisplayName, Alias, PrimarySmtpAddress, HiddenFromAddressListsEnabled) }
@@ -145,8 +145,8 @@ function Get-RoomsVoorApp {
 }
 
 function Get-PostvakkenVoorApp {
-    # Gedeelde postvakken met rechten, doorsturen en automatisch antwoord; Exchange-groepen met leden.
-    # Zonder lijsten: alles; met lijsten: enkel die objecten.
+    # Shared mailboxes with permissions, forwarding and automatic reply; Exchange groups with members.
+    # Without lists: everything; with lists: only those objects.
     param([object[]]$Postvakken, [object[]]$Groepen)
     $enkele = $PSBoundParameters.ContainsKey('Postvakken')
     $postvakken = if ($enkele) { @($Postvakken) } else {
@@ -164,7 +164,7 @@ function Get-PostvakkenVoorApp {
             AutoAntwoord = "$($auto.AutoReplyState)"; AutoAntwoordIntern = "$($auto.InternalMessage)"; AutoAntwoordExtern = "$($auto.ExternalMessage)"
         }
     }
-    # Rechthebbenden komen soms terug als interne naam (Name); zet die om naar een adres
+    # Trustees sometimes come back as the internal name (Name); convert those to an address
     $adressen = @{}
     $adresVan = {
         param([string]$Naam)
@@ -188,7 +188,7 @@ function Get-PostvakkenVoorApp {
         catch { }
     }
     $alleGroepen = if ($enkele) { @($Groepen) } else { @(Get-DistributionGroup -ResultSize Unlimited) }
-    # Niet $groepen: voor PowerShell is dat dezelfde variabele als de parameter [object[]]$Groepen
+    # Not $groepen: for PowerShell that is the same variable as the parameter [object[]]$Groepen
     $exoGroepen = foreach ($g in $alleGroepen) {
         $leden = @()
         try { $leden = @(Get-DistributionGroupMember -Identity "$($g.Identity)" -ResultSize Unlimited -ErrorAction Stop | ForEach-Object { [pscustomobject]@{ Smtp = "$($_.PrimarySmtpAddress)"; Naam = "$($_.DisplayName)" } }) } catch { }
@@ -202,7 +202,7 @@ function Get-PostvakkenVoorApp {
 }
 
 function Get-ObjectenVoorApp {
-    # Enkele rooms, postvakken of groepen opnieuw lezen; Adressen = adressen gescheiden door |
+    # Read a few rooms, mailboxes or groups again; Adressen = addresses separated by |
     param([string]$Adressen)
     $rooms = @(); $postvakken = @(); $groepen = @(); $weg = @()
     foreach ($adres in @($Adressen -split '\|' | Where-Object { $_ })) {
@@ -228,7 +228,7 @@ function Get-ObjectenVoorApp {
 }
 
 function Invoke-MetHerhaling {
-    # Net aangemaakte objecten zijn soms enkele seconden niet vindbaar; dan opnieuw proberen
+    # Objects that were just created are sometimes not found for a few seconds; then try again
     param([scriptblock]$Actie)
     for ($poging = 1; ; $poging++) {
         try { return (& $Actie) }
@@ -243,7 +243,7 @@ function Invoke-Opdracht {
     param([string]$Op, [hashtable]$P)
     switch ($Op) {
         'LidToevoegen' {
-            # Een net aangemaakte groep of postvak is soms nog niet vindbaar
+            # A group or mailbox that was just created is sometimes not found yet
             Invoke-MetHerhaling { Add-DistributionGroupMember -Identity $P.Identity -Member $P.Member -BypassSecurityGroupManagerCheck -ErrorAction Stop }
             return $null
         }
@@ -260,7 +260,7 @@ function Invoke-Opdracht {
             return $null
         }
         'AgendaRecht' {
-            if ($AgendaRechten -notcontains $P.AccessRights) { throw "Onbekend agendarecht '$($P.AccessRights)'." }
+            if ($AgendaRechten -notcontains $P.AccessRights) { throw "Unknown calendar permission '$($P.AccessRights)'." }
             $fout = $null
             foreach ($map in 'Calendar', 'Agenda') {
                 try {
@@ -294,7 +294,7 @@ function Invoke-Opdracht {
             $wijziging = @{}
             if ($P.Toevoegen) { $wijziging['Add'] = $P.Toevoegen }
             if ($P.Verwijderen) { $wijziging['Remove'] = $P.Verwijderen }
-            if ($wijziging.Count -eq 0) { throw 'Geen beheerder opgegeven.' }
+            if ($wijziging.Count -eq 0) { throw 'No manager given.' }
             Set-DistributionGroup -Identity $P.Identity -ManagedBy $wijziging -BypassSecurityGroupManagerCheck -ErrorAction Stop
             return $null
         }
@@ -302,19 +302,19 @@ function Invoke-Opdracht {
             $instellen = @{ Identity = $P.Identity }
             foreach ($k in 'DisplayName', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward') { if ($P.ContainsKey($k)) { $instellen[$k] = $P[$k] } }
             if ($P.ContainsKey('ForwardingSmtpAddress')) {
-                # Leeg = doorsturen uitzetten
+                # Empty = turn forwarding off
                 $instellen['ForwardingSmtpAddress'] = $(if ($P.ForwardingSmtpAddress) { $P.ForwardingSmtpAddress } else { $null })
             }
             Set-Mailbox @instellen -ErrorAction Stop
             return $null
         }
         'AutoAntwoord' {
-            if ($AutoAntwoordStanden -notcontains $P.AutoReplyState) { throw "Onbekende stand '$($P.AutoReplyState)' voor automatisch antwoord." }
+            if ($AutoAntwoordStanden -notcontains $P.AutoReplyState) { throw "Unknown state '$($P.AutoReplyState)' for the automatic reply." }
             Set-MailboxAutoReplyConfiguration @P -ErrorAction Stop
             return $null
         }
         'RechtToevoegen' {
-            if ($PostvakRechten -notcontains $P.Recht) { throw "Onbekend postvakrecht '$($P.Recht)'." }
+            if ($PostvakRechten -notcontains $P.Recht) { throw "Unknown mailbox permission '$($P.Recht)'." }
             Invoke-MetHerhaling {
                 if ($P.Recht -eq 'FullAccess') {
                     Add-MailboxPermission -Identity $P.Identity -User $P.Trustee -AccessRights FullAccess -InheritanceType All -AutoMapping:$false -ErrorAction Stop | Out-Null
@@ -326,7 +326,7 @@ function Invoke-Opdracht {
             return $null
         }
         'RechtVerwijderen' {
-            if ($PostvakRechten -notcontains $P.Recht) { throw "Onbekend postvakrecht '$($P.Recht)'." }
+            if ($PostvakRechten -notcontains $P.Recht) { throw "Unknown mailbox permission '$($P.Recht)'." }
             if ($P.Recht -eq 'FullAccess') {
                 Remove-MailboxPermission -Identity $P.Identity -User $P.Trustee -AccessRights FullAccess -InheritanceType All -Confirm:$false -ErrorAction Stop
             }
@@ -340,10 +340,10 @@ function Invoke-Opdracht {
             return $null
         }
         'GroepAanmaken' {
-            # Security (mail-beveiligingsgroep, standaard) of Distribution (distributielijst)
+            # Security (mail-enabled security group, default) or Distribution (distribution list)
             $type = 'Security'
             if ($P.ContainsKey('Type')) { $type = "$($P.Type)"; $P.Remove('Type') }
-            if ($type -notin 'Security', 'Distribution') { throw "Onbekend type groep '$type'." }
+            if ($type -notin 'Security', 'Distribution') { throw "Unknown group type '$type'." }
             New-DistributionGroup @P -Type $type -MemberJoinRestriction Closed -MemberDepartRestriction Closed -ErrorAction Stop | Out-Null
             return $null
         }
@@ -351,10 +351,10 @@ function Invoke-Opdracht {
 }
 
 function New-ExoAanmelding {
-    # Parameters voor Connect-ExchangeOnline. Dit proces heeft geen venster; de Windows-aanmeldbroker (WAM, standaard
-    # sinds ExchangeOnlineManagement 3.7) eist er een ("A window handle must be configured"). Met -DisableWAM meldt de
-    # module aan via de browser. Oudere versies kennen die parameter niet en gebruiken WAM ook niet.
-    # Met een token van de app (zelfde aanmelding als Graph) is er geen tweede aanmelding nodig.
+    # Parameters for Connect-ExchangeOnline. This process has no window; the Windows sign-in broker (WAM, default
+    # since ExchangeOnlineManagement 3.7) needs one ("A window handle must be configured"). With -DisableWAM the
+    # module signs in via the browser. Older versions do not know that parameter and do not use WAM either.
+    # With a token from the app (the same sign-in as Graph) no second sign-in is needed.
     param([string]$Upn, [string]$Token, [string[]]$BeschikbareParameters)
     $aanmelding = @{ ShowBanner = $false }
     if ($Upn) { $aanmelding['UserPrincipalName'] = $Upn }
@@ -378,7 +378,7 @@ if (-not $ZonderVerbinding) {
         Connect-ExchangeOnline @aanmelding
     }
     catch {
-        $verbindingsFout = "Aanmelden bij Exchange Online mislukt: $($_.Exception.Message)"
+        $verbindingsFout = "Signing in to Exchange Online failed: $($_.Exception.Message)"
     }
 }
 
@@ -389,7 +389,7 @@ $resultaten = foreach ($o in $lijst) {
     }
     $parameters = $null
     try {
-        if (-not $Toegestaan.ContainsKey([string]$o.op)) { throw "Opdracht '$($o.op)' is niet toegestaan." }
+        if (-not $Toegestaan.ContainsKey([string]$o.op)) { throw "Command '$($o.op)' is not allowed." }
         $parameters = ConvertTo-OpdrachtParameters -Op $o.op -Ruw $o.params
         $data = Invoke-Opdracht -Op $o.op -P $parameters
         [pscustomobject]@{ id = $o.id; status = 'Gelukt'; melding = ''; data = $data }

@@ -1,0 +1,135 @@
+@page "/scripts/starten/{Sleutel}"
+@inherits RefreshingPage
+
+@if (script is null)
+{
+    <h1>Script niet gevonden</h1>
+    <p><a href="scripts">Terug naar de scripts</a></p>
+}
+else
+{
+    <h1>@script.Header.Name</h1>
+    <p class="kb-zacht">
+        @script.Header.Description
+        <span class="kb-label @(script.Header.Writes ? "kb-label-let" : null)">@(script.Header.Writes ? "wijzigt" : "leest")</span>
+        <span>@ScriptText.ConnectionText(script.Header.Connection)</span> &middot; @script.Origin
+        &middot; <a href="@($"scripts/bewerken?sleutel={Uri.EscapeDataString(script.Key)}")">@(script.BuiltIn ? "kopie bewerken" : "bewerken")</a>
+    </p>
+
+    @if (Scheduled is { } g && State.Scheduled.Read().FirstOrDefault(a => a.Id == g) is { } action)
+    {
+        <div class="kb-melding">Ingepland voor @action.When.ToString("dd/MM/yyyy HH:mm"): de waarden van de planning staan klaar. Na de run plant de app de volgende keer.</div>
+    }
+
+    <ScriptRunPanel @key="script.FilePath" Script="script" Scheduled="Scheduled" BeginValues="State.ScriptPrefill" ValuesChanged="w => current = w" />
+
+    <section class="kb-kaart">
+        <h2>Inplannen</h2>
+        <p class="kb-zacht">
+            Op het moment zelf verschijnt een melding (menu Acties &gt; Gepland) en start jij de run; de app voert nooit iets vanzelf uit.
+            De waarden komen uit het formulier hierboven; een relatieve datum (bv. begin werkjaar) wordt bij elke run opnieuw berekend.
+        </p>
+        <div class="kb-filters">
+            <label>Wanneer <input class="kb-invoer" type="datetime-local" @bind="whenValue" /></label>
+            <label>
+                Herhalen
+                <select class="kb-invoer" @bind="recurrence">
+                    <option value="@Recurrence.Once">niet</option>
+                    <option value="@Recurrence.Daily">elke dag</option>
+                    <option value="@Recurrence.Weekly">elke week</option>
+                    <option value="@Recurrence.Monthly">elke maand</option>
+                </select>
+            </label>
+            <button class="kb-knop" @onclick="Plan">Inplannen</button>
+        </div>
+        @if (planMessage is not null)
+        {
+            <div class="kb-melding">@planMessage</div>
+        }
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Geschiedenis (@runs.Count)</h2>
+        @if (runs.Count == 0)
+        {
+            <p class="kb-zacht">Dit script heeft nog niet gedraaid (of niet in de laatste @ScriptRuns.SaveDays dagen).</p>
+        }
+        else
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>Wanneer</th><th>Wie</th><th>Resultaat</th><th>Waarden</th></tr></thead>
+                <tbody>
+                    @foreach (var r in runs)
+                    {
+                        <tr>
+                            <td><a href="@($"scripts/run/{Uri.EscapeDataString(r.Key)}/{Uri.EscapeDataString(Path.GetFileName(r.Folder))}")">@r.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</a></td>
+                            <td>@r.Who</td>
+                            <td><RunLabel Run="r" /></td>
+                            <td class="kb-zacht">@string.Join("; ", r.Values.Select(w => $"{w.Key}={w.Value.Replace("\n", ", ")}"))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public string Key { get; set; } = string.Empty;
+    [Parameter, SupplyParameterFromQuery(Name = "gepland")] public Guid? Scheduled { get; set; }
+
+    private ScriptFile? script;
+    private IReadOnlyList<ScriptRun> runs = Array.Empty<ScriptRun>();
+    private bool? previousBusy;
+    private DateTime whenValue = DateTime.Today.AddDays(1).AddHours(8);
+    private Recurrence recurrence = Recurrence.Weekly;
+    private string? planMessage;
+    private Dictionary<string, string> current = new(StringComparer.OrdinalIgnoreCase);
+
+    protected override void OnParametersSet()
+    {
+        script = State.SearchScript(Key);
+        LoadRuns();
+    }
+
+    private void LoadRuns() => runs = script is null ? Array.Empty<ScriptRun>() : ScriptRuns.Items(State.ScriptFolders, script.Key);
+
+    protected override void OnAfterRender(bool firstTime)
+    {
+        // A run started or ended: read the history again
+        if (previousBusy != State.ScriptBusy)
+        {
+            var first = previousBusy is null;
+            previousBusy = State.ScriptBusy;
+            if (!first)
+            {
+                LoadRuns();
+                StateHasChanged();
+            }
+        }
+    }
+
+    public override void Dispose()
+    {
+        State.ScriptPrefill = null;
+        base.Dispose();
+    }
+
+    private void Plan()
+    {
+        if (script is null)
+        {
+            return;
+        }
+
+        var errors = ScriptValues.Check(script.Header, current);
+        if (errors.Count > 0)
+        {
+            planMessage = "Vul eerst de waarden in: " + string.Join(" ", errors);
+            return;
+        }
+
+        State.Schedule(ScheduledPlans.Script(script.Key, script.BuiltIn, script.Header.Name, current, new DateTimeOffset(whenValue), recurrence, State.User));
+        planMessage = $"Ingepland voor {whenValue:dd/MM/yyyy HH:mm}, met de waarden van het formulier. Zie Acties > Gepland.";
+    }
+}

@@ -1,0 +1,173 @@
+@* Start a script: form, preview (-WhatIf) for scripts that change things, live output and the result *@
+@implements IDisposable
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>@(OneTimeText is null ? "Starten" : "Eenmalig uitvoeren")</h2>
+    <ScriptForm Header="Script.Header" Values="values" ValuesChanged="OnValuesChanged" />
+
+    @if (error is not null)
+    {
+        <div class="kb-melding kb-fout">@error</div>
+    }
+
+    @if (State.ScriptBusy && !IsMyRun)
+    {
+        <div class="kb-melding">Er draait al een ander script (@State.ScriptRun!.Run.Name). <a href="@RunLink(State.ScriptRun.Run)">Bekijken</a></div>
+    }
+
+    <div class="kb-filters">
+        @if (IsMyRun && State.ScriptBusy)
+        {
+            <span class="kb-zacht">bezig...</span>
+            <button class="kb-knop" @onclick="State.CancelScript">Annuleren</button>
+        }
+        else if (!Script.Header.Writes)
+        {
+            <button class="kb-knop kb-primair" disabled="@State.ScriptBusy" @onclick="() => Start(false)">Starten</button>
+        }
+        else
+        {
+            <button class="kb-knop @(PreviewOk ? null : "kb-primair")" disabled="@State.ScriptBusy" @onclick="() => Start(true)">Voorbeeld (-WhatIf)</button>
+            @if (PreviewOk)
+            {
+                @if (confirm)
+                {
+                    <span>Dit script wijzigt echt. Zeker?</span>
+                    <button class="kb-knop kb-gevaar" @onclick="() => Start(false)">Ja, uitvoeren</button>
+                    <button class="kb-knop" @onclick="() => confirm = false">Nee</button>
+                }
+                else
+                {
+                    <button class="kb-knop kb-primair" @onclick="() => confirm = true">Uitvoeren</button>
+                }
+            }
+            else
+            {
+                <span class="kb-zacht">Dit script wijzigt iets: bekijk eerst het voorbeeld. Daarna kan je het uitvoeren.</span>
+            }
+        }
+    </div>
+
+    @if (IsMyRun && State.ScriptRun is { } s)
+    {
+        @if (!s.Done)
+        {
+            <ScriptOutputList Events="s.Events" Progress="s.Voortgang" Percent="s.Percent" Follow="true" EmptyText="Starten..." />
+        }
+        else
+        {
+            <div class="kb-melding @(s.Run.Result is RunResult.Error ? "kb-fout" : null)">
+                <strong>@s.Run.ResultText</strong> @s.Run.Message
+                <a href="@RunLink(s.Run)">Deze run openen</a>
+            </div>
+            <ScriptResult @key="s.Run.Folder" Run="s.Run" Events="s.Events" />
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ScriptFile Script { get; set; } = null!;
+
+    /// <summary>The text of a script that is not saved (one time).</summary>
+    [Parameter] public string? OneTimeText { get; set; }
+
+    [Parameter] public Guid? Scheduled { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, string>? BeginValues { get; set; }
+
+    /// <summary>The values in the form (e.g. to schedule).</summary>
+    [Parameter] public EventCallback<Dictionary<string, string>> ValuesChanged { get; set; }
+
+    private Dictionary<string, string> values = new(StringComparer.OrdinalIgnoreCase);
+    private string? error;
+    private bool confirm;
+    private string? myRun;
+    private string? previewOf;
+    private string? loadedFor;
+
+    private bool IsMyRun => myRun is not null && State.ScriptRun?.Run.Folder == myRun;
+
+    private string Signature => (OneTimeText ?? Script.Fingerprint) + "|" + string.Join("|", values.OrderBy(w => w.Key).Select(w => w.Key + "=" + w.Value));
+
+    /// <summary>There is a successful preview for exactly this script and these values.</summary>
+    private bool PreviewOk => previewOf == Signature;
+
+    protected override void OnInitialized() => State.Changed += Reload;
+
+    protected override void OnParametersSet()
+    {
+        var key = Script.FilePath + "|" + Scheduled + "|" + (BeginValues is null ? 0 : BeginValues.GetHashCode());
+        if (loadedFor == key)
+        {
+            return;
+        }
+
+        loadedFor = key;
+        values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var v in Script.Header.Variables.Where(v => v.Default is not null))
+        {
+            values[v.Name] = v.Default!;
+        }
+
+        IReadOnlyDictionary<string, string>? source = BeginValues;
+        if (source is null && Scheduled is { } id && State.Scheduled.Read().FirstOrDefault(a => a.Id == id) is { } action)
+        {
+            source = action.ScriptValues;
+        }
+
+        source ??= OneTimeText is null ? ScriptValues.Read(State.ScriptFolders, Script.Key) : null;
+        foreach (var (k, v) in source ?? new Dictionary<string, string>())
+        {
+            values[k] = v;
+        }
+
+        _ = ValuesChanged.InvokeAsync(values);
+    }
+
+    private async Task OnValuesChanged()
+    {
+        confirm = false;
+        error = null;
+        await ValuesChanged.InvokeAsync(values);
+    }
+
+    private void Start(bool preview)
+    {
+        error = null;
+        confirm = false;
+        var (status, f) = State.StartScript(Script, values, preview, OneTimeText, preview ? null : Scheduled);
+        error = f;
+        myRun = status?.Run.Folder;
+        if (status is not null && preview)
+        {
+            // Running is allowed only when the preview succeeds
+            var signature = Signature;
+            _ = WaitOnPreview(status, signature);
+        }
+        else if (!preview)
+        {
+            previewOf = null;
+        }
+    }
+
+    private async Task WaitOnPreview(ScriptRunStatus status, string signature)
+    {
+        while (!status.Done)
+        {
+            await Task.Delay(100);
+        }
+
+        if (status.Run.Result is RunResult.Succeeded or RunResult.Warnings)
+        {
+            previewOf = signature;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string RunLink(ScriptRun r) => $"scripts/run/{Uri.EscapeDataString(r.Key)}/{Uri.EscapeDataString(Path.GetFileName(r.Folder))}";
+
+    private void Reload() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= Reload;
+}

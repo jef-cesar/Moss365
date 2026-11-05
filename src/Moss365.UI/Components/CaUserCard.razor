@@ -1,0 +1,45 @@
+@* Which Conditional Access policies apply to one person, and why *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>Conditional Access</h2>
+    @if (Person.Entra is null)
+    {
+        <p class="kb-zacht">Geen Entra-account: Conditional Access geldt enkel bij aanmelden in Entra.</p>
+    }
+    else if (State.Data.ConditionalAccess is not { Message: null } ca || CaUser.Of(Person, State.Data) is not { } g)
+    {
+        <p class="kb-zacht">Niet geladen (Verbindingen, Alles live laden). <a href="conditional-access">Naar Conditional Access</a></p>
+    }
+    else
+    {
+        var name = CaReader.Names(State.Data);
+        var rules = ca.Policies.Where(b => b.Status != CaStatus.Off)
+            .Select(b => (Policy: b, Answer: CaReader.Scope(b, g, name, ca)))
+            .OrderBy(x => x.Answer.Applies).ThenBy(x => x.Policy.Status).ToList();
+        var applies = rules.Count(r => r.Answer.Applies != CaApplies.No && r.Policy.Status == CaStatus.On);
+        <p class="kb-zacht">
+            @applies van de @rules.Count(r => r.Policy.Status == CaStatus.On) beleiden die aan staan, gelden voor deze persoon (enkel wie: apps en voorwaarden spelen
+            bij elke aanmelding mee). <a href="@($"conditional-access?persoon={Uri.EscapeDataString(Person.Key)}")">Wat als deze persoon zich aanmeldt...</a>
+        </p>
+        <table class="kb-tabel">
+            <thead><tr><th>Beleid</th><th>Staat</th><th>Voor deze persoon</th><th>Waarom</th><th>Gevolg</th></tr></thead>
+            <tbody>
+                @foreach (var (b, a) in rules)
+                {
+                    <tr class="@(a.Applies == CaApplies.No ? "kb-zacht" : null)">
+                        <td><a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Name</a></td>
+                        <td><CaLabel Status="b.Status" /></td>
+                        <td><CaLabel Applies="a.Applies" /></td>
+                        <td>@a.Reason</td>
+                        <td>@CaReader.Explanation(b, ca, name).Consequence</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = null!;
+}

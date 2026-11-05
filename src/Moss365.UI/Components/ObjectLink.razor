@@ -1,0 +1,33 @@
+@* A user, group, mailbox or room as a link to its page. Give Object, or Id (name, address, DN or id) to look up. *@
+@inject ManagementState State
+
+@if (Target is { } r)
+{
+    @if (r.Route is { } route)
+    {
+        <a class="kb-obj kb-obj-@r.Kind.ToString().ToLowerInvariant()" href="@route" title="@Title(r)">@(Text ?? r.Name)</a>
+    }
+    else
+    {
+        <span class="kb-obj-los" title="@Title(r)">@(Text ?? r.Name)</span>
+    }
+
+    @if (ShowKind)
+    {
+        <span class="kb-soort">@r.KindText</span>
+    }
+}
+
+@code {
+    [Parameter] public ObjectRef? Object { get; set; }
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Other text than the name of the object.</summary>
+    [Parameter] public string? Text { get; set; }
+
+    [Parameter] public bool ShowKind { get; set; }
+
+    private ObjectRef? Target => Object ?? (string.IsNullOrWhiteSpace(Id) ? null : State.Data.Index.Ref(Id));
+
+    private static string Title(ObjectRef r) => string.IsNullOrEmpty(r.Detail) ? r.KindText : $"{r.KindText}: {r.Detail}";
+}

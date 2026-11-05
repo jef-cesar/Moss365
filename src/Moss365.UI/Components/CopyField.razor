@@ -1,0 +1,49 @@
+@* A value to copy (link, temporary password). Secret = hidden until you choose "Tonen". *@
+@inject IJSRuntime JS
+
+<span class="kb-kopieer">
+    <input class="kb-invoer kb-breed kb-link-veld" readonly type="@(Secret && !show ? "password" : "text")" value="@Value"
+           aria-label="@Label" @ref="field" @onfocus="Select" />
+    @if (Secret)
+    {
+        <button class="kb-knop" @onclick="() => show = !show">@(show ? "Verbergen" : "Tonen")</button>
+    }
+    <button class="kb-knop kb-primair" @onclick="Copy">@(copied ? "Gekopieerd" : "Kopiëren")</button>
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+    [Parameter] public string Label { get; set; } = "Waarde";
+    [Parameter] public bool Secret { get; set; }
+
+    private ElementReference field;
+    private bool show;
+    private bool copied;
+
+    private async Task Copy()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("moss365.kopieer", Value);
+            copied = true;
+        }
+        catch (Exception)
+        {
+            // Clipboard not available: select the field (Ctrl+C)
+            show = true;
+            await Select();
+        }
+    }
+
+    private async Task Select()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("moss365.selecteer", field);
+        }
+        catch (Exception)
+        {
+            // No problem
+        }
+    }
+}

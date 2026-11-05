@@ -11,7 +11,7 @@ window.moss365 = {
         if (window.mossNavigatie) { window.mossNavigatie.ref = ref; return; }
         var staat = { ref: ref, scroll: {} };
         window.mossNavigatie = staat;
-        var stap = function (e, terug) { e.preventDefault(); staat.ref.invokeMethodAsync(terug ? 'Terug' : 'Vooruit'); };
+        var stap = function (e, terug) { e.preventDefault(); staat.ref.invokeMethodAsync(terug ? 'Back' : 'Forward'); };
         document.addEventListener('keydown', function (e) {
             if (!e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) { return; }
             if (e.target && e.target.closest && e.target.closest('.monaco-editor')) { return; }
@@ -29,7 +29,7 @@ window.moss365 = {
         var wacht = null;
         document.addEventListener('change', function () {
             if (wacht) { clearTimeout(wacht); }
-            wacht = setTimeout(function () { wacht = null; staat.ref.invokeMethodAsync('VeldGewijzigd'); }, 150);
+            wacht = setTimeout(function () { wacht = null; staat.ref.invokeMethodAsync('FieldChanged'); }, 150);
         }, true);
         var vorige = location.href;
         window.addEventListener('scroll', function () {
@@ -81,7 +81,7 @@ window.mossEditor = (function () {
             var wacht = null;
             editor.onDidChangeModelContent(function () {
                 clearTimeout(wacht);
-                wacht = setTimeout(function () { dotnet.invokeMethodAsync('Gewijzigd', editor.getValue()); }, 250);
+                wacht = setTimeout(function () { dotnet.invokeMethodAsync('Changed', editor.getValue()); }, 250);
             });
             element._mossEditor = editor;
             return true;

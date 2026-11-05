@@ -1,0 +1,20 @@
+@* Above a list that was opened from a KPI tile: which filter is active, how many rows belong to it, and clear. *@
+@if (Kpi is not null)
+{
+    <div class="kb-melding kb-kpi-filter" role="status">
+        <span>Gefilterd op <strong>@Kpi.Label</strong>: @Count @(Count == 1 ? "rij" : "rijen")@if (Shown is { } g && g != Count) { <text>, @g na je eigen filters</text> }.</span>
+        @ChildContent
+        <button class="kb-knop" @onclick="Erase">Filter wissen</button>
+    </div>
+}
+
+@code {
+    [Parameter] public Kpi? Kpi { get; set; }
+    [Parameter] public int Count { get; set; }
+    /// <summary>How many rows remain after the search term and column filters (when that is different).</summary>
+    [Parameter] public int? Shown { get; set; }
+    [Parameter] public EventCallback Cleared { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private Task Erase() => Cleared.InvokeAsync();
+}

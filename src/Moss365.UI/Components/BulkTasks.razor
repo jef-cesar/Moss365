@@ -1,0 +1,193 @@
+@* Tasks for the selected rows of a list (0.8): always one plan with preview, confirmation and change log. *@
+@inject ManagementState State
+
+@if (Count > 0)
+{
+    <section class="kb-kaart kb-bulk">
+        <h2>Met de @Count gekozen @(Items switch { "gebruikers" => "gebruikers", "groepen" => "groepen", _ => "postvakken" })</h2>
+        @switch (Items)
+        {
+            case "gebruikers":
+                <div class="kb-bulk-taken">
+                    @if (State.Can(Permission.GroupMembers))
+                    {
+                        <div>
+                            <ObjectPicker Label="Toevoegen aan groep" Kinds="GroupKind" Selected="g => Group(g, true)" />
+                            <ObjectPicker Label="Verwijderen uit groep" Kinds="GroupKind" Selected="g => Group(g, false)" />
+                        </div>
+                    }
+                    @if (State.Can(Permission.Manage))
+                    {
+                        <div class="kb-rij">
+                            <label>Kenmerk
+                                <select class="kb-invoer" @bind="attribute">
+                                    <option value="Office">Kantoor</option>
+                                    <option value="Department">Dienst</option>
+                                    <option value="City">Stad</option>
+                                    <option value="JobTitle">Functie</option>
+                                </select>
+                            </label>
+                            <label>Wordt
+                                <input class="kb-invoer" list="kb-bulk-waarden" @bind="value" />
+                                <datalist id="kb-bulk-waarden">
+                                    @foreach (var w in Values())
+                                    {
+                                        <option value="@w"></option>
+                                    }
+                                </datalist>
+                            </label>
+                            <button class="kb-knop" disabled="@(value.Trim().Length == 0)" @onclick="Attribute">Plan maken</button>
+                        </div>
+                    }
+                    @if (State.Can(Permission.Actions))
+                    {
+                        <details class="kb-later">
+                            <summary>Uitstroom inplannen voor de @Count gekozen gebruikers</summary>
+                            <p class="kb-zacht">
+                                Eén geplande uitstroom per persoon, met de standaardopties. Op het moment zelf staat elk plan klaar bij
+                                <a href="gepland">Gepland</a>; er gebeurt niets zonder bevestiging. Gastgebruikers worden overgeslagen.
+                            </p>
+                            <Schedule Selected="PlanOffboardingIn" />
+                            @if (scheduled is not null) { <div class="kb-melding kb-goed">@scheduled</div> }
+                        </details>
+                    }
+                </div>
+                break;
+            case "groepen":
+                <div class="kb-bulk-taken">
+                    @if (State.Can(Permission.GroupMembers))
+                    {
+                        <ObjectPicker Label="Gebruiker toevoegen aan alle gekozen groepen" Kinds="PersonKind" Selected="InGroups" />
+                    }
+                    @if (State.Can(Permission.Manage))
+                    {
+                        <ObjectPicker Label="Beheerder (of eigenaar) maken van alle gekozen groepen" Kinds="PersonKind" Selected="Administrator" />
+                    }
+                </div>
+                break;
+            default:
+                <div class="kb-bulk-taken">
+                    @if (State.Can(Permission.GroupMembers))
+                    {
+                        <ObjectPicker Label="Toegang geven aan (via de toegangsgroep)" Kinds="PersonKind" Selected="Access" />
+                    }
+                    @if (State.Can(Permission.Manage))
+                    {
+                        <div class="kb-filters">
+                            <button class="kb-knop" @onclick="() => Hide(true)">Verbergen in de adreslijst</button>
+                            <button class="kb-knop" @onclick="() => Hide(false)">Tonen in de adreslijst</button>
+                            <button class="kb-knop" @onclick="Block">Aanmelden met het account blokkeren</button>
+                        </div>
+                    }
+                </div>
+                break;
+        }
+        @foreach (var f in errors.Take(10))
+        {
+            <div class="kb-melding">@f</div>
+        }
+        @if (errors.Count > 10) { <div class="kb-zacht">en nog @(errors.Count - 10) meldingen.</div> }
+    </section>
+
+    @if (plan is not null)
+    {
+        <PlanView Plan="plan" Context="@($"{title} ({Count} {Items})")" Title="@title" />
+    }
+}
+
+@code {
+    /// <summary>The Id of the list: "gebruikers", "groepen" or "postvakken".</summary>
+    [Parameter, EditorRequired] public string Items { get; set; } = string.Empty;
+
+    /// <summary>How many rows are selected (so that the bar changes along with the selection).</summary>
+    [Parameter] public int Count { get; set; }
+
+    private static readonly ObjectKind[] GroupKind = { ObjectKind.Group };
+    private static readonly ObjectKind[] PersonKind = { ObjectKind.User };
+
+    private string attribute = "Office";
+    private string value = string.Empty;
+    private string title = string.Empty;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+
+    private IReadOnlyCollection<string> Selected => State.TableSession(Items).Selected;
+
+    private List<Person> Persons() => Selected.Select(State.Data.SearchPerson).Where(p => p is not null).Cast<Person>().ToList();
+    private List<Group> Groups() => Selected.Select(State.Data.Index.Group).Where(g => g is not null).Cast<Group>().ToList();
+    private List<Mailbox> Mailboxes() => Selected.Select(State.Data.Index.Mailbox).Where(p => p is not null).Cast<Mailbox>().ToList();
+
+    private IEnumerable<string> Values() => attribute switch
+    {
+        "Office" => State.Config.Offices,
+        "Department" => State.Config.Departments.Select(d => d.Department),
+        _ => Array.Empty<string>(),
+    };
+
+    private void Show(PlanOutcome u, string t)
+    {
+        title = t;
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+    }
+
+    private void Group(ObjectRef r, bool add)
+    {
+        if (State.Data.Index.Group(r.Key) is { } g)
+        {
+            Show(BulkPlans.UsersInGroup(State.Data, Persons(), g, add), add ? $"Toevoegen aan {g.Name}" : $"Verwijderen uit {g.Name}");
+        }
+    }
+
+    private void Hide(bool hide) => Show(BulkPlans.Hide(Mailboxes(), hide), hide ? "Verbergen in de adreslijst" : "Tonen in de adreslijst");
+
+    private void Block() => Show(BulkPlans.BlockSignIn(State.Data, Mailboxes()), "Aanmelden blokkeren");
+
+    private void Attribute() => Show(BulkPlans.Attribute(State.Data, State.Config, Persons(), attribute, value.Trim()), $"{AttributeLabel(attribute)} wordt {value.Trim()}");
+
+    private static string AttributeLabel(string field) => field switch
+    {
+        "Office" => "Kantoor",
+        "Department" => "Dienst",
+        "City" => "Stad",
+        "JobTitle" => "Functie",
+        _ => field,
+    };
+
+    private void InGroups(ObjectRef r)
+    {
+        if (State.Data.SearchPerson(r.Key) is { } p)
+        {
+            Show(BulkPlans.UserInGroups(State.Data, Groups(), p), $"{p.Name} toevoegen aan de groepen");
+        }
+    }
+
+    private string? scheduled;
+
+    private void PlanOffboardingIn(DateTimeOffset whenValue)
+    {
+        var actions = BulkPlans.ScheduleOffboarding(Persons(), whenValue, State.User);
+        foreach (var a in actions)
+        {
+            State.Schedule(a);
+        }
+
+        scheduled = $"{actions.Count} uitstroom{(actions.Count == 1 ? "" : "en")} ingepland op {whenValue:dd/MM/yyyy HH:mm}.";
+    }
+
+    private void Administrator(ObjectRef r)
+    {
+        if (State.Data.SearchPerson(r.Key) is { } p)
+        {
+            Show(BulkPlans.AdministratorForGroups(State.Data, Groups(), p), $"{p.Name} beheerder van de groepen");
+        }
+    }
+
+    private void Access(ObjectRef r)
+    {
+        if (State.Data.SearchPerson(r.Key) is { } p)
+        {
+            Show(BulkPlans.AccessToMailboxes(State.Data, Mailboxes(), p), $"Toegang voor {p.Name}");
+        }
+    }
+}

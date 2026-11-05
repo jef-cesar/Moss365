@@ -1,0 +1,175 @@
+@page "/scripts"
+@inherits RefreshingPage
+@inject NavigationManager Nav
+
+<h1>Scripts</h1>
+
+<p class="kb-zacht">
+    PowerShell-scripts met de aanmelding van de app: je meldt niet opnieuw aan. Ingebouwde scripts komen met de app mee;
+    eigen scripts blijven op deze pc (delen via Exporteren en Importeren). Elke run wordt @ScriptRuns.SaveDays dagen bewaard
+    en staat in het logboek. Een script dat iets wijzigt, toont altijd eerst een voorbeeld.
+</p>
+
+@if (!State.ScriptsAvailable)
+{
+    <div class="kb-melding">Scripts draaien enkel in de Windows-app (met PowerShell). Hier kan je ze wel bekijken.</div>
+}
+
+@if (State.ScriptRun is { Done: false } busy)
+{
+    <div class="kb-melding">Er draait een script: <strong>@busy.Run.Name</strong>. <a href="@RunLink(busy.Run)">Bekijken</a></div>
+}
+
+<div class="kb-filters">
+    <a class="kb-knop kb-primair" href="scripts/bewerken">+ Nieuw script</a>
+    <a class="kb-knop" href="scripts/bewerken?eenmalig=1">Eenmalig script</a>
+    <label class="kb-knop kb-bestandknop">
+        Importeren (.ps1)
+        <InputFile OnChange="Import" accept=".ps1" />
+    </label>
+</div>
+
+@if (message is not null)
+{
+    <div class="kb-melding @(error ? "kb-fout" : null)">@message</div>
+}
+
+<KbTable Id="scripts" ExportName="Scripts" Items="scripts" Columns="columns" DefaultSorting="naam" />
+
+<section class="kb-kaart">
+    <h2>Laatste runs</h2>
+    @if (runs.Count == 0)
+    {
+        <p class="kb-zacht">Nog geen runs.</p>
+    }
+    else
+    {
+        <table class="kb-tabel">
+            <thead><tr><th>Wanneer</th><th>Script</th><th>Wie</th><th>Resultaat</th></tr></thead>
+            <tbody>
+                @foreach (var r in runs.Take(15))
+                {
+                    <tr>
+                        <td><a href="@RunLink(r)">@r.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</a></td>
+                        <td>@r.Name @if (r.Once) { <span class="kb-label">eenmalig</span> }</td>
+                        <td>@r.Who</td>
+                        <td><RunLabel Run="r" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<ScriptFile> scripts = Array.Empty<ScriptFile>();
+    private IReadOnlyList<ScriptRun> runs = Array.Empty<ScriptRun>();
+    private IReadOnlyList<ScheduledAction> scheduled = Array.Empty<ScheduledAction>();
+    private IReadOnlyList<Column<ScriptFile>> columns = Array.Empty<Column<ScriptFile>>();
+    private string? message;
+    private bool error;
+    private string? remove;
+
+    protected override void OnInitialized()
+    {
+        columns = new List<Column<ScriptFile>>
+        {
+            new() { Key = "naam", Title = "Naam", Cell = s => @<a href="@StartLink(s)">@s.Header.Name</a>, SortBy = s => s.Header.Name },
+            new() { Key = "omschrijving", Title = "Wat het doet", Cell = s => @<span class="kb-zacht">@s.Header.Description</span>, SortBy = s => s.Header.Description },
+            new() { Key = "verbinding", Title = "Verbinding", Cell = s => @<text>@ScriptText.ConnectionText(s.Header.Connection)</text>, SortBy = s => ScriptText.ConnectionText(s.Header.Connection) },
+            new() { Key = "soort", Title = "Soort", Cell = s => @<span class="kb-label @(s.Header.Writes ? "kb-label-let" : null)">@(s.Header.Writes ? "wijzigt" : "leest")</span>, SortBy = s => s.Header.Writes, Text = s => s.Header.Writes ? "wijzigt" : "leest" },
+            new() { Key = "herkomst", Title = "Herkomst", Cell = s => @<text>@s.Origin<br /><span class="kb-zacht">@s.Folder</span></text>, SortBy = s => s.Origin + s.Folder, Text = s => s.Origin },
+            new() { Key = "laatste", Title = "Laatste run", Cell = s => LastRun(s), SortBy = s => Last(s)?.Start, Text = s => Last(s)?.Start.LocalDateTime.ToString("yyyy-MM-dd HH:mm") },
+            new() { Key = "gepland", Title = "Gepland", Cell = s => @<text>@ScheduledText(s)</text>, SortBy = s => ScheduledText(s), Hidden = false },
+            new() { Key = "acties", Title = "", Cell = s => Actions(s) },
+        };
+    }
+
+    protected override void OnParametersSet() => Load();
+
+    private void Load()
+    {
+        scripts = State.ReadScripts();
+        runs = ScriptRuns.Items(State.ScriptFolders);
+        scheduled = State.Scheduled.Read().Where(a => a.Kind == ScheduledKind.Script).ToList();
+    }
+
+    private ScriptRun? Last(ScriptFile s) => runs.FirstOrDefault(r => r.Key.Equals(s.Key, StringComparison.OrdinalIgnoreCase));
+
+    private RenderFragment LastRun(ScriptFile s) => Last(s) is { } r
+        ? @<span><a href="@RunLink(r)">@r.Start.LocalDateTime.ToString("dd/MM HH:mm")</a> <RunLabel Run="r" /></span>
+        : @<span class="kb-zacht">nooit</span>;
+
+    private string ScheduledText(ScriptFile s)
+        => scheduled.Where(a => string.Equals(a.ScriptKey, s.Key, StringComparison.OrdinalIgnoreCase)).OrderBy(a => a.When).FirstOrDefault() is { } a
+            ? a.When.ToString("dd/MM HH:mm") + (a.Recurrence == Recurrence.Once ? string.Empty : " (" + a.Recurrence.ToString().ToLowerInvariant() + ")")
+            : string.Empty;
+
+    private RenderFragment Actions(ScriptFile s) => @<span class="kb-acties-rij">
+        <a class="kb-knop kb-klein" href="@StartLink(s)">Starten</a>
+        <a class="kb-knop kb-klein" href="@($"scripts/bewerken?sleutel={Uri.EscapeDataString(s.Key)}")">@(s.BuiltIn ? "Kopie bewerken" : "Bewerken")</a>
+        <button class="kb-knop kb-klein" @onclick="() => Export(s)">Exporteren</button>
+        @if (!s.BuiltIn)
+        {
+            @if (remove == s.FilePath)
+            {
+                <button class="kb-knop kb-klein kb-gevaar" @onclick="() => Remove(s)">Ja, verwijderen</button>
+                <button class="kb-knop kb-klein" @onclick="() => remove = null">Nee</button>
+            }
+            else
+            {
+                <button class="kb-knop kb-klein" @onclick="() => remove = s.FilePath">Verwijderen</button>
+            }
+        }
+    </span>;
+
+    private static string StartLink(ScriptFile s) => $"scripts/starten/{Uri.EscapeDataString(s.Key)}";
+
+    private static string RunLink(ScriptRun r) => $"scripts/run/{Uri.EscapeDataString(r.Key)}/{Uri.EscapeDataString(Path.GetFileName(r.Folder))}";
+
+    private async Task Import(InputFileChangeEventArgs e)
+    {
+        message = null;
+        error = false;
+        try
+        {
+            var temporary = Path.Combine(Path.GetTempPath(), "Moss365", "import-" + Guid.NewGuid().ToString("N"), Path.GetFileName(e.File.Name));
+            Directory.CreateDirectory(Path.GetDirectoryName(temporary)!);
+            await using (var source = e.File.OpenReadStream(2 * 1024 * 1024))
+            await using (var target = File.Create(temporary))
+            {
+                await source.CopyToAsync(target);
+            }
+
+            var s = ScriptLibrary.Import(State.ScriptFolders, temporary);
+            Directory.Delete(Path.GetDirectoryName(temporary)!, true);
+            message = $"Geimporteerd als eigen script: {s.Header.Name}. Kijk het na voor je het start.";
+            Load();
+        }
+        catch (Exception ex)
+        {
+            error = true;
+            message = "Importeren mislukt: " + ex.Message;
+        }
+    }
+
+    private void Export(ScriptFile s)
+    {
+        var folder = Path.Combine(State.AppEnvironment.ExportFolder, "Scripts");
+        Directory.CreateDirectory(folder);
+        var target = Path.Combine(folder, Path.GetFileName(s.FilePath));
+        File.Copy(s.FilePath, target, overwrite: true);
+        message = $"Geexporteerd naar {target}.";
+        error = false;
+        State.AppEnvironment.ShowFile(target);
+    }
+
+    private void Remove(ScriptFile s)
+    {
+        ScriptLibrary.Remove(State.ScriptFolders, s);
+        remove = null;
+        message = $"{s.Header.Name} is verwijderd. De runs blijven bewaard.";
+        error = false;
+        Load();
+    }
+}

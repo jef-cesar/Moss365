@@ -1,0 +1,131 @@
+@page "/postvakken"
+@inherits RefreshingPage
+@inject NavigationManager Nav
+
+<div class="kb-titelbalk">
+    <h1>Gedeelde postvakken</h1>
+    @if (State.Can(Permission.Manage)) { <a class="kb-knop kb-primair" href="postvakken/nieuw">+ Nieuw gedeeld postvak</a> }
+</div>
+
+<p class="kb-zacht">
+    Toegang hoort via de groep <code>SG-SM-&lt;adres&gt;-Full</code> te lopen (FullAccess en SendAs); rechtstreekse rechten op personen ruim
+    je op vanaf de pagina van het postvak. Actuele waarden, ook doorsturen en automatisch antwoord: <a href="verbindingen">Postvakken laden uit Exchange</a>.
+</p>
+
+
+
+<div class="kb-tegels">
+    @foreach (var (label, filter) in new[] { ("Alleen via groep", "groep"), ("Groep en rechtstreeks", "beide"), ("Alleen rechtstreeks", "direct"), ("Zonder rechten", "geen") })
+    {
+        <button class="kb-tegel @(z.Model == filter ? "kb-actief" : null)" @onclick="() => { z.Kpi = null; z.Model = z.Model == filter ? null : filter; }">
+            <div class="kb-tegel-getal">@All.Count(p => Model(p) == filter)</div><div>@label</div>
+        </button>
+    }
+    @{ var kunnen = All.Count(p => CanSignInText(p) == "ja"); }
+    <button class="kb-tegel @(kunnen > 0 ? "kb-tegel-let" : null) @(z.SigninOnly ? "kb-actief" : null)" @onclick="() => { z.Kpi = null; z.SigninOnly = !z.SigninOnly; }">
+        <div class="kb-tegel-getal">@kunnen</div><div>kunnen aanmelden</div>
+        @if (kunnen > 0) { <div class="kb-status-let">⚠ nakijken</div> }
+    </button>
+</div>
+
+<KpiFilter Kpi="ActiveKpi" Count="KpiRows.Count" Shown="Items.Count" Cleared="() => z.Kpi = null" />
+
+<div class="kb-filters kb-plak">
+    <input class="kb-invoer kb-breed" placeholder="Zoek op naam of adres" @bind="z.Find" @bind:event="oninput" aria-label="Zoeken" />
+    <label><input type="checkbox" @bind="z.AlsoPlanning" /> Ook planningspostvakken</label>
+</div>
+
+<KbTable Id="postvakken" Items="Items" Columns="columns" Selectable KeyOf="p => p.Smtp" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@($"{Items.Count} postvakken")"
+         RowClass="@(p => Direct(p) > 0 ? "kb-verschil" : null)" />
+
+<BulkTasks Items="postvakken" Count="CountSelected" />
+
+@code {
+    /// <summary>Search term and filters, kept while the app is open (Back, Forward, menu).</summary>
+    private sealed class Search { public string Find { get; set; } = string.Empty; public string? Model { get; set; } public bool AlsoPlanning { get; set; } public bool SigninOnly { get; set; } public string? Kpi { get; set; } }
+    private Search? _z;
+    private Search z => _z ??= State.PageState.Of<Search>("postvakken");
+
+    /// <summary>From a KPI tile: postvakken?kpi=zonder-toegangsgroep (see Core/Analysis/Kpis.cs).</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "kpi")] public string? KpiQuestion { get; set; }
+    private string? processedKpi;
+
+    protected override void OnParametersSet()
+    {
+        if (KpiQuestion != processedKpi)
+        {
+            processedKpi = KpiQuestion;
+            if (State.KpiArrival(KpiQuestion, Nav.Uri, "postvakken", "postvakken"))
+            {
+                _z = null;
+                z.Kpi = KpiQuestion;
+            }
+        }
+    }
+
+    private Kpi? ActiveKpi => Kpis.Find(z.Kpi) is { Items: KpiList.Mailboxes } k ? k : null;
+    private IReadOnlyList<Mailbox> KpiRows => ActiveKpi is { } k ? Kpis.Mailboxes(k, State.KpiSource) : Array.Empty<Mailbox>();
+    private IReadOnlyList<Column<Mailbox>> columns = Array.Empty<Column<Mailbox>>();
+
+    protected override void OnInitialized() => columns = new List<Column<Mailbox>>
+    {
+        new() { Key = "naam", Title = "Postvak", Cell = p => @<ObjectLink Id="@p.Smtp" />, SortBy = p => p.DisplayName },
+        new() { Key = "adres", Title = "Adres", Cell = p => @<text>@p.Smtp</text>, SortBy = p => p.Smtp },
+        new() { Key = "groep", Title = "Toegangsgroep", Cell = p => @<text>@if (State.Data.Index.AccessGroupOf(p) is { } g) { <ObjectLink Object="g.Ref" /> } else { <span class="kb-zacht">geen</span> }</text>, SortBy = p => State.Data.Index.AccessGroupOf(p)?.Name },
+        new() { Key = "direct", Title = "Rechtstreeks", Number = true, Cell = p => @<text>@Direct(p)</text>, SortBy = p => Direct(p) },
+        new() { Key = "aanmelden", Title = "Kan aanmelden", Cell = p => CanSignIn(p), SortBy = p => CanSignInText(p), Text = p => CanSignInText(p) },
+        new() { Key = "laatste", Title = "Laatste aanmelding", Cell = p => @<text>@LastSignIn(p)?.ToString("dd/MM/yyyy")</text>, SortBy = p => LastSignIn(p), Text = p => LastSignIn(p)?.ToString("yyyy-MM-dd") },
+        new() { Key = "verborgen", Title = "Verborgen", Cell = p => @<text>@(p.Hidden ? "ja" : "")</text>, SortBy = p => p.Hidden ? "ja" : "" },
+        new() { Key = "doorsturen", Title = "Doorsturen", Cell = p => @<text>@p.Forwarding</text>, SortBy = p => p.Forwarding },
+        new() { Key = "model", Title = "Rechtenmodel", Hidden = true, Cell = p => @<text>@Model(p)</text>, SortBy = p => Model(p) },
+        new() { Key = "soort", Title = "Soort", Hidden = true, Cell = p => @<text>@p.TypeText</text>, SortBy = p => p.TypeText },
+        new() { Key = "aangemaakt", Title = "Aangemaakt", Hidden = true, Cell = p => @<text>@p.WhenCreated</text>, SortBy = p => p.WhenCreated },
+        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = p => @<code>@(State.Data.Index.AccountOf(p.Smtp, p.Alias)?.Entra?.Id)</code>, SortBy = p => State.Data.Index.AccountOf(p.Smtp, p.Alias)?.Entra?.Id },
+    };
+
+    private int Direct(Mailbox p) => State.Data.Index.PermissionsOn(p).Count(r => r.Direct);
+
+    private IEnumerable<Mailbox> All => State.Data.Mailboxes.Where(p => p.IsShared);
+
+    private string Model(Mailbox p)
+    {
+        var permissions = State.Data.Index.PermissionsOn(p);
+        var groupValue = permissions.Any(r => !r.Direct);
+        var direct = permissions.Any(r => r.Direct);
+        return (groupValue, direct) switch { (true, true) => "beide", (true, false) => "groep", (false, true) => "direct", _ => "geen" };
+    }
+
+    private IReadOnlyList<Mailbox> Items
+    {
+        get
+        {
+            var term = z.Find.Trim();
+            return (ActiveKpi is null ? State.Data.Mailboxes : KpiRows)
+                .Where(p => p.IsShared || z.AlsoPlanning)
+                .Where(p => z.Model is null || (p.IsShared && Model(p) == z.Model))
+                .Where(p => !z.SigninOnly || CanSignInText(p) == "ja")
+                .Where(p => term.Length == 0 || p.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase) || p.Smtp.Contains(term, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private Person? Account(Mailbox p) => State.Data.Index.AccountOf(p.Smtp, p.Alias);
+
+    private string CanSignInText(Mailbox p) => Account(p) switch
+    {
+        null => "onbekend",
+        { Enabled: true } => "ja",
+        _ => "nee",
+    };
+
+    private RenderFragment CanSignIn(Mailbox p) => CanSignInText(p) switch
+    {
+        "ja" => @<span class="kb-label kb-label-let">⚠ ja</span>,
+        "nee" => @<span class="kb-zacht">nee</span>,
+        _ => @<span class="kb-zacht">onbekend</span>,
+    };
+
+    private DateTime? LastSignIn(Mailbox p) => Account(p) is { } a ? Statistic.LastSignIn(a) : null;
+
+    private int CountSelected => State.TableSession("postvakken").Selected.Count;
+}

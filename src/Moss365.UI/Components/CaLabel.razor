@@ -1,0 +1,27 @@
+@* Label for a verdict, the state of a policy or "applies"; always with text, never colour alone *@
+@if (Verdict is { } o)
+{
+    <span class="kb-label @Class(o)">@(o switch { CaVerdict.InOrder => "✓ in orde", CaVerdict.Info => "info", CaVerdict.Attention => "⚠ aandacht", _ => "✕ probleem" })</span>
+}
+else if (Status is { } s)
+{
+    <span class="kb-label @(s switch { CaStatus.On => "kb-label-goed", CaStatus.Report => "kb-label-let", _ => null })">@CaReader.StatusName(s)</span>
+}
+else if (Applies is { } g)
+{
+    <span class="kb-label @(g switch { CaApplies.Yes => "kb-label-goed", CaApplies.Maybe => "kb-label-let", _ => null })">@(g switch { CaApplies.Yes => "geldt", CaApplies.Maybe => "misschien", _ => "geldt niet" })</span>
+}
+
+@code {
+    [Parameter] public CaVerdict? Verdict { get; set; }
+    [Parameter] public CaStatus? Status { get; set; }
+    [Parameter] public CaApplies? Applies { get; set; }
+
+    private static string? Class(CaVerdict o) => o switch
+    {
+        CaVerdict.InOrder => "kb-label-goed",
+        CaVerdict.Attention => "kb-label-let",
+        CaVerdict.Problem => "kb-rood",
+        _ => null,
+    };
+}

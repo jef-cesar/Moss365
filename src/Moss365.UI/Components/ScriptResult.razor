@@ -1,0 +1,120 @@
+@* The result of a run: output, tables, files and details *@
+@inject ManagementState State
+
+<div class="kb-filters">
+    <span class="kb-segment" role="group" aria-label="Resultaat">
+        <button class="kb-knop @(part == 0 ? "kb-primair" : null)" @onclick="() => part = 0">Uitvoer</button>
+        <button class="kb-knop @(part == 1 ? "kb-primair" : null)" @onclick="() => part = 1">Tabellen (@tables.Count)</button>
+        <button class="kb-knop @(part == 2 ? "kb-primair" : null)" @onclick="() => part = 2">Bestanden (@files.Count)</button>
+        <button class="kb-knop @(part == 3 ? "kb-primair" : null)" @onclick="() => part = 3">Details</button>
+    </span>
+</div>
+
+@switch (part)
+{
+    case 0:
+        <ScriptOutputList Events="Events" EmptyText="Het script gaf geen tekst." />
+        break;
+    case 1:
+        @if (tables.Count == 0)
+        {
+            <p class="kb-zacht">Het script gaf geen objecten terug en maakte geen CSV-bestand.</p>
+        }
+        else
+        {
+            @if (tables.Count > 1)
+            {
+                <div class="kb-filters">
+                    <select class="kb-invoer" @bind="tableIndex" aria-label="Tabel">
+                        @for (var i = 0; i < tables.Count; i++)
+                        {
+                            <option value="@i">@tables[i].Name (@tables[i].Rows.Count)</option>
+                        }
+                    </select>
+                </div>
+            }
+            var t = tables[Math.Min(tableIndex, tables.Count - 1)];
+            <KbTable @key="t" Id="@($"script-{Run.Key}-{t.Name}")" ExportName="@($"{Run.Key}-{t.Name}")" Items="t.Rows" Columns="ColumnsOf(t)" DefaultSorting="@t.Columns.FirstOrDefault()" />
+        }
+        break;
+    case 2:
+        @if (files.Count == 0)
+        {
+            <p class="kb-zacht">Het script zette geen bestanden in zijn uitvoermap.</p>
+        }
+        else
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>Bestand</th><th class="kb-getal">Grootte</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var b in files)
+                    {
+                        <tr>
+                            <td>@Path.GetRelativePath(FilesFolder, b.FullName)</td>
+                            <td class="kb-getal">@Size(b.Length)</td>
+                            <td><button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(b.FullName)">Tonen in Verkenner</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        <p class="kb-zacht">Map van deze run: <code>@Run.Folder</code></p>
+        break;
+    default:
+        <table class="kb-tabel kb-naast">
+            <tbody>
+                <tr><th>Script</th><td>@Run.Name @if (Run.Once) { <span class="kb-label">eenmalig</span> }</td></tr>
+                <tr><th>Resultaat</th><td>@Run.ResultText <span class="kb-zacht">@Run.Message</span></td></tr>
+                <tr><th>Wie</th><td>@Run.Who</td></tr>
+                <tr><th>Start</th><td>@Run.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm:ss")</td></tr>
+                <tr><th>Duur</th><td>@(Run.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "bezig")</td></tr>
+                <tr><th>Waarden</th><td>@foreach (var (k, v) in Run.Values) { <div><strong>@k</strong>: @v.Replace("\n", ", ")</div> }</td></tr>
+                <tr><th>Vingerafdruk</th><td><code>@Run.Fingerprint</code></td></tr>
+            </tbody>
+        </table>
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired] public ScriptRun Run { get; set; } = new();
+    [Parameter, EditorRequired] public IReadOnlyList<ScriptEvent> Events { get; set; } = Array.Empty<ScriptEvent>();
+
+    private int part;
+    private int tableIndex;
+    private IReadOnlyList<ScriptTable> tables = Array.Empty<ScriptTable>();
+    private List<FileInfo> files = new();
+    private readonly Dictionary<ScriptTable, IReadOnlyList<Column<IReadOnlyDictionary<string, string>>>> columns = new();
+
+    private string FilesFolder => Path.Combine(Run.Folder, "bestanden");
+
+    protected override void OnParametersSet()
+    {
+        tables = ScriptOutput.Tables(Events, FilesFolder);
+        files = Directory.Exists(FilesFolder)
+            ? new DirectoryInfo(FilesFolder).EnumerateFiles("*", SearchOption.AllDirectories).OrderBy(f => f.FullName).ToList()
+            : new List<FileInfo>();
+        if (part == 0 && tables.Count > 0 && Events.All(g => g.Kind is EventKind.Row or EventKind.Info or EventKind.Progress))
+        {
+            part = 1;
+        }
+    }
+
+    private IReadOnlyList<Column<IReadOnlyDictionary<string, string>>> ColumnsOf(ScriptTable t)
+    {
+        if (!columns.TryGetValue(t, out var k))
+        {
+            k = t.Columns.Select(name => new Column<IReadOnlyDictionary<string, string>>
+            {
+                Key = name,
+                Title = name,
+                Cell = r => @<text>@(r.TryGetValue(name, out var w) ? w : string.Empty)</text>,
+                SortBy = r => r.TryGetValue(name, out var w) ? w : string.Empty,
+            }).ToList();
+            columns[t] = k;
+        }
+
+        return k;
+    }
+
+    private static string Size(long b) => b < 1024 ? $"{b} B" : b < 1024 * 1024 ? $"{b / 1024.0:0.#} kB" : $"{b / 1024.0 / 1024.0:0.#} MB";
+}

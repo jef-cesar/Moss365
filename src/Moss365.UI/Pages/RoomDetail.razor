@@ -1,5 +1,5 @@
 @page "/room/{Smtp}"
-@inherits VerversendePagina
+@inherits RefreshingPage
 
 @if (room is null)
 {
@@ -12,12 +12,12 @@ else
     <ObjectStatus Object="State.Data.Index.Ref(room.Smtp)" />
     <p class="kb-zacht">
         Vergaderruimte &middot; @room.Smtp
-        @if (room.Verborgen) { <span class="kb-label">verborgen in de adreslijst</span> }
+        @if (room.Hidden) { <span class="kb-label">verborgen in de adreslijst</span> }
     </p>
 
-    @if (afwijkingen.Count > 0)
+    @if (deviations.Count > 0)
     {
-        <div class="kb-melding">Wijkt af van de standaard: @string.Join("; ", afwijkingen)</div>
+        <div class="kb-melding">Wijkt af van de standaard: @string.Join("; ", deviations)</div>
     }
 
     <div class="kb-kolommen">
@@ -25,9 +25,9 @@ else
             <h2>Plaats</h2>
             <table class="kb-tabel kb-naast">
                 <tbody>
-                    <tr><th>Gebouw</th><td>@room.Gebouw</td></tr>
-                    <tr><th>Verdieping</th><td>@room.Verdieping @(room.VerdiepingLabel.Length > 0 ? $"({room.VerdiepingLabel})" : null)</td></tr>
-                    <tr><th>Capaciteit</th><td>@room.Capaciteit</td></tr>
+                    <tr><th>Gebouw</th><td>@room.Building</td></tr>
+                    <tr><th>Verdieping</th><td>@room.Floor @(room.FloorLabel.Length > 0 ? $"({room.FloorLabel})" : null)</td></tr>
+                    <tr><th>Capaciteit</th><td>@room.Capacity</td></tr>
                 </tbody>
             </table>
         </section>
@@ -39,12 +39,12 @@ else
                     <tr><th>Verwerking</th><td>@room.AutomateProcessing</td></tr>
                     <tr><th>Boekingsvenster</th><td>@room.BookingWindowInDays dagen</td></tr>
                     <tr><th>Maximale duur</th><td>@room.MaximumDurationInMinutes minuten</td></tr>
-                    <tr><th>Conflicten toestaan</th><td>@JaNeeTekst(room.AllowConflicts)</td></tr>
-                    <tr><th>Terugkerend</th><td>@JaNeeTekst(room.AllowRecurringMeetings)</td></tr>
-                    <tr><th>Organisator in onderwerp</th><td>@JaNeeTekst(room.AddOrganizerToSubject)</td></tr>
-                    <tr><th>Onderwerp wissen</th><td>@JaNeeTekst(room.DeleteSubject)</td></tr>
-                    <tr><th>Iedereen mag boeken</th><td>@JaNeeTekst(room.AllBookInPolicy)</td></tr>
-                    <tr><th>Iedereen mag aanvragen</th><td>@JaNeeTekst(room.AllRequestInPolicy)</td></tr>
+                    <tr><th>Conflicten toestaan</th><td>@YesNoText(room.AllowConflicts)</td></tr>
+                    <tr><th>Terugkerend</th><td>@YesNoText(room.AllowRecurringMeetings)</td></tr>
+                    <tr><th>Organisator in onderwerp</th><td>@YesNoText(room.AddOrganizerToSubject)</td></tr>
+                    <tr><th>Onderwerp wissen</th><td>@YesNoText(room.DeleteSubject)</td></tr>
+                    <tr><th>Iedereen mag boeken</th><td>@YesNoText(room.AllBookInPolicy)</td></tr>
+                    <tr><th>Iedereen mag aanvragen</th><td>@YesNoText(room.AllRequestInPolicy)</td></tr>
                 </tbody>
             </table>
         </section>
@@ -55,13 +55,13 @@ else
             <h2>Gedelegeerden en boekers</h2>
             <p class="kb-zacht">Gedelegeerden keuren aanvragen goed; "mag boeken" geldt als niet iedereen mag boeken.</p>
             <ul class="kb-lijst-plat">
-                @foreach (var d in Lijst(room.ResourceDelegates))
+                @foreach (var d in Items(room.ResourceDelegates))
                 {
-                    <li><ObjectLink Id="@d" ToonSoort="true" /> <span class="kb-zacht">(gedelegeerde)</span></li>
+                    <li><ObjectLink Id="@d" ShowKind="true" /> <span class="kb-zacht">(gedelegeerde)</span></li>
                 }
-                @foreach (var d in Lijst(room.BookInPolicy))
+                @foreach (var d in Items(room.BookInPolicy))
                 {
-                    <li><ObjectLink Id="@d" ToonSoort="true" /> <span class="kb-zacht">(mag boeken)</span></li>
+                    <li><ObjectLink Id="@d" ShowKind="true" /> <span class="kb-zacht">(mag boeken)</span></li>
                 }
             </ul>
         </section>
@@ -71,9 +71,9 @@ else
             <table class="kb-tabel">
                 <thead><tr><th>Wie</th><th>Recht</th></tr></thead>
                 <tbody>
-                    @foreach (var (wie, recht) in Rechten(room.AgendaRechten))
+                    @foreach (var (who, permission) in Permissions(room.CalendarPermissions))
                     {
-                        <tr><td>@if (wie is "Default" or "Anonymous" or "Standaard" or "Anoniem") { @wie } else { <ObjectLink Id="@wie" /> }</td><td>@recht</td></tr>
+                        <tr><td>@if (who is "Default" or "Anonymous" or "Standaard" or "Anoniem") { @who } else { <ObjectLink Id="@who" /> }</td><td>@permission</td></tr>
                     }
                 </tbody>
             </table>
@@ -81,11 +81,11 @@ else
 
         <section class="kb-kaart">
             <h2>Lid van</h2>
-            @if (groepen.Count == 0) { <p class="kb-zacht">Geen room list of groep.</p> }
+            @if (groups.Count == 0) { <p class="kb-zacht">Geen room list of groep.</p> }
             <ul class="kb-lijst-plat">
-                @foreach (var g in groepen)
+                @foreach (var g in groups)
                 {
-                    <li><ObjectLink Object="g.Object" /> <span class="kb-zacht">(@g.Laag)</span></li>
+                    <li><ObjectLink Object="g.Object" /> <span class="kb-zacht">(@g.Layer)</span></li>
                 }
             </ul>
         </section>
@@ -99,50 +99,50 @@ else
         </p>
         <div class="kb-filters">
             <span class="kb-segment" role="group" aria-label="Periode">
-                @foreach (var (k, tekst) in new[] { (AgendaKeuze.DezeWeek, "Deze week"), (AgendaKeuze.VolgendeWeek, "Volgende week"), (AgendaKeuze.Gekozen, "Gekozen periode") })
+                @foreach (var (k, text) in new[] { (CalendarChoice.ThisWeek, "Deze week"), (CalendarChoice.NextWeek, "Volgende week"), (CalendarChoice.Selected, "Gekozen periode") })
                 {
-                    <button class="kb-knop @(agendaKeuze == k ? "kb-primair" : null)" @onclick="() => agendaKeuze = k">@tekst</button>
+                    <button class="kb-knop @(calendarChoice == k ? "kb-primair" : null)" @onclick="() => calendarChoice = k">@text</button>
                 }
             </span>
-            @if (agendaKeuze == AgendaKeuze.Gekozen)
+            @if (calendarChoice == CalendarChoice.Selected)
             {
-                <label>Van <input type="date" class="kb-invoer" @bind="agendaVan" /></label>
-                <label>Tot en met <input type="date" class="kb-invoer" @bind="agendaTot" /></label>
+                <label>Van <input type="date" class="kb-invoer" @bind="calendarOf" /></label>
+                <label>Tot en met <input type="date" class="kb-invoer" @bind="calendarUntil" /></label>
             }
-            <button class="kb-knop" disabled="@agendaBezig" @onclick="LaadAgenda">Agenda laden</button>
-            @if (agendaBezig) { <span class="kb-zacht">bezig...</span> }
+            <button class="kb-knop" disabled="@calendarBusy" @onclick="LoadCalendar">Agenda laden</button>
+            @if (calendarBusy) { <span class="kb-zacht">bezig...</span> }
         </div>
-        @if (agendaMelding is not null)
+        @if (calendarMessage is not null)
         {
-            <div class="kb-melding kb-fout">@agendaMelding</div>
+            <div class="kb-melding kb-fout">@calendarMessage</div>
         }
-        else if (afspraken is not null)
+        else if (appointments is not null)
         {
-            <p class="kb-zacht">@afspraken.Count afspraken van @agendaPeriode.</p>
-            <KbTabel Id="room-agenda" ExportNaam="@($"Agenda-{room.Alias}")" Items="afspraken" Kolommen="agendaKolommen" StandaardSortering="begin"
-                     RijKlasse="@(a => a.Geannuleerd ? "kb-zacht" : null)" />
+            <p class="kb-zacht">@appointments.Count afspraken van @calendarPeriod.</p>
+            <KbTable Id="room-agenda" ExportName="@($"Agenda-{room.Alias}")" Items="appointments" Columns="calendarColumns" DefaultSorting="begin"
+                     RowClass="@(a => a.Cancelled ? "kb-zacht" : null)" />
         }
     </section>
 
-    @if (State.Mag(Recht.Beheren))
+    @if (State.Can(Permission.Manage))
     {
     <section class="kb-kaart">
         <h2>Wijzigen</h2>
         <p class="kb-zacht">Leeg laten = niet wijzigen. Alleen wat verschilt met de huidige waarde komt in het plan.</p>
         <div class="kb-filters">
-            <button class="kb-knop" @onclick="() => { gewenst = RoomGewenst.UitStandaard(State.Config.Rooms.Standaard); plan = null; }">Standaard invullen</button>
-            <button class="kb-knop" @onclick="() => { gewenst = new(); plan = null; }">Leegmaken</button>
+            <button class="kb-knop" @onclick="() => { desired = RoomDesired.FromDefault(State.Config.Rooms.Default); plan = null; }">Standaard invullen</button>
+            <button class="kb-knop" @onclick="() => { desired = new(); plan = null; }">Leegmaken</button>
         </div>
-        <RoomFormulier Gewenst="gewenst" />
+        <RoomForm Desired="desired" />
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" @onclick="() => plan = PlanBouwer.Room(room, RoomFormulier.Opgeschoond(gewenst))">Plan maken</button>
+            <button class="kb-knop kb-primair" @onclick="() => plan = PlanBuilder.Room(room, RoomForm.Cleaned(desired))">Plan maken</button>
         </div>
     </section>
     }
 
     @if (plan is not null)
     {
-        <PlanWeergave Plan="plan" Context="@($"Room {room.DisplayName}")" Titel="Wijzigingen aan de room" />
+        <PlanView Plan="plan" Context="@($"Room {room.DisplayName}")" Title="Wijzigingen aan de room" />
     }
 }
 
@@ -150,88 +150,88 @@ else
     [Parameter] public string Smtp { get; set; } = string.Empty;
 
     private Room? room;
-    private IReadOnlyList<string> afwijkingen = Array.Empty<string>();
-    private IReadOnlyList<Relatie> groepen = Array.Empty<Relatie>();
-    private RoomGewenst gewenst = new();
-    private IReadOnlyList<Wijziging>? plan;
-    private string? geladen;
+    private IReadOnlyList<string> deviations = Array.Empty<string>();
+    private IReadOnlyList<Relation> groups = Array.Empty<Relation>();
+    private RoomDesired desired = new();
+    private IReadOnlyList<Change>? plan;
+    private string? loaded;
 
-    // Agenda: periode, afspraken (enkel in het geheugen van deze pagina) en een melding als het niet lukt
-    private AgendaKeuze agendaKeuze = AgendaKeuze.DezeWeek;
-    private DateOnly? agendaVan = DateOnly.FromDateTime(DateTime.Today);
-    private DateOnly? agendaTot = DateOnly.FromDateTime(DateTime.Today.AddDays(13));
-    private bool agendaBezig;
-    private string? agendaMelding;
-    private string agendaPeriode = string.Empty;
-    private IReadOnlyList<Afspraak>? afspraken;
+    // Calendar: period, appointments (only in the memory of this page) and a message when it fails
+    private CalendarChoice calendarChoice = CalendarChoice.ThisWeek;
+    private DateOnly? calendarOf = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly? calendarUntil = DateOnly.FromDateTime(DateTime.Today.AddDays(13));
+    private bool calendarBusy;
+    private string? calendarMessage;
+    private string calendarPeriod = string.Empty;
+    private IReadOnlyList<Appointment>? appointments;
 
-    private static readonly IReadOnlyList<Kolom<Afspraak>> agendaKolommen = new List<Kolom<Afspraak>>
+    private static readonly IReadOnlyList<Column<Appointment>> calendarColumns = new List<Column<Appointment>>
     {
-        new() { Sleutel = "begin", Titel = "Begin", Cel = a => b => b.AddContent(0, a.HeleDag ? a.Begin.ToString("ddd dd/MM/yyyy") : a.Begin.ToString("ddd dd/MM/yyyy HH:mm")), SorteerOp = a => a.Begin, Tekst = a => a.Begin.ToString("yyyy-MM-dd HH:mm") },
-        new() { Sleutel = "einde", Titel = "Einde", Cel = a => b => b.AddContent(0, a.HeleDag ? "hele dag" : a.Einde.Date == a.Begin.Date ? a.Einde.ToString("HH:mm") : a.Einde.ToString("dd/MM HH:mm")), SorteerOp = a => a.Einde, Tekst = a => a.Einde.ToString("yyyy-MM-dd HH:mm") },
-        new() { Sleutel = "onderwerp", Titel = "Onderwerp", Cel = a => b => b.AddContent(0, a.OnderwerpTekst + (a.Geannuleerd ? " (geannuleerd)" : string.Empty)), SorteerOp = a => a.OnderwerpTekst },
-        new() { Sleutel = "organisator", Titel = "Organisator", Cel = a => b => b.AddContent(0, a.Organisator), SorteerOp = a => a.Organisator },
-        new() { Sleutel = "status", Titel = "Status", Cel = a => b => b.AddContent(0, a.StatusTekst), SorteerOp = a => a.StatusTekst },
-        new() { Sleutel = "adres", Titel = "Adres organisator", Verborgen = true, Cel = a => b => b.AddContent(0, a.OrganisatorAdres), SorteerOp = a => a.OrganisatorAdres },
+        new() { Key = "begin", Title = "Begin", Cell = a => b => b.AddContent(0, a.WholeDay ? a.Begin.ToString("ddd dd/MM/yyyy") : a.Begin.ToString("ddd dd/MM/yyyy HH:mm")), SortBy = a => a.Begin, Text = a => a.Begin.ToString("yyyy-MM-dd HH:mm") },
+        new() { Key = "einde", Title = "Einde", Cell = a => b => b.AddContent(0, a.WholeDay ? "hele dag" : a.End.Date == a.Begin.Date ? a.End.ToString("HH:mm") : a.End.ToString("dd/MM HH:mm")), SortBy = a => a.End, Text = a => a.End.ToString("yyyy-MM-dd HH:mm") },
+        new() { Key = "onderwerp", Title = "Onderwerp", Cell = a => b => b.AddContent(0, a.SubjectText + (a.Cancelled ? " (geannuleerd)" : string.Empty)), SortBy = a => a.SubjectText },
+        new() { Key = "organisator", Title = "Organisator", Cell = a => b => b.AddContent(0, a.Organiser), SortBy = a => a.Organiser },
+        new() { Key = "status", Title = "Status", Cell = a => b => b.AddContent(0, a.StatusText), SortBy = a => a.StatusText },
+        new() { Key = "adres", Title = "Adres organisator", Hidden = true, Cell = a => b => b.AddContent(0, a.OrganiserAddress), SortBy = a => a.OrganiserAddress },
     };
 
-    private async Task LaadAgenda()
+    private async Task LoadCalendar()
     {
         if (room is null)
         {
             return;
         }
 
-        var (van, tot, fout) = AgendaPeriode.Bereken(agendaKeuze, DateTime.Now, agendaVan, agendaTot);
-        afspraken = null;
-        agendaMelding = fout;
-        if (fout is not null)
+        var (start, until, error) = CalendarPeriod.Compute(calendarChoice, DateTime.Now, calendarOf, calendarUntil);
+        appointments = null;
+        calendarMessage = error;
+        if (error is not null)
         {
             return;
         }
 
-        agendaBezig = true;
+        calendarBusy = true;
         try
         {
-            var (lijst, melding) = await State.LeesAgendaAsync(room, van, tot);
-            afspraken = lijst;
-            agendaMelding = melding;
-            agendaPeriode = $"{van:dd/MM/yyyy} tot en met {tot.AddDays(-1):dd/MM/yyyy}";
+            var (list, message) = await State.ReadCalendarAsync(room, start, until);
+            appointments = list;
+            calendarMessage = message;
+            calendarPeriod = $"{start:dd/MM/yyyy} tot en met {until.AddDays(-1):dd/MM/yyyy}";
         }
         catch (Exception ex)
         {
-            agendaMelding = "Agenda lezen mislukt: " + ex.Message;
+            calendarMessage = "Agenda lezen mislukt: " + ex.Message;
         }
         finally
         {
-            agendaBezig = false;
+            calendarBusy = false;
         }
     }
 
     protected override void OnParametersSet()
     {
         room = State.Data.Index.Room(Smtp);
-        if (room?.Smtp != geladen)
+        if (room?.Smtp != loaded)
         {
-            geladen = room?.Smtp;
-            gewenst = new();
+            loaded = room?.Smtp;
+            desired = new();
             plan = null;
-            afspraken = null;
-            agendaMelding = null;
+            appointments = null;
+            calendarMessage = null;
         }
 
         if (room is not null)
         {
-            afwijkingen = PlanBouwer.RoomAfwijkingen(room, State.Config.Rooms.Standaard);
-            groepen = State.Data.Index.GroepenVanAdres(room.Smtp);
+            deviations = PlanBuilder.RoomDeviations(room, State.Config.Rooms.Default);
+            groups = State.Data.Index.GroupsOfAddress(room.Smtp);
         }
     }
 
-    private static string JaNeeTekst(bool b) => b ? "ja" : "nee";
+    private static string YesNoText(bool b) => b ? "ja" : "nee";
 
-    private static IEnumerable<string> Lijst(string tekst)
-        => tekst.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    private static IEnumerable<string> Items(string text)
+        => text.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static IEnumerable<(string Wie, string Recht)> Rechten(string tekst)
-        => Lijst(tekst).Select(d => d.IndexOf('=') is var i and > 0 ? (d[..i], d[(i + 1)..]) : (d, string.Empty));
+    private static IEnumerable<(string Who, string Permission)> Permissions(string text)
+        => Items(text).Select(d => d.IndexOf('=') is var i and > 0 ? (d[..i], d[(i + 1)..]) : (d, string.Empty));
 }

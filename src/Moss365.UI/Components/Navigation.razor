@@ -1,0 +1,87 @@
+@* Back and Forward in the app, with its own history (ManagementState.History). The mouse buttons Back and Forward
+   and Alt+arrow left/right also end up here via moss365.js. What you filled in on a page is kept by the page itself
+   in ManagementState.PageState; the scroll position comes back when you come to a page with Back or Forward. *@
+@implements IAsyncDisposable
+@inject NavigationManager Nav
+@inject ManagementState State
+@inject IJSRuntime JS
+
+<span class="kb-navigatie">
+    <button class="kb-knop kb-terug" disabled="@(!State.History.CanUndo)" @onclick="Back" title="Terug naar de vorige pagina (Alt+←)">&larr; Terug</button>
+    <button class="kb-knop kb-terug" disabled="@(!State.History.CanForward)" @onclick="Forward" title="Vooruit naar de volgende pagina (Alt+→)">Vooruit &rarr;</button>
+</span>
+
+@code {
+    private DotNetObjectReference<Navigation>? _ref;
+
+    protected override void OnInitialized()
+    {
+        State.History.Visited(Nav.Uri);
+        Nav.LocationChanged += Changed;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _ref = DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("moss365.navigatie", _ref);
+            }
+            catch (Exception)
+            {
+                // Without the script the buttons still work; only the mouse buttons and Alt+arrow do not
+            }
+        }
+    }
+
+    private void Changed(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        var backOrForward = State.History.Visited(e.Location);
+        _ = InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (backOrForward)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("moss365.herstelScroll", e.Location);
+                }
+                catch (Exception)
+                {
+                    // No script (tests): nothing to restore
+                }
+            }
+        });
+    }
+
+    /// <summary>A field in a form changed (from moss365.js): look again at what is open.</summary>
+    [JSInvokable]
+    public void FieldChanged() => State.Pending.Reload();
+
+    [JSInvokable]
+    public void Back()
+    {
+        if (State.History.Back() is { } target)
+        {
+            Nav.NavigateTo(target);
+        }
+    }
+
+    [JSInvokable]
+    public void Forward()
+    {
+        if (State.History.Forward() is { } target)
+        {
+            Nav.NavigateTo(target);
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        Nav.LocationChanged -= Changed;
+        _ref?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

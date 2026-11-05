@@ -1,6 +1,6 @@
 @inherits LayoutComponentBase
 @implements IDisposable
-@inject BeheerState State
+@inject ManagementState State
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
@@ -11,29 +11,29 @@
             <div><span class="kb-merk-naam">Moss<span>365</span></span><span class="kb-merk-sub">The Moss Directory</span></div>
         </div>
 
-        @foreach (var groep in Menu)
+        @foreach (var groupValue in Menu)
         {
-            var dicht = State.Weergave.MenugroepDicht(groep.Naam);
-            <button class="kb-nav-groep" aria-expanded="@(!dicht)" @onclick="() => State.Weergave.ZetMenugroep(groep.Naam, !dicht)">
-                <span aria-hidden="true">@(dicht ? "▸" : "▾")</span> @groep.Naam
+            var closed = State.View.MenuGroupClosed(groupValue.Name);
+            <button class="kb-nav-groep" aria-expanded="@(!closed)" @onclick="() => State.View.SetMenuGroup(groupValue.Name, !closed)">
+                <span aria-hidden="true">@(closed ? "▸" : "▾")</span> @groupValue.Name
             </button>
-            @if (!dicht)
+            @if (!closed)
             {
-                @foreach (var (href, tekst) in groep.Items.Where(i => Toegang.VoorPad(i.Href) is not { } r || State.Mag(r)))
+                @foreach (var (href, text) in groupValue.Items.Where(i => Access.ForPath(i.Href) is not { } r || State.Can(r)))
                 {
-                    <NavLink href="@href" Match="@(href.Length == 0 ? NavLinkMatch.All : NavLinkMatch.Prefix)">@tekst@if (href.Length > 0 && open.Any(i => i.Menu == Openstaand.MenuVan(href))) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }</NavLink>
+                    <NavLink href="@href" Match="@(href.Length == 0 ? NavLinkMatch.All : NavLinkMatch.Prefix)">@text@if (href.Length > 0 && open.Any(i => i.Menu == Pending.MenuOf(href))) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }</NavLink>
                 }
             }
         }
 
         <div class="kb-nav-voet">
-            @if (State.Taak is { } taak && (taak.Bezig || taak.Einde > DateTime.Now.AddMinutes(-10)))
+            @if (State.Job is { } task && (task.Busy || task.End > DateTime.Now.AddMinutes(-10)))
             {
-                <a class="kb-mini @(taak.Bezig ? "kb-mini-bezig" : taak.MetFouten ? "kb-mini-fout" : "kb-mini-klaar")" href="verbindingen" title="Naar Verbindingen">
-                    <span class="kb-mini-tekst">@(taak.Bezig ? "⟳ " : taak.MetFouten ? "✗ " : "✓ ")@taak.Samenvatting</span>
-                    @if (taak.Bezig)
+                <a class="kb-mini @(task.Busy ? "kb-mini-bezig" : task.WithErrors ? "kb-mini-fout" : "kb-mini-klaar")" href="verbindingen" title="Naar Verbindingen">
+                    <span class="kb-mini-tekst">@(task.Busy ? "⟳ " : task.WithErrors ? "✗ " : "✓ ")@task.Summary</span>
+                    @if (task.Busy)
                     {
-                        <span class="kb-balk kb-balk-mini"><span class="kb-balk-vulling" style="width: @((int)(taak.Voortgang * 100))%"></span></span>
+                        <span class="kb-balk kb-balk-mini"><span class="kb-balk-vulling" style="width: @((int)(task.Progress * 100))%"></span></span>
                     }
                 </a>
             }
@@ -42,89 +42,89 @@
             {
                 <a class="kb-niet-live" href="verbindingen" role="status">
                     <strong>⚠ Niet live</strong>
-                    <span>Gegevens uit de inventaris@(State.InventarisDatum(Moss365.Core.Inventaris.InventarisLader.AdGebruikers) is { } d ? $" van {d:dd/MM HH:mm}" : string.Empty). Live laden &rarr;</span>
+                    <span>Gegevens uit de inventaris@(State.InventoryDate(Moss365.Core.Inventory.InventoryLoader.AdUsers) is { } d ? $" van {d:dd/MM HH:mm}" : string.Empty). Live laden &rarr;</span>
                 </a>
             }
             else
             {
                 <div class="kb-live">
-                    @foreach (var deel in new[] { "AD", "Entra", "Rooms", "Postvakken" })
+                    @foreach (var part in new[] { "AD", "Entra", "Rooms", "Postvakken" })
                     {
-                        <div>@deel: @(State.LiveOp.TryGetValue(deel, out var t) ? $"live {t:HH:mm}" : "inventaris")</div>
+                        <div>@part: @(State.LiveOn.TryGetValue(part, out var t) ? $"live {t:HH:mm}" : "inventaris")</div>
                     }
                 </div>
             }
 
-            @if (vervallen > 0)
+            @if (due > 0)
             {
-                <a class="kb-nav-gepland" href="gepland">@vervallen geplande actie(s) klaar om uit te voeren</a>
+                <a class="kb-nav-gepland" href="gepland">@due geplande actie(s) klaar om uit te voeren</a>
             }
 
-            @if (State.UpdateBeschikbaar)
+            @if (State.UpdateAvailable)
             {
-                <a class="kb-nav-update" href="controle#over">Nieuwe versie @State.Update!.NieuwsteVersie beschikbaar</a>
+                <a class="kb-nav-update" href="controle#over">Nieuwe versie @State.Update!.NewestVersion beschikbaar</a>
             }
 
             @if (open.Count > 0)
             {
-                var schermen = open.Select(i => i.Pad).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+                var screens = open.Select(i => i.FilePath).Distinct(StringComparer.OrdinalIgnoreCase).Count();
                 <details class="kb-nav-openstaand">
-                    <summary>● @schermen @(schermen == 1 ? "scherm" : "schermen") niet bewaard of uitgevoerd</summary>
+                    <summary>● @screens @(screens == 1 ? "scherm" : "schermen") niet bewaard of uitgevoerd</summary>
                     <ul>
                         @foreach (var i in open)
                         {
-                            <li><a href="@i.Pad">@i.Icoon @(i.Scherm.Length > 0 ? i.Scherm : i.Pad)</a></li>
+                            <li><a href="@i.FilePath">@i.Icon @(i.Screen.Length > 0 ? i.Screen : i.FilePath)</a></li>
                         }
                     </ul>
                 </details>
             }
 
             <div class="kb-nav-profiel" title="Je profiel in Moss365">
-                Profiel: @Rechtentabel.Tekst(State.Rollen, "en")
-                @if (State.ProfielMelding is { } pm) { <div class="kb-zacht">@pm</div> }
+                Profiel: @PermissionTable.Text(State.Roles, "en")
+                @if (State.ProfileMessage is { } pm) { <div class="kb-zacht">@pm</div> }
             </div>
 
-            @if (State.AantalGewijzigd > 0)
+            @if (State.CountChanged > 0)
             {
-                <div class="kb-nav-gewijzigd">@State.AantalGewijzigd gewijzigd, nog niet vernieuwd</div>
+                <div class="kb-nav-gewijzigd">@State.CountChanged gewijzigd, nog niet vernieuwd</div>
             }
 
             <div class="kb-slogan">Have you tried turning the user off and on again?</div>
-            <div class="kb-versie">Moss365 @BeheerState.AppVersie</div>
+            <div class="kb-versie">Moss365 @ManagementState.AppVersion</div>
         </div>
     </nav>
-    <main class="kb-inhoud @(hier.Count > 0 ? "kb-openstaand" : null)">
+    <main class="kb-inhoud @(here.Count > 0 ? "kb-openstaand" : null)">
         <div class="kb-bovenbalk">
-            <Navigatie />
+            <Navigation />
         </div>
-        @if (hier.Count > 0)
+        @if (here.Count > 0)
         {
             <div class="kb-openbalk" role="status">
-                @foreach (var i in hier)
+                @foreach (var i in here)
                 {
                     <div class="kb-openbalk-item">
-                        <span><span aria-hidden="true">@i.Icoon</span> @i.Tekst</span>
-                        @if (i.Bewaren is not null) { <button class="kb-knop kb-klein kb-primair" @onclick="i.Bewaren">Bewaren</button> }
-                        @if (i.Anker is not null) { <button class="kb-knop kb-klein" @onclick="() => NaarPlan(i.Anker)">Naar het plan</button> }
-                        @if (i.Verwerpen is not null) { <button class="kb-knop kb-klein" @onclick="i.Verwerpen">Verwerpen</button> }
+                        <span><span aria-hidden="true">@i.Icon</span> @i.Text</span>
+                        @if (i.Saving is not null) { <button class="kb-knop kb-klein kb-primair" @onclick="i.Saving">Bewaren</button> }
+                        @if (i.Anchor is not null) { <button class="kb-knop kb-klein" @onclick="() => ToPlan(i.Anchor)">Naar het plan</button> }
+                        @if (i.Discard is not null) { <button class="kb-knop kb-klein" @onclick="i.Discard">Verwerpen</button> }
                     </div>
                 }
             </div>
         }
-        <AanmeldBalk />
-        @if (State.Fout is not null)
+        <SignInBar />
+        @if (State.Error is not null)
         {
-            <div class="kb-melding kb-fout">@State.Fout</div>
+            <div class="kb-melding kb-fout">@State.Error</div>
         }
-        @if (State.ConfigWaarschuwing is { } waarschuwing)
+        @if (State.ConfigWarning is { } warning)
         {
-            <div class="kb-melding kb-fout" role="alert">@waarschuwing <a href="organisatie">Organisatie</a></div>
+            <div class="kb-melding kb-fout" role="alert">@warning <a href="organisatie">Organisatie</a></div>
         }
-        @if (Toegang.VoorPad(Nav.ToBaseRelativePath(Nav.Uri)) is { } recht && !State.Mag(recht))
+        @if (Access.ForPath(Nav.ToBaseRelativePath(Nav.Uri)) is { } permission && !State.Can(permission))
         {
             <section class="kb-kaart kb-geen-toegang" role="alert">
                 <h1>Geen toegang</h1>
-                <p>Je profiel (@Rechtentabel.Tekst(State.Rollen, "en")) laat deze pagina niet toe; ze vraagt @Rechtentabel.Tekst(Rechtentabel.RollenVoor(recht)).</p>
+                <p>Je profiel (@PermissionTable.Text(State.Roles, "en")) laat deze pagina niet toe; ze vraagt @PermissionTable.Text(PermissionTable.RolesFor(permission)).</p>
                 <p class="kb-zacht">Profielen worden toegekend via de groepen <code>GG-Moss365-...</code> in Entra. Vraag het aan wie Moss365 beheert.</p>
             </section>
         }
@@ -136,75 +136,75 @@
 </div>
 
 @code {
-    private sealed record Menugroep(string Naam, IReadOnlyList<(string Href, string Tekst)> Items);
+    private sealed record MenuGroup(string Name, IReadOnlyList<(string Href, string Text)> Items);
 
-    private IReadOnlyList<Menugroep> Menu => new[]
+    private IReadOnlyList<MenuGroup> Menu => new[]
     {
-        new Menugroep("Opzoeken", new[]
+        new MenuGroup("Opzoeken", new[]
         {
             ("", "Overzicht"), ("statistieken", "Statistieken"), ("gebruikers", "Gebruikers"), ("gasten", "Gastgebruikers"),
             ("groepen", "Groepen"), ("postvakken", "Gedeelde postvakken"), ("rooms", "Rooms"), ("vergelijk", "AD tegenover Entra"), ("beveiliging", "Beveiliging"), ("conditional-access", "Conditional Access"),
         }),
-        new Menugroep("Acties", new[]
+        new MenuGroup("Acties", new[]
         {
-            ("spiegel", "Spiegelgebruiker"), ("nieuw", "Nieuwe gebruiker"), ("uitstroom", "Uitstroom"), ("opkuis", "Opkuisronde"), ("scripts", "Scripts" + (State.ScriptBezig ? " (bezig)" : string.Empty)),
-            ("gepland", "Gepland" + (vervallen > 0 ? $" ({vervallen})" : string.Empty)),
-            ("opvolging", "Opvolging" + (State.AantalOpvolgtaken > 0 ? $" ({State.AantalOpvolgtaken})" : string.Empty)), ("logboek", "Logboek"),
+            ("spiegel", "Spiegelgebruiker"), ("nieuw", "Nieuwe gebruiker"), ("uitstroom", "Uitstroom"), ("opkuis", "Opkuisronde"), ("scripts", "Scripts" + (State.ScriptBusy ? " (bezig)" : string.Empty)),
+            ("gepland", "Gepland" + (due > 0 ? $" ({due})" : string.Empty)),
+            ("opvolging", "Opvolging" + (State.CountFollowUpTasks > 0 ? $" ({State.CountFollowUpTasks})" : string.Empty)), ("logboek", "Logboek"),
         }),
-        new Menugroep("Instellingen", new[]
+        new MenuGroup("Instellingen", new[]
         {
             ("organisatie", "Organisatie"), ("verbindingen", "Verbindingen"), ("controle", "Controle van deze pc"),
         }),
     };
 
-    private int vervallen;
-    private System.Threading.Timer? klok;
+    private int due;
+    private System.Threading.Timer? clock;
     private IReadOnlyList<OpenItem> open = Array.Empty<OpenItem>();
-    private IReadOnlyList<OpenItem> hier = Array.Empty<OpenItem>();
+    private IReadOnlyList<OpenItem> here = Array.Empty<OpenItem>();
 
-    // Elke keer dat de layout tekent: wat er openstaat, en wat op dit scherm
-    protected override void OnParametersSet() => Herbereken();
+    // Every time the layout renders: what is open, and what is open on this screen
+    protected override void OnParametersSet() => Recompute();
 
-    private void Herbereken()
+    private void Recompute()
     {
-        open = State.Openstaand.Alles;
-        var pad = Openstaand.Normaliseer(Nav.ToBaseRelativePath(Nav.Uri));
-        hier = open.Where(i => string.Equals(i.Pad, pad, StringComparison.OrdinalIgnoreCase)).ToList();
+        open = State.Pending.Everything;
+        var path = Pending.Normalise(Nav.ToBaseRelativePath(Nav.Uri));
+        here = open.Where(i => string.Equals(i.FilePath, path, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    private async Task NaarPlan(string anker)
+    private async Task ToPlan(string anchor)
     {
         try
         {
-            await JS.InvokeVoidAsync("moss365.naar", anker);
+            await JS.InvokeVoidAsync("moss365.naar", anchor);
         }
         catch (Exception)
         {
-            // Geen script (tests)
+            // No script (tests)
         }
     }
 
     protected override void OnInitialized()
     {
-        State.Gewijzigd += Ververs;
-        State.Openstaand.Gewijzigd += Ververs;
-        vervallen = State.AantalVervallen;
+        State.Changed += Reload;
+        State.Pending.Changed += Reload;
+        due = State.CountDue;
 
-        // Elke minuut kijken of een geplande actie aan de beurt is
-        klok = new System.Threading.Timer(_ => Ververs(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        // Check every minute whether a scheduled action is due
+        clock = new System.Threading.Timer(_ => Reload(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
 
-    private void Ververs() => InvokeAsync(() =>
+    private void Reload() => InvokeAsync(() =>
     {
-        vervallen = State.AantalVervallen;
-        Herbereken();
+        due = State.CountDue;
+        Recompute();
         StateHasChanged();
     });
 
     public void Dispose()
     {
-        State.Gewijzigd -= Ververs;
-        State.Openstaand.Gewijzigd -= Ververs;
-        klok?.Dispose();
+        State.Changed -= Reload;
+        State.Pending.Changed -= Reload;
+        clock?.Dispose();
     }
 }

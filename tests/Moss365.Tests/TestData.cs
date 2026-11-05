@@ -1,20 +1,20 @@
-using Moss365.Core.Configuratie;
-using Moss365.Core.Inventaris;
+using Moss365.Core.Configuration;
+using Moss365.Core.Inventory;
 
 namespace Moss365.Tests;
 
-/// <summary>Verzonnen testdata in de vorm van de CSV-bestanden van Export-Inventaris.ps1.</summary>
+/// <summary>Made-up test data in the form of the CSV files of Export-Inventaris.ps1.</summary>
 public static class TestData
 {
-    public const string Gemeente = "OU=GEBRUIKERS,OU=GEMEENTEBESTUUR,DC=test,DC=internal";
-    public const string Ocmw = "OU=GEBRUIKERS,OU=OCMW,DC=test,DC=internal";
+    public const string Municipality = "OU=GEBRUIKERS,OU=GEMEENTEBESTUUR,DC=test,DC=internal";
+    public const string SocialWelfare = "OU=GEBRUIKERS,OU=OCMW,DC=test,DC=internal";
     public const string Vpn = "OU=VPN_USERS,OU=ARCHIVE,DC=test,DC=internal";
-    public const string Groepen = "OU=GROEPEN,OU=GEMEENTEBESTUUR,DC=test,DC=internal";
+    public const string Groups = "OU=GROEPEN,OU=GEMEENTEBESTUUR,DC=test,DC=internal";
 
-    public static string Dn(string naam, string ou) => $"CN={naam},{ou}";
+    public static string Dn(string name, string ou) => $"CN={name},{ou}";
 
-    public static Dictionary<string, string> AdGebruiker(string sam, string ou, string upn, string department = "", bool enabled = true,
-        string lastLogon = "2026-10-01 08:00:00", params string[] groepen) => new(StringComparer.OrdinalIgnoreCase)
+    public static Dictionary<string, string> AdUser(string sam, string ou, string upn, string department = "", bool enabled = true,
+        string lastLogon = "2026-10-01 08:00:00", params string[] groups) => new(StringComparer.OrdinalIgnoreCase)
     {
         ["OU"] = ou,
         ["SamAccountName"] = sam,
@@ -25,20 +25,20 @@ public static class TestData
         ["Enabled"] = enabled ? "True" : "False",
         ["DistinguishedName"] = Dn(sam, ou),
         ["LastLogonDate"] = lastLogon,
-        ["MemberOf"] = string.Join('|', groepen.Select(g => Dn(g, Groepen))),
+        ["MemberOf"] = string.Join('|', groups.Select(g => Dn(g, Groups))),
     };
 
-    public static Dictionary<string, string> AdGroep(string naam, string scope = "Global", string? ou = null) => new(StringComparer.OrdinalIgnoreCase)
+    public static Dictionary<string, string> AdGroup(string name, string scope = "Global", string? ou = null) => new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Name"] = naam,
-        ["SamAccountName"] = naam,
-        ["DistinguishedName"] = Dn(naam, ou ?? Groepen),
-        ["OU"] = ou ?? Groepen,
+        ["Name"] = name,
+        ["SamAccountName"] = name,
+        ["DistinguishedName"] = Dn(name, ou ?? Groups),
+        ["OU"] = ou ?? Groups,
         ["Category"] = "Security",
         ["Scope"] = scope,
     };
 
-    public static Dictionary<string, string> EntraGebruiker(string id, string upn, string? sam = null, string department = "",
+    public static Dictionary<string, string> EntraUser(string id, string upn, string? sam = null, string department = "",
         bool enabled = true, string userType = "Member", string displayName = "") => new(StringComparer.OrdinalIgnoreCase)
     {
         ["Id"] = id,
@@ -52,127 +52,128 @@ public static class TestData
         ["OnPremisesSamAccountName"] = sam ?? "",
     };
 
-    public static Dictionary<string, string> CloudGroep(string id, string naam, string type, bool dynamisch = false, string bron = "Cloud", string regel = "",
+    public static Dictionary<string, string> CloudGroup(string id, string name, string type, bool dynamicValue = false, string source = "Cloud", string rule = "",
         string mail = "", string onPremSam = "")
         => new(StringComparer.OrdinalIgnoreCase)
         {
             ["Id"] = id,
-            ["DisplayName"] = naam,
+            ["DisplayName"] = name,
             ["Type"] = type,
-            ["Bron"] = bron,
-            ["Dynamisch"] = dynamisch ? "True" : "False",
-            ["Lidmaatschapsregel"] = regel,
+            ["Bron"] = source,
+            ["Dynamisch"] = dynamicValue ? "True" : "False",
+            ["Lidmaatschapsregel"] = rule,
             ["Mail"] = mail,
             ["OnPremisesSamAccountName"] = onPremSam,
         };
 
-    public static Dictionary<string, string> AdLid(string groep, string lidDn, string? ou = null) => new(StringComparer.OrdinalIgnoreCase)
+    public static Dictionary<string, string> AdMember(string groupValue, string memberDn, string? ou = null) => new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Groep"] = groep,
-        ["GroepDN"] = Dn(groep, ou ?? Groepen),
-        ["LidDN"] = lidDn,
+        ["Groep"] = groupValue,
+        ["GroepDN"] = Dn(groupValue, ou ?? Groups),
+        ["LidDN"] = memberDn,
     };
 
-    public static Dictionary<string, string> ExoGroep(string naam, string type, string smtp) => new(StringComparer.OrdinalIgnoreCase)
+    public static Dictionary<string, string> ExoGroup(string name, string type, string smtp) => new(StringComparer.OrdinalIgnoreCase)
     {
         ["Type"] = type,
-        ["DisplayName"] = naam,
-        ["Alias"] = naam.ToLowerInvariant(),
+        ["DisplayName"] = name,
+        ["Alias"] = name.ToLowerInvariant(),
         ["PrimarySmtpAddress"] = smtp,
         ["MemberJoinRestriction"] = "Closed",
         ["ManagedBy"] = "an.peeters@test.be",
     };
 
-    public static Dictionary<string, string> ExoLid(string groep, string smtp) => new(StringComparer.OrdinalIgnoreCase)
+    public static Dictionary<string, string> ExoMember(string groupValue, string smtp) => new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Groep"] = groep,
+        ["Groep"] = groupValue,
         ["Lid"] = smtp,
         ["LidNaam"] = smtp.Split('@')[0],
     };
 
-    public static Dictionary<string, string> Postvak(string naam, string smtp, string type = "SharedMailbox") => new(StringComparer.OrdinalIgnoreCase)
+    public static Dictionary<string, string> Mailbox(string name, string smtp, string type = "SharedMailbox") => new(StringComparer.OrdinalIgnoreCase)
     {
         ["Type"] = type,
-        ["DisplayName"] = naam,
+        ["DisplayName"] = name,
         ["Alias"] = smtp.Split('@')[0],
         ["PrimarySmtpAddress"] = smtp,
         ["Hidden"] = "False",
     };
 
-    public static Dictionary<string, string> Recht(string postvak, string recht, string gebruiker) => new(StringComparer.OrdinalIgnoreCase)
+    public static Dictionary<string, string> Permission(string mailbox, string permission, string user) => new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Postvak"] = postvak,
-        ["Recht"] = recht,
-        ["Gebruiker"] = gebruiker,
+        ["Postvak"] = mailbox,
+        ["Recht"] = permission,
+        ["Gebruiker"] = user,
     };
 
-    public static Dictionary<string, string> Lid(string groepId, string lidId) => new(StringComparer.OrdinalIgnoreCase)
+    public static Dictionary<string, string> Member(string groupId, string memberId) => new(StringComparer.OrdinalIgnoreCase)
     {
-        ["GroepId"] = groepId,
-        ["LidId"] = lidId,
+        ["GroepId"] = groupId,
+        ["LidId"] = memberId,
         ["LidType"] = "user",
     };
 
-    /// <summary>Een kleine omgeving: twee gemeentegebruikers (referentie en doel), een OCMW-gebruiker, een vrijwilliger zonder Entra, ...</summary>
-    public static InventarisData Omgeving() => InventarisLader.Bouw(Bestanden());
+    /// <summary>A small environment: two municipality users (reference and target), a social services user, a volunteer
+    /// without Entra, ...</summary>
+    public static InventoryData AppEnvironment() => InventoryLoader.Build(Files());
 
-    /// <summary>Schrijft de verzonnen inventaris als CSV-bestanden, zoals Export-Inventaris.ps1 ze maakt.</summary>
-    public static void SchrijfInventaris(string map, Dictionary<string, List<Dictionary<string, string>>>? bestanden = null)
+    /// <summary>Writes the made-up inventory as CSV files, as Export-Inventaris.ps1 creates them.</summary>
+    public static void WriteInventory(string folder, Dictionary<string, List<Dictionary<string, string>>>? files = null)
     {
-        Directory.CreateDirectory(map);
-        foreach (var (bestand, rijen) in bestanden ?? Bestanden())
+        Directory.CreateDirectory(folder);
+        foreach (var (file, rows) in files ?? Files())
         {
-            var kolommen = rijen.SelectMany(r => r.Keys).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var columns = rows.SelectMany(r => r.Keys).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             static string Q(string? w) => "\"" + (w ?? string.Empty).Replace("\"", "\"\"") + "\"";
-            var regels = new List<string> { string.Join(';', kolommen.Select(Q)) };
-            regels.AddRange(rijen.Select(r => string.Join(';', kolommen.Select(k => Q(r.GetValueOrDefault(k))))));
-            File.WriteAllLines(Path.Combine(map, bestand), regels);
+            var rules = new List<string> { string.Join(';', columns.Select(Q)) };
+            rules.AddRange(rows.Select(r => string.Join(';', columns.Select(k => Q(r.GetValueOrDefault(k))))));
+            File.WriteAllLines(Path.Combine(folder, file), rules);
         }
     }
 
-    public static Dictionary<string, List<Dictionary<string, string>>> Bestanden() => new()
+    public static Dictionary<string, List<Dictionary<string, string>>> Files() => new()
     {
-        [InventarisLader.AdGebruikers] = new()
+        [InventoryLoader.AdUsers] = new()
         {
-            AdGebruiker("an.peeters", Gemeente, "an.peeters@test.be", "cultuur", groepen: new[] { "gg_wifiIntern", "gg_rww_foxbeleid", "Domain Admins" }),
-            AdGebruiker("bo.janssens", Gemeente, "bo.janssens@test.be", "cultuur ", groepen: new[] { "gg_wifiIntern", "gg_eigen" }),
-            AdGebruiker("cas.vos", Ocmw, "Cas.Vos@test.be", "gezinszorg"),
-            AdGebruiker("dirk.intern", Gemeente, "dirk.intern@TEST.INTERNAL", lastLogon: ""),
-            AdGebruiker("oud.account", Gemeente, "oud.account@test.be", enabled: false),
-            AdGebruiker("vpn.leverancier", Vpn, "vpn.leverancier@test.be"),
+            AdUser("an.peeters", Municipality, "an.peeters@test.be", "cultuur", groups: new[] { "gg_wifiIntern", "gg_rww_foxbeleid", "Domain Admins" }),
+            AdUser("bo.janssens", Municipality, "bo.janssens@test.be", "cultuur ", groups: new[] { "gg_wifiIntern", "gg_eigen" }),
+            AdUser("cas.vos", SocialWelfare, "Cas.Vos@test.be", "gezinszorg"),
+            AdUser("dirk.intern", Municipality, "dirk.intern@TEST.INTERNAL", lastLogon: ""),
+            AdUser("oud.account", Municipality, "oud.account@test.be", enabled: false),
+            AdUser("vpn.leverancier", Vpn, "vpn.leverancier@test.be"),
         },
-        [InventarisLader.AdGroepen] = new()
+        [InventoryLoader.AdGroups] = new()
         {
-            AdGroep("gg_wifiIntern"),
-            AdGroep("gg_rww_foxbeleid"),
-            AdGroep("gg_eigen"),
-            AdGroep("Domain Admins", ou: "CN=Users,DC=test,DC=internal"),
+            AdGroup("gg_wifiIntern"),
+            AdGroup("gg_rww_foxbeleid"),
+            AdGroup("gg_eigen"),
+            AdGroup("Domain Admins", ou: "CN=Users,DC=test,DC=internal"),
         },
-        [InventarisLader.EntraGebruikers] = new()
+        [InventoryLoader.EntraUsers] = new()
         {
-            EntraGebruiker("e-an", "an.peeters@test.be", "an.peeters", "cultuur"),
-            EntraGebruiker("e-bo", "bo.janssens@test.be", "BO.JANSSENS", "cultuur"),
-            EntraGebruiker("e-cas", "cas.vos@test.be", "cas.vos", "gezinszorg"),
-            EntraGebruiker("e-oud", "oud.account@test.be", "oud.account", enabled: true),
-            EntraGebruiker("e-info", "info@test.onmicrosoft.com", displayName: "Info"),
-            EntraGebruiker("e-gast", "gast_example.net#EXT#@test.onmicrosoft.com", userType: "Guest", displayName: "Gast"),
+            EntraUser("e-an", "an.peeters@test.be", "an.peeters", "cultuur"),
+            EntraUser("e-bo", "bo.janssens@test.be", "BO.JANSSENS", "cultuur"),
+            EntraUser("e-cas", "cas.vos@test.be", "cas.vos", "gezinszorg"),
+            EntraUser("e-oud", "oud.account@test.be", "oud.account", enabled: true),
+            EntraUser("e-info", "info@test.onmicrosoft.com", displayName: "Info"),
+            EntraUser("e-gast", "gast_example.net#EXT#@test.onmicrosoft.com", userType: "Guest", displayName: "Gast"),
         },
-        [InventarisLader.EntraGroepen] = new()
+        [InventoryLoader.EntraGroups] = new()
         {
-            CloudGroep("g-alle", "Alle gebruikers", "Beveiliging", dynamisch: true, regel: "All Users"),
-            CloudGroep("g-sm", "SG-SM-info-Full", "MailBeveiliging", mail: "sg-sm-info-full@test.be"),
-            CloudGroep("g-team", "DNST_CULTUUR", "M365"),
-            CloudGroep("g-dl", "Gemeentehuis", "Distributie", mail: "gemeentehuis@test.be"),
-            CloudGroep("g-ad", "Gesynchroniseerd", "Beveiliging", bron: "AD", onPremSam: "gg_rww_foxbeleid"),
-            CloudGroep("g-afd", "AFD_VRIJETIJD", "M365"),
-            CloudGroep("g-eigen", "WKG_Eigen", "M365"),
+            CloudGroup("g-alle", "Alle gebruikers", "Beveiliging", dynamicValue: true, rule: "All Users"),
+            CloudGroup("g-sm", "SG-SM-info-Full", "MailBeveiliging", mail: "sg-sm-info-full@test.be"),
+            CloudGroup("g-team", "DNST_CULTUUR", "M365"),
+            CloudGroup("g-dl", "Gemeentehuis", "Distributie", mail: "gemeentehuis@test.be"),
+            CloudGroup("g-ad", "Gesynchroniseerd", "Beveiliging", source: "AD", onPremSam: "gg_rww_foxbeleid"),
+            CloudGroup("g-afd", "AFD_VRIJETIJD", "M365"),
+            CloudGroup("g-eigen", "WKG_Eigen", "M365"),
         },
-        [InventarisLader.EntraLicenties] = new()
+        [InventoryLoader.EntraLicences] = new()
         {
             new(StringComparer.OrdinalIgnoreCase) { ["SkuId"] = "sku-spb", ["SkuPartNumber"] = "SPB", ["Toegewezen"] = "10", ["Totaal"] = "10" },
             new(StringComparer.OrdinalIgnoreCase) { ["SkuId"] = "sku-f3", ["SkuPartNumber"] = "DESKLESSPACK", ["Toegewezen"] = "5", ["Totaal"] = "8" },
         },
-        [InventarisLader.ExoRooms] = new()
+        [InventoryLoader.ExoRooms] = new()
         {
             new(StringComparer.OrdinalIgnoreCase)
             {
@@ -187,101 +188,102 @@ public static class TestData
                 ["AllowRecurringMeetings"] = "True", ["AddOrganizerToSubject"] = "True", ["DeleteSubject"] = "False", ["AgendaRechten"] = "Default=Reviewer|Anonymous=None",
             },
         },
-        [InventarisLader.AdGroepsleden] = new()
+        [InventoryLoader.AdGroupMembers] = new()
         {
-            AdLid("gg_wifiIntern", Dn("an.peeters", Gemeente)), AdLid("gg_wifiIntern", Dn("bo.janssens", Gemeente)),
-            AdLid("gg_rww_foxbeleid", Dn("an.peeters", Gemeente)), AdLid("gg_eigen", Dn("bo.janssens", Gemeente)),
-            AdLid("gg_eigen", Dn("gg_rww_foxbeleid", Groepen)),
-            AdLid("Domain Admins", Dn("an.peeters", Gemeente), "CN=Users,DC=test,DC=internal"),
+            AdMember("gg_wifiIntern", Dn("an.peeters", Municipality)), AdMember("gg_wifiIntern", Dn("bo.janssens", Municipality)),
+            AdMember("gg_rww_foxbeleid", Dn("an.peeters", Municipality)), AdMember("gg_eigen", Dn("bo.janssens", Municipality)),
+            AdMember("gg_eigen", Dn("gg_rww_foxbeleid", Groups)),
+            AdMember("Domain Admins", Dn("an.peeters", Municipality), "CN=Users,DC=test,DC=internal"),
         },
-        [InventarisLader.ExoGroepen] = new()
+        [InventoryLoader.ExoGroups] = new()
         {
-            ExoGroep("SG-SM-info-Full", "MailUniversalSecurityGroup", "sg-sm-info-full@test.be"),
-            ExoGroep("Gemeentehuis", "MailUniversalDistributionGroup", "gemeentehuis@test.be"),
-            ExoGroep("rl-gh", "RoomList", "rl-gh@test.be"),
+            ExoGroup("SG-SM-info-Full", "MailUniversalSecurityGroup", "sg-sm-info-full@test.be"),
+            ExoGroup("Gemeentehuis", "MailUniversalDistributionGroup", "gemeentehuis@test.be"),
+            ExoGroup("rl-gh", "RoomList", "rl-gh@test.be"),
         },
-        [InventarisLader.ExoGroepsleden] = new()
+        [InventoryLoader.ExoGroupMembers] = new()
         {
-            ExoLid("SG-SM-info-Full", "an.peeters@test.be"),
-            ExoLid("Gemeentehuis", "an.peeters@test.be"),
-            ExoLid("rl-gh", "rm-vz-a@test.be"),
+            ExoMember("SG-SM-info-Full", "an.peeters@test.be"),
+            ExoMember("Gemeentehuis", "an.peeters@test.be"),
+            ExoMember("rl-gh", "rm-vz-a@test.be"),
         },
-        [InventarisLader.ExoPostvakken] = new()
+        [InventoryLoader.ExoMailboxes] = new()
         {
-            Postvak("Info", "info@test.be"),
-            Postvak("Boekhouding", "boekhouding@test.be"),
-            Postvak("Vergaderzaal A", "rm-vz-a@test.be", "RoomMailbox"),
-            Postvak("Afspraken", "afspraken@test.be", "SchedulingMailbox"),
+            Mailbox("Info", "info@test.be"),
+            Mailbox("Boekhouding", "boekhouding@test.be"),
+            Mailbox("Vergaderzaal A", "rm-vz-a@test.be", "RoomMailbox"),
+            Mailbox("Afspraken", "afspraken@test.be", "SchedulingMailbox"),
         },
-        [InventarisLader.ExoPostvakRechten] = new()
+        [InventoryLoader.ExoMailboxPermissions] = new()
         {
-            Recht("info@test.be", "FullAccess", "sg-sm-info-full@test.be"),
-            Recht("info@test.be", "SendAs", "bo.janssens@test.be"),
-            Recht("info@test.be", "FullAccess", "S-1-5-21-111-222-333-1001"),
-            Recht("boekhouding@test.be", "FullAccess,SendAs", "an.peeters@test.be"),
+            Permission("info@test.be", "FullAccess", "sg-sm-info-full@test.be"),
+            Permission("info@test.be", "SendAs", "bo.janssens@test.be"),
+            Permission("info@test.be", "FullAccess", "S-1-5-21-111-222-333-1001"),
+            Permission("boekhouding@test.be", "FullAccess,SendAs", "an.peeters@test.be"),
         },
-        [InventarisLader.EntraGroepsleden] = new()
+        [InventoryLoader.EntraGroupMembers] = new()
         {
-            Lid("g-alle", "e-an"), Lid("g-alle", "e-bo"), Lid("g-sm", "e-an"), Lid("g-team", "e-an"), Lid("g-team", "e-bo"),
-            Lid("g-dl", "e-an"), Lid("g-ad", "e-an"), Lid("g-eigen", "e-bo"),
+            Member("g-alle", "e-an"), Member("g-alle", "e-bo"), Member("g-sm", "e-an"), Member("g-team", "e-an"), Member("g-team", "e-bo"),
+            Member("g-dl", "e-an"), Member("g-ad", "e-an"), Member("g-eigen", "e-bo"),
         },
     };
 
-    public static OrganisatieConfig Config() => new()
+    public static OrganisationConfig Config() => new()
     {
         Company = "Contoso",
-        AdDomein = "TEST.INTERNAL",
-        GesynchroniseerdeOus = new() { "GEMEENTEBESTUUR/GEBRUIKERS", "OCMW/GEBRUIKERS" },
-        Populaties = new()
+        AdDomain = "TEST.INTERNAL",
+        SynchronisedOus = new() { "GEMEENTEBESTUUR/GEBRUIKERS", "OCMW/GEBRUIKERS" },
+        Populations = new()
         {
-            new Populatie { Naam = "Gemeente", Ou = "GEMEENTEBESTUUR/GEBRUIKERS", UpnDomein = "test.be", StandaardAdGroepen = new() { "gg_wifiIntern", "bestaat_niet" } },
-            new Populatie { Naam = "Vrijwilliger", Ou = "GEMEENTEBESTUUR/GASTGEBRUIKERS", UpnDomein = "example.org", City = "intranet", GeenLicentie = true },
+            new Population { Name = "Gemeente", Ou = "GEMEENTEBESTUUR/GEBRUIKERS", UpnDomain = "test.be", DefaultAdGroups = new() { "gg_wifiIntern", "bestaat_niet" } },
+            new Population { Name = "Vrijwilliger", Ou = "GEMEENTEBESTUUR/GASTGEBRUIKERS", UpnDomain = "example.org", City = "intranet", NoLicence = true },
         },
-        Uitstroom = new UitstroomRegel { Ou = "ARCHIVE/disabled_users" },
-        Afdelingen = new() { new Afdeling { Naam = "Vrije tijd", Groep = "AFD_VRIJETIJD" }, new Afdeling { Naam = "Burger en welzijn" } },
-        Diensten = new()
+        Offboarding = new OffboardingRule { Ou = "ARCHIVE/disabled_users" },
+        Divisions = new() { new Division { Name = "Vrije tijd", Group = "AFD_VRIJETIJD" }, new Division { Name = "Burger en welzijn" } },
+        Departments = new()
         {
-            new Dienst { Department = "cultuur", Afdeling = "Vrije tijd", Logonscript = "cultuur.bat" },
-            new Dienst { Department = "gezinszorg", Afdeling = null },
+            new DepartmentMapping { Department = "cultuur", Division = "Vrije tijd", LogonScript = "cultuur.bat" },
+            new DepartmentMapping { Department = "gezinszorg", Division = null },
         },
-        Kantoren = new() { "gemeentehuis", "bibliotheek" },
-        Licenties = new() { new LicentieKeuze { Sku = "DESKLESSPACK", Naam = "Microsoft 365 F3" }, new LicentieKeuze { Sku = "SPB", Naam = "Business Premium" } },
-        DynamischeRegels = new() { new DynamischeRegel { Groep = "Alle gebruikers", Regel = "alle gebruikers" } },
+        Offices = new() { "gemeentehuis", "bibliotheek" },
+        Licences = new() { new LicenceChoice { Sku = "DESKLESSPACK", Name = "Microsoft 365 F3" }, new LicenceChoice { Sku = "SPB", Name = "Business Premium" } },
+        DynamicRules = new() { new DynamicRule { Group = "Alle gebruikers", Rule = "alle gebruikers" } },
     };
 
-    /// <summary>Verzonnen Conditional Access: MFA voor iedereen (behalve Info en WKG_Eigen), verouderd blokkeren, beheerders (rapport), buitenland blokkeren.</summary>
-    public static CaGegevens Ca(DateTimeOffset nu, bool groepLeden = true) => new(
+    /// <summary>Made-up Conditional Access: MFA for everyone (except Info and WKG_Eigen), block legacy, administrators
+    /// (report), block abroad.</summary>
+    public static CaData Ca(DateTimeOffset now, bool groupMembers = true) => new(
         new[]
         {
-            new CaBeleid
+            new CaPolicy
             {
-                Id = "ca-mfa", Naam = "MFA voor iedereen", Status = CaStatus.Aan, GebruikersIn = new[] { "All" }, GebruikersUit = new[] { "e-info" },
-                GroepenUit = new[] { "g-eigen" }, AppsIn = new[] { "All" }, Controles = new[] { "mfa" }, Gewijzigd = nu.AddDays(-100),
+                Id = "ca-mfa", Name = "MFA voor iedereen", Status = CaStatus.On, UsersIn = new[] { "All" }, UsersOff = new[] { "e-info" },
+                GroupsOff = new[] { "g-eigen" }, AppsIn = new[] { "All" }, Checks = new[] { "mfa" }, Changed = now.AddDays(-100),
             },
-            new CaBeleid
+            new CaPolicy
             {
-                Id = "ca-legacy", Naam = "Verouderd blokkeren", Status = CaStatus.Aan, GebruikersIn = new[] { "All" }, GebruikersUit = new[] { "e-info" },
-                AppsIn = new[] { "All" }, ClientApps = new[] { "exchangeActiveSync", "other" }, Controles = new[] { "block" },
+                Id = "ca-legacy", Name = "Verouderd blokkeren", Status = CaStatus.On, UsersIn = new[] { "All" }, UsersOff = new[] { "e-info" },
+                AppsIn = new[] { "All" }, ClientApps = new[] { "exchangeActiveSync", "other" }, Checks = new[] { "block" },
             },
-            new CaBeleid
+            new CaPolicy
             {
-                Id = "ca-beheer", Naam = "Beheerders phishingbestendig", Status = CaStatus.Rapport, RollenIn = new[] { CaGegevens.RolGlobalAdmin },
-                AppsIn = new[] { "All" }, SterkteId = CaGegevens.SterktePhishingbestendig, SterkteNaam = "Phishingbestendige MFA", Gewijzigd = nu.AddDays(-60),
+                Id = "ca-beheer", Name = "Beheerders phishingbestendig", Status = CaStatus.Report, RolesIn = new[] { CaData.RoleGlobalAdmin },
+                AppsIn = new[] { "All" }, StrengthId = CaData.StrengthPhishingResistant, StrengthName = "Phishingbestendige MFA", Changed = now.AddDays(-60),
             },
-            new CaBeleid
+            new CaPolicy
             {
-                Id = "ca-land", Naam = "Buitenland blokkeren", Status = CaStatus.Aan, GebruikersIn = new[] { "All" }, AppsIn = new[] { "All" },
-                LocatiesIn = new[] { "All" }, LocatiesUit = new[] { "loc-be" }, Controles = new[] { "block" },
+                Id = "ca-land", Name = "Buitenland blokkeren", Status = CaStatus.On, UsersIn = new[] { "All" }, AppsIn = new[] { "All" },
+                LocationsIn = new[] { "All" }, LocationsOff = new[] { "loc-be" }, Checks = new[] { "block" },
             },
         },
         new[]
         {
-            new BenoemdeLocatie("loc-be", "België", false, false, new[] { "BE" }),
-            new BenoemdeLocatie("loc-kantoor", "Gemeentehuis", true, true, new[] { "203.0.113.0/24" }),
+            new NamedLocation("loc-be", "België", false, false, new[] { "BE" }),
+            new NamedLocation("loc-kantoor", "Gemeentehuis", true, true, new[] { "203.0.113.0/24" }),
         },
-        new[] { new Authenticatiesterkte(CaGegevens.SterktePhishingbestendig, "Phishingbestendige MFA", true, new[] { "fido2", "windowsHelloForBusiness" }) },
-        new Dictionary<string, string> { [CaGegevens.RolGlobalAdmin] = "Global Administrator" },
+        new[] { new AuthenticationStrength(CaData.StrengthPhishingResistant, "Phishingbestendige MFA", true, new[] { "fido2", "windowsHelloForBusiness" }) },
+        new Dictionary<string, string> { [CaData.RoleGlobalAdmin] = "Global Administrator" },
         false,
         null,
-        groepLeden ? new Dictionary<string, IReadOnlyList<string>> { ["g-eigen"] = new[] { "e-bo" } } : null);
+        groupMembers ? new Dictionary<string, IReadOnlyList<string>> { ["g-eigen"] = new[] { "e-bo" } } : null);
 }

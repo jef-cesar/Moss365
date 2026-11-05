@@ -1,0 +1,14 @@
+@* The result of a run as a label, always with text *@
+<span class="kb-label @Class">@Run.ResultText</span>
+
+@code {
+    [Parameter, EditorRequired] public ScriptRun Run { get; set; } = new();
+
+    private string? Class => Run.Result switch
+    {
+        RunResult.Succeeded => "kb-label-goed",
+        RunResult.Warnings => "kb-label-let",
+        RunResult.Error => "kb-rood",
+        _ => null,
+    };
+}

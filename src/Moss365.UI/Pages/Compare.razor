@@ -1,0 +1,84 @@
+@page "/vergelijk"
+@inject ManagementState State
+
+<h1>AD tegenover Entra</h1>
+
+@if (!State.Data.HasAd || !State.Data.HasEntra)
+{
+    <div class="kb-melding">Voor deze vergelijking zijn zowel <code>ad-gebruikers.csv</code> als <code>entra-gebruikers.csv</code> nodig.</div>
+}
+else
+{
+    <p class="kb-zacht">
+        Gesynchroniseerde OU's: @string.Join(", ", State.Config.SynchronisedOus).
+        Verschillen in spaties vooraan of achteraan worden genegeerd: Entra schrapt die bij de synchronisatie.
+    </p>
+
+    <div class="kb-tegels">
+        @foreach (var g in differences.GroupBy(v => v.KindText))
+        {
+            <button class="kb-tegel @(z.Kind == g.Key ? "kb-actief" : null)" @onclick="() => z.Kind = z.Kind == g.Key ? string.Empty : g.Key">
+                <div class="kb-tegel-getal">@g.Count()</div><div>@g.Key</div>
+            </button>
+        }
+    </div>
+
+    <div class="kb-filters">
+        <input class="kb-invoer kb-breed" placeholder="Filter op naam of kenmerk" @bind="z.Find" @bind:event="oninput" />
+    </div>
+
+    <KbTable Id="vergelijk" Items="Filtered" Columns="columns" DefaultSorting="gebruiker" />
+    @foreach (var f in errors)
+    {
+        <div class="kb-melding">@f</div>
+    }
+    @if (plan is not null)
+    {
+        <PlanView Plan="plan" Context="Rechtzetten (AD tegenover Entra)" Title="Rechtzetten in AD" />
+    }
+}
+
+@code {
+    private IReadOnlyList<Difference> differences = Array.Empty<Difference>();
+    /// <summary>Search term and filters, kept while the app is open (Back, Forward, menu).</summary>
+    private sealed class Search { public string Kind { get; set; } = string.Empty; public string Find { get; set; } = string.Empty; }
+    private Search? _z;
+    private Search z => _z ??= State.PageState.Of<Search>("vergelijk");
+
+    private IReadOnlyList<Column<Difference>> columns = Array.Empty<Column<Difference>>();
+
+    protected override void OnInitialized()
+    {
+        differences = AdEntraComparison.Compare(State.Data, State.Config);
+        columns = new List<Column<Difference>>
+        {
+            new() { Key = "gebruiker", Title = "Gebruiker", Cell = v => @<text><a href="@Searcher.Link(v.Person)">@v.Person.Name</a><div class="kb-zacht">@v.Person.Ad?.OuPath</div></text>, SortBy = v => v.Person.Name },
+            new() { Key = "soort", Title = "Soort", Cell = v => @<text>@v.KindText</text>, SortBy = v => v.KindText },
+            new() { Key = "kenmerk", Title = "Kenmerk", Cell = v => @<text>@v.Attribute</text>, SortBy = v => v.Attribute },
+            new() { Key = "ad", Title = "AD", Cell = v => @<text>@v.AdValue</text>, SortBy = v => v.AdValue },
+            new() { Key = "entra", Title = "Entra", Cell = v => @<text>@v.EntraValue</text>, SortBy = v => v.EntraValue },
+            new() { Key = "toelichting", Title = "Toelichting", Cell = v => @<text>@v.Explanation</text>, SortBy = v => v.Explanation },
+            new() { Key = "rechtzetten", Title = "Rechtzetten", Filter = FilterKind.No, Cell = v => @<text>@if (FixCan(v)) { <button class="kb-knop kb-klein" @onclick="() => Fix(v)" title="De waarde in AD rechtzetten; Entra volgt na de synchronisatie">Rechtzetten in AD</button> }</text> },
+            new() { Key = "ou", Title = "OU", Hidden = true, Cell = v => @<text>@v.Person.Ad?.OuPath</text>, SortBy = v => v.Person.Ad?.OuPath },
+        };
+    }
+
+    private IEnumerable<Difference> Filtered => differences
+        .Where(v => z.Kind.Length == 0 || v.KindText == z.Kind)
+        .Where(v => z.Find.Trim().Length == 0
+                    || v.Person.Name.Contains(z.Find.Trim(), StringComparison.OrdinalIgnoreCase)
+                    || v.Attribute.Contains(z.Find.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+
+    private bool FixCan(Difference v) => State.Can(Permission.Manage) && v.Kind == DifferenceKind.AttributeDiffers && v.Person.Ad is not null
+        && v.Attribute.Split(" (")[0] is "Weergavenaam" or "Dienst" or "Functie" or "Kantoor";
+
+    private void Fix(Difference v)
+    {
+        var u = AttributePlans.Fix(State.Data, State.Config, v);
+        errors = u.Errors;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+    }
+}
