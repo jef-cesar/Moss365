@@ -32,5 +32,6 @@ Moss365 is niet verbonden met Microsoft. Microsoft 365, Entra ID en Exchange Onl
 
 Moss365 is a management app for Active Directory, Entra ID and Exchange Online, for IT teams managing one or more
 Microsoft 365 tenants. Every change is a plan you preview and confirm, everything is logged, and the app keeps snapshots
-of each organisation over time. The app and its documentation are in Dutch; English and French are planned. See the
+of each organisation over time. The app and its documentation are in Dutch; English, Brazilian Portuguese, French and German are planned (following the
+Windows display language by default). See the
 roadmaps above (in Dutch). Moss365 is not affiliated with Microsoft.

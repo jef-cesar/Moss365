@@ -380,7 +380,14 @@ wachtwoorden, berichtsporen), komt in het toegangslog en vraagt de juiste rol.
 
 | Voorstel | Waarom |
 | --- | --- |
-| De app in het **Nederlands, Engels en Frans** (keuze per gebruiker), de documentatie eerst in het Nederlands en het Engels | Een openbare app, gemaakt in België |
+| **Woordenboeken voor de interface**: elke tekst van de app (knoppen, titels, meldingen, uitleg, foutmeldingen) staat in een woordenboek per taal, niet meer in de code | Een nieuwe taal toevoegen = een woordenboek vertalen, zonder iets aan de code te veranderen; ook bijdragers van buitenaf kunnen vertalen |
+| **Talen bij 1.0**: Nederlands, **Engels (EN)**, **Braziliaans Portugees (PT-BR)**, **Frans (FR)** en **Duits (DE)** | Een openbare app voor organisaties in en buiten België |
+| **Standaard de taal van het systeem**: de app volgt de weergavetaal van Windows (in de webversie: de taal van de browser). Is die taal er niet, dan Engels | Niets in te stellen voor de meeste gebruikers |
+| **Zelf instellen**: een keuze bij Instellingen (per gebruiker), die de taal van het systeem overschrijft, met meteen effect | Wie in een andere taal werkt dan zijn Windows |
+| **Datums, getallen en valuta** volgens de gekozen taal en regio | 05/11/2026 of 11/05/2026, 1.234,5 of 1,234.5 |
+| **Ontbrekende vertalingen** vallen terug op Engels (en een test meldt welke teksten nog niet vertaald zijn); een termenlijst houdt vaste begrippen gelijk (plan, momentopname, tenant, rol) | Nooit een lege knop; dezelfde woorden overal |
+| **Wat niet vertaald wordt**: gegevens uit AD en Microsoft 365 (namen van groepen, diensten, beleiden) en de inhoud van scripts | Dat zijn gegevens van de organisatie, geen tekst van de app |
+| De **documentatie** eerst in het Nederlands en het Engels, de andere talen als er vertalers zijn | Begin klein |
 
 ## 11. Open source, met ruimte voor ondersteuning
 
@@ -436,7 +443,7 @@ Laat de keuze door een jurist bevestigen voor de eerste release. Verder:
 | U7 | **Versleuteling** | A (Windows-account) standaard; B en C als keuze; D na de studie |
 | U8 | **Ondertekenen** van app, updates en scripts | Een codesigningcertificaat voor het project (Authenticode). Zonder certificaat: enkel vingerafdrukken (zwakker) |
 | U9 | **Bewaartermijnen** (standaard) | Zoals in hoofdstuk 6; per tenant aan te passen |
-| U10 | **Taal van de code en de documentatie** | Nederlands zoals nu; Engels erbij voor wie bijdraagt (README, bijdragegids); de app in drie talen (R15) |
+| U10 | **Taal van de code en de documentatie** | Nederlands zoals nu; Engels erbij voor wie bijdraagt (README, bijdragegids); de app in vijf talen (R15) |
 | U11 | **Huisstijl** | Mosgroen en paars als standaard (past bij de naam), kleur en logo per tenant |
 
 ## 13. De stappen naar 1.0
@@ -458,7 +465,7 @@ Laat de keuze door een jurist bevestigen voor de eerste release. Verder:
 | **R12 Licenties en kosten** | Alles uit hoofdstuk 10, Licenties en kosten | Idem; de besparing staat als KPI met haar verloop |
 | **R13 Toestellen, Teams en SharePoint** | Alles uit hoofdstuk 10, Toestellen, Teams en SharePoint (de nodige rechten komen bij in de wizard, enkel lezen) | Idem |
 | **R14 Rapporteren en werken als team** | Alles uit hoofdstuk 10, Rapporteren en werken als team | Idem; een rapport per kwartaal komt uit de momentopnamen, ook voor een periode in het verleden |
-| **R15 Talen** | De teksten van de app in bronbestanden; Nederlands, Engels en Frans; datums en getallen per taal | Elk scherm in drie talen; een test vindt geen vaste tekst meer in de schermen |
+| **R15 Talen** | Woordenboeken voor de interface (een per taal, met een termenlijst); NL, EN, PT-BR, FR en DE; standaard de taal van het systeem, zelf in te stellen bij Instellingen; datums en getallen per taal; terugval op Engels | Elk scherm in vijf talen; de app volgt de taal van Windows en de keuze bij Instellingen gaat voor; een test vindt geen vaste tekst meer in de schermen en meldt ontbrekende vertalingen |
 | **1.0 Desktop** | Handleiding per rol, installatiegids, overzettingsgids, privacy-informatie (wat de app bewaart en waar), een model voor de DPIA | Een organisatie die Moss365 niet kent, installeert en gebruikt het met enkel de documentatie |
 
 Volgorde: R0 en R1 eerst. R2 en R3 horen samen (een databank per tenant). R4 bouwt daarop, en R11 en R14 bouwen op R4.
