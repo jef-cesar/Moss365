@@ -1,0 +1,1 @@
+# Exceptions for the privacy check, one per line: "path:substring of the line" or a plain substring.

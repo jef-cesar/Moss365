@@ -1,0 +1,18 @@
+name: Feature request
+description: An idea for Moss365
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like Moss365 to do?
+  - type: textarea
+    id: who
+    attributes:
+      label: Who would use it (role, kind of organisation)?

@@ -1,0 +1,30 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Never include real names, e-mail addresses, tenant IDs or other personal or organisation data. Use made-up examples (contoso.com)."
+  - type: input
+    id: version
+    attributes:
+      label: Moss365 version
+      placeholder: "0.10.0"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: textarea
+    id: log
+    attributes:
+      label: Technical log (optional)
+      description: The technical log contains no names or secrets, but check it before pasting.
+      render: text
