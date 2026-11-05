@@ -1,0 +1,72 @@
+@* Voortgang van de achtergrondtaak: balk, stappen met hun status, en het tekstlog *@
+@implements IDisposable
+@inject BeheerState State
+
+@if (State.Taak is { } taak)
+{
+    <section class="kb-kaart kb-taak @(taak.Bezig ? "kb-taak-bezig" : taak.MetFouten ? "kb-taak-fout" : taak.Geannuleerd ? null : "kb-taak-klaar")" aria-live="polite">
+        <div class="kb-taak-kop">
+            <h2>@taak.Naam</h2>
+            <span class="kb-zacht">
+                gestart @taak.Start.ToString("HH:mm:ss")
+                @if (taak.Einde is { } einde) { <text> &middot; @(taak.Geannuleerd ? "geannuleerd" : taak.MetFouten ? "klaar met fouten" : "klaar") om @einde.ToString("HH:mm:ss")</text> }
+            </span>
+            @if (taak.Bezig)
+            {
+                <button class="kb-knop kb-klein" @onclick="State.AnnuleerTaak">Annuleren</button>
+            }
+        </div>
+        <div class="kb-balk" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@((int)(taak.Voortgang * 100))">
+            <div class="kb-balk-vulling" style="width: @((int)(taak.Voortgang * 100))%"></div>
+        </div>
+        <ol class="kb-stappen">
+            @foreach (var s in taak.Stappen)
+            {
+                <li class="kb-stap kb-stap-@s.Status.ToString().ToLowerInvariant()">
+                    <span class="kb-stap-teken" aria-hidden="true">@Teken(s.Status)</span>
+                    <span class="kb-stap-naam">@s.Naam</span>
+                    <span class="kb-zacht">@StatusTekst(s)</span>
+                    @if (s.Melding is not null) { <span class="kb-stap-melding">@s.Melding</span> }
+                </li>
+            }
+        </ol>
+        <details open="@ToonLog">
+            <summary>Tekstlog (@taak.Log.Count regels)</summary>
+            <ul class="kb-log">
+                @foreach (var regel in taak.Log.TakeLast(300))
+                {
+                    <li class="@(regel.Contains("MISLUKT") ? "kb-log-fout" : null)">@regel</li>
+                }
+            </ul>
+        </details>
+    </section>
+}
+
+@code {
+    /// <summary>Het tekstlog standaard open (scherm Verbindingen) of dicht.</summary>
+    [Parameter] public bool ToonLog { get; set; } = true;
+
+    protected override void OnInitialized() => State.Gewijzigd += Ververs;
+
+    private void Ververs() => _ = InvokeAsync(StateHasChanged);
+
+    private static string Teken(StapStatus s) => s switch
+    {
+        StapStatus.Bezig => "⟳",
+        StapStatus.Klaar => "✓",
+        StapStatus.Fout => "✗",
+        StapStatus.Geannuleerd => "–",
+        _ => "○",
+    };
+
+    private static string StatusTekst(TaakStap s) => s.Status switch
+    {
+        StapStatus.Wacht => "wacht",
+        StapStatus.Bezig => $"bezig ({s.Duur:mm\\:ss})",
+        StapStatus.Klaar => $"klaar ({s.Duur:mm\\:ss})",
+        StapStatus.Fout => "mislukt",
+        _ => "geannuleerd",
+    };
+
+    public void Dispose() => State.Gewijzigd -= Ververs;
+}

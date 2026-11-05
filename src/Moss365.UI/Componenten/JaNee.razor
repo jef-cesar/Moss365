@@ -1,0 +1,18 @@
+@* Keuze voor een ja/nee-waarde die ook "niet wijzigen" (null) kan zijn *@
+<select class="kb-invoer" @onchange="Wijzig">
+    <option value="" selected="@(Waarde is null)">(niet wijzigen)</option>
+    <option value="true" selected="@(Waarde == true)">ja</option>
+    <option value="false" selected="@(Waarde == false)">nee</option>
+</select>
+
+@code {
+    [Parameter] public bool? Waarde { get; set; }
+    [Parameter] public EventCallback<bool?> WaardeChanged { get; set; }
+
+    private Task Wijzig(ChangeEventArgs e) => WaardeChanged.InvokeAsync(e.Value?.ToString() switch
+    {
+        "true" => true,
+        "false" => false,
+        _ => null,
+    });
+}

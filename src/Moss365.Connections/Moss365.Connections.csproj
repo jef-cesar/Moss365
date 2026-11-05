@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Moss365.Connections</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.90.0" />
+    <PackageReference Include="System.DirectoryServices" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Moss365.Core\Moss365.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Exchange\Exchange.ps1" LogicalName="Exchange.ps1" />
+    <EmbeddedResource Include="Controle\Controle.ps1" LogicalName="Controle.ps1" />
+    <EmbeddedResource Include="Scripts\Opstart.ps1" LogicalName="Opstart.ps1" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Moss365.Tests" />
+  </ItemGroup>
+</Project>

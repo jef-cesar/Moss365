@@ -1,0 +1,226 @@
+@page "/statistieken"
+@using Moss365.Core.Analyse
+@inherits VerversendePagina
+
+<h1>Statistieken</h1>
+
+<p class="kb-zacht">
+    Indicatoren uit de geladen gegevens (@State.HerkomstVan(new ObjectRef(ObjectSoort.Gebruiker, "", ""))). Klik op een tegel, een staaf of
+    een deel van een grafiek voor de lijst met precies de rijen erachter.
+</p>
+
+<section class="kb-kaart">
+    <h2>Accounts</h2>
+    <div class="kb-tegels">
+        <Tegel Kpi="Kpis.Actief" />
+        <Tegel Kpi="Kpis.Uitgeschakeld" />
+        <Tegel Kpi="Kpis.Gasten" />
+        <Tegel Kpi="Kpis.AdEnEntra" />
+        <Tegel Kpi="Kpis.AlleenAd" />
+        <Tegel Kpi="Kpis.AlleenEntra" />
+        <Tegel Kpi="Kpis.PostvakAccounts" />
+        <Tegel Kpi="Kpis.KunnenAanmelden" />
+    </div>
+    <p class="kb-zacht">
+        Gedeelde postvakken, rooms en planningspostvakken hebben ook een account, maar niemand meldt zich ermee aan. Ze tellen
+        niet mee bij de medewerkers, de aanmeldingen en MFA.
+    </p>
+</section>
+
+<section class="kb-kaart">
+    <h2>Aandachtspunten</h2>
+    <p class="kb-zacht">Signalen om na te kijken, geen conclusies. Actieve accounts.</p>
+    <div class="kb-tegels">
+        <Tegel Kpi="Kpis.Inactief90" />
+        <Tegel Kpi="Kpis.Inactief180" />
+        <Tegel Kpi="Kpis.NooitAangemeld" />
+        <Tegel Kpi="Kpis.WachtwoordVerlooptNooit" />
+        <Tegel Kpi="Kpis.Bevoorrecht" />
+        <Tegel Aantal="s.VerschillenAdEntra.Sum(v => v.Aantal)" Label="verschillen AD en Entra" Link="vergelijk" />
+    </div>
+</section>
+
+<section class="kb-kaart">
+    <div class="kb-titelbalk">
+        <h2>Medewerkers in beeld</h2>
+        <label class="kb-schuif">
+            Afdeling
+            <select class="kb-invoer" @bind="f.Afdeling" aria-label="Filter op afdeling">
+                <option value="">Alle afdelingen</option>
+                @foreach (var a in Afdelingen) { <option value="@a">@a</option> }
+            </select>
+        </label>
+    </div>
+    <p class="kb-zacht">
+        Actieve medewerkers@(Afdeling is null ? "" : $" van {Afdeling}"). De filter geldt voor de grafieken van deze kaart; de tegels hierboven tellen altijd alles.
+    </p>
+    <div class="kb-kolommen">
+        <div>
+            <h3>Laatste aanmelding</h3>
+            <Verdeling Delen="BiStatistiek.Aanmeldrecentheid(State.KpiBron, Afdeling)" />
+        </div>
+        <div>
+            <h3>MFA</h3>
+            <Verdeling Delen="BiStatistiek.Mfa(State.KpiBron, Afdeling)" LeegTekst="Geen actieve medewerkers." />
+            @if (State.Data.Beveiliging is null) { <p class="kb-zacht">MFA-registraties nog niet geladen: alles staat op onbekend.</p> }
+        </div>
+    </div>
+    <div class="kb-kolommen">
+        <div>
+            <h3>Leeftijd van het wachtwoord (AD)</h3>
+            <Verdeling Delen="BiStatistiek.Wachtwoordleeftijd(State.KpiBron, Afdeling)" LeegTekst="Geen actieve AD-accounts." />
+        </div>
+        <div>
+            <h3>Per kantoor</h3>
+            <StaafLijst Staven="PerKantoor" />
+        </div>
+    </div>
+    <h3>Nieuwe accounts per maand</h3>
+    <KolomGrafiek Kolommen="BiStatistiek.AangemaaktPerMaand(State.KpiBron, Afdeling)" Titel="Nieuwe accounts per maand, de laatste 12 maanden" KolomTitel="Maand"
+                  Reeksen="@(new[] { new KolomGrafiek.Reeks("Nieuwe accounts") })" />
+</section>
+
+<section class="kb-kaart">
+    <h2>Verloop</h2>
+    <p class="kb-zacht">
+        Na elk live laden bewaart de app de stand van de dag (enkel aantallen, geen namen). Elke KPI heeft zijn eigen schaal;
+        het verschil is met ongeveer 30 dagen geleden.
+    </p>
+    <div class="kb-verlopen">
+        @foreach (var v in verloop)
+        {
+            <Verloopje Verloop="v" />
+        }
+    </div>
+</section>
+
+<section class="kb-kaart">
+    <h2>Beveiliging</h2>
+    @if (s.Beveiliging is not { } bv)
+    {
+        <p class="kb-zacht">MFA en beheerrollen zijn nog niet geladen (Verbindingen, Alles live laden). <a href="beveiliging">Naar Beveiliging</a></p>
+    }
+    else
+    {
+        <div class="kb-tegels">
+            <Tegel Kpi="Kpis.ZonderMfa" Label="@(bv.MfaBekend ? $"zonder MFA (van {bv.MetMfaGegevens})" : "zonder MFA (onbekend)")" />
+            <Tegel Kpi="Kpis.BeheerdersZonderMfa" />
+            <Tegel Kpi="Kpis.MetBeheerrol" />
+            <Tegel Kpi="Kpis.GlobaleBeheerders" />
+        </div>
+        @if (bv.Methodes.Count > 0)
+        {
+            <h3>Geregistreerde methodes</h3>
+            <StaafLijst Staven="bv.Methodes" />
+        }
+    }
+</section>
+
+<section class="kb-kaart">
+    <h2>Conditional Access</h2>
+    @if (State.Data.ConditionalAccess is not { Melding: null } ca)
+    {
+        <p class="kb-zacht">Nog niet geladen of niet leesbaar. <a href="conditional-access">Naar Conditional Access</a></p>
+    }
+    else
+    {
+        <div class="kb-tegels">
+            <Tegel Kpi="Kpis.CaAan" />
+            <Tegel Kpi="Kpis.CaRapport" />
+            <Tegel Kpi="Kpis.CaProblemen" />
+            <Tegel Kpi="Kpis.CaAandacht" />
+            <Tegel Kpi="Kpis.BuitenMfaBeleid" />
+        </div>
+    }
+</section>
+
+<div class="kb-kolommen">
+    <section class="kb-kaart">
+        <h2>Licenties</h2>
+        @if (s.Licenties.Count == 0)
+        {
+            <p class="kb-zacht">Geen licentiegegevens geladen.</p>
+        }
+        <StaafLijst Staven="s.Licenties" Waarschuwing="Statistiek.BijnaVol" WaarschuwingTekst="bijna vol" />
+    </section>
+    <section class="kb-kaart">
+        <h2>Actieve medewerkers per afdeling</h2>
+        <StaafLijst Staven="s.PerAfdeling" />
+    </section>
+</div>
+
+<div class="kb-kolommen">
+    <section class="kb-kaart">
+        <h2>Gedeelde postvakken (@s.GedeeldePostvakken)</h2>
+        <StaafLijst Staven="s.Rechtenmodel" />
+        <div class="kb-tegels">
+            <Tegel Kpi="Kpis.MetRechtstreekseRechten" />
+            <Tegel Kpi="Kpis.ZonderToegangsgroep" />
+        </div>
+    </section>
+    <section class="kb-kaart">
+        <h2>Groepen (@s.Groepen)</h2>
+        <StaafLijst Staven="s.GroepenPerSoort" />
+        <div class="kb-tegels">
+            <Tegel Kpi="Kpis.DynamischeGroepen" />
+            <Tegel Kpi="Kpis.LegeGroepen" />
+        </div>
+    </section>
+</div>
+
+<div class="kb-kolommen">
+    <section class="kb-kaart">
+        <h2>Rooms</h2>
+        <div class="kb-tegels">
+            <Tegel Aantal="s.Rooms" Label="vergaderruimtes" Link="rooms" Aandacht="false" />
+            <Tegel Kpi="Kpis.RoomsMetAfwijking" />
+        </div>
+    </section>
+    <section class="kb-kaart">
+        <h2>Gastgebruikers per organisatie</h2>
+        <StaafLijst Staven="GastenPerDomein" />
+        @if (GastenPerDomein.Count == 0) { <p class="kb-zacht">Geen gastgebruikers geladen.</p> }
+    </section>
+</div>
+
+<section class="kb-kaart">
+    <h2>Activiteit in de app</h2>
+    <div class="kb-tegels">
+        <Tegel Kpi="Kpis.Gelukt7" />
+        <Tegel Kpi="Kpis.Mislukt7" />
+        <Tegel Aantal="State.AantalOpvolgtaken" Label="opvolgtaken open" Link="opvolging" />
+    </div>
+    <h3>Wijzigingen per week</h3>
+    <KolomGrafiek Kolommen="perWeek" Titel="Uitgevoerde wijzigingen per week, de laatste 12 weken" KolomTitel="Week" LeegTekst="Nog geen wijzigingen uitgevoerd in de laatste 12 weken."
+                  Reeksen="@(new[] { new KolomGrafiek.Reeks("Gelukt", "goed"), new KolomGrafiek.Reeks("Mislukt", "kritiek") })" />
+</section>
+
+@code {
+    private Statistiek s = Statistiek.Bereken(new InventarisData(), new Moss365.Core.Configuratie.OrganisatieConfig(), DateTime.Now);
+
+    /// <summary>De afdelingsfilter boven de grafieken, bewaard zolang de app open is.</summary>
+    private sealed class Filters { public string Afdeling { get; set; } = string.Empty; }
+    private Filters? _f;
+    private Filters f => _f ??= State.Paginastatus.Van<Filters>("statistieken");
+    private string? Afdeling => f.Afdeling.Length == 0 ? null : f.Afdeling;
+
+    private IReadOnlyList<KpiVerloop> verloop = Array.Empty<KpiVerloop>();
+    private IReadOnlyList<GrafiekKolom> perWeek = Array.Empty<GrafiekKolom>();
+
+    protected override void OnParametersSet()
+    {
+        s = Statistiek.Bereken(State.Data, State.Config, DateTime.Now);
+        verloop = State.KpiVerloop();
+        perWeek = BiStatistiek.LogboekPerWeek(State.Logboek.Recent(5000), DateTime.Now);
+    }
+
+    private IEnumerable<string> Afdelingen => State.KpiBron.Medewerkers
+        .Select(p => State.Config.AfdelingVoor(p.Dienst)?.Naam ?? Statistiek.GeenAfdeling)
+        .Distinct().OrderBy(a => a, StringComparer.CurrentCultureIgnoreCase);
+
+    private IReadOnlyList<Staaf> PerKantoor => BiStatistiek.PerKantoor(State.KpiBron, Afdeling)
+        .Select(d => new Staaf(d.Naam, d.Aantal, Link: d.Kpi?.Link)).ToList();
+
+    private IReadOnlyList<Staaf> GastenPerDomein => BiStatistiek.GastenPerDomein(State.KpiBron)
+        .Select(d => new Staaf(d.Naam, d.Aantal, Link: d.Kpi?.Link)).ToList();
+}

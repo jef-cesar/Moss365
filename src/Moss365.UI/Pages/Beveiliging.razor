@@ -1,0 +1,173 @@
+@page "/beveiliging"
+@inherits VerversendePagina
+
+<h1>Beveiliging</h1>
+
+<p class="kb-zacht">
+    MFA-registraties en beheerrollen uit Entra (@(State.Data.Beveiliging is null ? "niet geladen" : State.HerkomstVan(new ObjectRef(ObjectSoort.Gebruiker, "", "")))),
+    en bevoorrechte AD-groepen. Mislukte aanmeldingen lees je live. Signalen om na te kijken, geen conclusies.
+</p>
+
+@if (State.Data.Beveiliging is not { } b)
+{
+    <div class="kb-melding">
+        Nog geen beveiligingsgegevens. Kies op <a href="verbindingen">Verbindingen</a> <strong>Alles live laden</strong> of
+        <strong>Live laden (AD en Entra)</strong>; de stap "Beveiliging lezen" haalt MFA en beheerrollen op. Daarvoor heeft je
+        account de rol Reports Reader, Security Reader of Global Reader nodig, en de tenant Entra ID P1 (zit in Business Premium).
+    </div>
+}
+else
+{
+    @foreach (var m in new[] { b.MfaMelding, b.RollenMelding }.Where(m => m is not null))
+    {
+        <div class="kb-melding kb-fout">@m</div>
+    }
+
+    <div class="kb-tegels">
+        <Tegel Kpi="Kpis.ZonderMfa" />
+        <Tegel Kpi="Kpis.BeheerdersZonderMfa" />
+        <Tegel Kpi="Kpis.MetBeheerrol" />
+        <Tegel Kpi="Kpis.GlobaleBeheerders" />
+        <Tegel Kpi="Kpis.BevoorrechtAlle" />
+    </div>
+
+    <section class="kb-kaart">
+        <h2>Actieve medewerkers zonder MFA (@ZonderMfa.Count)</h2>
+        @if (!b.MfaBekend)
+        {
+            <p class="kb-zacht">Onbekend: de MFA-registraties konden niet gelezen worden.</p>
+        }
+        else
+        {
+            <KbTabel Id="zonder-mfa" ExportNaam="Zonder-MFA" Items="ZonderMfa" Kolommen="mfaKolommen" StandaardSortering="naam" />
+        }
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Entra-beheerrollen (@b.Rollen.Count)</h2>
+        <p class="kb-zacht">Actieve roltoewijzingen. Wie via PIM enkel in aanmerking komt (nog niet geactiveerd), staat hier niet.</p>
+        <KbTabel Id="beheerrollen" ExportNaam="Beheerrollen" Items="b.Rollen" Kolommen="rolKolommen" StandaardSortering="rol" />
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Bevoorrechte AD-groepen (@AdBevoorrecht.Count)</h2>
+        <ul class="kb-lijst-plat">
+            @foreach (var (p, groepen) in AdBevoorrecht)
+            {
+                <li><ObjectLink Object="State.Data.Index.Ref(p)" /> <span class="kb-zacht">@string.Join(", ", groepen)</span> @if (!p.Ingeschakeld) { <span class="kb-label">uitgeschakeld</span> }</li>
+            }
+        </ul>
+    </section>
+}
+
+<section class="kb-kaart">
+    <h2>Mislukte aanmeldingen</h2>
+    <div class="kb-filters">
+        <select class="kb-invoer" @bind="dagen" aria-label="Periode">
+            <option value="1">laatste 24 uur</option>
+            <option value="7">laatste 7 dagen</option>
+            <option value="30">laatste 30 dagen</option>
+        </select>
+        <button class="kb-knop" disabled="@bezig" @onclick="LaadAanmeldingen">Live laden</button>
+        @if (bezig) { <span class="kb-zacht">bezig...</span> }
+    </div>
+    @if (fout is not null)
+    {
+        <div class="kb-melding kb-fout">@fout</div>
+    }
+    else if (mislukt is not null)
+    {
+        <p class="kb-zacht">@mislukt.Count mislukte aanmeldingen (de nieuwste 500), samengevat per account.</p>
+        <table class="kb-tabel">
+            <thead><tr><th>Account</th><th class="kb-getal">Aantal</th><th>Laatste</th><th>Reden (laatste)</th><th>Plaatsen</th></tr></thead>
+            <tbody>
+                @foreach (var g in mislukt.GroupBy(a => a.Upn).OrderByDescending(g => g.Count()))
+                {
+                    var laatste = g.First();
+                    <tr>
+                        <td><ObjectLink Id="@laatste.GebruikerId" Tekst="@(laatste.Naam.Length > 0 ? laatste.Naam : laatste.Upn)" /></td>
+                        <td class="kb-getal">@g.Count()</td>
+                        <td>@laatste.Tijd.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                        <td>@laatste.Reden <span class="kb-zacht">(@laatste.Foutcode)</span></td>
+                        <td class="kb-zacht">@string.Join(", ", g.Select(a => a.Locatie).Where(l => l.Length > 0).Distinct().Take(3))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <details>
+            <summary>Alle mislukte aanmeldingen</summary>
+            <AanmeldLijst Aanmeldingen="mislukt" />
+        </details>
+    }
+</section>
+
+@code {
+    private int dagen = 7;
+    private bool bezig;
+    private string? fout;
+    private IReadOnlyList<Aanmelding>? mislukt;
+    private IReadOnlyList<Kolom<Persoon>> mfaKolommen = Array.Empty<Kolom<Persoon>>();
+    private IReadOnlyList<Kolom<RolLid>> rolKolommen = Array.Empty<Kolom<RolLid>>();
+
+    /// <summary>Dezelfde lijst als de tegel (Core/Analyse/Kpis.cs).</summary>
+    private IReadOnlyList<Persoon> ZonderMfa => Kpis.Personen(Kpis.ZonderMfa, State.KpiBron);
+
+    private List<(Persoon Persoon, List<string> Groepen)> AdBevoorrecht => State.Data.Personen
+        .Select(p => (p, State.Data.AdGroepenVan(p).Where(Spiegelgebruiker.IsBevoorrecht).Select(g => g.Name).ToList()))
+        .Where(x => x.Item2.Count > 0)
+        .OrderBy(x => x.p.Naam, StringComparer.CurrentCultureIgnoreCase)
+        .ToList();
+
+    protected override void OnInitialized()
+    {
+        State.Toegang("Beveiliging bekeken", "MFA, beheerrollen en bevoorrechte groepen");
+        mfaKolommen = new List<Kolom<Persoon>>
+        {
+            new() { Sleutel = "naam", Titel = "Naam", Cel = p => @<ObjectLink Object="State.Data.Index.Ref(p)" />, SorteerOp = p => p.Naam },
+            new() { Sleutel = "upn", Titel = "UPN", Cel = p => @<text>@p.Upn</text>, SorteerOp = p => p.Upn },
+            new() { Sleutel = "dienst", Titel = "Dienst", Cel = p => @<text>@p.Dienst</text>, SorteerOp = p => p.Dienst },
+            new() { Sleutel = "methodes", Titel = "Wel geregistreerd", Cel = p => @<text>@Methodes(p)</text>, SorteerOp = p => Methodes(p) },
+            new() { Sleutel = "aanmelding", Titel = "Laatste aanmelding", Cel = p => @<text>@Statistiek.LaatsteAanmelding(p)?.ToString("dd/MM/yyyy")</text>, SorteerOp = p => Statistiek.LaatsteAanmelding(p), Tekst = p => Statistiek.LaatsteAanmelding(p)?.ToString("yyyy-MM-dd") },
+        };
+        rolKolommen = new List<Kolom<RolLid>>
+        {
+            new() { Sleutel = "rol", Titel = "Rol", Cel = r => @<text>@r.Rol @if (BeveiligingGegevens.IsKritiekeRol(r.Rol)) { <span class="kb-label kb-rood">kritiek</span> }</text>, SorteerOp = r => r.Rol },
+            new() { Sleutel = "wie", Titel = "Wie", Cel = r => @<ObjectLink Id="@r.LidId" Tekst="@(r.LidNaam.Length > 0 ? r.LidNaam : r.LidUpn)" />, SorteerOp = r => r.LidNaam, Tekst = r => r.LidNaam },
+            new() { Sleutel = "upn", Titel = "UPN", Cel = r => @<text>@r.LidUpn</text>, SorteerOp = r => r.LidUpn },
+            new() { Sleutel = "soort", Titel = "Soort", Cel = r => @<text>@r.LidSoort</text>, SorteerOp = r => r.LidSoort },
+            new() { Sleutel = "mfa", Titel = "MFA", Cel = r => @<text>@Mfa(r.LidId)</text>, SorteerOp = r => Mfa(r.LidId) },
+        };
+    }
+
+    private string Methodes(Persoon p)
+        => State.Data.Beveiliging?.MfaVan(p.Entra?.Id) is { } m ? string.Join(", ", m.Methodes.Select(BeveiligingStatistiek.MethodeNaam)) : string.Empty;
+
+    private string Mfa(string id) => State.Data.Beveiliging?.MfaVan(id) switch
+    {
+        null => "onbekend",
+        { MfaGeregistreerd: true } => "ja",
+        _ => "NEE",
+    };
+
+    private async Task LaadAanmeldingen()
+    {
+        bezig = true;
+        fout = null;
+        try
+        {
+            mislukt = await State.LeesAanmeldingenAsync(null, dagen, alleenMislukt: true);
+            if (mislukt is null)
+            {
+                fout = "Vul eerst de Entra-gegevens in (scherm Verbindingen).";
+            }
+        }
+        catch (Exception ex)
+        {
+            fout = "Aanmeldingen lezen mislukt: " + ex.Message + " (nodig: rol Reports Reader of Security Reader, en Entra ID P1).";
+        }
+        finally
+        {
+            bezig = false;
+        }
+    }
+}

@@ -1,0 +1,173 @@
+@* Een script starten: formulier, voorbeeld (-WhatIf) bij scripts die wijzigen, live uitvoer en het resultaat *@
+@implements IDisposable
+@inject BeheerState State
+
+<section class="kb-kaart">
+    <h2>@(EenmaligeTekst is null ? "Starten" : "Eenmalig uitvoeren")</h2>
+    <ScriptFormulier Kop="Script.Kop" Waarden="waarden" WaardenChanged="WaardenGewijzigd" />
+
+    @if (fout is not null)
+    {
+        <div class="kb-melding kb-fout">@fout</div>
+    }
+
+    @if (State.ScriptBezig && !IsMijnRun)
+    {
+        <div class="kb-melding">Er draait al een ander script (@State.ScriptRun!.Run.Naam). <a href="@RunLink(State.ScriptRun.Run)">Bekijken</a></div>
+    }
+
+    <div class="kb-filters">
+        @if (IsMijnRun && State.ScriptBezig)
+        {
+            <span class="kb-zacht">bezig...</span>
+            <button class="kb-knop" @onclick="State.AnnuleerScript">Annuleren</button>
+        }
+        else if (!Script.Kop.Schrijft)
+        {
+            <button class="kb-knop kb-primair" disabled="@State.ScriptBezig" @onclick="() => Start(false)">Starten</button>
+        }
+        else
+        {
+            <button class="kb-knop @(VoorbeeldOk ? null : "kb-primair")" disabled="@State.ScriptBezig" @onclick="() => Start(true)">Voorbeeld (-WhatIf)</button>
+            @if (VoorbeeldOk)
+            {
+                @if (bevestigen)
+                {
+                    <span>Dit script wijzigt echt. Zeker?</span>
+                    <button class="kb-knop kb-gevaar" @onclick="() => Start(false)">Ja, uitvoeren</button>
+                    <button class="kb-knop" @onclick="() => bevestigen = false">Nee</button>
+                }
+                else
+                {
+                    <button class="kb-knop kb-primair" @onclick="() => bevestigen = true">Uitvoeren</button>
+                }
+            }
+            else
+            {
+                <span class="kb-zacht">Dit script wijzigt iets: bekijk eerst het voorbeeld. Daarna kan je het uitvoeren.</span>
+            }
+        }
+    </div>
+
+    @if (IsMijnRun && State.ScriptRun is { } s)
+    {
+        @if (!s.Klaar)
+        {
+            <ScriptUitvoerLijst Gebeurtenissen="s.Gebeurtenissen" Voortgang="s.Voortgang" Procent="s.Procent" Volgen="true" LeegTekst="Starten..." />
+        }
+        else
+        {
+            <div class="kb-melding @(s.Run.Resultaat is RunResultaat.Fout ? "kb-fout" : null)">
+                <strong>@s.Run.ResultaatTekst</strong> @s.Run.Melding
+                <a href="@RunLink(s.Run)">Deze run openen</a>
+            </div>
+            <ScriptResultaat @key="s.Run.Map" Run="s.Run" Gebeurtenissen="s.Gebeurtenissen" />
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ScriptBestand Script { get; set; } = null!;
+
+    /// <summary>De tekst van een script dat niet opgeslagen wordt (eenmalig).</summary>
+    [Parameter] public string? EenmaligeTekst { get; set; }
+
+    [Parameter] public Guid? Gepland { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, string>? BeginWaarden { get; set; }
+
+    /// <summary>De waarden in het formulier (bv. om in te plannen).</summary>
+    [Parameter] public EventCallback<Dictionary<string, string>> WaardenChanged { get; set; }
+
+    private Dictionary<string, string> waarden = new(StringComparer.OrdinalIgnoreCase);
+    private string? fout;
+    private bool bevestigen;
+    private string? mijnRun;
+    private string? voorbeeldVan;
+    private string? geladenVoor;
+
+    private bool IsMijnRun => mijnRun is not null && State.ScriptRun?.Run.Map == mijnRun;
+
+    private string Handtekening => (EenmaligeTekst ?? Script.Vingerafdruk) + "|" + string.Join("|", waarden.OrderBy(w => w.Key).Select(w => w.Key + "=" + w.Value));
+
+    /// <summary>Er is een geslaagd voorbeeld voor exact dit script en deze waarden.</summary>
+    private bool VoorbeeldOk => voorbeeldVan == Handtekening;
+
+    protected override void OnInitialized() => State.Gewijzigd += Ververs;
+
+    protected override void OnParametersSet()
+    {
+        var sleutel = Script.Pad + "|" + Gepland + "|" + (BeginWaarden is null ? 0 : BeginWaarden.GetHashCode());
+        if (geladenVoor == sleutel)
+        {
+            return;
+        }
+
+        geladenVoor = sleutel;
+        waarden = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var v in Script.Kop.Variabelen.Where(v => v.Standaard is not null))
+        {
+            waarden[v.Naam] = v.Standaard!;
+        }
+
+        IReadOnlyDictionary<string, string>? bron = BeginWaarden;
+        if (bron is null && Gepland is { } id && State.Gepland.Lees().FirstOrDefault(a => a.Id == id) is { } actie)
+        {
+            bron = actie.ScriptWaarden;
+        }
+
+        bron ??= EenmaligeTekst is null ? ScriptWaarden.Lees(State.ScriptMappen, Script.Sleutel) : null;
+        foreach (var (k, v) in bron ?? new Dictionary<string, string>())
+        {
+            waarden[k] = v;
+        }
+
+        _ = WaardenChanged.InvokeAsync(waarden);
+    }
+
+    private async Task WaardenGewijzigd()
+    {
+        bevestigen = false;
+        fout = null;
+        await WaardenChanged.InvokeAsync(waarden);
+    }
+
+    private void Start(bool voorbeeld)
+    {
+        fout = null;
+        bevestigen = false;
+        var (status, f) = State.StartScript(Script, waarden, voorbeeld, EenmaligeTekst, voorbeeld ? null : Gepland);
+        fout = f;
+        mijnRun = status?.Run.Map;
+        if (status is not null && voorbeeld)
+        {
+            // Pas als het voorbeeld lukt, mag uitvoeren
+            var handtekening = Handtekening;
+            _ = WachtOpVoorbeeld(status, handtekening);
+        }
+        else if (!voorbeeld)
+        {
+            voorbeeldVan = null;
+        }
+    }
+
+    private async Task WachtOpVoorbeeld(ScriptRunStatus status, string handtekening)
+    {
+        while (!status.Klaar)
+        {
+            await Task.Delay(100);
+        }
+
+        if (status.Run.Resultaat is RunResultaat.Gelukt or RunResultaat.Waarschuwingen)
+        {
+            voorbeeldVan = handtekening;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string RunLink(ScriptRun r) => $"scripts/run/{Uri.EscapeDataString(r.Sleutel)}/{Uri.EscapeDataString(Path.GetFileName(r.Map))}";
+
+    private void Ververs() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Gewijzigd -= Ververs;
+}

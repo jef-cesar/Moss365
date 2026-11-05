@@ -1,0 +1,184 @@
+@* Taken voor de gekozen rijen van een lijst (0.8): telkens één plan met voorbeeld, bevestiging en logboek. *@
+@inject BeheerState State
+
+@if (Aantal > 0)
+{
+    <section class="kb-kaart kb-bulk">
+        <h2>Met de @Aantal gekozen @(Lijst switch { "gebruikers" => "gebruikers", "groepen" => "groepen", _ => "postvakken" })</h2>
+        @switch (Lijst)
+        {
+            case "gebruikers":
+                <div class="kb-bulk-taken">
+                    @if (State.Mag(Recht.GroepLeden))
+                    {
+                        <div>
+                            <ObjectKiezer Label="Toevoegen aan groep" Soorten="GroepSoort" Gekozen="g => Groep(g, true)" />
+                            <ObjectKiezer Label="Verwijderen uit groep" Soorten="GroepSoort" Gekozen="g => Groep(g, false)" />
+                        </div>
+                    }
+                    @if (State.Mag(Recht.Beheren))
+                    {
+                        <div class="kb-rij">
+                            <label>Kenmerk
+                                <select class="kb-invoer" @bind="kenmerk">
+                                    <option value="Kantoor">Kantoor</option>
+                                    <option value="Dienst">Dienst</option>
+                                    <option value="Stad">Stad</option>
+                                    <option value="Functie">Functie</option>
+                                </select>
+                            </label>
+                            <label>Wordt
+                                <input class="kb-invoer" list="kb-bulk-waarden" @bind="waarde" />
+                                <datalist id="kb-bulk-waarden">
+                                    @foreach (var w in Waarden())
+                                    {
+                                        <option value="@w"></option>
+                                    }
+                                </datalist>
+                            </label>
+                            <button class="kb-knop" disabled="@(waarde.Trim().Length == 0)" @onclick="Kenmerk">Plan maken</button>
+                        </div>
+                    }
+                    @if (State.Mag(Recht.Acties))
+                    {
+                        <details class="kb-later">
+                            <summary>Uitstroom inplannen voor de @Aantal gekozen gebruikers</summary>
+                            <p class="kb-zacht">
+                                Eén geplande uitstroom per persoon, met de standaardopties. Op het moment zelf staat elk plan klaar bij
+                                <a href="gepland">Gepland</a>; er gebeurt niets zonder bevestiging. Gastgebruikers worden overgeslagen.
+                            </p>
+                            <Inplannen Gekozen="PlanUitstroomIn" />
+                            @if (ingepland is not null) { <div class="kb-melding kb-goed">@ingepland</div> }
+                        </details>
+                    }
+                </div>
+                break;
+            case "groepen":
+                <div class="kb-bulk-taken">
+                    @if (State.Mag(Recht.GroepLeden))
+                    {
+                        <ObjectKiezer Label="Gebruiker toevoegen aan alle gekozen groepen" Soorten="PersoonSoort" Gekozen="InGroepen" />
+                    }
+                    @if (State.Mag(Recht.Beheren))
+                    {
+                        <ObjectKiezer Label="Beheerder (of eigenaar) maken van alle gekozen groepen" Soorten="PersoonSoort" Gekozen="Beheerder" />
+                    }
+                </div>
+                break;
+            default:
+                <div class="kb-bulk-taken">
+                    @if (State.Mag(Recht.GroepLeden))
+                    {
+                        <ObjectKiezer Label="Toegang geven aan (via de toegangsgroep)" Soorten="PersoonSoort" Gekozen="Toegang" />
+                    }
+                    @if (State.Mag(Recht.Beheren))
+                    {
+                        <div class="kb-filters">
+                            <button class="kb-knop" @onclick="() => Verberg(true)">Verbergen in de adreslijst</button>
+                            <button class="kb-knop" @onclick="() => Verberg(false)">Tonen in de adreslijst</button>
+                            <button class="kb-knop" @onclick="Blokkeer">Aanmelden met het account blokkeren</button>
+                        </div>
+                    }
+                </div>
+                break;
+        }
+        @foreach (var f in fouten.Take(10))
+        {
+            <div class="kb-melding">@f</div>
+        }
+        @if (fouten.Count > 10) { <div class="kb-zacht">en nog @(fouten.Count - 10) meldingen.</div> }
+    </section>
+
+    @if (plan is not null)
+    {
+        <PlanWeergave Plan="plan" Context="@($"{titel} ({Aantal} {Lijst})")" Titel="@titel" />
+    }
+}
+
+@code {
+    /// <summary>Het Id van de lijst: "gebruikers", "groepen" of "postvakken".</summary>
+    [Parameter, EditorRequired] public string Lijst { get; set; } = string.Empty;
+
+    /// <summary>Hoeveel rijen gekozen zijn (zodat de balk mee verandert met de selectie).</summary>
+    [Parameter] public int Aantal { get; set; }
+
+    private static readonly ObjectSoort[] GroepSoort = { ObjectSoort.Groep };
+    private static readonly ObjectSoort[] PersoonSoort = { ObjectSoort.Gebruiker };
+
+    private string kenmerk = "Kantoor";
+    private string waarde = string.Empty;
+    private string titel = string.Empty;
+    private IReadOnlyList<Wijziging>? plan;
+    private IReadOnlyList<string> fouten = Array.Empty<string>();
+
+    private IReadOnlyCollection<string> Gekozen => State.TabelSessie(Lijst).Gekozen;
+
+    private List<Persoon> Personen() => Gekozen.Select(State.Data.ZoekPersoon).Where(p => p is not null).Cast<Persoon>().ToList();
+    private List<Groep> Groepen() => Gekozen.Select(State.Data.Index.Groep).Where(g => g is not null).Cast<Groep>().ToList();
+    private List<Postvak> Postvakken() => Gekozen.Select(State.Data.Index.Postvak).Where(p => p is not null).Cast<Postvak>().ToList();
+
+    private IEnumerable<string> Waarden() => kenmerk switch
+    {
+        "Kantoor" => State.Config.Kantoren,
+        "Dienst" => State.Config.Diensten.Select(d => d.Department),
+        _ => Array.Empty<string>(),
+    };
+
+    private void Toon(PlanUitkomst u, string t)
+    {
+        titel = t;
+        fouten = u.Fouten;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+    }
+
+    private void Groep(ObjectRef r, bool toevoegen)
+    {
+        if (State.Data.Index.Groep(r.Sleutel) is { } g)
+        {
+            Toon(BulkPlannen.GebruikersInGroep(State.Data, Personen(), g, toevoegen), toevoegen ? $"Toevoegen aan {g.Naam}" : $"Verwijderen uit {g.Naam}");
+        }
+    }
+
+    private void Verberg(bool verbergen) => Toon(BulkPlannen.Verbergen(Postvakken(), verbergen), verbergen ? "Verbergen in de adreslijst" : "Tonen in de adreslijst");
+
+    private void Blokkeer() => Toon(BulkPlannen.AanmeldenBlokkeren(State.Data, Postvakken()), "Aanmelden blokkeren");
+
+    private void Kenmerk() => Toon(BulkPlannen.Kenmerk(State.Data, State.Config, Personen(), kenmerk, waarde.Trim()), $"{kenmerk} wordt {waarde.Trim()}");
+
+    private void InGroepen(ObjectRef r)
+    {
+        if (State.Data.ZoekPersoon(r.Sleutel) is { } p)
+        {
+            Toon(BulkPlannen.GebruikerInGroepen(State.Data, Groepen(), p), $"{p.Naam} toevoegen aan de groepen");
+        }
+    }
+
+    private string? ingepland;
+
+    private void PlanUitstroomIn(DateTimeOffset wanneer)
+    {
+        var acties = BulkPlannen.UitstroomInplannen(Personen(), wanneer, State.Gebruiker);
+        foreach (var a in acties)
+        {
+            State.Inplannen(a);
+        }
+
+        ingepland = $"{acties.Count} uitstroom{(acties.Count == 1 ? "" : "en")} ingepland op {wanneer:dd/MM/yyyy HH:mm}.";
+    }
+
+    private void Beheerder(ObjectRef r)
+    {
+        if (State.Data.ZoekPersoon(r.Sleutel) is { } p)
+        {
+            Toon(BulkPlannen.BeheerderVoorGroepen(State.Data, Groepen(), p), $"{p.Naam} beheerder van de groepen");
+        }
+    }
+
+    private void Toegang(ObjectRef r)
+    {
+        if (State.Data.ZoekPersoon(r.Sleutel) is { } p)
+        {
+            Toon(BulkPlannen.ToegangTotPostvakken(State.Data, Postvakken(), p), $"Toegang voor {p.Naam}");
+        }
+    }
+}

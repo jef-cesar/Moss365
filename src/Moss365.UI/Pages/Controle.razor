@@ -1,0 +1,165 @@
+@page "/controle"
+@inject BeheerState State
+
+<h1>Controle van deze pc</h1>
+
+<p class="kb-zacht">
+    Kijkt na of alles aanwezig is wat de app en de scripts nodig hebben: PowerShell, de modules (in Windows PowerShell en
+    PowerShell 7 apart, want elk heeft zijn eigen modules), de verbinding met de domeincontroller en met Microsoft 365.
+    Ontbreekt een module, dan kan je ze hier installeren voor jouw account (geen beheerdersrechten nodig).
+</p>
+
+<section class="kb-kaart" id="over">
+    <h2>Over Moss365</h2>
+    <p>Versie <strong>@BeheerState.AppVersie</strong>.
+        @if (State.UpdateBeschikbaar)
+        {
+            <span class="kb-label kb-label-let">versie @State.Update!.NieuwsteVersie beschikbaar</span>
+        }
+        else if (State.Update is { NieuwsteVersie: not null })
+        {
+            <span class="kb-zacht">Dit is de nieuwste versie.</span>
+        }
+        else if (State.Update?.Melding is { } melding)
+        {
+            <span class="kb-zacht">@melding</span>
+        }
+    </p>
+    <p class="kb-zacht">
+        Elke versie staat als release op GitHub (zip met Moss365.exe en de scripts). Pak een nieuwe versie uit over de oude
+        map: je instellingen, logboek en inventarissen staan apart en blijven bewaard.
+    </p>
+    <div class="kb-filters">
+        <KopieerVeld Waarde="@(State.Update?.Link ?? State.ReleasesLink)" Label="Link naar de releases" />
+        <button class="kb-knop" disabled="@zoekt" @onclick="ZoekUpdate">Nu zoeken</button>
+    </div>
+    <label><input type="checkbox" checked="@State.Instellingen.UpdatesZoeken" @onchange="ZetUpdatesZoeken" /> Bij het starten zoeken naar een nieuwe versie</label>
+    <p>
+        Organisatie: <code>@(State.ConfigBron ?? "niet gevonden")</code>
+        (@State.Config.Populaties.Count soorten, @State.Config.Diensten.Count diensten, @State.Config.Kantoren.Count kantoren)
+        @if (State.ConfigWaarschuwing is { } w) { <span class="kb-label kb-rood">@w</span> }
+    </p>
+</section>
+
+@if (State.Controle is null)
+{
+    <div class="kb-melding">Deze controle werkt enkel in de Windows-app.</div>
+}
+else
+{
+    <div class="kb-filters">
+        <button class="kb-knop kb-primair" disabled="@bezig" @onclick="Controleer">@(regels is null ? "Controleren" : "Opnieuw controleren")</button>
+        @if (bezig && voortgang is not null) { <span class="kb-zacht">@voortgang</span> }
+    </div>
+
+    @if (regels is not null)
+    {
+        <div class="kb-tegels">
+            @foreach (var (status, label) in new[] { (ControleStatus.Goed, "in orde"), (ControleStatus.Waarschuwing, "aandacht"), (ControleStatus.Fout, "probleem") })
+            {
+                <div class="kb-tegel kb-controle-@status.ToString().ToLowerInvariant()"><div class="kb-tegel-getal">@regels.Count(r => r.Status == status)</div><div>@label</div></div>
+            }
+        </div>
+
+        @foreach (var groep in regels.GroupBy(r => r.Groep))
+        {
+            <section class="kb-kaart">
+                <h2>@groep.Key</h2>
+                <table class="kb-tabel">
+                    <thead><tr><th></th><th>Onderdeel</th><th>Gevonden</th><th>Uitleg</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var r in groep)
+                        {
+                            <tr class="kb-controle-@r.Status.ToString().ToLowerInvariant()">
+                                <td aria-label="@r.Status">@(r.Status switch { ControleStatus.Goed => "✓", ControleStatus.Waarschuwing => "!", _ => "✗" })</td>
+                                <td>@r.Onderdeel</td>
+                                <td>@r.Waarde</td>
+                                <td>
+                                    @r.Uitleg
+                                    @if (r.Status != ControleStatus.Goed && r.Oplossing is not null) { <div><code>@r.Oplossing</code></div> }
+                                    @if (meldingen.TryGetValue(Sleutel(r), out var m)) { <div class="@(m == "Gelukt" ? "kb-ok" : "kb-waarschuwing")">@m</div> }
+                                </td>
+                                <td>
+                                    @if (r.Status != ControleStatus.Goed && r.Module is not null && r.PowerShell is not null)
+                                    {
+                                        @if (bevestigen == Sleutel(r))
+                                        {
+                                            <button class="kb-knop kb-klein kb-gevaar" disabled="@bezig" @onclick="() => Installeer(r)">Ja, installeren</button>
+                                            <button class="kb-knop kb-klein" @onclick="() => bevestigen = null">Annuleren</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="kb-knop kb-klein" disabled="@bezig" @onclick="() => bevestigen = Sleutel(r)"
+                                                    title="Installeert @r.Module voor jouw account uit de PowerShell Gallery">Installeren</button>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+        }
+    }
+}
+
+@code {
+    private bool zoekt;
+
+    private async Task ZoekUpdate()
+    {
+        zoekt = true;
+        await State.ZoekUpdateAsync();
+        zoekt = false;
+    }
+
+    private void ZetUpdatesZoeken(ChangeEventArgs e)
+    {
+        State.Instellingen.UpdatesZoeken = e.Value is true;
+        State.BewaarInstellingen();
+    }
+
+    private IReadOnlyList<ControleRegel>? regels;
+    private bool bezig;
+    private string? voortgang;
+    private string? bevestigen;
+    private readonly Dictionary<string, string> meldingen = new();
+
+    private static string Sleutel(ControleRegel r) => $"{r.PowerShell}|{r.Module ?? r.Onderdeel}";
+
+    private async Task Controleer()
+    {
+        bezig = true;
+        try
+        {
+            var p = new Progress<string>(t => { voortgang = t; _ = InvokeAsync(StateHasChanged); });
+            regels = await State.Controle!.ControleerAsync(State.Instellingen, p, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            regels = new[] { new ControleRegel("Controle", "Controle", ControleStatus.Fout, "mislukt", ex.Message) };
+        }
+        finally
+        {
+            bezig = false;
+            voortgang = null;
+        }
+    }
+
+    private async Task Installeer(ControleRegel r)
+    {
+        bezig = true;
+        bevestigen = null;
+        voortgang = $"{r.Module} installeren...";
+        try
+        {
+            meldingen[Sleutel(r)] = await State.Controle!.InstalleerAsync(r.PowerShell!, r.Module!, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            meldingen[Sleutel(r)] = "Mislukt: " + ex.Message;
+        }
+
+        await Controleer();
+    }
+}

@@ -1,0 +1,73 @@
+@* Toont de aanmeldlink van een lopende aanmelding bij Microsoft, om te kopiëren naar een browser naar keuze *@
+@implements IDisposable
+@inject BeheerState State
+@inject IJSRuntime JS
+
+@if (State.Aanmelding.Link is { } link)
+{
+    <div class="kb-aanmelden" role="alert">
+        <div class="kb-aanmelden-tekst">
+            <strong>Aanmelden bij Microsoft</strong>
+            <span>Kopieer de link en open hem in de browser van je keuze, op deze pc. Na het aanmelden gaat de app vanzelf verder.</span>
+        </div>
+        <div class="kb-filters">
+            <input class="kb-invoer kb-breed kb-link-veld" readonly value="@link.AbsoluteUri" @onfocus="Selecteer" aria-label="Aanmeldlink" @ref="veld" />
+            <button class="kb-knop kb-primair" @onclick="() => Kopieer(link)">@(gekopieerd ? "Gekopieerd" : "Kopiëren")</button>
+            <button class="kb-knop" @onclick="() => Open(link)" title="Opent de standaardbrowser van Windows">Standaardbrowser</button>
+            <button class="kb-knop" @onclick="State.Aanmelding.Annuleer">Annuleren</button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool gekopieerd;
+    private ElementReference veld;
+
+    protected override void OnInitialized() => State.Aanmelding.Gewijzigd += Ververs;
+
+    private void Ververs()
+    {
+        gekopieerd = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Kopieer(Uri link)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("moss365.kopieer", link.AbsoluteUri);
+            gekopieerd = true;
+        }
+        catch (Exception)
+        {
+            // Klembord niet beschikbaar: de link staat geselecteerd in het veld (Ctrl+C)
+            await Selecteer();
+        }
+    }
+
+    private async Task Selecteer()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("moss365.selecteer", veld);
+        }
+        catch (Exception)
+        {
+            // Niet erg: het veld is gewoon te selecteren
+        }
+    }
+
+    private static void Open(Uri link)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(link.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            // Geen standaardbrowser: kopiëren blijft mogelijk
+        }
+    }
+
+    public void Dispose() => State.Aanmelding.Gewijzigd -= Ververs;
+}

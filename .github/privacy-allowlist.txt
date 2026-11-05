@@ -1,1 +1,2 @@
 # Exceptions for the privacy check, one per line: "path:substring of the line" or a plain substring.
+tools/tests/Export-Inventaris.Tests.ps1:Should -Be 'a.a@a.a'

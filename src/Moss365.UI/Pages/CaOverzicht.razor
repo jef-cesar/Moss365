@@ -1,0 +1,351 @@
+@page "/conditional-access"
+@inherits VerversendePagina
+@inject NavigationManager Nav
+
+<h1>Conditional Access</h1>
+
+<p class="kb-zacht">
+    De beleiden uit Entra in gewone taal, een controle tegen de aanbevelingen van Microsoft, en "wat als": welke beleiden
+    gelden als iemand zich aanmeldt. Met het profiel Beheerder ook <strong>Beheren</strong>: aan- en uitzetten, tijdelijke
+    uitzonderingen, nieuwe beleiden uit een sjabloon (eerst alleen rapport), benoemde locaties en back-ups.
+</p>
+
+@if (State.Data.ConditionalAccess is not { } ca)
+{
+    <div class="kb-melding">
+        Nog niet geladen. Kies op <a href="verbindingen">Verbindingen</a> <strong>Alles live laden</strong> of
+        <strong>Live laden (AD en Entra)</strong>; de stap "Conditional Access lezen" haalt de beleiden op. Daarvoor heeft de
+        app-registratie het recht <code>Policy.Read.All</code> nodig (voer <code>Registreer-App.ps1</code> opnieuw uit) en je account
+        de rol Security Reader, Global Reader of Conditional Access Administrator.
+    </div>
+}
+else if (ca.Melding is not null)
+{
+    <div class="kb-melding kb-fout">@ca.Melding</div>
+}
+else
+{
+    <div class="kb-tegels">
+        <Tegel Kpi="Kpis.CaAan" />
+        <Tegel Kpi="Kpis.CaRapport" />
+        <Tegel Kpi="Kpis.CaUit" />
+        <Tegel Kpi="Kpis.CaProblemen" />
+        <Tegel Kpi="Kpis.CaAandacht" />
+        <Tegel Kpi="Kpis.BuitenMfaBeleid" />
+    </div>
+
+    <div class="kb-filters">
+        <span class="kb-segment" role="group" aria-label="Onderdeel">
+            @foreach (var (d, tekst) in Delen)
+            {
+                <button class="kb-knop @(deel == d ? "kb-primair" : null)" @onclick="() => { k.Kpi = null; deel = d; }">@tekst</button>
+            }
+        </span>
+    </div>
+
+    @switch (deel)
+    {
+        case Deel.Controle:
+            <section class="kb-kaart">
+                <h2>Controle</h2>
+                <p class="kb-zacht">
+                    Getoetst aan de aanbevelingen van Microsoft. Signalen om na te kijken, geen oordeel over jullie keuzes. Noodaccounts duid je aan
+                    bij <a href="organisatie">Organisatie</a>.
+                </p>
+                <KpiFilter Kpi="ControleKpi" Aantal="ControleRijen.Count" Gewist="() => k.Kpi = null" />
+                <KbTabel Id="ca-controle" ExportNaam="Conditional-Access-controle" Items="ControleRijen" Kolommen="controleKolommen" StandaardSortering="oordeel" />
+            </section>
+            break;
+
+        case Deel.Beleiden:
+            <section class="kb-kaart">
+                <h2>Beleiden (@ca.Beleiden.Count)</h2>
+                <div class="kb-filters">
+                    <button class="kb-knop" disabled="@effectBezig" @onclick="LaadEffect">Effect laden (aanmeldingen van 7 dagen)</button>
+                    @if (effectBezig) { <span class="kb-zacht">bezig...</span> }
+                    @if (State.CaEffectUitleg is { } effectTekst) { <span class="kb-zacht">@effectTekst</span> }
+                </div>
+                @if (effectFout is not null) { <div class="kb-melding kb-fout">@effectFout</div> }
+                <KpiFilter Kpi="BeleidKpi" Aantal="BeleidRijen(ca).Count" Gewist="() => k.Kpi = null" />
+                <KbTabel Id="ca-beleiden" ExportNaam="Conditional-Access-beleiden" Items="BeleidRijen(ca)" Kolommen="beleidKolommen" StandaardSortering="naam" />
+            </section>
+            break;
+
+        case Deel.WatAls:
+            <section class="kb-kaart">
+                <h2>Wat als</h2>
+                <p class="kb-zacht">Kies een persoon en een aanmelding. De app speelt de beleiden na met de gelezen gegevens; Entra beslist bij de echte aanmelding.</p>
+                <PersoonKiezer Label="Wie meldt zich aan" @bind-Gekozen="watAlsPersoon" />
+                <div class="kb-filters">
+                    <label>App
+                        <select class="kb-invoer" @bind="scenarioApp">
+                            <option value="@CaApp.Office365">Office 365 (mail, Teams, SharePoint)</option>
+                            <option value="@CaApp.Beheerportalen">Microsoft-beheerportalen</option>
+                            <option value="@CaApp.Andere">Een andere app</option>
+                        </select>
+                    </label>
+                    <label>Waar
+                        <select class="kb-invoer" @bind="scenarioPlek">
+                            <option value="@CaPlek.Kantoor">Op kantoor (vertrouwde locatie)</option>
+                            <option value="@CaPlek.Belgie">Elders in België (thuis)</option>
+                            <option value="@CaPlek.Buitenland">In het buitenland</option>
+                        </select>
+                    </label>
+                    <label>Platform
+                        <select class="kb-invoer" @bind="scenarioPlatform">
+                            @foreach (var p in new[] { "windows", "macOS", "iOS", "android", "linux" })
+                            {
+                                <option value="@p">@CaLezer.PlatformNaam(p)</option>
+                            }
+                        </select>
+                    </label>
+                    <label>Met
+                        <select class="kb-invoer" @bind="scenarioClient">
+                            <option value="@CaClient.Browser">de browser</option>
+                            <option value="@CaClient.Desktop">een app of desktopprogramma</option>
+                            <option value="@CaClient.Verouderd">een verouderd programma (IMAP, POP, SMTP)</option>
+                        </select>
+                    </label>
+                    <label><input type="checkbox" @bind="scenarioBeheerd" /> beheerd toestel (Intune)</label>
+                </div>
+                @if (watAlsPersoon is not null)
+                {
+                    @if (CaGebruiker.Van(watAlsPersoon, State.Data) is not { } g)
+                    {
+                        <div class="kb-melding">@watAlsPersoon.Naam heeft geen Entra-account: Conditional Access geldt niet.</div>
+                    }
+                    else
+                    {
+                        var u = CaLezer.WatAls(g, new CaScenario(scenarioApp, scenarioPlek, scenarioPlatform, scenarioClient, scenarioBeheerd), ca, CaLezer.Namen(State.Data));
+                        <div class="kb-melding @(u.Geblokkeerd ? "kb-fout" : null)"><strong>@u.Samenvatting</strong></div>
+                        <h3>Beleiden die aan staan</h3>
+                        <WatAlsTabel Regels="u.Afgedwongen.ToList()" />
+                        @if (u.AlleenRapport.Any())
+                        {
+                            <h3>Alleen rapport (dwingen niets af)</h3>
+                            <WatAlsTabel Regels="u.AlleenRapport.ToList()" />
+                        }
+                        @if (!g.GroepenVolledig)
+                        {
+                            <p class="kb-zacht">Groepen in groepen zijn niet gelezen: bij beleiden met groepen staat daarom soms "misschien".</p>
+                        }
+                    }
+                }
+            </section>
+            break;
+
+        default:
+            <section class="kb-kaart">
+                <h2>Benoemde locaties (@ca.Locaties.Count)</h2>
+                @if (ca.Locaties.Count == 0)
+                {
+                    <p class="kb-zacht">Geen benoemde locaties. Met de IP-bereiken van de gebouwen als vertrouwde locatie kan je bv. MFA-registratie beperken tot het kantoor.</p>
+                }
+                else
+                {
+                    <table class="kb-tabel">
+                        <thead><tr><th>Naam</th><th>Soort</th><th>Vertrouwd</th><th>Waarden</th><th>Gebruikt in</th></tr></thead>
+                        <tbody>
+                            @foreach (var l in ca.Locaties.OrderBy(l => l.Naam))
+                            {
+                                <tr>
+                                    <td>@l.Naam</td>
+                                    <td>@(l.IsIp ? "IP-bereiken" : "landen")</td>
+                                    <td>@(l.Vertrouwd ? "ja" : "nee")</td>
+                                    <td>@string.Join(", ", l.Waarden) @if (l.OnbekendeLanden) { <span class="kb-zacht">+ onbekende landen</span> }</td>
+                                    <td>@string.Join(", ", ca.Beleiden.Where(b => b.LocatiesIn.Contains(l.Id) || b.LocatiesUit.Contains(l.Id)).Select(b => b.Naam))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </section>
+            <section class="kb-kaart">
+                <h2>Authenticatiesterktes (@ca.Sterktes.Count)</h2>
+                <table class="kb-tabel">
+                    <thead><tr><th>Naam</th><th>Soort</th><th>Toegelaten methodes</th><th>Gebruikt in</th></tr></thead>
+                    <tbody>
+                        @foreach (var s in ca.Sterktes)
+                        {
+                            <tr>
+                                <td>@s.Naam</td>
+                                <td>@(s.Ingebouwd ? "van Microsoft" : "eigen")</td>
+                                <td class="kb-zacht">@string.Join(", ", s.Combinaties)</td>
+                                <td>@string.Join(", ", ca.Beleiden.Where(b => b.SterkteId == s.Id).Select(b => b.Naam))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+            <section class="kb-kaart">
+                <h2>Beveiligingsstandaarden</h2>
+                <p>@(ca.Beveiligingsstandaarden switch { true => "Staan aan.", false => "Staan uit (normaal als je Conditional Access gebruikt).", _ => "Onbekend." })</p>
+            </section>
+            break;
+
+        case Deel.Beheren:
+            <CaBeheren Ca="ca" />
+            break;
+    }
+}
+
+@code {
+    private enum Deel { Controle, Beleiden, WatAls, Locaties, Beheren }
+
+    /// <summary>Beheren enkel voor wie mag wijzigen (profiel Beheerder); de motor controleert het opnieuw.</summary>
+    private IEnumerable<(Deel, string)> Delen
+    {
+        get
+        {
+            yield return (Deel.Controle, "Controle");
+            yield return (Deel.Beleiden, "Beleiden");
+            yield return (Deel.WatAls, "Wat als");
+            yield return (Deel.Locaties, "Locaties en sterktes");
+            if (State.Mag(Recht.Beheren))
+            {
+                yield return (Deel.Beheren, "Beheren");
+            }
+        }
+    }
+
+    [Parameter, SupplyParameterFromQuery(Name = "persoon")] public string? PersoonVraag { get; set; }
+
+    private Deel deel = Deel.Controle;
+    private Persoon? watAlsPersoon;
+    private CaApp scenarioApp = CaApp.Office365;
+    private CaPlek scenarioPlek = CaPlek.Belgie;
+    private string scenarioPlatform = "windows";
+    private CaClient scenarioClient = CaClient.Browser;
+    private bool scenarioBeheerd;
+    private bool effectBezig;
+    private string? effectFout;
+    private IReadOnlyList<Kolom<CaBevinding>> controleKolommen = Array.Empty<Kolom<CaBevinding>>();
+    private IReadOnlyList<Kolom<CaBeleid>> beleidKolommen = Array.Empty<Kolom<CaBeleid>>();
+
+    // Eén keer per geladen gegevens berekenen (de lijst en de tegels vragen ze bij elke weergave)
+    private InventarisData? bevindingenVan;
+    private IReadOnlyList<CaBevinding> bevindingen = Array.Empty<CaBevinding>();
+
+    private IReadOnlyList<CaBevinding> Bevindingen
+    {
+        get
+        {
+            if (!ReferenceEquals(bevindingenVan, State.Data))
+            {
+                bevindingen = CaControle.Controleer(State.Data, State.Config, DateTime.Now);
+                bevindingenVan = State.Data;
+            }
+
+            return bevindingen;
+        }
+    }
+
+    private string? verwerkteVraag;
+
+    /// <summary>Vanuit een KPI-tegel: conditional-access?kpi=ca-uit (zie Core/Analyse/Kpis.cs).</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "kpi")] public string? KpiVraag { get; set; }
+    private string? verwerkteKpi;
+    private KpiKeuze? _k;
+    private KpiKeuze k => _k ??= State.Paginastatus.Van<KpiKeuze>("conditional-access");
+
+    private Kpi? BeleidKpi => Kpis.Zoek(k.Kpi) is { Lijst: KpiLijst.CaBeleiden } x ? x : null;
+    private Kpi? ControleKpi => Kpis.Zoek(k.Kpi) is { Lijst: KpiLijst.CaControle } x ? x : null;
+    private IReadOnlyList<CaBeleid> BeleidRijen(CaGegevens ca) => BeleidKpi is { } x ? Kpis.Beleiden(x, State.KpiBron) : ca.Beleiden;
+    private IReadOnlyList<CaBevinding> ControleRijen => ControleKpi is { } x ? Kpis.Bevindingen(x, State.KpiBron) : Bevindingen;
+
+    protected override void OnParametersSet()
+    {
+        if (KpiVraag != verwerkteKpi)
+        {
+            verwerkteKpi = KpiVraag;
+            if (State.KpiAankomst(KpiVraag, Nav.Uri, "conditional-access", "ca-beleiden", "ca-controle"))
+            {
+                _k = null;
+                k.Kpi = KpiVraag;
+            }
+
+            if (BeleidKpi is not null)
+            {
+                deel = Deel.Beleiden;
+            }
+            else if (ControleKpi is not null)
+            {
+                deel = Deel.Controle;
+            }
+        }
+
+        if (PersoonVraag is { Length: > 0 } sleutel && sleutel != verwerkteVraag && State.Data.ZoekPersoon(sleutel) is { } p)
+        {
+            verwerkteVraag = sleutel;
+            watAlsPersoon = p;
+            deel = Deel.WatAls;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        controleKolommen = new List<Kolom<CaBevinding>>
+        {
+            new() { Sleutel = "oordeel", Titel = "Oordeel", Cel = b => @<CaLabel Oordeel="b.Oordeel" />, SorteerOp = b => -(int)b.Oordeel, Tekst = b => b.OordeelTekst },
+            new() { Sleutel = "onderwerp", Titel = "Onderwerp", Cel = b => @<strong>@b.Onderwerp</strong>, SorteerOp = b => b.Onderwerp },
+            new() { Sleutel = "uitleg", Titel = "Wat de app ziet", Cel = b => @<text>@b.Uitleg</text>, SorteerOp = b => b.Uitleg },
+            new() { Sleutel = "advies", Titel = "Advies", Cel = b => @<span class="kb-zacht">@b.Advies</span>, SorteerOp = b => b.Advies },
+            new() { Sleutel = "betreft", Titel = "Betreft", Cel = b => Betreft(b), Tekst = b => string.Join(", ", b.Beleiden.Select(x => x.Naam).Concat(b.Personen.Select(p => p.Upn))) },
+        };
+        beleidKolommen = new List<Kolom<CaBeleid>>
+        {
+            new() { Sleutel = "naam", Titel = "Naam", Cel = b => @<a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Naam</a>, SorteerOp = b => b.Naam },
+            new() { Sleutel = "staat", Titel = "Staat", Cel = b => @<CaLabel Status="b.Status" />, SorteerOp = b => (int)b.Status, Tekst = b => CaLezer.StatusNaam(b.Status) },
+            new() { Sleutel = "wie", Titel = "Wie", Cel = b => @<text>@string.Join("; ", Uitleg(b).Wie)</text>, SorteerOp = b => string.Join("; ", Uitleg(b).Wie) },
+            new() { Sleutel = "apps", Titel = "Apps", Cel = b => @<text>@string.Join("; ", Uitleg(b).Apps)</text>, SorteerOp = b => string.Join("; ", Uitleg(b).Apps) },
+            new() { Sleutel = "voorwaarden", Titel = "Voorwaarden", Cel = b => @<text>@string.Join("; ", Uitleg(b).Voorwaarden)</text>, SorteerOp = b => string.Join("; ", Uitleg(b).Voorwaarden) },
+            new() { Sleutel = "gevolg", Titel = "Gevolg", Cel = b => @<text>@Uitleg(b).Gevolg</text>, SorteerOp = b => Uitleg(b).Gevolg },
+            new() { Sleutel = "gewijzigd", Titel = "Gewijzigd", Cel = b => @<text>@b.Gewijzigd?.LocalDateTime.ToString("dd/MM/yyyy")</text>, SorteerOp = b => b.Gewijzigd, Verborgen = true },
+            new() { Sleutel = "toegepast", Titel = "Toegepast", Getal = true, Cel = b => @<text>@Effect(b)?.Toegepast</text>, SorteerOp = b => Effect(b)?.Toegepast },
+            new() { Sleutel = "tegen", Titel = "Tegengehouden / zou tegenhouden", Getal = true, Cel = b => @<text>@(Effect(b) is { } e ? (b.Status == CaStatus.Rapport ? e.ZouTegenhouden : e.Mislukt) : null)</text>, SorteerOp = b => Effect(b) is { } e ? (b.Status == CaStatus.Rapport ? e.ZouTegenhouden : e.Mislukt) : null },
+        };
+    }
+
+    private CaUitleg Uitleg(CaBeleid b) => CaLezer.Uitleg(b, State.Data.ConditionalAccess!, CaLezer.Namen(State.Data));
+
+    private CaEffectRegel? Effect(CaBeleid b) => State.CaEffect?.FirstOrDefault(e => e.BeleidId == b.Id);
+
+    private RenderFragment Betreft(CaBevinding b) => @<text>
+        @foreach (var x in b.Beleiden)
+        {
+            <a class="kb-tag" href="@($"conditional-access/{Uri.EscapeDataString(x.Id)}")">@x.Naam</a>
+        }
+        @foreach (var p in b.Personen.Take(5))
+        {
+            <div><ObjectLink Object="State.Data.Index.Ref(p)" /></div>
+        }
+        @if (b.Personen.Count > 5)
+        {
+            <details>
+                <summary>en @(b.Personen.Count - 5) anderen</summary>
+                @foreach (var p in b.Personen.Skip(5))
+                {
+                    <div><ObjectLink Object="State.Data.Index.Ref(p)" /></div>
+                }
+            </details>
+        }
+    </text>;
+
+    private async Task LaadEffect()
+    {
+        effectBezig = true;
+        effectFout = null;
+        try
+        {
+            await State.LaadCaEffectAsync(7);
+        }
+        catch (Exception ex)
+        {
+            effectFout = "Aanmeldingen lezen mislukt: " + ex.Message + " (nodig: rol Reports Reader of Security Reader, en Entra ID P1).";
+        }
+        finally
+        {
+            effectBezig = false;
+        }
+    }
+}

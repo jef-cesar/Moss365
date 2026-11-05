@@ -1,0 +1,257 @@
+@* Toont een plan, laat kiezen en voert uit na bevestiging. Zolang het plan klaarstaat, meldt het zich zelf aan bij
+   BeheerState.Openstaand: het werkvlak krijgt een tint en een balk, het menu een bolletje. *@
+@implements IDisposable
+@inject BeheerState State
+@inject NavigationManager Nav
+
+@if (!verworpen)
+{
+<section class="kb-kaart kb-plan" id="@anker">
+    <h2>@Titel</h2>
+    @if (Plan.Count == 0)
+    {
+        <p class="kb-zacht">Er is niets te wijzigen.</p>
+    }
+    else
+    {
+        @if (resultaten is null)
+        {
+            <p class="kb-zacht">
+                Vink aan wat er moet gebeuren. Er wordt pas iets gewijzigd na <strong>Uitvoeren</strong> en een bevestiging.
+                Alles komt in het logboek.
+                @if (Plan.Any(w => w.Systeem == Systeem.Exchange && w.Geselecteerd))
+                {
+                    <br />@("Exchange gebruikt dezelfde aanmelding; verschijnt bovenaan een aanmeldlink, kopieer die naar je browser.")
+                }
+            </p>
+            @if (State.OntbrekendeVerbindingen(Plan) is { Count: > 0 } ontbreekt)
+            {
+                <div class="kb-melding kb-fout">
+                    Geen verbinding ingesteld voor: @string.Join(", ", ontbreekt.Select(SysteemNaam)). <a href="verbindingen">Verbindingen instellen</a>
+                </div>
+            }
+        }
+
+        <table class="kb-tabel">
+            <thead>
+                <tr>
+                    <th>@if (resultaten is null) { <input type="checkbox" title="Alles" checked="@Plan.All(w => w.Geselecteerd)" @onchange="AllesAanUit" /> }</th>
+                    <th>Systeem</th><th>Wijziging</th><th>Object</th><th>Nu</th><th>Wordt</th>
+                    @if (resultaten is not null) { <th>Resultaat</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in Plan)
+                {
+                    var r = resultaten?.FirstOrDefault(x => x.WijzigingId == w.Id);
+                    <tr class="@RijKlasse(w, r)">
+                        <td>
+                            @if (resultaten is null)
+                            {
+                                <input type="checkbox" aria-label="@w.Omschrijving" checked="@w.Geselecteerd" @onchange="e => Zet(w, e)" disabled="@(bezig || Geweigerd(w) is not null)" />
+                            }
+                        </td>
+                        <td>@w.SysteemTekst</td>
+                        <td>
+                            @w.Omschrijving
+                            @if (w.Waarschuwing is not null) { <div class="kb-waarschuwing">@w.Waarschuwing</div> }
+                            @if (resultaten is null && Geweigerd(w) is { } reden) { <div class="kb-waarschuwing kb-geweigerd">Niet voor jouw profiel: @reden</div> }
+                        </td>
+                        <td><ObjectLink Id="@w.Doel" Tekst="@(w.DoelNaam.Length > 0 ? w.DoelNaam : null)" /></td>
+                        <td class="kb-zacht">@w.HuidigeWaarde</td>
+                        <td>@w.NieuweWaarde</td>
+                        @if (resultaten is not null)
+                        {
+                            <td>@(r is null ? "niet uitgevoerd" : r.Status switch { ResultaatStatus.Gelukt => "gelukt", ResultaatStatus.Mislukt => "mislukt", _ => "overgeslagen" }) <span class="kb-zacht">@r?.Melding</span></td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (resultaten is null)
+        {
+            <div class="kb-filters">
+                @if (!bevestigen)
+                {
+                    <button class="kb-knop kb-primair" disabled="@(Gekozen == 0 || bezig)" @onclick="() => bevestigen = true">Uitvoeren (@Gekozen)</button>
+                }
+                else
+                {
+                    <span><strong>@Gekozen wijziging(en)</strong> in @string.Join(", ", Plan.Where(w => w.Geselecteerd).Select(w => w.SysteemTekst).Distinct()) uitvoeren?</span>
+                    @if (Gekozen > BulkPlannen.GrootPlan)
+                    {
+                        <label class="kb-groot-plan"><input type="checkbox" @bind="grootBevestigd" /> Ja, ik heb nagekeken dat deze <strong>@Gekozen</strong> wijzigingen kloppen</label>
+                    }
+                    <button class="kb-knop kb-gevaar" disabled="@(bezig || (Gekozen > BulkPlannen.GrootPlan && !grootBevestigd))" @onclick="Uitvoeren">Ja, uitvoeren</button>
+                    <button class="kb-knop" disabled="@bezig" @onclick="() => bevestigen = false">Annuleren</button>
+                }
+                @if (voortgang is not null) { <span class="kb-zacht">@voortgang</span> }
+            </div>
+            @if (fout is not null) { <div class="kb-melding kb-fout">@fout</div> }
+        }
+        else
+        {
+            <div class="kb-melding @(resultaten.All(r => r.Status == ResultaatStatus.Gelukt) ? "kb-goed" : "kb-fout")">
+                @resultaten.Count(r => r.Status == ResultaatStatus.Gelukt) gelukt,
+                @resultaten.Count(r => r.Status == ResultaatStatus.Mislukt) mislukt,
+                @resultaten.Count(r => r.Status == ResultaatStatus.Overgeslagen) overgeslagen.
+                @if (State.TaakBezig)
+                {
+                    <text>De betrokken objecten worden nu opnieuw gelezen (zie onderaan het menu); de pagina werkt zichzelf bij.</text>
+                }
+                else
+                {
+                    <text>De betrokken objecten zijn opnieuw gelezen, of staan gemarkeerd als "gewijzigd, nog niet vernieuwd".</text>
+                }
+            </div>
+        }
+    }
+</section>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Wijziging> Plan { get; set; } = Array.Empty<Wijziging>();
+    [Parameter] public string Titel { get; set; } = "Voorbeeld van de wijzigingen";
+    [Parameter, EditorRequired] public string Context { get; set; } = string.Empty;
+    [Parameter] public EventCallback<IReadOnlyList<WijzigingResultaat>> Uitgevoerd { get; set; }
+
+    private IReadOnlyList<WijzigingResultaat>? resultaten;
+    private bool bevestigen;
+    private bool bezig;
+    private string? voortgang;
+    private string? fout;
+    private IReadOnlyList<Wijziging>? vorigPlan;
+
+    private int Gekozen => Plan.Count(w => w.Geselecteerd);
+
+    private string? Geweigerd(Wijziging w) => Rechtentabel.Weigering(State.Rollen, w, State.Data);
+
+    private readonly string anker = "plan-" + Guid.NewGuid().ToString("N")[..8];
+    private bool verworpen;
+    private bool grootBevestigd;
+    private string? pad;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(vorigPlan, Plan))
+        {
+            vorigPlan = Plan;
+            resultaten = null;
+            bevestigen = false;
+            fout = null;
+            voortgang = null;
+            verworpen = false;
+            grootBevestigd = false;
+
+            // Wat het profiel niet toelaat, staat uit (de motor zou het toch weigeren)
+            foreach (var w in Plan.Where(w => Geweigerd(w) is not null))
+            {
+                w.Geselecteerd = false;
+            }
+        }
+
+        Meld();
+    }
+
+    /// <summary>Aan- of afmelden bij Openstaand: aan zolang er iets klaarstaat dat nog niet uitgevoerd of verworpen is.</summary>
+    private void Meld()
+    {
+        var nu = Openstaand.Normaliseer(Nav.ToBaseRelativePath(Nav.Uri));
+        if (pad is not null && pad != nu)
+        {
+            State.Openstaand.Weg(pad, OpenSoort.Plan, this);
+        }
+
+        pad = nu;
+        if (verworpen || resultaten is not null || Plan.Count == 0)
+        {
+            State.Openstaand.Weg(pad, OpenSoort.Plan, this);
+            return;
+        }
+
+        State.Openstaand.Zet(new OpenItem(pad, OpenSoort.Plan, $"Plan klaar, nog niet uitgevoerd: {Gekozen} {(Gekozen == 1 ? "wijziging" : "wijzigingen")}")
+        {
+            Aantal = Gekozen,
+            Scherm = Titel,
+            Anker = "#" + anker,
+            Verwerpen = Verwerp,
+        }, this);
+    }
+
+    private Task Verwerp() => InvokeAsync(() =>
+    {
+        verworpen = true;
+        Meld();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        if (pad is not null)
+        {
+            State.Openstaand.Weg(pad, OpenSoort.Plan, this);
+        }
+    }
+
+    private static string SysteemNaam(Systeem s) => s switch
+    {
+        Systeem.ActiveDirectory => "AD",
+        Systeem.Graph => "Entra (Graph)",
+        _ => "Exchange",
+    };
+
+    private static string? RijKlasse(Wijziging w, WijzigingResultaat? r) => r?.Status switch
+    {
+        ResultaatStatus.Gelukt => "kb-gelukt",
+        ResultaatStatus.Mislukt => "kb-ontbreekt",
+        ResultaatStatus.Overgeslagen => "kb-zacht",
+        _ => w.Geselecteerd ? null : "kb-uit",
+    };
+
+    private void Zet(Wijziging w, ChangeEventArgs e)
+    {
+        w.Geselecteerd = e.Value is true || string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        bevestigen = false;
+        Meld();
+    }
+
+    private void AllesAanUit(ChangeEventArgs e)
+    {
+        var aan = e.Value is true || string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        foreach (var w in Plan)
+        {
+            w.Geselecteerd = aan && Geweigerd(w) is null;
+        }
+
+        bevestigen = false;
+        Meld();
+    }
+
+    private async Task Uitvoeren()
+    {
+        bezig = true;
+        fout = null;
+        try
+        {
+            var melder = new Progress<string>(t =>
+            {
+                voortgang = t;
+                _ = InvokeAsync(StateHasChanged);
+            });
+            resultaten = await State.VoerUitAsync(Plan, Context, melder);
+            Meld();
+            await Uitgevoerd.InvokeAsync(resultaten);
+        }
+        catch (Exception ex)
+        {
+            fout = ex.Message;
+        }
+        finally
+        {
+            bezig = false;
+            bevestigen = false;
+            voortgang = null;
+        }
+    }
+}

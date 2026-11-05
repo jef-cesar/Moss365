@@ -17,7 +17,7 @@ import sys
 
 ALLOWED_DOMAINS = {
     "contoso.com", "fabrikam.com", "example.org", "example.com", "example.net", "test.internal",
-    "contoso.onmicrosoft.com", "test.onmicrosoft.com", "test.be", "anthropic.com", "users.noreply.github.com",
+    "contoso.onmicrosoft.com", "contoso.org", "contoso.local", "test.onmicrosoft.com", "test.be", "anthropic.com", "users.noreply.github.com",
 }
 ALLOWED_NETS = [ipaddress.ip_network(n) for n in (
     "0.0.0.0/8", "10.0.0.0/8", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12", "192.168.0.0/16",
@@ -30,6 +30,11 @@ IPV4 = re.compile(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])")
 
 
 def allowed_domain(domain: str) -> bool:
+    tld = domain.rsplit(".", 1)[-1]
+    if tld != tld.lower() and tld != tld.upper():
+        return True  # code such as "@item.Status.ToString" in Razor, not an address
+    if domain.lower().startswith("odata."):
+        return True  # "@odata.bind" and friends in Graph JSON
     d = domain.lower().rstrip(".")
     return any(d == a or d.endswith("." + a) for a in ALLOWED_DOMAINS)
 

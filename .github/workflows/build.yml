@@ -1,0 +1,123 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # for the release (tag and download)
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      # Signing only happens when the secrets are configured (from 1.0, see SECURITY.md)
+      WITH_AZURE_SIGNING: ${{ secrets.AZURE_CLIENT_SECRET != '' && vars.SIGNING_ENDPOINT != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Tests (.NET)
+        run: dotnet test tests/Moss365.Tests -c Release
+
+      - name: Tests (PowerShell)
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge ([version]'5.5.0'))) {
+            for ($attempt = 1; ; $attempt++) {
+              try { Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser -ErrorAction Stop; break }
+              catch { if ($attempt -ge 3) { throw }; Write-Host "Installing Pester failed ($($_.Exception.Message)); retrying in 20 s."; Start-Sleep -Seconds 20 }
+            }
+          }
+          Import-Module Pester -MinimumVersion 5.5.0
+          $c = New-PesterConfiguration
+          $c.Run.Path = @('tools/tests', 'tests/powershell')
+          $c.Run.Exit = $true
+          $c.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $c
+
+      - name: Publish (Windows x64, self-contained)
+        run: >
+          dotnet publish src/Moss365.Desktop -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true -p:DebugType=none -o publish
+
+      - name: Add tools and the script library
+        shell: pwsh
+        run: |
+          Copy-Item tools/Export-Inventaris.ps1, tools/Registreer-App.ps1 publish/
+          Copy-Item scripts -Destination publish/scripts -Recurse
+          Get-ChildItem publish -Recurse -File | ForEach-Object { Write-Host "  $($_.FullName)" }
+
+      - name: Sign (Azure Artifact Signing)
+        if: env.WITH_AZURE_SIGNING == 'true'
+        uses: azure/artifact-signing-action@v2
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ vars.SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\publish
+          files-folder-filter: exe,ps1
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Not signed
+        if: env.WITH_AZURE_SIGNING != 'true'
+        shell: pwsh
+        run: Write-Host '::notice::Moss365.exe is not signed (signing starts at 1.0). Verify downloads with SHA256SUMS.txt.'
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: Moss365-win-x64
+          path: publish
+          retention-days: 90
+
+      - name: Release (once per version)
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Select-Xml -Path Directory.Build.props -XPath '//Version').Node.InnerText.Trim()
+          $tag = "v$version"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists; no new release."
+            exit 0
+          }
+
+          # Release notes: the CHANGELOG.md section of this version
+          $notes = Join-Path $env:RUNNER_TEMP 'notes.md'
+          $out = @(); $inSection = $false
+          foreach ($line in @(Get-Content CHANGELOG.md -Encoding UTF8)) {
+            if ($line -match '^## ') {
+              if ($inSection) { break }
+              $inSection = $line -match "^## $([regex]::Escape($version))(\s|$)"
+              continue
+            }
+            if ($inSection) { $out += $line }
+          }
+          if ($out.Count -eq 0) { $out = @("Moss365 $version") }
+
+          $zip = Join-Path $env:RUNNER_TEMP "Moss365-win-x64-$tag.zip"
+          Compress-Archive -Path publish/* -DestinationPath $zip
+          $sums = Join-Path $env:RUNNER_TEMP 'SHA256SUMS.txt'
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path $zip -Leaf)" | Set-Content $sums -Encoding ascii
+          $out += ''
+          $out += "SHA-256 of ``$(Split-Path $zip -Leaf)``: ``$hash``"
+          $out | Set-Content $notes -Encoding UTF8
+
+          gh release create $tag $zip $sums --target $env:GITHUB_SHA --title "Moss365 $version" --notes-file $notes --prerelease
+          if ($LASTEXITCODE -ne 0) { throw "Creating the release failed ($LASTEXITCODE)." }
+          exit 0

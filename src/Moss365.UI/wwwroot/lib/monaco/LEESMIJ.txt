@@ -1,0 +1,1 @@
+Monaco Editor 0.52.2 (MIT, Microsoft), uit het npm-pakket monaco-editor: enkel min/vs met de editor, de worker en de taal PowerShell.

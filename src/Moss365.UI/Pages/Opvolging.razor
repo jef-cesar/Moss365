@@ -1,0 +1,135 @@
+@page "/opvolging"
+@inject BeheerState State
+
+<h1>Opvolging</h1>
+
+<p class="kb-zacht">
+    Stappen die wachten tot een nieuwe gebruiker in Entra bestaat (licentie, cloudgroepen). Entra Connect synchroniseert
+    standaard om de 30 minuten. <strong>Afwerken</strong> controleert eerst of de gebruiker er al is en voert dan de
+    resterende stappen uit; die stonden al in het voorbeeld bij het aanmaken.
+</p>
+
+@if (klaar is not null)
+{
+    <div class="kb-melding kb-goed">@klaar</div>
+}
+
+@if (taken.Count == 0)
+{
+    <div class="kb-melding">Er staat niets open.</div>
+}
+
+@foreach (var t in taken)
+{
+    <section class="kb-kaart">
+        <h2>@t.Omschrijving</h2>
+        <p class="kb-zacht">
+            <ObjectLink Id="@t.Upn" Tekst="@t.Upn" /> &middot; aangemaakt @t.Aangemaakt.ToString("yyyy-MM-dd HH:mm")
+            @if (t.LaatstGecontroleerd is { } c) { <text> &middot; gecontroleerd @c.ToString("yyyy-MM-dd HH:mm")</text> }
+        </p>
+        @if (t.LaatsteMelding is not null)
+        {
+            <div class="kb-melding">@t.LaatsteMelding</div>
+        }
+        <table class="kb-tabel">
+            <thead><tr><th>Systeem</th><th>Wijziging</th><th>Wordt</th></tr></thead>
+            <tbody>
+                @foreach (var w in t.Wijzigingen)
+                {
+                    <tr><td>@w.SysteemTekst</td><td>@w.Omschrijving</td><td>@w.NieuweWaarde</td></tr>
+                }
+            </tbody>
+        </table>
+        <div class="kb-filters">
+            @if (bevestigen == t.Id)
+            {
+                <span><strong>@t.Wijzigingen.Count wijziging(en)</strong> uitvoeren als de gebruiker in Entra bestaat?</span>
+                <button class="kb-knop kb-gevaar" disabled="@bezig" @onclick="() => Afwerken(t.Id)">Ja, afwerken</button>
+                <button class="kb-knop" disabled="@bezig" @onclick="() => bevestigen = null">Annuleren</button>
+            }
+            else if (verwijderen == t.Id)
+            {
+                <span>Taak verwijderen zonder uit te voeren?</span>
+                <button class="kb-knop kb-gevaar" @onclick="() => Verwijder(t.Id)">Ja, verwijderen</button>
+                <button class="kb-knop" @onclick="() => verwijderen = null">Annuleren</button>
+            }
+            else
+            {
+                <button class="kb-knop kb-primair" disabled="@(bezig || !State.KanVerbinden)" @onclick="() => { bevestigen = t.Id; verwijderen = null; }">Afwerken</button>
+                <button class="kb-knop" disabled="@bezig" @onclick="() => { verwijderen = t.Id; bevestigen = null; }">Verwijderen</button>
+            }
+            @if (bezig && actief == t.Id && voortgang is not null) { <span class="kb-zacht">@voortgang</span> }
+        </div>
+    </section>
+}
+
+@if (fout is not null)
+{
+    <div class="kb-melding kb-fout">@fout</div>
+}
+
+@code {
+    private List<OpvolgTaak> taken = new();
+    private Guid? bevestigen;
+    private Guid? verwijderen;
+    private Guid? actief;
+    private bool bezig;
+    private string? voortgang;
+    private string? fout;
+    private string? klaar;
+
+    protected override void OnInitialized() => Lees();
+
+    private void Lees()
+    {
+        try
+        {
+            taken = State.Opvolging.Lees().OrderBy(t => t.Aangemaakt).ToList();
+        }
+        catch (Exception ex)
+        {
+            fout = "Opvolging lezen mislukt: " + ex.Message;
+        }
+    }
+
+    private async Task Afwerken(Guid id)
+    {
+        bezig = true;
+        actief = id;
+        fout = null;
+        klaar = null;
+        try
+        {
+            var p = new Progress<string>(t =>
+            {
+                voortgang = t;
+                _ = InvokeAsync(StateHasChanged);
+            });
+            var melding = await State.WerkOpvolgingAfAsync(id, p);
+            Lees();
+            if (taken.All(t => t.Id != id))
+            {
+                // Afgewerkte taken verdwijnen uit de lijst; toon het resultaat toch
+                klaar = melding;
+            }
+        }
+        catch (Exception ex)
+        {
+            fout = ex.Message;
+        }
+        finally
+        {
+            bezig = false;
+            bevestigen = null;
+            actief = null;
+            voortgang = null;
+        }
+    }
+
+    private void Verwijder(Guid id)
+    {
+        State.VerwijderOpvolging(id);
+        verwijderen = null;
+        Lees();
+    }
+}

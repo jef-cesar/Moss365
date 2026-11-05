@@ -1,0 +1,138 @@
+@* Wachtwoord opnieuw instellen, ontgrendelen en inschakelen voor een AD-account. Het wachtwoord leeft enkel in dit scherm. *@
+@inject BeheerState State
+
+<section class="kb-kaart">
+    <h2>Helpdesk</h2>
+    @if (Persoon.Ad is not { } ad)
+    {
+        <p class="kb-zacht">
+            Geen AD-account. Het wachtwoord van een cloudaccount stel je in via het Entra-portaal (Gebruikers &gt; Wachtwoord
+            opnieuw instellen).
+        </p>
+    }
+    else
+    {
+        <p>
+            @if (ad.LockedOut) { <span class="kb-label kb-rood">vergrendeld</span> }
+            @if (!ad.Enabled) { <span class="kb-label">uitgeschakeld</span> }
+            <span class="kb-zacht">Wachtwoord laatst ingesteld: @(string.IsNullOrEmpty(ad.PasswordLastSet) ? "onbekend" : ad.PasswordLastSet)</span>
+        </p>
+        <div class="kb-filters">
+            <button class="kb-knop" @onclick="NieuwWachtwoord">Wachtwoord opnieuw instellen</button>
+            <button class="kb-knop" @onclick="() => Toon(HelpdeskPlannen.Ontgrendelen(Persoon))">Ontgrendelen</button>
+            @if (!ad.Enabled)
+            {
+                <button class="kb-knop" @onclick="() => Toon(HelpdeskPlannen.Inschakelen(Persoon))">Inschakelen</button>
+            }
+        </div>
+
+        @if (wachtwoordFormulier)
+        {
+            <div class="kb-raster kb-helpdesk-velden">
+                <div class="kb-veld">
+                    <span>Voorgesteld wachtwoord</span>
+                    <KopieerVeld Waarde="@wachtwoord" Label="Voorgesteld wachtwoord" Geheim="true" />
+                </div>
+                <label class="kb-veld">
+                    <span>Of zelf kiezen (minstens @HelpdeskPlannen.MinimumLengte tekens)</span>
+                    <input class="kb-invoer" type="password" autocomplete="new-password" @bind="eigen" @bind:event="oninput" />
+                </label>
+            </div>
+            <label><input type="checkbox" @bind="wijzigen" /> De gebruiker moet het wijzigen bij de volgende aanmelding</label>
+            <label><input type="checkbox" @bind="ontgrendelen" /> Account ook ontgrendelen</label>
+            <div class="kb-filters">
+                <button class="kb-knop" @onclick="() => { wachtwoord = NaamRegels.Startwachtwoord(); plan = null; }">Ander wachtwoord</button>
+                <button class="kb-knop kb-primair" @onclick="MaakWachtwoordPlan">Plan maken</button>
+            </div>
+            <p class="kb-zacht">
+                Geef het wachtwoord mondeling of via een apart kanaal door, nooit in dezelfde mail als de gebruikersnaam. De app
+                bewaart het nergens; na het verlaten van deze pagina is het weg. Met Entra Connect is het binnen enkele minuten
+                ook in Microsoft 365 actief.
+            </p>
+        }
+
+        @foreach (var f in fouten)
+        {
+            <div class="kb-melding kb-fout">@f</div>
+        }
+
+        @if (plan is not null)
+        {
+            <PlanWeergave Plan="plan" Context="@($"Helpdesk {Persoon.Naam}")" Titel="Helpdesk" Uitgevoerd="NaUitvoeren" />
+        }
+
+        @if (doorgeven is not null)
+        {
+            <section class="kb-kaart kb-geheim">
+                <h3>Nieuw wachtwoord voor @Persoon.Naam</h3>
+                <KopieerVeld Waarde="@doorgeven" Label="Nieuw wachtwoord" Geheim="true" />
+            </section>
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Persoon Persoon { get; set; } = default!;
+
+    private bool wachtwoordFormulier;
+    private string wachtwoord = string.Empty;
+    private string eigen = string.Empty;
+    private bool wijzigen = true;
+    private bool ontgrendelen = true;
+    private IReadOnlyList<Wijziging>? plan;
+    private IReadOnlyList<string> fouten = Array.Empty<string>();
+    private string? doorgeven;
+    private string? vorigeSleutel;
+
+    protected override void OnParametersSet()
+    {
+        // Een andere gebruiker: niets van de vorige meenemen (zeker geen wachtwoord)
+        if (vorigeSleutel != Persoon.Sleutel)
+        {
+            vorigeSleutel = Persoon.Sleutel;
+            wachtwoordFormulier = false;
+            wachtwoord = eigen = string.Empty;
+            plan = null;
+            fouten = Array.Empty<string>();
+            doorgeven = null;
+        }
+    }
+
+    private void NieuwWachtwoord()
+    {
+        wachtwoordFormulier = true;
+        wachtwoord = NaamRegels.Startwachtwoord();
+        eigen = string.Empty;
+        plan = null;
+        doorgeven = null;
+    }
+
+    private string Gekozen => eigen.Length > 0 ? eigen : wachtwoord;
+
+    private void MaakWachtwoordPlan() => Toon(HelpdeskPlannen.WachtwoordInstellen(State.Data, Persoon, Gekozen, wijzigen, ontgrendelen));
+
+    private void Toon(PlanUitkomst u)
+    {
+        fouten = u.Fouten;
+        plan = u.Plan.Count > 0 ? u.Plan : null;
+        doorgeven = null;
+    }
+
+    private void NaUitvoeren(IReadOnlyList<WijzigingResultaat> resultaten)
+    {
+        var instellen = plan?.FirstOrDefault(w => w.Actie == Actie.AdWachtwoordInstellen);
+        if (instellen is not null && resultaten.Any(r => r.WijzigingId == instellen.Id && r.Status == ResultaatStatus.Gelukt))
+        {
+            doorgeven = instellen.Geheim;
+            wachtwoordFormulier = false;
+        }
+
+        // Het geheim niet langer in het plan laten zitten dan nodig
+        foreach (var w in plan ?? Array.Empty<Wijziging>())
+        {
+            w.Geheim = null;
+        }
+
+        wachtwoord = eigen = string.Empty;
+    }
+}

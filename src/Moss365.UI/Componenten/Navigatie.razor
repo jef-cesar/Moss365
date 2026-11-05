@@ -1,0 +1,87 @@
+@* Terug en Vooruit in de app, met een eigen geschiedenis (BeheerState.Geschiedenis). De muisknoppen Terug en Vooruit en
+   Alt+pijl links/rechts komen via moss365.js ook hier terecht. Wat je op een pagina invulde, bewaart de pagina zelf in
+   BeheerState.Paginastatus; de scrollpositie komt terug als je met Terug of Vooruit op een pagina komt. *@
+@implements IAsyncDisposable
+@inject NavigationManager Nav
+@inject BeheerState State
+@inject IJSRuntime JS
+
+<span class="kb-navigatie">
+    <button class="kb-knop kb-terug" disabled="@(!State.Geschiedenis.KanTerug)" @onclick="Terug" title="Terug naar de vorige pagina (Alt+←)">&larr; Terug</button>
+    <button class="kb-knop kb-terug" disabled="@(!State.Geschiedenis.KanVooruit)" @onclick="Vooruit" title="Vooruit naar de volgende pagina (Alt+→)">Vooruit &rarr;</button>
+</span>
+
+@code {
+    private DotNetObjectReference<Navigatie>? _ref;
+
+    protected override void OnInitialized()
+    {
+        State.Geschiedenis.Bezocht(Nav.Uri);
+        Nav.LocationChanged += Veranderd;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _ref = DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("moss365.navigatie", _ref);
+            }
+            catch (Exception)
+            {
+                // Zonder script werken de knoppen nog; enkel de muisknoppen en Alt+pijl niet
+            }
+        }
+    }
+
+    private void Veranderd(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        var terugOfVooruit = State.Geschiedenis.Bezocht(e.Location);
+        _ = InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (terugOfVooruit)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("moss365.herstelScroll", e.Location);
+                }
+                catch (Exception)
+                {
+                    // Geen script (tests): niets te herstellen
+                }
+            }
+        });
+    }
+
+    /// <summary>Een veld in een formulier veranderde (uit moss365.js): opnieuw kijken wat er openstaat.</summary>
+    [JSInvokable]
+    public void VeldGewijzigd() => State.Openstaand.Ververs();
+
+    [JSInvokable]
+    public void Terug()
+    {
+        if (State.Geschiedenis.Terug() is { } doel)
+        {
+            Nav.NavigateTo(doel);
+        }
+    }
+
+    [JSInvokable]
+    public void Vooruit()
+    {
+        if (State.Geschiedenis.Vooruit() is { } doel)
+        {
+            Nav.NavigateTo(doel);
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        Nav.LocationChanged -= Veranderd;
+        _ref?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

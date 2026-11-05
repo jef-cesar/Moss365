@@ -1,0 +1,49 @@
+@* Een waarde om te kopiëren (link, tijdelijk wachtwoord). Geheim = verborgen tot je "Tonen" kiest. *@
+@inject IJSRuntime JS
+
+<span class="kb-kopieer">
+    <input class="kb-invoer kb-breed kb-link-veld" readonly type="@(Geheim && !tonen ? "password" : "text")" value="@Waarde"
+           aria-label="@Label" @ref="veld" @onfocus="Selecteer" />
+    @if (Geheim)
+    {
+        <button class="kb-knop" @onclick="() => tonen = !tonen">@(tonen ? "Verbergen" : "Tonen")</button>
+    }
+    <button class="kb-knop kb-primair" @onclick="Kopieer">@(gekopieerd ? "Gekopieerd" : "Kopiëren")</button>
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Waarde { get; set; } = string.Empty;
+    [Parameter] public string Label { get; set; } = "Waarde";
+    [Parameter] public bool Geheim { get; set; }
+
+    private ElementReference veld;
+    private bool tonen;
+    private bool gekopieerd;
+
+    private async Task Kopieer()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("moss365.kopieer", Waarde);
+            gekopieerd = true;
+        }
+        catch (Exception)
+        {
+            // Klembord niet beschikbaar: selecteer het veld (Ctrl+C)
+            tonen = true;
+            await Selecteer();
+        }
+    }
+
+    private async Task Selecteer()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("moss365.selecteer", veld);
+        }
+        catch (Exception)
+        {
+            // Niet erg
+        }
+    }
+}

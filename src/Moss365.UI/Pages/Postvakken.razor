@@ -1,0 +1,131 @@
+@page "/postvakken"
+@inherits VerversendePagina
+@inject NavigationManager Nav
+
+<div class="kb-titelbalk">
+    <h1>Gedeelde postvakken</h1>
+    @if (State.Mag(Recht.Beheren)) { <a class="kb-knop kb-primair" href="postvakken/nieuw">+ Nieuw gedeeld postvak</a> }
+</div>
+
+<p class="kb-zacht">
+    Toegang hoort via de groep <code>SG-SM-&lt;adres&gt;-Full</code> te lopen (FullAccess en SendAs); rechtstreekse rechten op personen ruim
+    je op vanaf de pagina van het postvak. Actuele waarden, ook doorsturen en automatisch antwoord: <a href="verbindingen">Postvakken laden uit Exchange</a>.
+</p>
+
+
+
+<div class="kb-tegels">
+    @foreach (var (label, filter) in new[] { ("Alleen via groep", "groep"), ("Groep en rechtstreeks", "beide"), ("Alleen rechtstreeks", "direct"), ("Zonder rechten", "geen") })
+    {
+        <button class="kb-tegel @(z.Model == filter ? "kb-actief" : null)" @onclick="() => { z.Kpi = null; z.Model = z.Model == filter ? null : filter; }">
+            <div class="kb-tegel-getal">@Alle.Count(p => Model(p) == filter)</div><div>@label</div>
+        </button>
+    }
+    @{ var kunnen = Alle.Count(p => KanAanmeldenTekst(p) == "ja"); }
+    <button class="kb-tegel @(kunnen > 0 ? "kb-tegel-let" : null) @(z.EnkelAanmelden ? "kb-actief" : null)" @onclick="() => { z.Kpi = null; z.EnkelAanmelden = !z.EnkelAanmelden; }">
+        <div class="kb-tegel-getal">@kunnen</div><div>kunnen aanmelden</div>
+        @if (kunnen > 0) { <div class="kb-status-let">⚠ nakijken</div> }
+    </button>
+</div>
+
+<KpiFilter Kpi="ActieveKpi" Aantal="KpiRijen.Count" Getoond="Lijst.Count" Gewist="() => z.Kpi = null" />
+
+<div class="kb-filters kb-plak">
+    <input class="kb-invoer kb-breed" placeholder="Zoek op naam of adres" @bind="z.Zoek" @bind:event="oninput" aria-label="Zoeken" />
+    <label><input type="checkbox" @bind="z.OokPlanning" /> Ook planningspostvakken</label>
+</div>
+
+<KbTabel Id="postvakken" Items="Lijst" Kolommen="kolommen" Selecteerbaar SleutelVan="p => p.Smtp" SelectieGewijzigd="_ => { }" StandaardSortering="naam" Telling="@($"{Lijst.Count} postvakken")"
+         RijKlasse="@(p => Direct(p) > 0 ? "kb-verschil" : null)" />
+
+<BulkTaken Lijst="postvakken" Aantal="AantalGekozen" />
+
+@code {
+    /// <summary>Zoekterm en filters, bewaard zolang de app open is (Terug, Vooruit, menu).</summary>
+    private sealed class Zoeken { public string Zoek { get; set; } = string.Empty; public string? Model { get; set; } public bool OokPlanning { get; set; } public bool EnkelAanmelden { get; set; } public string? Kpi { get; set; } }
+    private Zoeken? _z;
+    private Zoeken z => _z ??= State.Paginastatus.Van<Zoeken>("postvakken");
+
+    /// <summary>Vanuit een KPI-tegel: postvakken?kpi=zonder-toegangsgroep (zie Core/Analyse/Kpis.cs).</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "kpi")] public string? KpiVraag { get; set; }
+    private string? verwerkteKpi;
+
+    protected override void OnParametersSet()
+    {
+        if (KpiVraag != verwerkteKpi)
+        {
+            verwerkteKpi = KpiVraag;
+            if (State.KpiAankomst(KpiVraag, Nav.Uri, "postvakken", "postvakken"))
+            {
+                _z = null;
+                z.Kpi = KpiVraag;
+            }
+        }
+    }
+
+    private Kpi? ActieveKpi => Kpis.Zoek(z.Kpi) is { Lijst: KpiLijst.Postvakken } k ? k : null;
+    private IReadOnlyList<Postvak> KpiRijen => ActieveKpi is { } k ? Kpis.Postvakken(k, State.KpiBron) : Array.Empty<Postvak>();
+    private IReadOnlyList<Kolom<Postvak>> kolommen = Array.Empty<Kolom<Postvak>>();
+
+    protected override void OnInitialized() => kolommen = new List<Kolom<Postvak>>
+    {
+        new() { Sleutel = "naam", Titel = "Postvak", Cel = p => @<ObjectLink Id="@p.Smtp" />, SorteerOp = p => p.DisplayName },
+        new() { Sleutel = "adres", Titel = "Adres", Cel = p => @<text>@p.Smtp</text>, SorteerOp = p => p.Smtp },
+        new() { Sleutel = "groep", Titel = "Toegangsgroep", Cel = p => @<text>@if (State.Data.Index.ToegangsgroepVan(p) is { } g) { <ObjectLink Object="g.Ref" /> } else { <span class="kb-zacht">geen</span> }</text>, SorteerOp = p => State.Data.Index.ToegangsgroepVan(p)?.Naam },
+        new() { Sleutel = "direct", Titel = "Rechtstreeks", Getal = true, Cel = p => @<text>@Direct(p)</text>, SorteerOp = p => Direct(p) },
+        new() { Sleutel = "aanmelden", Titel = "Kan aanmelden", Cel = p => KanAanmelden(p), SorteerOp = p => KanAanmeldenTekst(p), Tekst = p => KanAanmeldenTekst(p) },
+        new() { Sleutel = "laatste", Titel = "Laatste aanmelding", Cel = p => @<text>@LaatsteAanmelding(p)?.ToString("dd/MM/yyyy")</text>, SorteerOp = p => LaatsteAanmelding(p), Tekst = p => LaatsteAanmelding(p)?.ToString("yyyy-MM-dd") },
+        new() { Sleutel = "verborgen", Titel = "Verborgen", Cel = p => @<text>@(p.Verborgen ? "ja" : "")</text>, SorteerOp = p => p.Verborgen ? "ja" : "" },
+        new() { Sleutel = "doorsturen", Titel = "Doorsturen", Cel = p => @<text>@p.Doorsturen</text>, SorteerOp = p => p.Doorsturen },
+        new() { Sleutel = "model", Titel = "Rechtenmodel", Verborgen = true, Cel = p => @<text>@Model(p)</text>, SorteerOp = p => Model(p) },
+        new() { Sleutel = "soort", Titel = "Soort", Verborgen = true, Cel = p => @<text>@p.TypeTekst</text>, SorteerOp = p => p.TypeTekst },
+        new() { Sleutel = "aangemaakt", Titel = "Aangemaakt", Verborgen = true, Cel = p => @<text>@p.WhenCreated</text>, SorteerOp = p => p.WhenCreated },
+        new() { Sleutel = "entraid", Titel = "Entra-ID", Verborgen = true, Cel = p => @<code>@(State.Data.Index.AccountVan(p.Smtp, p.Alias)?.Entra?.Id)</code>, SorteerOp = p => State.Data.Index.AccountVan(p.Smtp, p.Alias)?.Entra?.Id },
+    };
+
+    private int Direct(Postvak p) => State.Data.Index.RechtenOp(p).Count(r => r.Direct);
+
+    private IEnumerable<Postvak> Alle => State.Data.Postvakken.Where(p => p.IsGedeeld);
+
+    private string Model(Postvak p)
+    {
+        var rechten = State.Data.Index.RechtenOp(p);
+        var groep = rechten.Any(r => !r.Direct);
+        var direct = rechten.Any(r => r.Direct);
+        return (groep, direct) switch { (true, true) => "beide", (true, false) => "groep", (false, true) => "direct", _ => "geen" };
+    }
+
+    private IReadOnlyList<Postvak> Lijst
+    {
+        get
+        {
+            var term = z.Zoek.Trim();
+            return (ActieveKpi is null ? State.Data.Postvakken : KpiRijen)
+                .Where(p => p.IsGedeeld || z.OokPlanning)
+                .Where(p => z.Model is null || (p.IsGedeeld && Model(p) == z.Model))
+                .Where(p => !z.EnkelAanmelden || KanAanmeldenTekst(p) == "ja")
+                .Where(p => term.Length == 0 || p.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase) || p.Smtp.Contains(term, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private Persoon? Account(Postvak p) => State.Data.Index.AccountVan(p.Smtp, p.Alias);
+
+    private string KanAanmeldenTekst(Postvak p) => Account(p) switch
+    {
+        null => "onbekend",
+        { Ingeschakeld: true } => "ja",
+        _ => "nee",
+    };
+
+    private RenderFragment KanAanmelden(Postvak p) => KanAanmeldenTekst(p) switch
+    {
+        "ja" => @<span class="kb-label kb-label-let">⚠ ja</span>,
+        "nee" => @<span class="kb-zacht">nee</span>,
+        _ => @<span class="kb-zacht">onbekend</span>,
+    };
+
+    private DateTime? LaatsteAanmelding(Postvak p) => Account(p) is { } a ? Statistiek.LaatsteAanmelding(a) : null;
+
+    private int AantalGekozen => State.TabelSessie("postvakken").Gekozen.Count;
+}

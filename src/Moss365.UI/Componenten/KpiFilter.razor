@@ -1,0 +1,20 @@
+@* Boven een lijst die geopend werd vanuit een KPI-tegel: welke filter actief is, hoeveel rijen erbij horen, en wissen. *@
+@if (Kpi is not null)
+{
+    <div class="kb-melding kb-kpi-filter" role="status">
+        <span>Gefilterd op <strong>@Kpi.Label</strong>: @Aantal @(Aantal == 1 ? "rij" : "rijen")@if (Getoond is { } g && g != Aantal) { <text>, @g na je eigen filters</text> }.</span>
+        @ChildContent
+        <button class="kb-knop" @onclick="Wissen">Filter wissen</button>
+    </div>
+}
+
+@code {
+    [Parameter] public Kpi? Kpi { get; set; }
+    [Parameter] public int Aantal { get; set; }
+    /// <summary>Hoeveel rijen er na de zoekterm en kolomfilters overblijven (als dat anders is).</summary>
+    [Parameter] public int? Getoond { get; set; }
+    [Parameter] public EventCallback Gewist { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private Task Wissen() => Gewist.InvokeAsync();
+}

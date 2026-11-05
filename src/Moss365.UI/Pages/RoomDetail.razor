@@ -1,0 +1,237 @@
+@page "/room/{Smtp}"
+@inherits VerversendePagina
+
+@if (room is null)
+{
+    <h1>Room niet gevonden</h1>
+    <p><a href="rooms">Terug naar de rooms</a></p>
+}
+else
+{
+    <h1>@room.DisplayName</h1>
+    <ObjectStatus Object="State.Data.Index.Ref(room.Smtp)" />
+    <p class="kb-zacht">
+        Vergaderruimte &middot; @room.Smtp
+        @if (room.Verborgen) { <span class="kb-label">verborgen in de adreslijst</span> }
+    </p>
+
+    @if (afwijkingen.Count > 0)
+    {
+        <div class="kb-melding">Wijkt af van de standaard: @string.Join("; ", afwijkingen)</div>
+    }
+
+    <div class="kb-kolommen">
+        <section class="kb-kaart">
+            <h2>Plaats</h2>
+            <table class="kb-tabel kb-naast">
+                <tbody>
+                    <tr><th>Gebouw</th><td>@room.Gebouw</td></tr>
+                    <tr><th>Verdieping</th><td>@room.Verdieping @(room.VerdiepingLabel.Length > 0 ? $"({room.VerdiepingLabel})" : null)</td></tr>
+                    <tr><th>Capaciteit</th><td>@room.Capaciteit</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="kb-kaart">
+            <h2>Agendaverwerking</h2>
+            <table class="kb-tabel kb-naast">
+                <tbody>
+                    <tr><th>Verwerking</th><td>@room.AutomateProcessing</td></tr>
+                    <tr><th>Boekingsvenster</th><td>@room.BookingWindowInDays dagen</td></tr>
+                    <tr><th>Maximale duur</th><td>@room.MaximumDurationInMinutes minuten</td></tr>
+                    <tr><th>Conflicten toestaan</th><td>@JaNeeTekst(room.AllowConflicts)</td></tr>
+                    <tr><th>Terugkerend</th><td>@JaNeeTekst(room.AllowRecurringMeetings)</td></tr>
+                    <tr><th>Organisator in onderwerp</th><td>@JaNeeTekst(room.AddOrganizerToSubject)</td></tr>
+                    <tr><th>Onderwerp wissen</th><td>@JaNeeTekst(room.DeleteSubject)</td></tr>
+                    <tr><th>Iedereen mag boeken</th><td>@JaNeeTekst(room.AllBookInPolicy)</td></tr>
+                    <tr><th>Iedereen mag aanvragen</th><td>@JaNeeTekst(room.AllRequestInPolicy)</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <div class="kb-kolommen">
+        <section class="kb-kaart">
+            <h2>Gedelegeerden en boekers</h2>
+            <p class="kb-zacht">Gedelegeerden keuren aanvragen goed; "mag boeken" geldt als niet iedereen mag boeken.</p>
+            <ul class="kb-lijst-plat">
+                @foreach (var d in Lijst(room.ResourceDelegates))
+                {
+                    <li><ObjectLink Id="@d" ToonSoort="true" /> <span class="kb-zacht">(gedelegeerde)</span></li>
+                }
+                @foreach (var d in Lijst(room.BookInPolicy))
+                {
+                    <li><ObjectLink Id="@d" ToonSoort="true" /> <span class="kb-zacht">(mag boeken)</span></li>
+                }
+            </ul>
+        </section>
+
+        <section class="kb-kaart">
+            <h2>Agendarechten</h2>
+            <table class="kb-tabel">
+                <thead><tr><th>Wie</th><th>Recht</th></tr></thead>
+                <tbody>
+                    @foreach (var (wie, recht) in Rechten(room.AgendaRechten))
+                    {
+                        <tr><td>@if (wie is "Default" or "Anonymous" or "Standaard" or "Anoniem") { @wie } else { <ObjectLink Id="@wie" /> }</td><td>@recht</td></tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="kb-kaart">
+            <h2>Lid van</h2>
+            @if (groepen.Count == 0) { <p class="kb-zacht">Geen room list of groep.</p> }
+            <ul class="kb-lijst-plat">
+                @foreach (var g in groepen)
+                {
+                    <li><ObjectLink Object="g.Object" /> <span class="kb-zacht">(@g.Laag)</span></li>
+                }
+            </ul>
+        </section>
+    </div>
+
+    <section class="kb-kaart">
+        <h2>Agenda</h2>
+        <p class="kb-zacht">
+            Live uit Exchange (via Graph), enkel lezen. Je eigen account heeft minstens leesrecht (Reviewer of LimitedDetails) op de
+            agenda van de room nodig. Wat je bekijkt, komt in het toegangslog.
+        </p>
+        <div class="kb-filters">
+            <span class="kb-segment" role="group" aria-label="Periode">
+                @foreach (var (k, tekst) in new[] { (AgendaKeuze.DezeWeek, "Deze week"), (AgendaKeuze.VolgendeWeek, "Volgende week"), (AgendaKeuze.Gekozen, "Gekozen periode") })
+                {
+                    <button class="kb-knop @(agendaKeuze == k ? "kb-primair" : null)" @onclick="() => agendaKeuze = k">@tekst</button>
+                }
+            </span>
+            @if (agendaKeuze == AgendaKeuze.Gekozen)
+            {
+                <label>Van <input type="date" class="kb-invoer" @bind="agendaVan" /></label>
+                <label>Tot en met <input type="date" class="kb-invoer" @bind="agendaTot" /></label>
+            }
+            <button class="kb-knop" disabled="@agendaBezig" @onclick="LaadAgenda">Agenda laden</button>
+            @if (agendaBezig) { <span class="kb-zacht">bezig...</span> }
+        </div>
+        @if (agendaMelding is not null)
+        {
+            <div class="kb-melding kb-fout">@agendaMelding</div>
+        }
+        else if (afspraken is not null)
+        {
+            <p class="kb-zacht">@afspraken.Count afspraken van @agendaPeriode.</p>
+            <KbTabel Id="room-agenda" ExportNaam="@($"Agenda-{room.Alias}")" Items="afspraken" Kolommen="agendaKolommen" StandaardSortering="begin"
+                     RijKlasse="@(a => a.Geannuleerd ? "kb-zacht" : null)" />
+        }
+    </section>
+
+    @if (State.Mag(Recht.Beheren))
+    {
+    <section class="kb-kaart">
+        <h2>Wijzigen</h2>
+        <p class="kb-zacht">Leeg laten = niet wijzigen. Alleen wat verschilt met de huidige waarde komt in het plan.</p>
+        <div class="kb-filters">
+            <button class="kb-knop" @onclick="() => { gewenst = RoomGewenst.UitStandaard(State.Config.Rooms.Standaard); plan = null; }">Standaard invullen</button>
+            <button class="kb-knop" @onclick="() => { gewenst = new(); plan = null; }">Leegmaken</button>
+        </div>
+        <RoomFormulier Gewenst="gewenst" />
+        <div class="kb-filters">
+            <button class="kb-knop kb-primair" @onclick="() => plan = PlanBouwer.Room(room, RoomFormulier.Opgeschoond(gewenst))">Plan maken</button>
+        </div>
+    </section>
+    }
+
+    @if (plan is not null)
+    {
+        <PlanWeergave Plan="plan" Context="@($"Room {room.DisplayName}")" Titel="Wijzigingen aan de room" />
+    }
+}
+
+@code {
+    [Parameter] public string Smtp { get; set; } = string.Empty;
+
+    private Room? room;
+    private IReadOnlyList<string> afwijkingen = Array.Empty<string>();
+    private IReadOnlyList<Relatie> groepen = Array.Empty<Relatie>();
+    private RoomGewenst gewenst = new();
+    private IReadOnlyList<Wijziging>? plan;
+    private string? geladen;
+
+    // Agenda: periode, afspraken (enkel in het geheugen van deze pagina) en een melding als het niet lukt
+    private AgendaKeuze agendaKeuze = AgendaKeuze.DezeWeek;
+    private DateOnly? agendaVan = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly? agendaTot = DateOnly.FromDateTime(DateTime.Today.AddDays(13));
+    private bool agendaBezig;
+    private string? agendaMelding;
+    private string agendaPeriode = string.Empty;
+    private IReadOnlyList<Afspraak>? afspraken;
+
+    private static readonly IReadOnlyList<Kolom<Afspraak>> agendaKolommen = new List<Kolom<Afspraak>>
+    {
+        new() { Sleutel = "begin", Titel = "Begin", Cel = a => b => b.AddContent(0, a.HeleDag ? a.Begin.ToString("ddd dd/MM/yyyy") : a.Begin.ToString("ddd dd/MM/yyyy HH:mm")), SorteerOp = a => a.Begin, Tekst = a => a.Begin.ToString("yyyy-MM-dd HH:mm") },
+        new() { Sleutel = "einde", Titel = "Einde", Cel = a => b => b.AddContent(0, a.HeleDag ? "hele dag" : a.Einde.Date == a.Begin.Date ? a.Einde.ToString("HH:mm") : a.Einde.ToString("dd/MM HH:mm")), SorteerOp = a => a.Einde, Tekst = a => a.Einde.ToString("yyyy-MM-dd HH:mm") },
+        new() { Sleutel = "onderwerp", Titel = "Onderwerp", Cel = a => b => b.AddContent(0, a.OnderwerpTekst + (a.Geannuleerd ? " (geannuleerd)" : string.Empty)), SorteerOp = a => a.OnderwerpTekst },
+        new() { Sleutel = "organisator", Titel = "Organisator", Cel = a => b => b.AddContent(0, a.Organisator), SorteerOp = a => a.Organisator },
+        new() { Sleutel = "status", Titel = "Status", Cel = a => b => b.AddContent(0, a.StatusTekst), SorteerOp = a => a.StatusTekst },
+        new() { Sleutel = "adres", Titel = "Adres organisator", Verborgen = true, Cel = a => b => b.AddContent(0, a.OrganisatorAdres), SorteerOp = a => a.OrganisatorAdres },
+    };
+
+    private async Task LaadAgenda()
+    {
+        if (room is null)
+        {
+            return;
+        }
+
+        var (van, tot, fout) = AgendaPeriode.Bereken(agendaKeuze, DateTime.Now, agendaVan, agendaTot);
+        afspraken = null;
+        agendaMelding = fout;
+        if (fout is not null)
+        {
+            return;
+        }
+
+        agendaBezig = true;
+        try
+        {
+            var (lijst, melding) = await State.LeesAgendaAsync(room, van, tot);
+            afspraken = lijst;
+            agendaMelding = melding;
+            agendaPeriode = $"{van:dd/MM/yyyy} tot en met {tot.AddDays(-1):dd/MM/yyyy}";
+        }
+        catch (Exception ex)
+        {
+            agendaMelding = "Agenda lezen mislukt: " + ex.Message;
+        }
+        finally
+        {
+            agendaBezig = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        room = State.Data.Index.Room(Smtp);
+        if (room?.Smtp != geladen)
+        {
+            geladen = room?.Smtp;
+            gewenst = new();
+            plan = null;
+            afspraken = null;
+            agendaMelding = null;
+        }
+
+        if (room is not null)
+        {
+            afwijkingen = PlanBouwer.RoomAfwijkingen(room, State.Config.Rooms.Standaard);
+            groepen = State.Data.Index.GroepenVanAdres(room.Smtp);
+        }
+    }
+
+    private static string JaNeeTekst(bool b) => b ? "ja" : "nee";
+
+    private static IEnumerable<string> Lijst(string tekst)
+        => tekst.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static IEnumerable<(string Wie, string Recht)> Rechten(string tekst)
+        => Lijst(tekst).Select(d => d.IndexOf('=') is var i and > 0 ? (d[..i], d[(i + 1)..]) : (d, string.Empty));
+}

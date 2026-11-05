@@ -1,0 +1,140 @@
+@* MFA, beheerrollen, bevoorrechte AD-groepen en (live) aanmeldingen van één persoon *@
+@inject BeheerState State
+
+<section class="kb-kaart kb-beveiliging">
+    <h2>Beveiliging</h2>
+    <table class="kb-tabel kb-naast">
+        <tbody>
+            <tr>
+                <th>MFA</th>
+                <td>
+                    @if (Persoon.Entra is null)
+                    {
+                        <span class="kb-zacht">geen Entra-account</span>
+                    }
+                    else if (State.Data.Beveiliging is not { MfaBekend: true } b)
+                    {
+                        <span class="kb-zacht">onbekend (laad live: Verbindingen, Alles live laden)</span>
+                    }
+                    else if (b.MfaVan(Persoon.Entra.Id) is not { } m)
+                    {
+                        <span class="kb-zacht">niet in het rapport</span>
+                    }
+                    else if (m.MfaGeregistreerd)
+                    {
+                        <span class="kb-label kb-label-goed">geregistreerd</span>
+                        <span>@string.Join(", ", m.Methodes.Select(BeveiligingStatistiek.MethodeNaam))</span>
+                        @if (m.StandaardMethode.Length > 0) { <span class="kb-zacht">(standaard: @BeveiligingStatistiek.MethodeNaam(m.StandaardMethode))</span> }
+                    }
+                    else
+                    {
+                        <span class="kb-label kb-rood">⚠ geen MFA</span>
+                        @if (m.Methodes.Count > 0) { <span class="kb-zacht">enkel: @string.Join(", ", m.Methodes.Select(BeveiligingStatistiek.MethodeNaam))</span> }
+                    }
+                </td>
+            </tr>
+            <tr>
+                <th>Entra-beheerrollen</th>
+                <td>
+                    @if (State.Data.Beveiliging is not { RollenBekend: true } br)
+                    {
+                        <span class="kb-zacht">onbekend</span>
+                    }
+                    else if (br.RollenVan(Persoon.Entra?.Id).ToList() is { Count: > 0 } rollen)
+                    {
+                        @foreach (var r in rollen)
+                        {
+                            <span class="kb-label @(BeveiligingGegevens.IsKritiekeRol(r.Rol) ? "kb-rood" : null)">@r.Rol</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="kb-zacht">geen</span>
+                    }
+                </td>
+            </tr>
+            <tr>
+                <th>Bevoorrechte AD-groepen</th>
+                <td>
+                    @if (State.Data.AdGroepenVan(Persoon).Where(Spiegelgebruiker.IsBevoorrecht).ToList() is { Count: > 0 } groepen)
+                    {
+                        @foreach (var g in groepen)
+                        {
+                            <span class="kb-label kb-rood">@g.Name</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="kb-zacht">geen</span>
+                    }
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    @if (Persoon.Entra is { } entra)
+    {
+        <div class="kb-filters">
+            <button class="kb-knop" disabled="@bezig" @onclick="() => Laad(entra.Id)">Aanmeldingen laden (30 dagen)</button>
+            <label><input type="checkbox" @bind="alleenMislukt" /> Alleen mislukte</label>
+        </div>
+        @if (fout is not null)
+        {
+            <div class="kb-melding kb-fout">@fout</div>
+        }
+        else if (aanmeldingen is not null)
+        {
+            <AanmeldLijst Aanmeldingen="aanmeldingen" MetGebruiker="false" />
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Persoon Persoon { get; set; } = default!;
+
+    private IReadOnlyList<Aanmelding>? aanmeldingen;
+    private bool alleenMislukt;
+    private bool bezig;
+    private string? fout;
+    private string? vorige;
+
+    private string? gelogd;
+
+    protected override void OnParametersSet()
+    {
+        if (gelogd != Persoon.Sleutel)
+        {
+            gelogd = Persoon.Sleutel;
+            State.Toegang("Beveiliging bekeken", $"gebruiker {Persoon.Sleutel}");
+        }
+
+        if (vorige != Persoon.Sleutel)
+        {
+            vorige = Persoon.Sleutel;
+            aanmeldingen = null;
+            fout = null;
+        }
+    }
+
+    private async Task Laad(string id)
+    {
+        bezig = true;
+        fout = null;
+        try
+        {
+            aanmeldingen = await State.LeesAanmeldingenAsync(id, 30, alleenMislukt);
+            if (aanmeldingen is null)
+            {
+                fout = "Vul eerst de Entra-gegevens in (scherm Verbindingen).";
+            }
+        }
+        catch (Exception ex)
+        {
+            fout = "Aanmeldingen lezen mislukt: " + ex.Message + " (nodig: rol Reports Reader of Security Reader, en Entra ID P1).";
+        }
+        finally
+        {
+            bezig = false;
+        }
+    }
+}

@@ -1,0 +1,145 @@
+{
+  "_uitleg": "Sample organisation (made up). Replace these values in the Organisation screen; from R9 a wizard suggests them from your own data.",
+  "company": "Contoso",
+  "adDomein": "CONTOSO.LOCAL",
+  "gesynchroniseerdeOus": [
+    "CONTOSO/USERS",
+    "CONTOSO/EXTERNAL"
+  ],
+  "populaties": [
+    {
+      "naam": "Staff",
+      "ou": "CONTOSO/USERS",
+      "upnDomein": "contoso.com",
+      "standaardAdGroepen": [
+        "GG_WiFi_Internal"
+      ]
+    },
+    {
+      "naam": "Volunteer",
+      "ou": "CONTOSO/EXTERNAL",
+      "upnDomein": "contoso.com",
+      "city": "intranet",
+      "geenLicentie": true,
+      "standaardAdGroepen": []
+    }
+  ],
+  "afdelingen": [
+    {
+      "naam": "Finance",
+      "groep": "DIV_Finance"
+    },
+    {
+      "naam": "IT",
+      "groep": "DIV_IT"
+    },
+    {
+      "naam": "Operations",
+      "groep": "DIV_Operations"
+    },
+    {
+      "naam": "Social services",
+      "groep": "DIV_Social_Services"
+    }
+  ],
+  "diensten": [
+    {
+      "department": "accounting",
+      "afdeling": "Finance"
+    },
+    {
+      "department": "procurement",
+      "afdeling": "Finance"
+    },
+    {
+      "department": "helpdesk",
+      "afdeling": "IT",
+      "logonscript": "logon.bat"
+    },
+    {
+      "department": "infrastructure",
+      "afdeling": "IT",
+      "logonscript": "logon.bat"
+    },
+    {
+      "department": "facilities",
+      "afdeling": "Operations"
+    },
+    {
+      "department": "library",
+      "afdeling": "Operations",
+      "logonscript": "library.bat"
+    },
+    {
+      "department": "youth",
+      "afdeling": "Social services"
+    },
+    {
+      "department": "home care",
+      "afdeling": "Social services"
+    }
+  ],
+  "kantoren": [
+    "head office",
+    "library",
+    "depot",
+    "community centre"
+  ],
+  "dynamischeRegels": [
+    {
+      "groep": "SG-All-Staff",
+      "regel": "mail ends with contoso.com"
+    },
+    {
+      "groep": "SG-HomeCare-Phones",
+      "regel": "department == home care"
+    }
+  ],
+  "vrijwilligers": {
+    "ou": "CONTOSO/EXTERNAL",
+    "upnDomein": "contoso.com",
+    "city": "intranet"
+  },
+  "uitstroom": {
+    "ou": "CONTOSO/DISABLED",
+    "verwijderen": false
+  },
+  "gedeeldePostvakken": {
+    "groep": "SG-SM-<naam>-Full",
+    "rechten": [
+      "FullAccess",
+      "SendAs"
+    ]
+  },
+  "logonscripts": [
+    "logon.bat",
+    "library.bat"
+  ],
+  "licenties": [
+    {
+      "sku": "SPB",
+      "naam": "Microsoft 365 Business Premium (office)"
+    },
+    {
+      "sku": "DESKLESSPACK",
+      "naam": "Office 365 F3 (frontline)"
+    },
+    {
+      "sku": "O365_BUSINESS_ESSENTIALS",
+      "naam": "Microsoft 365 Business Basic"
+    }
+  ],
+  "rooms": {
+    "standaard": {
+      "automateProcessing": "AutoAccept",
+      "bookingWindowInDays": 180,
+      "maximumDurationInMinutes": 1440,
+      "allowConflicts": false,
+      "allowRecurringMeetings": true,
+      "addOrganizerToSubject": true,
+      "deleteSubject": false,
+      "agendaRechtStandaard": "Reviewer"
+    }
+  },
+  "noodaccounts": []
+}

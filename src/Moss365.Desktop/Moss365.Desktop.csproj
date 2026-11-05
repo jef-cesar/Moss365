@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Laat bouwen op Linux toe (tests en controle); uitvoeren kan alleen op Windows -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>Moss365.Desktop</RootNamespace>
+    <AssemblyName>Moss365</AssemblyName>
+    <ApplicationIcon>moss365.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="8.0.100" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Moss365.UI\Moss365.UI.csproj" />
+    <ProjectReference Include="..\Moss365.Connections\Moss365.Connections.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="moss365.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- De meegeleverde organisatie.json uit Beheer-App/config -->
+    <None Include="..\..\config\organisatie.json" Link="config\organisatie.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <!-- Reservekopie in de exe zelf, voor als de map config ontbreekt (bv. gestart vanuit de zip) -->
+    <EmbeddedResource Include="..\..\config\organisatie.json" LogicalName="organisatie.json" />
+  </ItemGroup>
+</Project>

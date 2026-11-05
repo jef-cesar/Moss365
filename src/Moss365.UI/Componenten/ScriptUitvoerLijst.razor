@@ -1,0 +1,67 @@
+@* De uitvoer van een script: tekst, info, waarschuwingen en fouten, met de voortgang; volgt vanzelf naar onder *@
+@inject IJSRuntime JS
+
+@if (Voortgang is not null)
+{
+    <div class="kb-voortgang-script">
+        <span>@Voortgang</span>
+        @if (Procent is int p)
+        {
+            <span class="kb-balk"><span style="width:@(p)%"></span></span><span>@p%</span>
+        }
+    </div>
+}
+<pre class="kb-uitvoer" @ref="vak">@foreach (var g in Regels)
+{
+<span class="@Klasse(g)">@Prefix(g)@g.Tekst</span>@(g.Doorgaan ? string.Empty : "\n")
+}@if (Regels.Count == 0) {<span class="kb-zacht">@LeegTekst</span>}</pre>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ScriptGebeurtenis> Gebeurtenissen { get; set; } = Array.Empty<ScriptGebeurtenis>();
+    [Parameter] public string? Voortgang { get; set; }
+    [Parameter] public int? Procent { get; set; }
+    [Parameter] public bool Volgen { get; set; }
+    [Parameter] public string LeegTekst { get; set; } = "Nog geen uitvoer.";
+
+    private ElementReference vak;
+
+    private IReadOnlyList<ScriptGebeurtenis> Regels => Gebeurtenissen.Where(g => g.Soort is not (GebeurtenisSoort.Rij or GebeurtenisSoort.Voortgang)).ToList();
+
+    protected override async Task OnAfterRenderAsync(bool eersteKeer)
+    {
+        if (Volgen)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("moss365.naarOnder", vak);
+            }
+            catch (Exception)
+            {
+            }
+        }
+    }
+
+    private static string Prefix(ScriptGebeurtenis g) => g.Soort switch
+    {
+        GebeurtenisSoort.Waarschuwing => "WAARSCHUWING: ",
+        GebeurtenisSoort.Fout => "FOUT: ",
+        _ => string.Empty,
+    };
+
+    private static string? Klasse(ScriptGebeurtenis g) => g.Soort switch
+    {
+        GebeurtenisSoort.Info => "kb-uit-info",
+        GebeurtenisSoort.Waarschuwing => "kb-uit-waarschuwing",
+        GebeurtenisSoort.Fout => "kb-uit-fout",
+        _ => g.Kleur switch
+        {
+            "Green" or "DarkGreen" => "kb-uit-groen",
+            "Yellow" or "DarkYellow" => "kb-uit-geel",
+            "Red" or "DarkRed" => "kb-uit-rood",
+            "Cyan" or "DarkCyan" or "Blue" or "DarkBlue" => "kb-uit-blauw",
+            "Magenta" or "DarkMagenta" => "kb-uit-paars",
+            "Gray" or "DarkGray" => "kb-uit-grijs",
+            _ => null,
+        },
+    };
+}

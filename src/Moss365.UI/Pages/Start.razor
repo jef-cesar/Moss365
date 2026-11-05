@@ -1,0 +1,95 @@
+@page "/"
+@inherits VerversendePagina
+
+<div class="kb-banner">
+    <img src="_content/Moss365.UI/moss365-logo.webp" alt="Moss365 - Have you tried turning the user off and on again?" />
+</div>
+
+<h1>Overzicht</h1>
+
+<p class="kb-zacht">
+    Moss365 (The Moss Directory) beheert gebruikers, groepen en rooms over on-prem AD, Entra ID en Exchange Online heen.
+    De app start met de inventaris van <code>Export-Inventaris.ps1</code> (per bestand de nieuwste map). Via
+    <a href="verbindingen">Verbindingen</a> laad je live gegevens uit AD, Entra en Exchange. Wijzigingen gebeuren altijd als
+    plan: eerst een voorbeeld, dan bevestigen, dan uitvoeren, en alles komt in het <a href="logboek">logboek</a>.
+</p>
+
+<p>Huidige gegevens: <strong>@State.Data.Herkomst</strong>@if (State.GeladenOp is { } t) { <text>, geladen om @t.ToString("HH:mm")</text> }</p>
+
+<section class="kb-kaart">
+    <h2>Inventaris</h2>
+    @if (State.Mappen.Count == 0 && State.VoorkeurMap is null)
+    {
+        <div class="kb-melding">
+            Geen inventaris gevonden in <code>@State.Omgeving.InventarisBasis</code>.
+            Draai eerst <code>Export-Inventaris.ps1</code> of geef hieronder een andere map op.
+        </div>
+    }
+
+    <div class="kb-rij">
+        <label>Map met voorrang</label>
+        <select class="kb-invoer" @onchange="KiesMap">
+            <option value="" selected="@(State.VoorkeurMap is null)">Automatisch (per bestand de nieuwste)</option>
+            @foreach (var m in State.Mappen)
+            {
+                <option value="@m" selected="@(m == State.VoorkeurMap)">@Path.GetFileName(m)</option>
+            }
+        </select>
+        <button class="kb-knop" @onclick="State.LaadInventaris">Opnieuw laden</button>
+    </div>
+    <div class="kb-rij">
+        <label>Andere map</label>
+        <input class="kb-invoer" placeholder="Volledig pad naar een inventarismap" @bind="andereMap" />
+        <button class="kb-knop" @onclick="() => State.KiesMap(andereMap)">Gebruiken</button>
+    </div>
+
+    <table class="kb-tabel">
+        <thead><tr><th>Bestand</th><th>Uit map</th><th class="kb-getal">Rijen</th></tr></thead>
+        <tbody>
+            @foreach (var b in State.Data.Bronnen)
+            {
+                <tr class="@(b.Map is null ? "kb-ontbreekt" : null)">
+                    <td><code>@b.Bestand</code></td>
+                    <td>@(b.Map is null ? "niet gevonden" : Path.GetFileName(b.Map))</td>
+                    <td class="kb-getal">@b.Rijen</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<section class="kb-kaart">
+    <h2>Accounts</h2>
+    <div class="kb-tegels">
+        @foreach (var g in State.Data.Personen.GroupBy(p => p.Bron).OrderByDescending(g => g.Count()))
+        {
+            <Tegel Kpi="Kpis.Bron(g.Key)" />
+        }
+    </div>
+    <p class="kb-zacht">
+        "AD + Entra" zijn gesynchroniseerde accounts. "Alleen Entra" zijn vooral de accounts achter gedeelde, room- en
+        planningspostvakken. "Alleen AD" zijn uitgeschakelde, technische en niet-gesynchroniseerde accounts.
+    </p>
+</section>
+
+<section class="kb-kaart">
+    <h2>Organisatie</h2>
+    <p>
+        Bron: <code>@(State.ConfigBron ?? "geen organisatie.json gevonden")</code>
+        @if (State.ConfigIsAangepast)
+        {
+            <span class="kb-label">eigen wijzigingen</span>
+        }
+    </p>
+    <p>
+        @State.Config.Diensten.Count diensten, waarvan
+        <strong>@State.Config.Diensten.Count(d => string.IsNullOrWhiteSpace(d.Afdeling))</strong> nog zonder afdeling.
+        <a href="organisatie">Koppelen</a>
+    </p>
+</section>
+
+@code {
+    private string andereMap = string.Empty;
+
+    private void KiesMap(ChangeEventArgs e) => State.KiesMap(e.Value?.ToString());
+}

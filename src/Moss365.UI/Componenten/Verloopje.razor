@@ -1,0 +1,62 @@
+@* Het verloop van één KPI (een kleine lijn uit de bewaarde standen per dag), met de huidige waarde en het verschil
+   met ongeveer 30 dagen geleden. Klein meervoud: elke KPI zijn eigen schaal, nooit twee schalen in één grafiek. *@
+@inject BeheerState State
+
+<a class="kb-verloop" href="@Verloop.Kpi.Link">
+    <span class="kb-verloop-label">@Verloop.Kpi.Label</span>
+    <span class="kb-verloop-getal">@Nu</span>
+    <span class="kb-zacht kb-verloop-verschil">@VerschilTekst</span>
+    @if (Verloop.Punten.Count >= 2)
+    {
+        <svg viewBox="0 0 @B @H" class="kb-verloop-lijn" role="img" aria-label="@($"Verloop {Verloop.Kpi.Label}: van {Verloop.Punten[0].Waarde} op {Verloop.Punten[0].Datum:dd/MM} tot {Verloop.Punten[^1].Waarde} op {Verloop.Punten[^1].Datum:dd/MM}")">
+            <path d="@Vlak" class="kb-verloop-vlak" />
+            <path d="@Lijn" class="kb-verloop-pad" />
+            @foreach (var (d, w) in Verloop.Punten)
+            {
+                <circle cx="@F(X(d))" cy="@F(Y(w))" r="5" class="kb-raak"><title>@($"{d:dd/MM/yyyy}: {w}")</title></circle>
+            }
+            <circle cx="@F(X(Verloop.Punten[^1].Datum))" cy="@F(Y(Verloop.Punten[^1].Waarde))" r="4" class="kb-verloop-punt" />
+        </svg>
+    }
+    else
+    {
+        <span class="kb-zacht kb-verloop-leeg">Nog geen verloop</span>
+    }
+</a>
+
+@code {
+    [Parameter, EditorRequired] public KpiVerloop Verloop { get; set; } = default!;
+
+    private const int B = 160, H = 40, M = 5;
+
+    private int Nu => State.KpiAantal(Verloop.Kpi);
+
+    private string VerschilTekst => Verloop.Verschil(30, Nu) switch
+    {
+        null => Verloop.Punten.Count == 0 ? "" : $"sinds {Verloop.Punten[0].Datum:dd/MM}: {Teken(Nu - Verloop.Punten[0].Waarde)}",
+        0 => "gelijk t.o.v. 30 dagen",
+        var v => $"{Teken(v.Value)} t.o.v. 30 dagen",
+    };
+
+    private static string Teken(int v) => v > 0 ? $"▲ {v}" : v < 0 ? $"▼ {-v}" : "gelijk";
+
+    private double X(DateOnly d)
+    {
+        var eerste = Verloop.Punten[0].Datum.DayNumber;
+        var laatste = Math.Max(eerste + 1, Verloop.Punten[^1].Datum.DayNumber);
+        return M + (B - 2 * M) * (d.DayNumber - eerste) / (double)(laatste - eerste);
+    }
+
+    private double Y(int w)
+    {
+        var min = Verloop.Punten.Min(p => p.Waarde);
+        var max = Verloop.Punten.Max(p => p.Waarde);
+        return max == min ? H / 2.0 : H - M - (H - 2 * M) * (w - min) / (double)(max - min);
+    }
+
+    private static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string Lijn => "M" + string.Join(" L", Verloop.Punten.Select(p => $"{F(X(p.Datum))},{F(Y(p.Waarde))}"));
+
+    private string Vlak => Lijn + $" L{F(X(Verloop.Punten[^1].Datum))},{H} L{F(X(Verloop.Punten[0].Datum))},{H} Z";
+}

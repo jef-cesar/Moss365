@@ -1,0 +1,193 @@
+@page "/gebruiker/{Sleutel}"
+@inherits VerversendePagina
+
+@if (persoon is null)
+{
+    <h1>Gebruiker niet gevonden</h1>
+    <p><a href="gebruikers">Terug naar de lijst</a></p>
+}
+else
+{
+    <h1>@persoon.Naam</h1>
+    <ObjectStatus Object="State.Data.Index.Ref(persoon)" />
+    <p class="kb-zacht">
+        @persoon.Bron &middot; @(persoon.Ingeschakeld ? "ingeschakeld" : "uitgeschakeld")
+        @if (persoon.Ad?.LockedOut == true) { <span class="kb-label kb-rood">vergrendeld</span> }
+        &middot; <a href="@($"spiegel?referentie={Uri.EscapeDataString(persoon.Sleutel)}")">als spiegel gebruiken</a>
+        &middot; <a href="@($"spiegel?doel={Uri.EscapeDataString(persoon.Sleutel)}")">als doel gebruiken</a>
+        @if (State.Mag(Recht.Acties)) { <text> &middot; <a href="@($"uitstroom/{Uri.EscapeDataString(persoon.Sleutel)}")">uitstroom</a></text> }
+    </p>
+
+    @if (State.Mag(Recht.Helpdesk)) { <Helpdesk Persoon="persoon" /> }
+    @if (State.Mag(Recht.Beveiliging))
+    {
+        <BeveiligingKaart Persoon="persoon" />
+        <CaGebruikerKaart Persoon="persoon" />
+    }
+
+    <section class="kb-kaart">
+        <h2>Kenmerken</h2>
+        <table class="kb-tabel kb-naast">
+            <thead><tr><th>Kenmerk</th><th>On-prem AD</th><th>Entra ID</th></tr></thead>
+            <tbody>
+                @foreach (var r in Rijen())
+                {
+                    <tr class="@(r.Verschil ? "kb-verschil" : null)">
+                        <th>@r.Kenmerk</th>
+                        <td>@r.Ad</td>
+                        <td>@r.Entra</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <p class="kb-zacht">Gemarkeerde rijen verschillen tussen AD en Entra (spaties vooraan of achteraan tellen niet mee).</p>
+    </section>
+
+    @if (State.Mag(Recht.Beheren) && !persoon.IsGast)
+    {
+        <GebruikerBewerken Persoon="persoon" />
+    }
+
+    <div class="kb-kolommen">
+        <section class="kb-kaart">
+            <h2>AD-groepen (@adGroepen.Count)</h2>
+            @if (persoon.Ad is null)
+            {
+                <p class="kb-zacht">Geen AD-account.</p>
+            }
+            else
+            {
+                <table class="kb-tabel">
+                    <thead><tr><th>Groep</th><th>Soort</th><th>OU</th></tr></thead>
+                    <tbody>
+                        @foreach (var g in adGroepen)
+                        {
+                            <tr>
+                                <td><ObjectLink Id="@g.DistinguishedName" Tekst="@g.Name" /> @if (Spiegelgebruiker.IsBevoorrecht(g)) { <span class="kb-label kb-rood">bevoorrecht</span> }</td>
+                                <td>@g.Scope</td>
+                                <td>@g.OuPad</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+        <section class="kb-kaart">
+            <h2>Cloudgroepen (@cloudGroepen.Count)</h2>
+            @if (persoon.Entra is null)
+            {
+                <p class="kb-zacht">Geen Entra-account.</p>
+            }
+            else
+            {
+                <table class="kb-tabel">
+                    <thead><tr><th>Groep</th><th>Soort</th></tr></thead>
+                    <tbody>
+                        @foreach (var g in cloudGroepen)
+                        {
+                            <tr>
+                                <td><ObjectLink Id="@g.Id" Tekst="@g.DisplayName" /> @if (g.Dynamisch) { <span class="kb-label" title="@g.Lidmaatschapsregel">automatisch</span> }</td>
+                                <td>@g.TypeTekst</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    </div>
+
+    <div class="kb-kolommen">
+        <section class="kb-kaart">
+            <h2>Alleen in Exchange (@exoGroepen.Count)</h2>
+            @if (exoGroepen.Count == 0) { <p class="kb-zacht">Geen groepen die enkel in Exchange bestaan; mailgroepen uit Entra staan bij de cloudgroepen.</p> }
+            <ul class="kb-lijst-plat">
+                @foreach (var g in exoGroepen)
+                {
+                    <li><ObjectLink Object="g.Ref" /> <span class="kb-zacht">@g.SoortTekst</span></li>
+                }
+            </ul>
+        </section>
+        <section class="kb-kaart">
+            <h2>Gedeelde postvakken (@postvakRechten.Select(r => r.Postvak).Distinct().Count())</h2>
+            @if (postvakRechten.Count == 0) { <p class="kb-zacht">Geen rechten op gedeelde postvakken.</p> }
+            <table class="kb-tabel">
+                <tbody>
+                    @foreach (var r in postvakRechten)
+                    {
+                        <tr class="@(r.ViaGroep is null ? "kb-verschil" : null)">
+                            <td><ObjectLink Id="@r.Postvak.Smtp" /></td>
+                            <td>@r.Recht</td>
+                            <td>@if (r.ViaGroep is { } via) { <text>via </text><ObjectLink Object="via" /> } else { <span>rechtstreeks</span> }</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public string Sleutel { get; set; } = string.Empty;
+
+    private Persoon? persoon;
+    private List<AdGroep> adGroepen = new();
+    private List<CloudGroep> cloudGroepen = new();
+    private List<Groep> exoGroepen = new();
+    private IReadOnlyList<RechtRegel> postvakRechten = Array.Empty<RechtRegel>();
+
+    private sealed record Rij(string Kenmerk, string Ad, string Entra, bool Verschil);
+
+    protected override void OnParametersSet()
+    {
+        persoon = State.Data.ZoekPersoon(Uri.UnescapeDataString(Sleutel));
+        adGroepen = persoon is null ? new() : State.Data.AdGroepenVan(persoon).OrderBy(g => g.Name).ToList();
+        cloudGroepen = persoon is null ? new() : State.Data.CloudGroepenVan(persoon).OrderBy(g => g.DisplayName).ToList();
+        exoGroepen = persoon is null ? new() : State.Data.Index.GroepenVan(persoon).Where(g => g.Exo is not null && g.Ad is null && g.Cloud is null).ToList();
+        postvakRechten = persoon is null ? Array.Empty<RechtRegel>() : State.Data.Index.PostvakRechtenVan(persoon);
+    }
+
+    private IEnumerable<Rij> Rijen()
+    {
+        var a = persoon!.Ad;
+        var e = persoon.Entra;
+        bool beide = a is not null && e is not null;
+        Rij R(string k, string? ad, string? en, bool vergelijk = true)
+            => new(k, ad ?? string.Empty, en ?? string.Empty,
+                vergelijk && beide && !string.Equals((ad ?? string.Empty).Trim(), (en ?? string.Empty).Trim(), StringComparison.Ordinal));
+
+        yield return R("sAMAccountName", a?.SamAccountName, e?.OnPremisesSamAccountName);
+        yield return R("UPN", a?.UserPrincipalName, e?.UserPrincipalName);
+        yield return R("Weergavenaam", a?.DisplayName, e?.DisplayName);
+        yield return R("Voornaam", a?.GivenName, e?.GivenName);
+        yield return R("Achternaam", a?.Surname, e?.Surname);
+        yield return R("E-mail", a?.EmailAddress, e?.Mail);
+        yield return R("Dienst (Department)", a?.Department, e?.Department);
+        yield return R("Afdeling (afgeleid)", State.Config.AfdelingVoor(a?.Department)?.Naam, State.Config.AfdelingVoor(e?.Department)?.Naam);
+        yield return R("Functie", a?.Title, e?.JobTitle);
+        yield return R("Bedrijf", a?.Company, e?.CompanyName);
+        yield return R("Kantoor", a?.Office, e?.OfficeLocation);
+        yield return R("Stad", a?.City, e?.City);
+        yield return R("Telefoon", a?.Telefoon, e?.Telefoon);
+        yield return R("Gsm", a?.Gsm, e?.Gsm);
+        yield return R("Manager", a is null ? null : ManagerNaam(a.Manager, null), e is null ? null : ManagerNaam(null, e.ManagerId));
+        yield return R("Omschrijving", a?.Description, null, vergelijk: false);
+        yield return R("OU", a?.OuPad, e is null ? null : DnHulp.OuPadVanObject(e.OnPremisesDistinguishedName), vergelijk: false);
+        yield return R("Ingeschakeld", a is null ? null : (a.Enabled ? "ja" : "nee"), e is null ? null : (e.AccountEnabled ? "ja" : "nee"));
+        yield return R("Laatste aanmelding", a?.LastLogonDate, e?.LaatsteAanmelding, vergelijk: false);
+        yield return R("Aangemaakt", a?.WhenCreated, e?.CreatedDateTime, vergelijk: false);
+        yield return R("Wachtwoord verloopt nooit", a is null ? null : (a.PasswordNeverExpires ? "ja" : "nee"), null, vergelijk: false);
+        yield return R("Logonscript", a?.ScriptPath, null, vergelijk: false);
+        yield return R("Licenties", null, e is null ? null : string.Join(", ", e.Licenties), vergelijk: false);
+        yield return R("Soort account", null, e?.UserType, vergelijk: false);
+    }
+
+    private string? ManagerNaam(string? dn, string? id)
+    {
+        if (!string.IsNullOrEmpty(dn))
+        {
+            return State.Data.Personen.FirstOrDefault(x => string.Equals(x.Ad?.DistinguishedName, dn, StringComparison.OrdinalIgnoreCase))?.Naam ?? DnHulp.Naam(dn);
+        }
+
+        return string.IsNullOrEmpty(id) ? null : State.Data.Personen.FirstOrDefault(x => string.Equals(x.Entra?.Id, id, StringComparison.OrdinalIgnoreCase))?.Naam ?? id;
+    }
+}
