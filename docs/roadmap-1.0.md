@@ -1,486 +1,481 @@
-# Roadmap naar Moss365 1.0 (Desktop)
+# Roadmap to Moss365 1.0 (Desktop)
 
-**Moss365** is een beheerapp voor Active Directory, Entra ID en Exchange Online (Microsoft 365), voor IT-diensten die
-meer dan één organisatie (tenant) beheren of één organisatie grondig willen beheren. De app ontstond als interne
-beheerapp van een lokaal bestuur (versies 0.5 tot 0.9) en wordt in deze openbare repository **universeel**: geen
-vaste namen, regels of structuren van één organisatie meer, alles instelbaar per tenant.
+**Moss365** is a management app for Active Directory, Entra ID and Exchange Online (Microsoft 365), for IT teams that
+manage more than one organisation (tenant), or want to manage one organisation thoroughly. It started as the internal
+management app of a local government (versions 0.5 to 0.9) and becomes **universal** in this public repository: no
+fixed names, rules or structures of one organisation any more, everything configurable per tenant.
 
-Dit document is het plan naar **1.0: de Desktop-editie** (Windows-app). De webversie (Server) komt daarna; die heeft
-een eigen roadmap: [roadmap-web.md](roadmap-web.md).
+This document is the plan towards **1.0: the Desktop edition** (Windows app). The web version (Server) comes after
+that and has its own roadmap: [roadmap-web.md](roadmap-web.md).
 
-Inhoud:
+Contents:
 
-1. [Wat Moss365 is en wat altijd blijft](#1-wat-moss365-is-en-wat-altijd-blijft)
-2. [Wat er verandert tegenover de interne versie](#2-wat-er-verandert-tegenover-de-interne-versie)
-3. [Opslag: één databank per tenant, met momentopnamen](#3-opslag-één-databank-per-tenant-met-momentopnamen)
-4. [Omgeving: installatie per tenant](#4-omgeving-installatie-per-tenant)
-5. [Omgeving: deze computer](#5-omgeving-deze-computer)
-6. [Omgeving: versleuteling en onderhoud van de databank](#6-omgeving-versleuteling-en-onderhoud-van-de-databank)
-7. [Scripts uit deze repository](#7-scripts-uit-deze-repository)
-8. [Automatisch bijwerken](#8-automatisch-bijwerken)
-9. [Organisatie: universeel, functieprofielen en logonscripts](#9-organisatie-universeel-functieprofielen-en-logonscripts)
-10. [Voorstellen: wat AD- en Microsoft 365-beheerders graag zien](#10-voorstellen-wat-ad--en-microsoft-365-beheerders-graag-zien)
-11. [Open source, met ruimte voor ondersteuning](#11-open-source-met-ruimte-voor-ondersteuning)
-12. [Keuzes](#12-keuzes)
-13. [De stappen naar 1.0](#13-de-stappen-naar-10)
-14. [Risico's](#14-risicos)
+1. [What Moss365 is and what never changes](#1-what-moss365-is-and-what-never-changes)
+2. [What changes compared to the internal version](#2-what-changes-compared-to-the-internal-version)
+3. [Storage: one database per tenant, with snapshots](#3-storage-one-database-per-tenant-with-snapshots)
+4. [Environment: setting up a tenant](#4-environment-setting-up-a-tenant)
+5. [Environment: this computer](#5-environment-this-computer)
+6. [Environment: database encryption and maintenance](#6-environment-database-encryption-and-maintenance)
+7. [Scripts from this repository](#7-scripts-from-this-repository)
+8. [Automatic updates](#8-automatic-updates)
+9. [Organisation: universal settings, job profiles and logon scripts](#9-organisation-universal-settings-job-profiles-and-logon-scripts)
+10. [Proposals: what AD and Microsoft 365 administrators want](#10-proposals-what-ad-and-microsoft-365-administrators-want)
+11. [Open source, with room for paid support](#11-open-source-with-room-for-paid-support)
+12. [Decisions](#12-decisions)
+13. [The steps to 1.0](#13-the-steps-to-10)
+14. [Risks](#14-risks)
 
 ---
 
-## 1. Wat Moss365 is en wat altijd blijft
+## 1. What Moss365 is and what never changes
 
-Moss365 brengt AD, Entra ID en Exchange Online samen op één scherm: gebruikers, groepen, gedeelde postvakken, rooms,
-gasten, licenties, beveiliging (MFA, beheerrollen, Conditional Access), statistieken, scripts, geplande in- en
-uitstroom en een logboek van alles wat de app wijzigde.
+Moss365 brings AD, Entra ID and Exchange Online together on one screen: users, groups, shared mailboxes, rooms,
+guests, licences, security (MFA, admin roles, Conditional Access), statistics, scripts, scheduled onboarding and
+offboarding, and a log of everything the app changed.
 
-Wat in elke versie blijft, en wat de tests bewaken:
+What stays in every version, guarded by the tests:
 
-- **Elke wijziging is een plan**: eerst een voorbeeld, dan een bevestiging, dan het logboek. Ongedaan maken waar het kan.
-- **Nooit geheimen bewaren**: geen wachtwoorden of tokens op schijf of in een log. Een startwachtwoord leeft enkel in het
-  geheugen.
-- **De app kan niet meer dan jouw eigen account.** Gedelegeerde rechten: wat jij in Entra, Exchange of AD niet mag, kan
-  je ook via Moss365 niet.
-- **Rollen in de app** (Lezer, Helpdesk, Beheerder, Auditor, Appbeheer), afgedwongen per scherm, per knop en in de motor.
-- **Geplande acties worden nooit vanzelf uitgevoerd**: op het moment zelf toont de app het plan en wacht.
-- **Conditional Access nooit zonder noodaccounts**: een beleid dat aan staat, moet ze uitsluiten; dat controleert de
-  motor zelf.
-- **Bij uitstroom nooit verwijderen**: uitschakelen, groepen weghalen, verplaatsen.
-- **Geen telemetrie.** De app stuurt niets naar de makers. Gegevens blijven bij de organisatie.
-- **Geen persoonsgegevens in deze repository**: testgegevens zijn verzonnen; voorbeelden gebruiken `contoso.com` of
-  `example.org`.
+- **Every change is a plan**: first a preview, then a confirmation, then the log. Undo wherever possible.
+- **Never store secrets**: no passwords or tokens on disk or in a log. An initial password only lives in memory.
+- **The app can do no more than your own account.** Delegated permissions: what you may not do in Entra, Exchange or
+  AD, you cannot do through Moss365 either.
+- **Roles in the app** (Reader, Helpdesk, Administrator, Auditor, AppAdmin), enforced per screen, per button and in the
+  engine.
+- **Scheduled actions never run by themselves**: when the time comes, the app shows the plan and waits.
+- **Conditional Access never without emergency accounts**: an enabled policy must exclude them; the engine itself
+  checks this.
+- **Offboarding never deletes**: disable, remove from groups, move.
+- **No telemetry.** The app sends nothing to its makers. Data stays with the organisation.
+- **No personal data in this repository**: test data is made up; examples use `contoso.com` or `example.org`.
 
-## 2. Wat er verandert tegenover de interne versie
+## 2. What changes compared to the internal version
 
-| | Interne versie (0.9) | Moss365 1.0 Desktop |
+| | Internal version (0.9) | Moss365 1.0 Desktop |
 | --- | --- | --- |
-| Naam | Moss365 voor het programma, de rollen en de groepen; de oude projectnaam nog in de gegevensmap, de app-registratie en de namespaces | **Overal Moss365**: ook gegevensmap, namespaces, app-registratie en Windows-logboek |
-| Organisaties | Eén | **Meerdere tenants**, strikt gescheiden, elk met een eigen databank |
-| Opslag | SQLite voor logboek en instellingen; inventarissen als CSV-mappen; back-ups als JSON | **Alles in de databank van de tenant**, ook inventarissen, technisch log, back-ups en scriptruns |
-| Geschiedenis | Een stand per dag van enkele indicatoren | **Momentopnamen van de hele organisatie**: hoe zag ze eruit op elke datum, en het verloop van elke indicator |
-| Instellen | Configuratiebestand en een script voor de app-registratie | **Wizard per tenant**: zoekt de app-registratie "Moss365" op (of maakt ze), vult alles zelf in |
-| Organisatielogica | Afgesteld op één organisatie (diensten, OU's, naamregels, groepsnamen) | **Universeel**: alles instelbaar, met voorstellen uit de eigen gegevens. Functieprofielen en logonscripts |
-| Deze computer | Een controlescherm | Controle bij het opstarten; ontbrekende onderdelen **installeren** (met bevestiging) |
-| Databank | Niet versleuteld | **Versleuteling** (keuze per tenant), compacteren en opkuisen |
-| Scripts | Meegeleverd in de download | **Synchroniseren** met de bibliotheek in deze repository, met handtekening |
-| Bijwerken | Een melding als er een nieuwe versie is | **Bij het opstarten nakijken en bijwerken**, met terugval |
+| Name | Moss365 for the program, roles and groups; the old project name still in the data folder, the app registration and the namespaces | **Moss365 everywhere**: also data folder, namespaces, app registration and Windows event log |
+| Language | Dutch code, documentation and interface | **English** code and documentation; the interface in five languages (R15) |
+| Organisations | One | **Multiple tenants**, strictly separated, each with its own database |
+| Storage | SQLite for the log and settings; inventories as CSV folders; backups as JSON | **Everything in the tenant database**, including inventories, technical log, backups and script runs |
+| History | A daily count of a few indicators | **Snapshots of the whole organisation**: what it looked like on any date, and the trend of every indicator |
+| Setup | A configuration file and a script for the app registration | **Wizard per tenant**: finds the app registration "Moss365" (or creates it) and fills in everything itself |
+| Organisation logic | Tuned to one organisation (departments, OUs, naming rules, group names) | **Universal**: everything configurable, with suggestions from the tenant's own data. Job profiles and logon scripts |
+| This computer | A check screen | Check at startup; missing components are **installed** (with confirmation) |
+| Database | Not encrypted | **Encryption** (choice per tenant), compacting and clean-up |
+| Scripts | Shipped with the download | **Synchronised** with the library in this repository, verified |
+| Updates | A notice when a new version exists | **Checked and installed at startup**, with rollback |
 
-### Alles heet Moss365
+### Everything is called Moss365
 
-| Wat | Wordt |
+| What | Becomes |
 | --- | --- |
-| Programma | `Moss365.exe` |
-| Projecten en namespaces | `Moss365.Core`, `Moss365.Verbindingen`, `Moss365.UI`, `Moss365.Desktop`, later `Moss365.Server` |
-| Gegevensmap | `%LOCALAPPDATA%\Moss365` (tijdelijke bestanden in `%TEMP%\Moss365`) |
-| Register (als de app er iets zet, bv. de installer) | `HKCU\Software\Moss365` |
-| Windows-logboek | Toepassing, bron `Moss365` |
-| App-registratie in Entra | Altijd **`Moss365`** |
-| Rollen (app-rollen) | `Moss365.Lezer`, `Moss365.Helpdesk`, `Moss365.Beheerder`, `Moss365.Auditor`, `Moss365.Appbeheer` |
-| Groepen voor de rollen | `GG-Moss365-Lezers`, `GG-Moss365-Helpdesk`, ... (voorvoegsel instelbaar per tenant) |
-| Scriptkop | `<#MOSS365 ... #>` |
-| Omgevingsvariabelen voor scripts | `MOSS365_*` |
-| Databank | `moss365.db` (de app) en `tenant.db` (per tenant) |
+| Program | `Moss365.exe` |
+| Projects and namespaces | `Moss365.Core`, `Moss365.Connections`, `Moss365.UI`, `Moss365.Desktop`, later `Moss365.Server` |
+| Data folder | `%LOCALAPPDATA%\Moss365` (temporary files in `%TEMP%\Moss365`) |
+| Registry (when the app writes anything, e.g. the installer) | `HKCU\Software\Moss365` |
+| Windows event log | Application, source `Moss365` |
+| App registration in Entra | Always **`Moss365`** |
+| Roles (app roles) | `Moss365.Reader`, `Moss365.Helpdesk`, `Moss365.Administrator`, `Moss365.Auditor`, `Moss365.AppAdmin` |
+| Groups for the roles | `GG-Moss365-Readers`, `GG-Moss365-Helpdesk`, ... (prefix configurable per tenant) |
+| Script header | `<#MOSS365 ... #>` |
+| Environment variables for scripts | `MOSS365_*` |
+| Databases | `moss365.db` (the app) and `tenant.db` (per tenant) |
 
-**Overzetten** van een bestaande installatie van de interne versie: bij de eerste start vindt Moss365 de oude
-gegevensmap en stelt voor om ze als eerste tenant in te lezen (instellingen, logboek, gepland, scripts, inventarissen).
-De oude map blijft staan tot je ze zelf weghaalt. Een bestaande app-registratie met de oude naam wordt herkend; de wizard
-stelt voor ze te hernoemen naar `Moss365` (client-id, rechten en toewijzingen blijven). De rollen, de groepen, de
-scriptkop en de omgevingsvariabelen heetten al Moss365: daar verandert niets.
+**Migrating** an existing installation of the internal version: at first start Moss365 finds the old data folder and
+offers to import it as the first tenant (settings, log, schedule, scripts, inventories). The old folder stays until you
+remove it yourself. An existing app registration with the old name is recognised; the wizard offers to rename it to
+`Moss365` (client ID, permissions and assignments stay). The app roles keep their IDs, so assignments are not lost; the
+app accepts both the old (Dutch) and the new role values. Existing groups for the roles are recognised and kept.
 
-## 3. Opslag: één databank per tenant, met momentopnamen
+## 3. Storage: one database per tenant, with snapshots
 
-### Indeling
+### Layout
 
 ```
 %LOCALAPPDATA%\Moss365\
-  moss365.db                 de app: lijst van tenants, app-instellingen, updatestatus (geen gegevens van een tenant)
+  moss365.db                the app: list of tenants, app settings, update status (no tenant data)
   tenants\<tenant-id>\
-    tenant.db               alles van die tenant (zie hieronder)
-    tenant.db.bak-<datum>   automatische kopie vóór een migratie of update
-  bibliotheek\              gesynchroniseerde scripts (gedeeld, zonder gegevens)
+    tenant.db               everything of that tenant (see below)
+    tenant.db.bak-<date>    automatic copy before a migration or update
+  library\                  synchronised scripts (shared, no data)
 ```
 
-In **`tenant.db`** staat alles van die tenant:
+**`tenant.db`** holds everything of that tenant:
 
-| Onderdeel | Inhoud |
+| Part | Contents |
 | --- | --- |
-| Instellingen | Verbinding (tenant-id, client-id, domeincontroller), organisatie-instellingen, functieprofielen, noodaccounts |
-| Momentopnamen | Alle gelezen objecten en relaties, met hun versies in de tijd (zie hieronder) |
-| Logboek | Elke uitgevoerde wijziging: wie, wanneer, wat, voor en na, resultaat (enkel toevoegen) |
-| Toegangslog | Wie exporteerde, wie aanmeldingen of beveiligingsgegevens bekeek |
-| Technisch log | Wat er gebeurde, aantallen en fouten; nooit namen, parameters of geheimen |
-| Werk | Geplande acties, opvolgtaken, scriptruns en hun uitvoer |
-| Back-ups | Conditional Access-beleiden en benoemde locaties, logonscripts |
-| Weergave | Kolommen, filters en keuzes per gebruiker van de app |
+| Settings | Connection (tenant ID, client ID, domain controller), organisation settings, job profiles, emergency accounts |
+| Snapshots | All objects and relations that were read, with their versions over time (see below) |
+| Change log | Every executed change: who, when, what, before and after, result (append only) |
+| Access log | Who exported, who viewed sign-ins or security data |
+| Technical log | What happened, counts and errors; never names, parameters or secrets |
+| Work | Scheduled actions, follow-up tasks, script runs and their output |
+| Backups | Conditional Access policies and named locations, logon scripts |
+| View | Columns, filters and choices per app user |
 
-Nooit gegevens van twee tenants in één databank, lijst, plan of export.
+Never data of two tenants in one database, list, plan or export.
 
-### Momentopnamen: de organisatie door de tijd
+### Snapshots: the organisation over time
 
-Elke lezing (volledig of snel) wordt een **momentopname**. De databank bewaart niet telkens alles opnieuw, maar enkel
-**wat veranderde**: elk object (gebruiker, groep, postvak, room, gast, beleid, licentie, ...) en elke relatie
-(lidmaatschap, postvakrecht, manager, rol) heeft versies met "geldig van" en "geldig tot".
+Every read (full or quick) becomes a **snapshot**. The database does not store everything again each time, only
+**what changed**: every object (user, group, mailbox, room, guest, policy, licence, ...) and every relation
+(membership, mailbox permission, manager, role) has versions with "valid from" and "valid until".
 
 ```
-Momentopname (id, tijd, bron: AD / Entra / Exchange / volledig / snel)
-Object       (soort, sleutel)
-Versie       (object, van-momentopname, tot-momentopname, inhoud, vingerafdruk)
-Relatie      (soort, van, naar, van-momentopname, tot-momentopname)
+Snapshot  (id, time, source: AD / Entra / Exchange / full / quick)
+Object    (kind, key)
+Version   (object, from-snapshot, until-snapshot, content, fingerprint)
+Relation  (kind, from, to, from-snapshot, until-snapshot)
 ```
 
-Wat dat mogelijk maakt:
+What that makes possible:
 
-- **De organisatie op een datum**: elk scherm (lijsten, statistieken, Conditional Access) kan een datum in het verleden
-  tonen ("zoals op 1 maart"), alleen lezen.
-- **Wat veranderde tussen twee datums**: nieuwe en verdwenen accounts, wie van dienst veranderde, wie in een
-  bevoorrechte groep kwam, welke beleiden wijzigden. Ook wat er buiten Moss365 veranderde.
-- **De tijdlijn van één object**: wanneer werd iemand lid van een groep, wanneer veranderde zijn functie, wanneer werd
-  het account uitgeschakeld (met het logboek ernaast: deed Moss365 het, of iemand anders?).
-- **Het verloop van elke indicator**: elke KPI kan voor elke momentopname opnieuw berekend worden, ook een KPI die pas
-  later bestaat. Statistieken toont de evolutie (dag, week, maand, jaar) en het verschil met een vorige periode.
-- **Terugzetten uit het verleden**: kenmerken of lidmaatschappen van een object zoals ze waren op een datum, als plan.
+- **The organisation on a date**: every screen (lists, statistics, Conditional Access) can show a date in the past
+  ("as of 1 March"), read only.
+- **What changed between two dates**: new and removed accounts, who changed department, who joined a privileged group,
+  which policies changed. Including changes made outside Moss365.
+- **The timeline of one object**: when someone joined a group, when their job title changed, when the account was
+  disabled (with the change log next to it: was it Moss365 or someone else?).
+- **The trend of every indicator**: every KPI can be recalculated for any snapshot, even a KPI that is added later.
+  Statistics shows the evolution (day, week, month, year) and the difference with a previous period.
+- **Restore from the past**: attributes or memberships of an object as they were on a date, as a plan.
 
-Omvang: een organisatie met enkele honderden accounts verandert per dag weinig; de databank groeit met enkele MB per
-jaar. Voor snelheid houdt de app per dag een tabel met de berekende KPI's bij (alleen aantallen); die kan altijd
-opnieuw opgebouwd worden uit de momentopnamen.
+Size: an organisation with a few hundred accounts changes little per day; the database grows by a few MB per year. For
+speed the app keeps a daily table of computed KPIs (counts only); it can always be rebuilt from the snapshots.
 
-## 4. Omgeving: installatie per tenant
+## 4. Environment: setting up a tenant
 
-Een wizard **Tenant toevoegen** doet het werk; je vult enkel in wat de app niet zelf kan vinden.
+An **Add tenant** wizard does the work; you only fill in what the app cannot find itself.
 
-1. **Tenant**: geef een domein (bv. `contoso.com`) of het tenant-id. De app zoekt het tenant-id zelf op (OpenID-gegevens
-   van Microsoft).
-2. **Aanmelden** met een beheeraccount van die tenant (de link verschijnt in de app, zoals nu).
-3. **App-registratie `Moss365`** (altijd die naam):
-   - bestaat ze, dan leest de app het client-id, de rechten, de redirect-URI, de app-rollen en de toewijzingen, en vult
-     alles in;
-   - ontbreekt er iets (een recht, een rol, toestemming door een beheerder), dan toont de app het verschil als plan;
-   - bestaat ze niet, dan maakt de app ze, als plan (wat `Registreer-App.ps1` nu doet). Daarvoor is eenmalig een
-     beheerder met de rol Application Administrator of Global Administrator nodig.
-4. **Groepen voor de rollen** (`GG-Moss365-...`): zoeken, voorstellen om ze te maken en aan de rollen te koppelen.
-5. **Active Directory**: is de pc lid van het domein, dan vindt de app domein en domeincontroller zelf. Een tenant zonder
-   AD (alleen cloud) kan ook; dan verdwijnen de AD-onderdelen uit de schermen.
-6. **Hybride of niet**: de app ziet of AD gesynchroniseerd wordt (Entra Connect of Cloud Sync) en weet zo waar ze moet
-   schrijven.
-7. **Exchange Online**: controle van de module en de aanmelding met hetzelfde account.
-8. **Organisatie-instellingen**: de app leest de gegevens en **stelt voor** (zie hoofdstuk 9): diensten, kantoren, OU's,
-   naamregels, groepsvoorvoegsels, het model van de gedeelde postvakken, dynamische groepen. Jij bevestigt of past aan.
-9. **Noodaccounts**: de app stelt kandidaten voor (cloud-only Global Administrators die nergens onder een beleid vallen).
-10. **Eerste volledige lezing**: de eerste momentopname.
+1. **Tenant**: enter a domain (e.g. `contoso.com`) or the tenant ID. The app looks up the tenant ID itself (Microsoft's
+   OpenID metadata).
+2. **Sign in** with an admin account of that tenant (the link appears in the app, as today).
+3. **App registration `Moss365`** (always that name):
+   - if it exists, the app reads the client ID, permissions, redirect URI, app roles and assignments, and fills in
+     everything;
+   - if something is missing (a permission, a role, admin consent), the app shows the difference as a plan;
+   - if it does not exist, the app creates it, as a plan (what `Register-App.ps1` does today). That needs an admin with
+     the Application Administrator or Global Administrator role, once.
+4. **Groups for the roles** (`GG-Moss365-...`): find them, offer to create them and link them to the roles.
+5. **Active Directory**: if the PC is joined to the domain, the app finds the domain and a domain controller itself. A
+   tenant without AD (cloud only) is fine too; the AD parts then disappear from the screens.
+6. **Hybrid or not**: the app sees whether AD is synchronised (Entra Connect or Cloud Sync) and so knows where to write.
+7. **Exchange Online**: check the module and sign in with the same account.
+8. **Organisation settings**: the app reads the data and **suggests** (see chapter 9): departments, offices, OUs, naming
+   rules, group prefixes, the shared mailbox model, dynamic groups. You confirm or adjust.
+9. **Emergency accounts**: the app suggests candidates (cloud-only Global Administrators not covered by any policy).
+10. **First full read**: the first snapshot.
 
-Elke tenant krijgt een **naam en kleur** in de balk, en elk plan vraagt de bevestiging met de naam van de tenant, zodat
-je nooit in de verkeerde organisatie werkt.
+Each tenant gets a **name and colour** in the bar, and every plan asks for confirmation with the tenant name, so you
+never work in the wrong organisation by mistake.
 
-## 5. Omgeving: deze computer
+## 5. Environment: this computer
 
-Bij elke start (en in het scherm **Deze computer**) kijkt de app na:
+At every start (and in the **This computer** screen) the app checks:
 
-| Onderdeel | Waarvoor | Ontbreekt het |
+| Component | Used for | If missing |
 | --- | --- | --- |
-| WebView2-runtime | De schermen | Installeren (bootstrapper van Microsoft) |
-| PowerShell 7 (5.1 volstaat voor de meeste scripts) | Exchange en scripts | Installeren via winget |
-| Module `ExchangeOnlineManagement` (minimumversie) | Exchange | `Install-Module -Scope CurrentUser` (geen beheerrechten nodig) |
-| Module `Microsoft.Graph` (onderdelen) | Scripts uit de bibliotheek | Idem |
-| RSAT Active Directory | Enkel voor scripts (de app zelf leest AD rechtstreeks) | Windows-onderdeel installeren (vraagt beheerrechten: Windows vraagt bevestiging) |
-| Verbinding met de domeincontroller (LDAP, Kerberos), Graph en Exchange | Laden en wijzigen | Uitleg wat er mis is (poort, proxy, DNS) |
-| Klok van de pc | Kerberos en aanmelden falen bij een afwijking | Melding |
-| Verouderde versies | Fouten en veiligheid | Bijwerken |
+| WebView2 runtime | The screens | Install (Microsoft's bootstrapper) |
+| PowerShell 7 (5.1 is enough for most scripts) | Exchange and scripts | Install via winget |
+| Module `ExchangeOnlineManagement` (minimum version) | Exchange | `Install-Module -Scope CurrentUser` (no admin rights needed) |
+| Module `Microsoft.Graph` (parts) | Scripts from the library | Same |
+| RSAT Active Directory | Scripts only (the app itself reads AD directly) | Install the Windows capability (needs admin rights: Windows asks for confirmation) |
+| Connection to the domain controller (LDAP, Kerberos), Graph and Exchange | Reading and writing | Explanation of what is wrong (port, proxy, DNS) |
+| PC clock | Kerberos and sign-in fail when it drifts | Warning |
+| Outdated versions | Bugs and security | Update |
 
-Installeren gebeurt **altijd met bevestiging**, enkel uit de officiële bronnen (PowerShell Gallery, winget, Microsoft),
-en komt in het logboek. Wie wil, zet bij Instellingen **"Ontbrekende onderdelen meteen installeren"** aan; dan vraagt
-de app het maar één keer.
+Installing **always asks for confirmation**, only from official sources (PowerShell Gallery, winget, Microsoft), and is
+written to the change log. Optionally, turn on **"Install missing components right away"** in Settings; the app then
+asks only once.
 
-## 6. Omgeving: versleuteling en onderhoud van de databank
+## 6. Environment: database encryption and maintenance
 
-### Versleuteling (keuze per tenant)
+### Encryption (choice per tenant)
 
-De databank bevat persoonsgegevens en de geschiedenis van een organisatie. Ze kan versleuteld worden met SQLCipher
-(AES-256, open source); de sleutel staat nooit in de databank, de repository of een log.
+The database holds personal data and the history of an organisation. It can be encrypted with SQLCipher (AES-256, open
+source); the key is never stored in the database, the repository or a log.
 
-| Optie | Hoe | Goed voor | Let op |
+| Option | How | Good for | Mind |
 | --- | --- | --- | --- |
-| **A. Windows-account** (DPAPI) | De sleutel is versleuteld met je Windows-aanmelding | Standaard op de Desktop: niets in te tikken; beschermt tegen een gestolen schijf of een andere gebruiker | Wie als jij aangemeld is, kan erbij |
-| **B. Wachtwoord** | Een wachtwoord bij het openen (sleutel afgeleid met PBKDF2 of Argon2) | Gedeelde pc's, draagbare installaties | Wachtwoord kwijt = databank kwijt; daarom altijd een **herstelsleutel** (afdrukken, in de kluis) |
-| **C. AD-groep** (DPAPI-NG) | De sleutel is versleuteld voor een AD-groep (bv. `GG-Moss365-Beheerders`) | Meerdere beheerders op dezelfde pc of server, in een domein | Enkel op pc's in het domein |
-| **D. Microsoft 365-aanmelding (SSO)** | De sleutel is "ingepakt" met een sleutel in **Azure Key Vault** van de tenant; uitpakken kan enkel met je Entra-aanmelding en de rol Key Vault Crypto User (toe te kennen via de groepen van Moss365) | Volgt de rechten en de MFA van de tenant; wie uit de groep gaat, kan niet meer openen | Vraagt een Azure-abonnement (enkele eurocent per maand); zonder internet niet te openen, dus ook hier een herstelsleutel |
+| **A. Windows account** (DPAPI) | The key is encrypted with your Windows sign-in | Nothing to type; protects against a stolen disk or another user | Anyone signed in as you can open it |
+| **B. Password** | A password when opening (key derived with PBKDF2 or Argon2) | Shared PCs, portable installations | Password lost = database lost; so always a **recovery key** (print it, keep it in the safe) |
+| **C. AD group** (DPAPI-NG) | The key is encrypted for an AD group (e.g. `GG-Moss365-Administrators`) | Several admins on the same PC or server, in a domain | Domain-joined PCs only |
+| **D. Microsoft 365 sign-in (SSO)** | The key is "wrapped" with a key in the tenant's **Azure Key Vault**; unwrapping needs your Entra sign-in and the Key Vault Crypto User role (granted via the Moss365 groups) | Follows the tenant's permissions and MFA; whoever leaves the group can no longer open it | Needs an Azure subscription (a few cents a month); cannot be opened offline, so also a recovery key |
 
-**Studie bij D** (aan het begin van de stap R6):
+**Study for D** (at the start of step R6):
 
-- Een token van Microsoft kan zelf geen sleutel zijn: het verandert bij elke aanmelding. Daarom een sleutel die nooit uit
-  Key Vault komt en enkel inpakt en uitpakt (wrap/unwrap), met de identiteit van de gebruiker.
-- Zonder Azure is er in Microsoft 365 geen veilige plek om een sleutel te bewaren (een bestand in OneDrive of SharePoint
-  is leesbaar voor wie erbij kan). Dus zonder Azure: A, B of C.
-- Te onderzoeken: offline werken (een in het geheugen bewaarde, tijdelijk uitgepakte sleutel), sleutels roteren
-  (`PRAGMA rekey`), en hoe dit op de Server werkt (dezelfde aanpak, of C met het serviceaccount).
+- A Microsoft token cannot itself be a key: it changes at every sign-in. Hence a key that never leaves Key Vault and only
+  wraps and unwraps, with the user's identity.
+- Without Azure there is no safe place in Microsoft 365 to keep a key (a file in OneDrive or SharePoint is readable by
+  anyone with access). So without Azure: A, B or C.
+- To investigate: working offline (an unwrapped key kept in memory for a while), key rotation (`PRAGMA rekey`), and how
+  this works on the Server (same approach, or C with the service account).
 
-Beslist (U7): **standaard geen versleuteling**; per tenant aan te zetten met A, B of C. **D na een geslaagde studie**.
+Decided (U7): **no encryption by default**; can be turned on per tenant with A, B or C. **D after a successful study**.
 
-### Onderhoud
+### Maintenance
 
-Een scherm **Databank** per tenant:
+A **Database** screen per tenant:
 
-- grootte per onderdeel (momentopnamen, logboek, technisch log, scriptruns, back-ups);
-- **compacteren** (`VACUUM`, ook automatisch na een opkuis);
-- **oude gegevens opkuisen** volgens een bewaartermijn per onderdeel, altijd eerst als voorbeeld en, voor het logboek,
-  eerst een archief (CSV of een aparte databank). De standaarden (U9), per tenant aan te passen:
-  - momentopnamen: dagelijks gedurende 1 jaar, daarna één per maand;
-  - logboek: 5 jaar (wat de organisatie met haar DPO afspreekt, kan korter of langer);
-  - technisch log: 90 dagen; scriptruns: 1 jaar;
-- **back-up en terugzetten** van een tenant (één bestand, versleuteld zoals de databank);
-- **controle** van de databank (`PRAGMA integrity_check`) en automatisch een kopie vóór elke migratie of update.
+- size per part (snapshots, change log, technical log, script runs, backups);
+- **compact** (`VACUUM`, also automatically after a clean-up);
+- **clean up old data** according to a retention period per part, always as a preview first and, for the change log,
+  an archive first (CSV or a separate database). Defaults (U9), adjustable per tenant:
+  - snapshots: daily for 1 year, then one per month;
+  - change log: 5 years (whatever the organisation agrees with its DPO, shorter or longer);
+  - technical log: 90 days; script runs: 1 year;
+- **backup and restore** of a tenant (one file, encrypted like the database);
+- **integrity check** (`PRAGMA integrity_check`) and an automatic copy before every migration or update.
 
-## 7. Scripts uit deze repository
+## 7. Scripts from this repository
 
-- De bibliotheek staat in deze repository, in `scripts/`, met de kop `<#MOSS365 ... #>` (naam, omschrijving, verbinding,
-  schrijft of niet, variabelen, minimumversie van de app).
-- De workflow test elk script (Pester: ASCII, `-WhatIf` voor scripts die wijzigen, geen namen of adressen), maakt een
-  **index** (naam, versie, SHA-256). Vanaf 1.0 **ondertekent** ze ook de scripts en de index (Authenticode, U8).
-- In de app: **Bibliotheek bijwerken** toont wat nieuw of gewijzigd is (met het verschil), en downloadt na je bevestiging.
-  De app controleert de vingerafdruk (en vanaf 1.0 de handtekening), en weigert een script dat niet klopt.
-- Een gedownload script draait nooit vanzelf: zoals nu eerst een voorbeeld (`-WhatIf`) en een bevestiging.
-- Per tenant kan je een versie vastzetten ("deze tenant blijft op versie X van dit script").
-- Eigen scripts blijven per tenant in de databank. Een eigen script delen met iedereen gebeurt via een pull request
-  naar deze repository.
+- The library lives in this repository, in `scripts/`, with the header `<#MOSS365 ... #>` (name, description,
+  connection, writes or not, variables, minimum app version).
+- The workflow tests every script (Pester: ASCII, `-WhatIf` for scripts that change things, no names or addresses) and
+  builds an **index** (name, version, SHA-256). From 1.0 it also **signs** the scripts and the index (Authenticode, U8).
+- In the app, **Update library** shows what is new or changed (with the diff) and downloads after your confirmation.
+  The app checks the fingerprint (and from 1.0 the signature) and refuses a script that does not match.
+- A downloaded script never runs by itself: as today, first a preview (`-WhatIf`) and a confirmation.
+- Per tenant you can pin a version ("this tenant stays on version X of this script").
+- Your own scripts stay in the tenant database. Sharing a script with everyone happens through a pull request to this
+  repository.
 
-## 8. Automatisch bijwerken
+## 8. Automatic updates
 
-- Bij het opstarten kijkt de app (zonder het werk tegen te houden) of er op GitHub een nieuwere versie is.
-- Je ziet wat er nieuw is (de changelog van die versie) en kiest **Nu bijwerken** of **Later**.
-- De update heeft een gepubliceerde **vingerafdruk** (SHA-256) die de app controleert; vanaf 1.0 is ze ook **ondertekend**
+- At startup the app checks GitHub for a newer version (without blocking your work).
+- You see what is new (the changelog of that version) and choose **Update now** or **Later**.
+- The update has a published **fingerprint** (SHA-256) that the app verifies; from 1.0 it is also **signed**
   (Authenticode, U8).
-- Nooit bijwerken terwijl een plan of taak loopt. Voor de update: een kopie van elke databank; na de update: de
-  migraties.
-- Lukt de nieuwe versie niet, dan terug naar de vorige (blijft bewaard).
-- Kanalen: **stabiel** (standaard) en **voorvertoning**.
-- Voor organisaties zonder toegang tot GitHub: een eigen bron instellen (een gedeelde map met de releases).
-- Techniek (U4): **Velopack** (open source, kleine delta-updates, installatie per gebruiker zonder beheerrechten).
+- Never update while a plan or task is running. Before the update: a copy of every database; after it: the migrations.
+- If the new version fails, go back to the previous one (it is kept).
+- Channels: **stable** (default) and **preview**.
+- For organisations without access to GitHub: a custom source (a shared folder with the releases).
+- Technology (U4): **Velopack** (open source, small delta updates, per-user install without admin rights).
 
-## 9. Organisatie: universeel, functieprofielen en logonscripts
+## 9. Organisation: universal settings, job profiles and logon scripts
 
-### Alles instelbaar per tenant
+### Everything configurable per tenant
 
-Wat in de interne versie vast lag, wordt een instelling, met een voorstel uit de eigen gegevens:
+What was fixed in the internal version becomes a setting, with a suggestion from the tenant's own data:
 
-| Instelling | Voorstel uit de gegevens |
+| Setting | Suggested from the data |
 | --- | --- |
-| Diensten (Department) en hun afdelingen | De waarden die in AD en Entra voorkomen, met de schrijfwijzen die maar weinig verschillen |
-| Kantoren en steden | Idem |
-| Naam van de organisatie (Company) | De meest gebruikte waarde |
-| OU's: nieuwe gebruikers, uitgestroomde accounts, nieuwe groepen, dienstaccounts | De OU's met de meeste (uitgeschakelde) accounts |
-| Naamregels: UPN, sAMAccountName, weergavenaam, e-mail | Het patroon dat de meeste accounts volgen (bv. `voornaam.achternaam`) |
-| Groepsnamen: voorvoegsels per soort (beveiliging, distributie, afdeling, toegang) | De voorvoegsels die al gebruikt worden |
-| Gedeelde postvakken: toegang via een groep (en het naampatroon) of rechtstreeks | Wat de meeste postvakken nu hebben |
-| Dynamische groepen (nooit zelf vullen) | Uit Entra |
-| Bevoorrechte groepen | De ingebouwde (Domain Admins, ...) plus wat je toevoegt |
-| Licenties (leesbare namen, standaard per soort gebruiker) | Uit de abonnementen |
-| Rooms: de standaardinstellingen | De meest voorkomende instellingen |
-| Noodaccounts | Kandidaten (zie hoofdstuk 4) |
+| Departments and their divisions | The values found in AD and Entra, grouping spellings that barely differ |
+| Offices and cities | Same |
+| Organisation name (Company) | The most used value |
+| OUs: new users, offboarded accounts, new groups, service accounts | The OUs with the most (disabled) accounts |
+| Naming rules: UPN, sAMAccountName, display name, e-mail | The pattern most accounts follow (e.g. `firstname.lastname`) |
+| Group names: prefixes per kind (security, distribution, department, access) | The prefixes already in use |
+| Shared mailboxes: access via a group (and its naming pattern) or direct | What most mailboxes have today |
+| Dynamic groups (never filled by hand) | From Entra |
+| Privileged groups | The built-in ones (Domain Admins, ...) plus what you add |
+| Licences (readable names, default per kind of user) | From the subscriptions |
+| Rooms: the standard settings | The most common settings |
+| Emergency accounts | Candidates (see chapter 4) |
 
-Een tenant kan ook starten van een **sjabloon** (bv. "lokaal bestuur", "school", "kmo") en een tenant kan zijn
-instellingen exporteren en in een andere inlezen.
+A tenant can also start from a **template** (e.g. "local government", "school", "small business"), and a tenant can
+export its settings and import them into another.
 
-### Functieprofielen
+### Job profiles
 
-Een functieprofiel beschrijft wat iemand in een functie krijgt:
+A job profile describes what someone in a job gets:
 
-- AD-groepen, cloudgroepen en Microsoft 365-groepen (Teams);
-- toegang tot gedeelde postvakken (via hun toegangsgroep);
-- licenties;
-- OU, dienst, kantoor en andere kenmerken;
-- logonscript.
+- AD groups, cloud groups and Microsoft 365 groups (Teams);
+- access to shared mailboxes (via their access group);
+- licences;
+- OU, department, office and other attributes;
+- logon script.
 
-Gebruik:
+Use:
 
-- **Nieuwe gebruiker**: kies een functieprofiel, en het plan bevat alles in één keer.
-- **Profiel toepassen** op een bestaande gebruiker: het plan toont wat erbij komt en wat weg kan.
-- **Afwijkingen**: wie heeft meer of minder dan zijn profiel (een lijst voor de opkuis of een audit).
-- **Spiegelgebruiker** blijft bestaan, maar een profiel is beter: het hangt niet af van één persoon.
-- Profielen hebben versies (momentopnamen), zodat je ziet welke versie wanneer toegepast werd.
+- **New user**: pick a job profile, and the plan contains everything at once.
+- **Apply profile** to an existing user: the plan shows what gets added and what can go.
+- **Deviations**: who has more or less than their profile (a list for clean-up or audit).
+- **Mirror user** stays, but a profile is better: it does not depend on one person.
+- Profiles have versions (snapshots), so you can see which version was applied when.
 
-(Naamgeving: om verwarring met de rollen van de app te vermijden, heten de rollen in 1.0 **rollen** en de functies
-**functieprofielen**.)
+(Naming: to avoid confusion with the app's roles, these are called **job profiles**, and the app's access levels are
+called **roles**.)
 
-### Logonscripts
+### Logon scripts
 
-Een scherm **Logonscripts** per tenant:
+A **Logon scripts** screen per tenant:
 
-- alle scripts in de NETLOGON-share, en welke gebruikers welk script hebben (`scriptPath`);
-- verwijzingen naar scripts die niet bestaan, en scripts die niemand gebruikt;
-- **bekijken en bewerken** in de code-editor van de app: opslaan is een plan met het verschil, de vorige versie blijft
-  bewaard (en terug te zetten);
-- wat een script doet in gewone taal waar dat kan (bv. de netwerkschijven die het koppelt);
-- het logonscript van gebruikers wijzigen (één of een selectie), als plan;
-- Logonscripts via groepsbeleid (GPO) worden getoond, maar niet gewijzigd.
+- all scripts in the NETLOGON share, and which users have which script (`scriptPath`);
+- references to scripts that do not exist, and scripts nobody uses;
+- **view and edit** in the app's code editor: saving is a plan with the diff, the previous version is kept (and can be
+  restored);
+- what a script does in plain language where possible (e.g. the network drives it maps);
+- change the logon script of users (one or a selection), as a plan;
+- logon scripts assigned through Group Policy (GPO) are shown, but not changed.
 
+## 10. Proposals: what AD and Microsoft 365 administrators want
 
-## 10. Voorstellen: wat AD- en Microsoft 365-beheerders graag zien
+What administrators often miss in practice. All of them are in the steps to 1.0 (chapter 13); each heading names its
+step (R10 to R15). Everything that changes something goes through a plan as always; everything that shows sensitive
+data (recovery keys, passwords, message traces) is written to the access log and requires the right role.
 
-Uit wat beheerders in de praktijk vaak missen. Ze staan allemaal in de stappen naar 1.0 (hoofdstuk 13); bij elke
-titel staat de stap (R10 tot R15). Alles wat wijzigt, gaat zoals altijd via een plan; wat gevoelige gegevens toont (herstelsleutels,
-wachtwoorden, berichtsporen), komt in het toegangslog en vraagt de juiste rol.
+### Helpdesk and daily work (R10)
 
-### Helpdesk en dagelijks werk (R10)
-
-| Voorstel | Waarom |
+| Proposal | Why |
 | --- | --- |
-| **Temporary Access Pass** maken voor iemand die zijn telefoon kwijt is (eenmalig of met een geldigheid) | De meest gestelde vraag aan een helpdesk sinds MFA |
-| **BitLocker-herstelsleutel en LAPS-wachtwoord** opzoeken (AD en Entra), met het toegangslog | Nu zoeken beheerders in drie portalen |
-| **Waar komt een vergrendeling vandaan**: de pc of het toestel uit de gebeurtenissen van de domeincontrollers | Een oud wachtwoord op een gsm vergrendelt een account telkens opnieuw |
-| **Wachtwoord verloopt bijna**: lijst, en een herinnering per mail aan de gebruiker (of zijn manager) | Vooral voor wie zelden op het netwerk komt (thuiswerk, VPN) |
-| **Berichtspoor** (message trace) voor één gebruiker: kwam de mail aan, en zo niet, waarom? | De tweede meest gestelde vraag |
-| **Afwezigheidsbericht en doorsturen** voor iemand anders instellen, met een einddatum | Ziekte en verlof |
-| **Lid van welke groepen, en waarom**: geneste groepen uitgevouwen, "via welke groep heeft deze persoon toegang" | Toegangsvragen beantwoorden zonder te zoeken |
-| **Snel aanmelden bij elke start**: een versleutelde tokencache per tenant (optioneel, Windows-account) | Niet elke keer opnieuw aanmelden |
-| Zoeken over alles met **Ctrl+K** (gebruikers, groepen, postvakken, pc's, scripts, schermen) | Sneller dan menu's |
+| **Temporary Access Pass** for someone who lost their phone (one-time or with a lifetime) | The most frequent helpdesk question since MFA |
+| **BitLocker recovery key and LAPS password** lookup (AD and Entra), with the access log | Today admins search three portals |
+| **Where does a lockout come from**: the PC or device, from the domain controllers' events | An old password on a phone locks an account again and again |
+| **Password expires soon**: a list, and an e-mail reminder to the user (or their manager) | Especially for people rarely on the network (home working, VPN) |
+| **Message trace** for one user: did the mail arrive, and if not, why? | The second most frequent question |
+| **Out-of-office and forwarding** for someone else, with an end date | Illness and leave |
+| **Member of which groups, and why**: nested groups expanded, "through which group does this person have access" | Answering access questions without searching |
+| **Quick sign-in at every start**: an encrypted token cache per tenant (optional, Windows account) | No new sign-in every time |
+| Search everything with **Ctrl+K** (users, groups, mailboxes, PCs, scripts, screens) | Faster than menus |
 
-### Beveiliging (R11)
+### Security (R11)
 
-| Voorstel | Waarom |
+| Proposal | Why |
 | --- | --- |
-| **Doorsturen naar buiten** (postvakken en inboxregels) | Een klassiek teken van een gekaapt account |
-| **App-registraties en bedrijfsapps**: geheimen en certificaten die verlopen, apps met veel rechten, toestemmingen door gebruikers, ongebruikte apps | Een verlopen geheim legt koppelingen stil; een riskante toestemming is een lek |
-| **Waarschuwingen uit de momentopnamen**: nieuw lid van een bevoorrechte groep, gewijzigd beleid, nieuwe beheerrol, nieuwe toestemming voor een app, een uitgeschakeld account dat weer aan staat | Ziet ook wat buiten Moss365 gebeurde |
-| **AD-beveiligingscontrole** (licht): accounts met een SPN (kerberoasting), onbeperkte delegatie, "wachtwoord niet vereist", omkeerbare versleuteling, oude krbtgt, adminCount-wezen, verouderde besturingssystemen | Wat een aanvaller eerst zoekt |
-| **Gezondheid van AD**: domeincontrollers, replicatie, FSMO-rollen, tijd | Problemen zien voor gebruikers ze merken |
-| **Groepsbeleid (GPO)**: welke beleiden waar gekoppeld zijn, uitgeschakelde en lege beleiden (alleen lezen) | Overzicht dat de standaardtools moeilijk geven |
-| **Microsoft Secure Score** met zijn verloop en de stappen die het meest opleveren | Eén getal voor het management |
-| **Beheerrollen en PIM**: wie heeft wat permanent, wie komt in aanmerking | Minste rechten |
-| **Zwakke MFA-methodes** (sms, telefoon) en wie nog geen sterkere heeft | Phishingbestendig worden |
-| **Riskante gebruikers en aanmeldingen** (vraagt Entra ID P2) | Snel reageren |
+| **Forwarding to external addresses** (mailboxes and inbox rules) | A classic sign of a compromised account |
+| **App registrations and enterprise apps**: expiring secrets and certificates, apps with broad permissions, user consents, unused apps | An expired secret breaks integrations; a risky consent is a leak |
+| **Alerts from the snapshots**: new member of a privileged group, changed policy, new admin role, new app consent, a disabled account enabled again | Also sees what happened outside Moss365 |
+| **AD security check** (light): accounts with an SPN (kerberoasting), unconstrained delegation, "password not required", reversible encryption, old krbtgt, adminCount orphans, outdated operating systems | What an attacker looks for first |
+| **AD health**: domain controllers, replication, FSMO roles, time | See problems before users notice |
+| **Group Policy (GPO)**: which policies are linked where, disabled and empty policies (read only) | An overview the standard tools make hard |
+| **Microsoft Secure Score** with its trend and the actions that gain the most | One number for management |
+| **Admin roles and PIM**: who has what permanently, who is eligible | Least privilege |
+| **Weak MFA methods** (SMS, phone) and who has no stronger one yet | Becoming phishing resistant |
+| **Risky users and sign-ins** (requires Entra ID P2) | React quickly |
 
-### Licenties en kosten (R12)
+### Licences and costs (R12)
 
-| Voorstel | Waarom |
+| Proposal | Why |
 | --- | --- |
-| **Licenties die niets opbrengen**: uitgeschakelde accounts met een licentie, gedeelde postvakken met een licentie, dubbele plannen, nooit gebruikte licenties | Rechtstreeks geld |
-| **Kost per maand** (prijs per licentie instelbaar), per dienst en per afdeling, met het verloop | Voor het budget |
-| **Licenties volgens het functieprofiel**: wie heeft meer of minder dan zijn profiel | Opkuis en eerlijke verdeling |
+| **Licences that bring nothing**: disabled accounts with a licence, shared mailboxes with a licence, duplicate plans, never-used licences | Direct savings |
+| **Cost per month** (price per licence configurable), per department and division, with its trend | For the budget |
+| **Licences according to the job profile**: who has more or less than their profile | Clean-up and fair distribution |
 
-### Toestellen, Teams en SharePoint (R13)
+### Devices, Teams and SharePoint (R13)
 
-| Voorstel | Waarom |
+| Proposal | Why |
 | --- | --- |
-| **Computers in AD**: niet meer aangemeld, besturingssysteem en versie, in welke OU | Opkuis en veiligheid |
-| **Toestellen in Intune**: niet conform, niet meer gezien, versie, eigenaar | Conditional Access met "conform toestel" heeft er pas zin mee |
-| **Teams en Microsoft 365-groepen zonder eigenaar**, met gasten, niet meer gebruikt | De meest gehoorde klacht over Teams |
-| **SharePoint-sites**: extern delen, opslag, niet gebruikt | Gegevenslekken en kosten |
+| **Computers in AD**: no longer signed in, operating system and version, which OU | Clean-up and security |
+| **Devices in Intune**: non-compliant, not seen any more, version, owner | Conditional Access with "compliant device" only makes sense with this |
+| **Teams and Microsoft 365 groups without an owner**, with guests, no longer used | The most heard complaint about Teams |
+| **SharePoint sites**: external sharing, storage, unused | Data leaks and costs |
 
-### Rapporteren en werken als team (R14)
+### Reporting and working as a team (R14)
 
-| Voorstel | Waarom |
+| Proposal | Why |
 | --- | --- |
-| **Toestand van de diensten van Microsoft** (storingen en het berichtencentrum) op het startscherm | "Ligt het aan ons of aan Microsoft?" |
-| **Kwaliteit van de gegevens**: per dienst hoeveel accounts een functie, dienst, kantoor, manager en telefoon hebben | Goede gegevens maken dynamische groepen en het adresboek betrouwbaar |
-| **Rapport per maand of kwartaal** (pdf of Excel): indicatoren, verloop, opkuis, wijzigingen | Voor het management en de informatieveiligheid |
-| **Controles gekoppeld aan normen** (bv. NIS2 en de normen voor informatieveiligheid bij de overheid), met bewijs uit het logboek en de momentopnamen | Audit |
-| **Gastbeheer met verlengen**: de sponsor bevestigt jaarlijks of een gast nog nodig is | Gasten blijven anders voor altijd |
-| **In- en uitstroom als aanvraag**: een formulier voor HR of het diensthoofd, de beheerder keurt goed en het plan volgt uit het functieprofiel | Minder mails, alles in het logboek |
-| **Tenants vergelijken**: dezelfde basislijn voor Conditional Access en de instellingen in elke tenant, met de afwijkingen | Voor wie meerdere organisaties beheert |
+| **Microsoft service health** (incidents and the message center) on the start screen | "Is it us or Microsoft?" |
+| **Data quality**: per department, how many accounts have a job title, department, office, manager and phone | Good data makes dynamic groups and the address book reliable |
+| **Monthly or quarterly report** (PDF or Excel): indicators, trends, clean-up, changes | For management and information security |
+| **Checks mapped to standards** (e.g. NIS2 and public-sector information security standards), with evidence from the change log and the snapshots | Audit |
+| **Guest management with renewal**: the sponsor confirms each year whether a guest is still needed | Otherwise guests stay forever |
+| **Onboarding and offboarding as a request**: a form for HR or the department head, the admin approves and the plan follows from the job profile | Fewer e-mails, everything in the change log |
+| **Compare tenants**: the same Conditional Access baseline and settings in every tenant, with the deviations | For those managing several organisations |
 
-### Talen (R15)
+### Languages (R15)
 
-| Voorstel | Waarom |
+| Proposal | Why |
 | --- | --- |
-| **Woordenboeken voor de interface**: elke tekst van de app (knoppen, titels, meldingen, uitleg, foutmeldingen) staat in een woordenboek per taal, niet meer in de code | Een nieuwe taal toevoegen = een woordenboek vertalen, zonder iets aan de code te veranderen; ook bijdragers van buitenaf kunnen vertalen |
-| **Talen bij 1.0**: Nederlands, **Engels (EN)**, **Braziliaans Portugees (PT-BR)**, **Frans (FR)** en **Duits (DE)** | Een openbare app voor organisaties in en buiten België |
-| **Standaard de taal van het systeem**: de app volgt de weergavetaal van Windows (in de webversie: de taal van de browser). Is die taal er niet, dan Engels | Niets in te stellen voor de meeste gebruikers |
-| **Zelf instellen**: een keuze bij Instellingen (per gebruiker), die de taal van het systeem overschrijft, met meteen effect | Wie in een andere taal werkt dan zijn Windows |
-| **Datums, getallen en valuta** volgens de gekozen taal en regio | 05/11/2026 of 11/05/2026, 1.234,5 of 1,234.5 |
-| **Ontbrekende vertalingen** vallen terug op Engels (en een test meldt welke teksten nog niet vertaald zijn); een termenlijst houdt vaste begrippen gelijk (plan, momentopname, tenant, rol) | Nooit een lege knop; dezelfde woorden overal |
-| **Wat niet vertaald wordt**: gegevens uit AD en Microsoft 365 (namen van groepen, diensten, beleiden) en de inhoud van scripts | Dat zijn gegevens van de organisatie, geen tekst van de app |
-| De **documentatie** in het Engels (U10); vertalingen als er vertalers zijn | Begin klein |
+| **Dictionaries for the interface**: every text of the app (buttons, titles, messages, help, errors) lives in a dictionary per language, no longer in the code | Adding a language = translating a dictionary, without touching the code; outside contributors can translate too |
+| **Languages at 1.0**: **English (EN)**, Dutch (NL), **Brazilian Portuguese (PT-BR)**, **French (FR)** and **German (DE)** | A public app for organisations in and outside Belgium |
+| **System language by default**: the app follows the Windows display language (in the web version: the browser language). If that language is not available: English | Nothing to configure for most users |
+| **Set it yourself**: a choice in Settings (per user) that overrides the system language, effective immediately | For those who work in a language other than their Windows |
+| **Dates, numbers and currency** according to the chosen language and region | 05/11/2026 or 11/05/2026, 1.234,5 or 1,234.5 |
+| **Missing translations** fall back to English (and a test reports untranslated texts); a glossary keeps fixed terms consistent (plan, snapshot, tenant, role) | Never an empty button; the same words everywhere |
+| **What is not translated**: data from AD and Microsoft 365 (names of groups, departments, policies) and the content of scripts | That is the organisation's data, not app text |
+| **Documentation** in English (U10); translations when translators volunteer | Start small |
 
-## 11. Open source, met ruimte voor ondersteuning
+## 11. Open source, with room for paid support
 
-Moss365 is **open source**: iedereen kan de code lezen, gebruiken, aanpassen en verbeteren. Er moet later wel
-**ondersteuning en geld** gevraagd kunnen worden. Dat gaat samen:
+Moss365 is **open source**: anyone can read, use, change and improve the code. Later it must be possible to ask for
+**support and money**. Both go together:
 
-| Wat altijd vrij blijft | Wat later betaald kan worden |
+| Always free | Can be paid for later |
 | --- | --- |
-| De app (Desktop en Server), de broncode, de scriptbibliotheek, de documentatie, de updates | **Ondersteuning** met afspraken (antwoordtijd, hulp bij problemen) |
-| | **Installatie en inrichting** (wizard, functieprofielen, Conditional Access) |
-| | **Opleiding** voor beheerders en helpdesk |
-| | **Gehoste Server-editie** (Moss365 als dienst, voor wie geen eigen server wil) |
-| | **Voorrang** voor gevraagde functies of maatwerk |
+| The app (Desktop and Server), the source code, the script library, the documentation, the updates | **Support** with agreements (response times, help with problems) |
+| | **Installation and setup** (wizard, job profiles, Conditional Access) |
+| | **Training** for administrators and helpdesk |
+| | **Hosted Server edition** (Moss365 as a service, for those who do not want their own server) |
+| | **Priority** for requested features, or custom work |
 
-De licentie moet dat toelaten en beschermen. Voorstel:
+The licence must allow and protect that:
 
-- **EUPL-1.2** (de open-sourcelicentie van de Europese Unie, gemaakt voor de overheid, in alle EU-talen):
-  - wie Moss365 aanpast en verdeelt, of aanbiedt als dienst, moet zijn aanpassingen ook openbaar maken. Zo kan niemand
-    er een gesloten product van maken;
-  - betaalde ondersteuning, installatie, opleiding en hosting zijn uitdrukkelijk toegelaten;
-  - verenigbaar met andere open-sourcelicenties (GPL, AGPL, MPL, ...).
-- **Een bijdrageovereenkomst** (CLA) voor bijdragen van buitenaf: de bijdrager geeft toestemming om zijn bijdrage ook
-  onder een andere licentie te verdelen. Zo blijft het later mogelijk om naast de open versie een commerciële licentie
-  of betaalde extra's aan te bieden (dubbele licentie), zonder iedereen opnieuw te moeten vragen.
-- Alternatief: **Apache-2.0** (eenvoudiger en ruimer: iedereen mag Moss365 ook gesloten verder verkopen, en dan heb je
-  geen CLA nodig, maar ook minder bescherming).
+- **EUPL-1.2** (the open source licence of the European Union, made for the public sector, available in all EU
+  languages):
+  - whoever modifies and distributes Moss365, or offers it as a service, must publish their changes too. Nobody can turn
+    it into a closed product;
+  - paid support, installation, training and hosting are explicitly allowed;
+  - compatible with other open source licences (GPL, AGPL, MPL, ...).
+- **A contributor licence agreement** (CLA) for outside contributions: the contributor allows their contribution to be
+  distributed under another licence as well. That keeps it possible to offer a commercial licence or paid extras next to
+  the open version later (dual licensing), without asking everyone again.
 
-Laat de keuze door een jurist bevestigen voor de eerste release. Verder:
+Further:
 
-- **Naam en merk**: "Moss365" is de naam van het project. De README en de app vermelden dat Moss365 **niet verbonden is
-  met Microsoft**; "Microsoft 365", "Entra" en "Exchange" zijn merken van Microsoft. Eventueel de naam later als merk
-  registreren (Benelux), zodat niemand anders een Moss365 verkoopt.
-- **Gegevens**: geen telemetrie, ook niet in een betaalde versie zonder uitdrukkelijke toestemming.
+- **Name and trademark**: "Moss365" is the project name. The README and the app state that Moss365 is **not affiliated
+  with Microsoft**; "Microsoft 365", "Entra" and "Exchange" are trademarks of Microsoft. The name could be registered as a
+  trademark later (Benelux), so nobody else sells a Moss365.
+- **Data**: no telemetry, not even in a paid version without explicit consent.
 
-## 12. Keuzes
+## 12. Decisions
 
-Alle keuzes zijn gemaakt (U1 tot U3 op 05/11/2026, de rest dezelfde dag interactief).
+All decisions were made on 5 November 2026 (U1 to U3 directly, the rest interactively the same day).
 
-| # | Keuze | Beslissing |
+| # | Decision | Outcome |
 | --- | --- | --- |
-| U1 | **Naam** | **Moss365**, overal (deze repository: `jef-cesar/Moss365`) |
-| U2 | **Open source** | **Open source, met de mogelijkheid om later ondersteuning en geld te vragen** (hoofdstuk 11) |
-| U3 | **Geschiedenis van de code** | **Een nieuwe start zonder geschiedenis**: de interne repository vermeldt de organisatie waar de app ontstond. De code komt over na een controle |
-| U12 | **Licentie** | **EUPL-1.2 met een bijdrageovereenkomst (CLA)** (hoofdstuk 11). Nog door een jurist te laten bevestigen vóór de eerste release met code |
-| U4 | **Bijwerken** | **Velopack**: installatie per gebruiker zonder beheerrechten, updates met enkel het verschil, terug naar de vorige versie |
-| U5 | **Aanmelden bij een tenant** | **Een eigen app-registratie `Moss365` per tenant**: elke organisatie geeft zelf toestemming en trekt ze zelf in; geen gedeelde app van de makers |
-| U6 | **Eerste aanmelding in de wizard** | **De openbare client van Microsoft Graph PowerShell** (zoals `Connect-MgGraph`), met de link in de app; terugval: `Registreer-App.ps1` |
-| U7 | **Versleuteling** | **Standaard geen versleuteling**; per tenant aan te zetten: Windows-account (A), wachtwoord met herstelsleutel (B) of AD-groep (C). Microsoft 365 via Key Vault (D) na de studie |
-| U8 | **Ondertekenen** | **Eerst zonder, later wel**: tot 1.0 controleren de app en de gebruiker de gepubliceerde vingerafdrukken (SHA-256); vanaf 1.0 een codesigningcertificaat (Authenticode) voor de app, de updates en de scripts |
-| U9 | **Bewaartermijnen** (standaard, per tenant aan te passen) | **Langer**: momentopnamen dagelijks 1 jaar, daarna één per maand; logboek 5 jaar; technisch log 90 dagen; scriptruns 1 jaar |
-| U10 | **Taal van de code en de documentatie** | **Alles Engels**: namen in de code, commentaar, tests, documentatie en deze roadmap gaan naar het Engels (bij R1). De interface in vijf talen via woordenboeken (R15), Nederlands is daar één van |
-| U11 | **Huisstijl** | **Mosgroen en paars** als standaard (past bij de naam), kleur en logo per tenant |
+| U1 | **Name** | **Moss365**, everywhere (this repository: `jef-cesar/Moss365`) |
+| U2 | **Open source** | **Open source, with the option to ask for support and money later** (chapter 11) |
+| U3 | **Code history** | **A fresh start without history**: the internal repository mentions the organisation where the app started. The code is moved over after a review |
+| U12 | **Licence** | **EUPL-1.2 with a contributor licence agreement (CLA)** (chapter 11) |
+| U4 | **Updates** | **Velopack**: per-user install without admin rights, delta updates, rollback to the previous version |
+| U5 | **Signing in to a tenant** | **An app registration `Moss365` of its own in each tenant**: each organisation grants and revokes consent itself; no shared app run by the makers |
+| U6 | **First sign-in in the wizard** | **The public client of Microsoft Graph PowerShell** (as used by `Connect-MgGraph`), with the link in the app; fallback: `Register-App.ps1` |
+| U7 | **Encryption** | **No encryption by default**; per tenant: Windows account (A), password with recovery key (B) or AD group (C). Microsoft 365 via Key Vault (D) after the study |
+| U8 | **Signing** | **Later**: until 1.0 the app and users verify the published fingerprints (SHA-256); from 1.0 a code signing certificate (Authenticode) for the app, the updates and the scripts |
+| U9 | **Retention** (defaults, adjustable per tenant) | **Longer**: snapshots daily for 1 year, then monthly; change log 5 years; technical log 90 days; script runs 1 year |
+| U10 | **Language of code and documentation** | **English**: names in the code, comments, tests and documentation (from R1). The interface in five languages via dictionaries (R15) |
+| U11 | **House style** | **Moss green and purple** by default (fits the name), colour and logo per tenant |
 
-## 13. De stappen naar 1.0
+## 13. The steps to 1.0
 
-| Stap | Inhoud | Klaar als |
+| Step | Contents | Done when |
 | --- | --- | --- |
-| **R0 Repository** | Licentie EUPL-1.2 en CLA (U12), `SECURITY.md`, bijdragegids, issue-sjablonen, vermelding "niet verbonden met Microsoft", workflow (bouwen, testen, ondertekenen, release), geheimscanning en push-bescherming, CodeQL, Dependabot. Een controle in de workflow die persoonsgegevens en echte domeinen weigert | Een lege app bouwt, test en verschijnt als release |
-| **R1 Overzetten en Moss365 overal** | De code van 0.9 overzetten zonder geschiedenis (U3), na een controle: organisatie-specifieke instellingen, conventies en voorbeelden eruit, een verzonnen voorbeeldorganisatie erin. Alles hernoemen (hoofdstuk 2). Code, tests en documentatie naar het Engels (U10), deze roadmap inbegrepen. Overzetten van een bestaande installatie | Alle tests groen; de oude projectnaam komt enkel nog voor in het overzetten; een bestaande installatie leest correct in |
-| **R2 Eén databank per tenant, alles erin** | `moss365.db` en `tenant.db`; inventarissen, technisch log, back-ups, scriptruns en instellingen in de databank; back-up en terugzetten van een tenant | Geen bestanden meer naast de databank (behalve de bibliotheek en de kopieën) |
-| **R3 Meerdere tenants** | Tenant kiezen bovenaan, kleur en naam, bevestiging met de naam, tokens per tenant, aanmelden per tenant (U5) | Twee tenants naast elkaar; een test bewijst dat geen lijst, plan, export of logboekregel ze mengt |
-| **R4 Momentopnamen en tijdlijn** | Objecten en relaties met versies; elke lezing een momentopname; de organisatie op een datum; verschillen tussen datums; tijdlijn per object; KPI's voor elke momentopname; Statistieken met verloop per dag, week, maand en jaar; terugzetten uit het verleden | Elke KPI toont zijn verloop; een scherm toont "zoals op" een datum; een test herbouwt de stand van een datum exact |
-| **R5 Omgeving** | Wizard per tenant (app-registratie `Moss365` opzoeken of maken, automatisch invullen, groepen, AD, hybride, Exchange, voorstellen voor de instellingen, noodaccounts); Deze computer met installeren | Een nieuwe testtenant is in minder dan 15 minuten klaar zonder iets in te tikken dat de app kon vinden |
-| **R6 Versleuteling en onderhoud** | Versleuteling A, B en C per tenant, standaard uit (U7), herstelsleutel, studie D; scherm Databank: grootte, compacteren, opkuis met voorbeeld en archief, controle | Een versleutelde tenant opent enkel met de juiste sleutel; opkuis verwijdert nooit zonder voorbeeld |
-| **R7 Bijwerken** | Velopack (U4): nakijken bij het opstarten, vingerafdruk (vanaf 1.0 ondertekend, U8), kopie vóór migratie, terugval, kanalen, eigen bron (U4, U8) | Een update van de voorvertoning naar stabiel en terug werkt op een testpc |
-| **R8 Scripts uit de repository** | `scripts/` met index en handtekening, Bibliotheek bijwerken in de app, vastzetten per tenant | Een nieuw script in de repository verschijnt na Bijwerken in de app; een gewijzigd script met een verkeerde vingerafdruk (vanaf 1.0: zonder geldige handtekening) wordt geweigerd |
-| **R9 Organisatie universeel** | Instellingen met voorstellen uit de gegevens, sjablonen, export en import; functieprofielen; logonscripts | Een voorbeeldorganisatie met andere naamregels, OU's en groepsnamen werkt zonder één aanpassing in de code |
-| **R10 Helpdesk** | Alles uit hoofdstuk 10, Helpdesk en dagelijks werk | Elk voorstel met tests, in het logboek of het toegangslog, met de juiste rol |
-| **R11 Beveiliging** | Alles uit hoofdstuk 10, Beveiliging (waarschuwingen bouwen op R4) | Idem; elke controle zegt "in orde", "aandacht" of "probleem", en "onbekend" als de gegevens niet volstaan |
-| **R12 Licenties en kosten** | Alles uit hoofdstuk 10, Licenties en kosten | Idem; de besparing staat als KPI met haar verloop |
-| **R13 Toestellen, Teams en SharePoint** | Alles uit hoofdstuk 10, Toestellen, Teams en SharePoint (de nodige rechten komen bij in de wizard, enkel lezen) | Idem |
-| **R14 Rapporteren en werken als team** | Alles uit hoofdstuk 10, Rapporteren en werken als team | Idem; een rapport per kwartaal komt uit de momentopnamen, ook voor een periode in het verleden |
-| **R15 Talen** | Woordenboeken voor de interface (een per taal, met een termenlijst); NL, EN, PT-BR, FR en DE; standaard de taal van het systeem, zelf in te stellen bij Instellingen; datums en getallen per taal; terugval op Engels | Elk scherm in vijf talen; de app volgt de taal van Windows en de keuze bij Instellingen gaat voor; een test vindt geen vaste tekst meer in de schermen en meldt ontbrekende vertalingen |
-| **1.0 Desktop** | Codesigningcertificaat voor app, updates en scripts (U8); handleiding per rol, installatiegids, overzettingsgids, privacy-informatie (wat de app bewaart en waar), een model voor de DPIA | Een organisatie die Moss365 niet kent, installeert en gebruikt het met enkel de documentatie |
+| **R0 Repository** | Licence EUPL-1.2 and CLA (U12), `SECURITY.md`, contributing guide, issue templates, "not affiliated with Microsoft" notice, workflow (build, test, release with fingerprints), secret scanning and push protection, CodeQL, Dependabot. A check in the workflow that refuses personal data and real domains | An empty app builds, tests and appears as a release |
+| **R1 Move the code, Moss365 and English everywhere** | Move the 0.9 code without history (U3), after a review: organisation-specific settings, conventions and examples out, a made-up sample organisation in. Rename everything (chapter 2). Code, tests and documentation in English (U10). Migration of an existing installation | All tests green; the old project name only appears in the migration code; an existing installation imports correctly |
+| **R2 One database per tenant, everything in it** | `moss365.db` and `tenant.db`; inventories, technical log, backups, script runs and settings in the database; backup and restore of a tenant | No files next to the database any more (except the library and the copies) |
+| **R3 Multiple tenants** | Tenant picker at the top, colour and name, confirmation with the name, tokens per tenant, sign-in per tenant (U5) | Two tenants side by side; a test proves no list, plan, export or log line mixes them |
+| **R4 Snapshots and timeline** | Versioned objects and relations; every read a snapshot; the organisation on a date; differences between dates; timeline per object; KPIs for every snapshot; Statistics with trends per day, week, month and year; restore from the past | Every KPI shows its trend; a screen shows "as of" a date; a test rebuilds the state of a date exactly |
+| **R5 Environment** | Wizard per tenant (find or create the `Moss365` app registration, fill in automatically, groups, AD, hybrid, Exchange, suggested settings, emergency accounts); This computer with installing | A new test tenant is ready in under 15 minutes without typing anything the app could find |
+| **R6 Encryption and maintenance** | Encryption A, B and C per tenant, off by default (U7), recovery key, study D; Database screen: size, compact, clean-up with preview and archive, integrity check | An encrypted tenant only opens with the right key; clean-up never deletes without a preview |
+| **R7 Updates** | Velopack (U4): check at startup, fingerprint (signed from 1.0, U8), copy before migration, rollback, channels, custom source | An update from preview to stable and back works on a test PC |
+| **R8 Scripts from the repository** | `scripts/` with index and fingerprints, Update library in the app, pin per tenant | A new script in the repository appears in the app after Update; a changed script with a wrong fingerprint (from 1.0: without a valid signature) is refused |
+| **R9 Universal organisation** | Settings with suggestions from the data, templates, export and import; job profiles; logon scripts | A sample organisation with different naming rules, OUs and group names works without a single code change |
+| **R10 Helpdesk** | Everything from chapter 10, Helpdesk and daily work | Each proposal with tests, in the change log or access log, with the right role |
+| **R11 Security** | Everything from chapter 10, Security (alerts build on R4) | Same; every check says "OK", "attention" or "problem", and "unknown" when the data is insufficient |
+| **R12 Licences and costs** | Everything from chapter 10, Licences and costs | Same; the savings are a KPI with its trend |
+| **R13 Devices, Teams and SharePoint** | Everything from chapter 10, Devices, Teams and SharePoint (the needed read permissions are added in the wizard) | Same |
+| **R14 Reporting and working as a team** | Everything from chapter 10, Reporting and working as a team | Same; a quarterly report comes from the snapshots, also for a period in the past |
+| **R15 Languages** | Dictionaries for the interface (one per language, with a glossary); EN, NL, PT-BR, FR and DE; system language by default, configurable in Settings; dates and numbers per language; fallback to English | Every screen in five languages; the app follows the Windows language and the choice in Settings wins; a test finds no hard-coded text in the screens and reports missing translations |
+| **1.0 Desktop** | Code signing certificate for app, updates and scripts (U8); guide per role, installation guide, migration guide, privacy information (what the app stores and where), a DPIA template | An organisation that does not know Moss365 installs and uses it with the documentation alone |
 
-Volgorde: R0 en R1 eerst. R2 en R3 horen samen (een databank per tenant). R4 bouwt daarop, en R11 en R14 bouwen op R4.
-De andere stappen kunnen in een andere volgorde als dat beter uitkomt; elke stap is een eigen release (0.10, 0.11, ...).
-Daarna de webversie: [roadmap-web.md](roadmap-web.md).
+Order: R0 and R1 first. R2 and R3 belong together (one database per tenant). R4 builds on them, and R11 and R14 build
+on R4. The other steps can be done in a different order if that works better; every step is a release of its own
+(0.10, 0.11, ...). Then the web version: [roadmap-web.md](roadmap-web.md).
 
-## 14. Risico's
+## 14. Risks
 
-| Risico | Aanpak |
+| Risk | Approach |
 | --- | --- |
-| Organisatie-specifieke gegevens raken mee in de openbare repository | Nieuwe start zonder geschiedenis (U3), een controle in de workflow, geheimscanning met push-bescherming, verzonnen voorbeelden |
-| Een gekaapte update of een gekaapt script | Vingerafdrukken gecontroleerd en vanaf 1.0 alles ondertekend (U8), enkel uit de officiële bron, scripts draaien nooit vanzelf. Tot 1.0 waarschuwt Windows SmartScreen bij de installatie |
-| Een niet-versleutelde databank (standaard, U7) op een gestolen of gedeelde pc | BitLocker op de pc aanraden in de installatiegids; de wizard stelt versleuteling voor als de schijf niet versleuteld is |
-| Alles naar het Engels (U10) maakt R1 groot | Hernoemen met de hulpmiddelen van de IDE en de tests als vangnet; in kleine stukken |
-| Versleutelde databank, sleutel kwijt | Herstelsleutel bij het instellen; de gegevens van de tenant zelf zijn opnieuw te lezen (enkel logboek en geschiedenis zijn uniek) |
-| De momentopnamen worden te groot of te traag | Enkel wijzigingen bewaren, uitdunnen volgens de bewaartermijn, een KPI-tabel per dag, tests met een grote verzonnen organisatie |
-| Werken in de verkeerde tenant | Kleur en naam in de balk, bevestiging met de naam, één databank per tenant |
-| De wizard maakt of wijzigt een app-registratie met te veel rechten | Enkel gedelegeerde rechten, de lijst staat in de code en in de documentatie, altijd als plan met voorbeeld |
-| Automatisch installeren van onderdelen | Enkel officiële bronnen, altijd een bevestiging (of één keer de keuze), in het logboek |
-| Gevoelige gegevens in de helpdeskfuncties (herstelsleutels, LAPS, berichtsporen) | Enkel met de juiste rol, altijd in het toegangslog, nooit in een export of het technisch log |
-| Bijdragen van buitenaf | Pull requests met tests en review, een CLA, de regels van hoofdstuk 1 in de bijdragegids |
-| De naam wekt de indruk van een product van Microsoft | De vermelding "niet verbonden met Microsoft" in de README en de app; geen logo's van Microsoft |
-| Te veel tegelijk: veel stappen voor één beheerder | Elke stap een kleine release met tests; de volgorde van R5 tot R15 is vrij, dus wat het meest helpt eerst |
+| Organisation-specific data ends up in the public repository | Fresh start without history (U3), a check in the workflow, secret scanning with push protection, made-up examples |
+| A hijacked update or script | Fingerprints verified and everything signed from 1.0 (U8), only from the official source, scripts never run by themselves. Until 1.0 Windows SmartScreen warns at installation |
+| An unencrypted database (default, U7) on a stolen or shared PC | The installation guide recommends BitLocker; the wizard suggests encryption when the disk is not encrypted |
+| Moving everything to English (U10) makes R1 big | Renaming with IDE tools and the tests as a safety net; in small pieces |
+| Encrypted database, key lost | Recovery key at setup; the tenant's own data can be read again (only the change log and history are unique) |
+| Snapshots become too large or too slow | Store changes only, thin out according to the retention, a daily KPI table, tests with a large made-up organisation |
+| Working in the wrong tenant | Colour and name in the bar, confirmation with the name, one database per tenant |
+| The wizard creates or changes an app registration with too many permissions | Delegated permissions only, the list is in the code and the documentation, always as a plan with preview |
+| Installing components automatically | Official sources only, always a confirmation (or a one-time choice), in the change log |
+| Sensitive data in the helpdesk features (recovery keys, LAPS, message traces) | Only with the right role, always in the access log, never in an export or the technical log |
+| Outside contributions | Pull requests with tests and review, a CLA, the rules of chapter 1 in the contributing guide |
+| The name suggests a Microsoft product | The "not affiliated with Microsoft" notice in the README and the app; no Microsoft logos |
+| Too much at once for one maintainer | Every step a small release with tests; the order of R5 to R15 is free, so what helps most goes first |
