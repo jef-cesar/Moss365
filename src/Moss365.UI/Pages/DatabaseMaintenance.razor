@@ -1,0 +1,196 @@
+@page "/databank"
+@using Moss365.Core.Storage
+@* The database of the open tenant (R6): how big each part is, how long it is kept, and cleaning up with a preview first.
+   The change log and the access log go to a CSV before anything is removed. *@
+@inherits RefreshingPage
+
+<h1>Databank</h1>
+
+<p class="kb-zacht">
+    Alles van <strong>@State.Tenant.Name</strong> staat in één databank (<code>tenants\@State.Tenant.Id\tenant.db</code>,
+    @Size(State.Database.FileSize)). Opruimen toont altijd eerst wat er weg zou gaan; het logboek en het toegangslog gaan
+    eerst naar een CSV. Een volledige kopie maak je bij <a href="tenants">Tenants</a> (Back-up).
+</p>
+
+<section class="kb-kaart">
+    <h2>Grootte per deel</h2>
+    <table class="kb-tabel">
+        <thead><tr><th>Deel</th><th>Rijen</th><th>Inhoud</th></tr></thead>
+        <tbody>
+            @foreach (var p in sizes)
+            {
+                <tr><td>@p.Part</td><td>@p.Rows</td><td>@Size(p.Bytes)</td></tr>
+            }
+        </tbody>
+    </table>
+    <div class="kb-rij">
+        <button class="kb-knop" disabled="@busy" @onclick="Check">Integriteit nakijken</button>
+        <button class="kb-knop" disabled="@busy" @onclick="Compact">Comprimeren</button>
+        @if (checkResult is not null)
+        {
+            <span class="@(checkResult == "ok" ? "kb-ok" : "kb-waarschuwing")">@(checkResult == "ok" ? "De databank is in orde." : "Problemen: " + checkResult)</span>
+        }
+        @if (compacted is not null) { <span class="kb-ok">@compacted</span> }
+    </div>
+    <p class="kb-zacht">
+        Voor elke update van de databank maakt de app vanzelf een kopie (@State.Database.MigrationCopies().Count nu, samen
+        @Size(State.Database.MigrationCopies().Sum(f => f.Length))).
+    </p>
+</section>
+
+<section class="kb-kaart">
+    <h2>Bewaartermijnen</h2>
+    <p class="kb-zacht">Standaard (keuze U9): momentopnamen een jaar dagelijks, daarna één per maand; logboek 5 jaar; technisch log 90 dagen; scriptruns een jaar.</p>
+    <div class="kb-formulier">
+        <label>Logboek (jaar) <input type="number" min="1" class="kb-invoer" @bind="State.Config.ChangeLogSaveYears" @bind:after="Modified" /></label>
+        <label>Momentopnamen dagelijks (dagen) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.SnapshotsDailyDays" @bind:after="Modified" /></label>
+        <label>Toegangslog (jaar) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.AccessLogYears" @bind:after="Modified" /></label>
+        <label>Technisch log (dagen) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.TechnicalLogDays" @bind:after="Modified" /></label>
+        <label>Scriptruns (dagen) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.ScriptRunDays" @bind:after="Modified" /></label>
+        <label>Kopieën voor een update (dagen) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.MigrationCopyDays" @bind:after="Modified" /></label>
+    </div>
+    <button class="kb-knop kb-primair" disabled="@(!modified)" @onclick="SaveRetention">Bewaren</button>
+    @if (saved) { <span class="kb-ok">Bewaard.</span> }
+</section>
+
+<section class="kb-kaart">
+    <h2>Opruimen</h2>
+    @if (State.IsHistoric)
+    {
+        <div class="kb-melding">Je bekijkt een stand uit het verleden. Ga terug naar nu om op te ruimen.</div>
+    }
+    else
+    {
+        <table class="kb-tabel">
+            <thead><tr><th></th><th>Deel</th><th>Weg te halen</th><th>Wat</th></tr></thead>
+            <tbody>
+                @foreach (var i in preview)
+                {
+                    <tr>
+                        <td>
+                            @if (i.Count > 0)
+                            {
+                                <input type="checkbox" aria-label="@PartText(i.Part)" checked="@chosen.Contains(i.Part)" @onchange="e => Toggle(i.Part, e.Value is true)" />
+                            }
+                        </td>
+                        <td>@PartText(i.Part)</td>
+                        <td>@(i.Count == 0 ? "niets" : i.Count.ToString())</td>
+                        <td>@i.Explanation</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (preview.All(i => i.Count == 0))
+        {
+            <p class="kb-ok">Er is niets ouder dan de bewaartermijnen.</p>
+        }
+        else if (confirm)
+        {
+            <div class="kb-rij">
+                <span>@chosen.Count deel/delen opruimen in <strong>@State.Tenant.Name</strong>? Dit kan niet ongedaan gemaakt worden (de archieven blijven).</span>
+                <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="Clean">Ja, opruimen in @State.Tenant.Name</button>
+                <button class="kb-knop" @onclick="() => confirm = false">Annuleren</button>
+            </div>
+        }
+        else
+        {
+            <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0 || busy)" @onclick="() => confirm = true">Opruimen (@chosen.Count)</button>
+        }
+        @if (results is not null)
+        {
+            <ul>
+                @foreach (var r in results)
+                {
+                    <li>@PartText(r.Part): @r.Removed weggehaald@(r.Archive is { } a ? $", archief {a}" : string.Empty).</li>
+                }
+            </ul>
+        }
+    }
+</section>
+
+@code {
+    private IReadOnlyList<PartSize> sizes = Array.Empty<PartSize>();
+    private IReadOnlyList<CleanupItem> preview = Array.Empty<CleanupItem>();
+    private readonly HashSet<CleanupPart> chosen = new();
+    private IReadOnlyList<CleanupResult>? results;
+    private bool confirm;
+    private bool busy;
+    private bool modified;
+    private bool saved;
+    private string? checkResult;
+    private string? compacted;
+
+    protected override void OnParametersSet() => Recompute();
+
+    private void Recompute()
+    {
+        sizes = State.Database.Sizes();
+        preview = State.CleanupPreview(DateTimeOffset.Now);
+        chosen.RemoveWhere(p => preview.Any(i => i.Part == p && i.Count == 0));
+    }
+
+    private void Modified()
+    {
+        modified = true;
+        saved = false;
+    }
+
+    private void SaveRetention()
+    {
+        State.SaveConfig();
+        modified = false;
+        saved = true;
+        Recompute();
+    }
+
+    private void Toggle(CleanupPart part, bool on)
+    {
+        if (on) { chosen.Add(part); } else { chosen.Remove(part); }
+        confirm = false;
+    }
+
+    private void Clean()
+    {
+        busy = true;
+        try
+        {
+            results = State.Cleanup(chosen.ToList(), DateTimeOffset.Now);
+            chosen.Clear();
+        }
+        finally
+        {
+            busy = false;
+            confirm = false;
+        }
+
+        Recompute();
+    }
+
+    private void Check() => checkResult = State.IntegrityCheck();
+
+    private void Compact()
+    {
+        var before = State.Database.FileSize;
+        State.Compact();
+        compacted = $"Gecomprimeerd: {Size(before)} → {Size(State.Database.FileSize)}.";
+        Recompute();
+    }
+
+    private static string PartText(CleanupPart p) => p switch
+    {
+        CleanupPart.Snapshots => "Momentopnamen",
+        CleanupPart.ChangeLog => "Logboek",
+        CleanupPart.AccessLog => "Toegangslog",
+        CleanupPart.TechnicalLog => "Technisch log",
+        CleanupPart.ScriptRuns => "Scriptruns",
+        _ => "Kopieën voor een update",
+    };
+
+    private static string Size(long bytes)
+    {
+        const double K = 1024;
+        if (bytes < K) { return $"{bytes} B"; }
+        if (bytes < K * K) { return $"{bytes / K:0.#} kB"; }
+        return bytes < K * K * K ? $"{bytes / K / K:0.#} MB" : $"{bytes / K / K / K:0.##} GB";
+    }
+}

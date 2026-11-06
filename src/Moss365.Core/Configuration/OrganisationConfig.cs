@@ -41,9 +41,12 @@ public sealed class OrganisationConfig
     /// </summary>
     public bool ProfilesRequired { get; set; }
 
-    /// <summary>How long the change log stays in the database (decision K4, to agree with the DPO); archive after
-    /// that.</summary>
-    public int ChangeLogSaveYears { get; set; } = 2;
+    /// <summary>How long the change log stays in the database (decision U9: 5 years by default; to agree with the
+    /// DPO); archive after that.</summary>
+    public int ChangeLogSaveYears { get; set; } = 5;
+
+    /// <summary>How long the other parts of the database are kept (R6, screen Databank).</summary>
+    public Storage.RetentionSettings Retention { get; set; } = new();
 
     /// <summary>OU for new AD groups, as a path (e.g. GEMEENTEBESTUUR/GROEPEN).</summary>
     public string? GroupsOu { get; set; }

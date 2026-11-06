@@ -2,6 +2,22 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.15.0
+
+Maintenance of the database (first part of step R6 of the [roadmap](docs/roadmap-1.0.md); encryption follows in 0.16).
+
+- **Databank** (Settings): the size of each part of the tenant database (snapshots, change log, access log, technical
+  log, script runs, inventories, Conditional Access backups, scripts, settings), the integrity check and compacting.
+- **Retention per tenant** (decision U9): snapshots daily for a year, then one per month; change log 5 years (was 2);
+  access log 5 years; technical log 90 days; script runs a year; copies made before a database update 30 days (the
+  newest always stays). All adjustable on the screen.
+- **Cleaning up** always shows first what would go, per part; you choose and confirm. The change log and the access log
+  go to a CSV in `Documents\Moss365\<tenant>\Archief` first; only then are they removed. The clean-up itself is in
+  the change log.
+- **Thinning snapshots** keeps every date that stays exact: the organisation on such a date looks the same as before;
+  only the in-between versions go.
+- The technical log and script runs follow the retention of the tenant when cleaned up at start.
+
 ## 0.14.0
 
 Setting up a tenant and this computer (step R5 of the [roadmap](docs/roadmap-1.0.md)).

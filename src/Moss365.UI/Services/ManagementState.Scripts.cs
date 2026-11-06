@@ -62,7 +62,8 @@ public sealed partial class ManagementState
     {
         try
         {
-            ScriptRuns.Cleanup(ScriptFolders, DateTimeOffset.Now);
+            ScriptRuns.Cleanup(ScriptFolders, DateTimeOffset.Now, Math.Max(1, Config.Retention.ScriptRunDays));
+            Database.CleanupTechnicalLog(DateTimeOffset.Now.AddDays(-Math.Max(1, Config.Retention.TechnicalLogDays)));
         }
         catch (IOException)
         {

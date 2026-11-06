@@ -190,7 +190,7 @@ public sealed partial class PlanScreenTests
     [Fact]
     public void OldChangeLogLinesArchiveFirstThenRemove()
     {
-        State.ChangeLog.Write(new Moss365.Core.Changes.LogEntry(DateTimeOffset.Now.AddYears(-3), "oud@test.be", "c", "AD", "AdAccountOntgrendelen", "d", "heel oud", "o", new Dictionary<string, string>(), "Gelukt", ""));
+        State.ChangeLog.Write(new Moss365.Core.Changes.LogEntry(DateTimeOffset.Now.AddYears(-6), "oud@test.be", "c", "AD", "AdAccountOntgrendelen", "d", "heel oud", "o", new Dictionary<string, string>(), "Gelukt", ""));
         State.ChangeLog.Write(new Moss365.Core.Changes.LogEntry(DateTimeOffset.Now, "nu@test.be", "c", "AD", "AdAccountOntgrendelen", "d", "recent", "o", new Dictionary<string, string>(), "Gelukt", ""));
 
         var cut = RenderComponent<ChangeLog>();
