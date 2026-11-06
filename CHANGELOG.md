@@ -2,6 +2,11 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.12.1
+
+- **Fixed**: in 0.11.0 and 0.12.0 the pages of a user, a group, an offboarding, a script run and starting a script
+  opened empty from a link (the address still used the old Dutch parameter name). A test now checks every address.
+
 ## 0.12.0
 
 One database per tenant, and several tenants side by side (steps R2 and R3 of the [roadmap](docs/roadmap-1.0.md)).
