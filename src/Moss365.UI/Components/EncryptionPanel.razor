@@ -1,0 +1,231 @@
+@using Moss365.Core.Storage
+@* Encryption of the open tenant (R6, decision U7: off by default). The key is random; the recovery key is shown once
+   and opens the database on its own. Turning it on or off makes a checked copy and reloads the screens. *@
+@inject ManagementState State
+@inject IServiceProvider Services
+@inject NavigationManager Nav
+
+<section class="kb-kaart" id="versleuteling">
+    <h2>Versleuteling</h2>
+    @if (Hub is not { } hub)
+    {
+        <p class="kb-zacht">Versleutelen kan enkel in de Windows-app.</p>
+    }
+    else
+    {
+        var info = hub.Encryption(State.Tenant.Id);
+        @if (info is null)
+        {
+            <p>
+                <strong>Uit.</strong> <span class="kb-zacht">De databank bevat persoonsgegevens en de geschiedenis van de organisatie. Versleutelen
+                (AES-256, SQLCipher) beschermt ze tegen een gestolen schijf of een andere gebruiker van deze pc.</span>
+            </p>
+        }
+        else
+        {
+            <p>
+                <strong>Aan</strong> sinds @info.Since.LocalDateTime.ToString("dd/MM/yyyy"): @MethodText(info.Method)@(info.Group is { } g ? $" ({g})" : string.Empty).
+                <span class="kb-zacht">Een back-up is versleuteld met dezelfde sleutel; terugzetten vraagt de herstelsleutel.</span>
+            </p>
+        }
+
+        @if (recoveryKey is not null && step == Step.Done)
+        {
+            <div class="kb-melding">
+                <p><strong>Nieuwe herstelsleutel</strong>, schrijf hem op of druk hem af en bewaar hem op een veilige plek (kluis):</p>
+                <p><code class="kb-herstelsleutel">@recoveryKey</code></p>
+                <button class="kb-knop kb-primair" @onclick='() => Nav.NavigateTo("databank", forceLoad: true)'>Bewaard: doorgaan</button>
+            </div>
+        }
+
+        @switch (step)
+        {
+            case Step.Choose:
+                <fieldset class="kb-formulier">
+                    <legend>@(info is null ? "Hoe open je de databank?" : "Andere beveiliging van de sleutel")</legend>
+                    @foreach (var m in new[] { EncryptionMethod.WindowsAccount, EncryptionMethod.Password, EncryptionMethod.AdGroup })
+                    {
+                        <label class="@(hub.CanProtect(m) ? null : "kb-zacht")">
+                            <input type="radio" name="methode" checked="@(method == m)" disabled="@(!hub.CanProtect(m))" @onchange="() => method = m" />
+                            <strong>@MethodText(m)</strong>: @MethodExplanation(m)
+                        </label>
+                    }
+                    @if (method == EncryptionMethod.Password)
+                    {
+                        <label>Wachtwoord <input type="password" class="kb-invoer" @bind="password" aria-label="Wachtwoord" /></label>
+                        <label>Nog eens <input type="password" class="kb-invoer" @bind="again" aria-label="Wachtwoord nog eens" /></label>
+                    }
+                    @if (method == EncryptionMethod.AdGroup)
+                    {
+                        <label>AD-groep <input class="kb-invoer" @bind="group" placeholder="DOMEIN\GG-Moss365-Administrators" aria-label="AD-groep" /></label>
+                    }
+                </fieldset>
+                <div class="kb-rij">
+                    <button class="kb-knop kb-primair" disabled="@(method == EncryptionMethod.None)" @onclick="() => Next(info)">@(info is null ? "Volgende" : "Bewaren")</button>
+                    <button class="kb-knop" @onclick="Reset">Annuleren</button>
+                </div>
+                break;
+
+            case Step.Recovery:
+                <div class="kb-melding">
+                    <p>
+                        <strong>Herstelsleutel.</strong> Wie het wachtwoord vergeet, een andere Windows-gebruiker is of niet meer in de groep zit,
+                        opent de databank enkel nog met deze sleutel. Ook een back-up zet je ermee terug op een andere pc. Moss365 bewaart hem
+                        nergens: schrijf hem op of druk hem af en bewaar hem op een veilige plek (kluis).
+                    </p>
+                    <p><code class="kb-herstelsleutel">@recoveryKey</code></p>
+                    <label>Typ ter bevestiging de laatste groep van de sleutel <input class="kb-invoer" @bind="confirmation" @bind:event="oninput" aria-label="Laatste groep van de herstelsleutel" /></label>
+                </div>
+                <p class="kb-zacht">De app maakt een versleutelde kopie, kijkt die na en vervangt dan de databank. De kopieën van voor een update gaan weg (ze zijn niet versleuteld). Eerder gemaakte back-ups blijven onversleuteld.</p>
+                <div class="kb-rij">
+                    <button class="kb-knop kb-gevaar" disabled="@(!RecoveryConfirmed || busy)" @onclick="Encrypt">Versleutelen in @State.Tenant.Name</button>
+                    <button class="kb-knop" @onclick="Reset">Annuleren</button>
+                </div>
+                break;
+
+            case Step.Renew:
+                <p>Een nieuwe sleutel, bijvoorbeeld als iemand anders de herstelsleutel kan kennen. De oude herstelsleutel werkt daarna niet meer (ook niet voor oudere back-ups: die openen enkel met de oude).</p>
+                @if (info?.Method == EncryptionMethod.Password)
+                {
+                    <label>Wachtwoord <input type="password" class="kb-invoer" @bind="password" aria-label="Wachtwoord" /></label>
+                }
+                <div class="kb-rij">
+                    <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="() => Renew(info)">Ja, nieuwe sleutel</button>
+                    <button class="kb-knop" @onclick="Reset">Annuleren</button>
+                </div>
+                break;
+
+            case Step.Off:
+                <p>De databank van <strong>@State.Tenant.Name</strong> weer onversleuteld bewaren?</p>
+                <div class="kb-rij">
+                    <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="Decrypt">Ja, versleuteling uitzetten</button>
+                    <button class="kb-knop" @onclick="Reset">Annuleren</button>
+                </div>
+                break;
+
+            default:
+                <div class="kb-rij">
+                    @if (info is null)
+                    {
+                        <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || State.ScriptBusy)" @onclick="() => step = Step.Choose">Versleutelen</button>
+                    }
+                    else
+                    {
+                        <button class="kb-knop" @onclick="() => { method = info.Method; group = info.Group ?? string.Empty; step = Step.Choose; }">Beveiliging wijzigen</button>
+                        <button class="kb-knop" disabled="@(State.TaskBusy || State.ScriptBusy)" @onclick="() => step = Step.Renew">Nieuwe sleutel</button>
+                        <button class="kb-knop kb-gevaar" disabled="@(State.TaskBusy || State.ScriptBusy)" @onclick="() => step = Step.Off">Uitzetten</button>
+                    }
+                </div>
+                break;
+        }
+
+        @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
+        @if (done is not null) { <p class="kb-ok">@done</p> }
+    }
+</section>
+
+@code {
+    private enum Step { None, Choose, Recovery, Renew, Off, Done }
+
+    private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
+
+    private Step step;
+    private EncryptionMethod method;
+    private string password = string.Empty;
+    private string again = string.Empty;
+    private string group = string.Empty;
+    private string confirmation = string.Empty;
+    private byte[]? key;
+    private string? recoveryKey;
+    private string? error;
+    private string? done;
+    private bool busy;
+
+    private bool RecoveryConfirmed => recoveryKey is not null && confirmation.Trim().Length > 0
+                                      && string.Equals(confirmation.Trim(), recoveryKey[(recoveryKey.LastIndexOf('-') + 1)..], StringComparison.OrdinalIgnoreCase);
+
+    private void Reset()
+    {
+        step = Step.None;
+        password = again = confirmation = string.Empty;
+        key = null;
+        recoveryKey = null;
+        error = null;
+    }
+
+    private void Next(EncryptionInfo? info)
+    {
+        error = method == EncryptionMethod.Password ? TenantKeys.CheckPassword(password, again) : null;
+        if (error is not null)
+        {
+            return;
+        }
+
+        if (info is not null)
+        {
+            Run(() => Hub!.ChangeProtection(State.Tenant, method, password, group), "De sleutel is nu beveiligd met: " + MethodText(method) + ".");
+            return;
+        }
+
+        (key, recoveryKey) = TenantHub.NewKey();
+        step = Step.Recovery;
+    }
+
+    private void Encrypt() => Run(() => Hub!.Encrypt(State.Tenant, key!, method, password, group), null, reload: true);
+
+    private void Renew(EncryptionInfo? info)
+    {
+        string? recovery = null;
+        Run(() => recovery = Hub!.RenewKey(State.Tenant, info?.Method == EncryptionMethod.Password ? password : null), "Nieuwe sleutel gemaakt.");
+        if (recovery is not null)
+        {
+            recoveryKey = recovery;
+            step = Step.Done;
+        }
+    }
+
+    private void Decrypt() => Run(() => Hub!.Decrypt(State.Tenant), null, reload: true);
+
+    private void Run(Action action, string? message, bool reload = false)
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            action();
+            done = message;
+            var keep = recoveryKey;
+            Reset();
+            recoveryKey = message is null ? null : keep;
+            if (reload)
+            {
+                // The state of this tenant was closed: the screens start again with the database as it is now
+                Nav.NavigateTo("databank", forceLoad: true);
+            }
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or InvalidDataException or IOException
+                                       or System.Security.Cryptography.CryptographicException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private static string MethodText(EncryptionMethod m) => m switch
+    {
+        EncryptionMethod.WindowsAccount => "Windows-account",
+        EncryptionMethod.Password => "Wachtwoord",
+        EncryptionMethod.AdGroup => "AD-groep",
+        _ => "Uit",
+    };
+
+    private static string MethodExplanation(EncryptionMethod m) => m switch
+    {
+        EncryptionMethod.WindowsAccount => "niets te typen; enkel jij, aangemeld op deze pc, opent de databank.",
+        EncryptionMethod.Password => "bij het openen van de tenant; goed voor gedeelde pc's. Kwijt = enkel nog de herstelsleutel.",
+        _ => "elke beheerder in de groep opent de databank, op een pc in het domein (DPAPI-NG).",
+    };
+}

@@ -34,6 +34,13 @@
     {
         if (Hub is { } hub && e.Value?.ToString() is { Length: > 0 } id && id != State.Tenant.Id)
         {
+            if (hub.Tenants.FirstOrDefault(t => t.Id == id) is { } t && hub.NeedsUnlock(t))
+            {
+                // Encrypted with a password: unlock it on the Tenants screen first
+                Nav.NavigateTo("tenants?openen=" + Uri.EscapeDataString(id));
+                return;
+            }
+
             hub.Switch(id);
             Nav.NavigateTo(string.Empty, forceLoad: true);
         }

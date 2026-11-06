@@ -89,9 +89,12 @@ public sealed partial class Database
         """,
     };
 
-    public Database(string path)
+    /// <param name="key">The key of an encrypted database (R6), or null.</param>
+    public Database(string path, byte[]? key = null)
     {
         FilePath = path;
+        _keyPragma = key is null ? null : TenantKeys.Pragma(key);
+        Encrypted = key is not null;
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         _connection = new SqliteConnectionStringBuilder { DataSource = path, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false }.ToString();
         var existed = File.Exists(path) && new FileInfo(path).Length > 0;
@@ -125,10 +128,20 @@ public sealed partial class Database
         }
     }
 
+    private readonly string? _keyPragma;
+
+    /// <summary>Opened with a key (an encrypted database).</summary>
+    public bool Encrypted { get; }
+
     private SqliteConnection Open()
     {
         var c = new SqliteConnection(_connection);
         c.Open();
+        if (_keyPragma is not null)
+        {
+            Run(c, _keyPragma);
+        }
+
         return c;
     }
 

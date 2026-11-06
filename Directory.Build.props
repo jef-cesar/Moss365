@@ -6,6 +6,6 @@
     <LangVersion>12</LangVersion>
     <Company>Moss365 contributors</Company>
     <Product>Moss365</Product>
-    <Version>0.15.0</Version>
+    <Version>0.16.0</Version>
   </PropertyGroup>
 </Project>

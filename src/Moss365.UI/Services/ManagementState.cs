@@ -63,7 +63,8 @@ public sealed partial class ManagementState
     private IGraphConnection? _graph;
     private string? _graphKey;
 
-    public ManagementState(IAppEnvironment environment, IConnectionFactory? factory = null, SignInStatus? signIn = null, TenantInfo? tenant = null)
+    /// <param name="databaseKey">The key of the tenant database when it is encrypted (R6), or null.</param>
+    public ManagementState(IAppEnvironment environment, IConnectionFactory? factory = null, SignInStatus? signIn = null, TenantInfo? tenant = null, byte[]? databaseKey = null)
     {
         _environment = environment;
         _factory = factory;
@@ -73,7 +74,7 @@ public sealed partial class ManagementState
         // tenant (tests): the database directly in the data folder.
         Tenant = tenant ?? new TenantInfo { Id = "default", Name = "Tenant" };
         TenantFolder = tenant is null ? environment.Root : TenantFolders.Folder(environment.Root, tenant.Id);
-        Database = new Database(Path.Combine(TenantFolder, TenantFolders.DatabaseName));
+        Database = new Database(Path.Combine(TenantFolder, TenantFolders.DatabaseName), databaseKey);
         Files = new DatabaseFileStore(Database);
         Migrated = Database.BackupBeforeMigration is { } copy ? new[] { $"Kopie voor de migratie van de databank: {Path.GetFileName(copy)}" } : Array.Empty<string>();
         StartLog();

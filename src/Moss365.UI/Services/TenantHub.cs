@@ -8,19 +8,27 @@ namespace Moss365.UI.Services;
 /// <see cref="ManagementState"/> per tenant with its own database, connections and sign-in. Nothing is shared between
 /// tenants except this list. Switching reloads the screens, so that no screen keeps data of the previous tenant.
 /// </summary>
-public sealed class TenantHub : IDisposable
+public sealed partial class TenantHub : IDisposable
 {
     private const string CurrentKey = "tenant.current";
 
     private readonly IAppEnvironment _environment;
-    private readonly Func<TenantInfo, ManagementState> _open;
+    private readonly Func<TenantInfo, byte[]?, ManagementState> _open;
     private readonly Dictionary<string, ManagementState> _states = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
 
     public TenantHub(IAppEnvironment environment, Func<TenantInfo, ManagementState> open)
+        : this(environment, (t, _) => open(t), null)
+    {
+    }
+
+    /// <param name="open">Creates the state of a tenant, with the key of its database when it is encrypted.</param>
+    /// <param name="protector">Protects keys with Windows (encryption A and C); null where that is not possible.</param>
+    public TenantHub(IAppEnvironment environment, Func<TenantInfo, byte[]?, ManagementState> open, IKeyProtector? protector)
     {
         _environment = environment;
         _open = open;
+        _protector = protector;
         var messages = new List<string>();
 
         // An installation of 0.11 or earlier: its database and files become the first tenant
@@ -82,7 +90,12 @@ public sealed class TenantHub : IDisposable
         {
             if (!_states.TryGetValue(tenant.Id, out var state))
             {
-                state = _open(tenant);
+                if (!TryKey(tenant, out var key))
+                {
+                    throw new TenantLockedException(tenant.Id, Encryption(tenant.Id)?.Method ?? EncryptionMethod.None);
+                }
+
+                state = _open(tenant, key);
                 state.TenantChanged += t => App.SaveTenant(t);
                 _states[tenant.Id] = state;
             }
@@ -195,11 +208,33 @@ public sealed class TenantHub : IDisposable
     /// Restores a backup as a new tenant (never over an existing one, so that nothing is lost by mistake). The database
     /// is checked first; an older version is migrated as usual.
     /// </summary>
-    public TenantInfo Restore(string backupFile, string name)
+    /// <param name="recoveryKey">For an encrypted backup: the recovery key of the tenant it came from.</param>
+    /// <param name="password">For an encrypted backup where Windows cannot protect the key: a new password.</param>
+    public TenantInfo Restore(string backupFile, string name, string? recoveryKey = null, string? password = null)
     {
         if (!File.Exists(backupFile))
         {
             throw new FileNotFoundException("Back-up niet gevonden.", backupFile);
+        }
+
+        // An encrypted backup opens with the recovery key only; the restored tenant gets its own protection
+        byte[]? key = null;
+        EncryptionInfo? protection = null;
+        if (Database.NeedsKey(backupFile))
+        {
+            key = TenantKeys.FromRecoveryKey(recoveryKey) ?? throw new InvalidDataException(string.IsNullOrWhiteSpace(recoveryKey)
+                ? "Deze back-up is versleuteld: geef de herstelsleutel van de tenant."
+                : "Dit is geen geldige herstelsleutel (tikfout?).");
+            if (!Database.Opens(backupFile, key))
+            {
+                throw new InvalidDataException("De herstelsleutel past niet bij deze back-up.");
+            }
+
+            protection = CanProtect(EncryptionMethod.WindowsAccount)
+                ? Protection(key, EncryptionMethod.WindowsAccount, null, null)
+                : TenantKeys.CheckPassword(password, password) is { } bad
+                    ? throw new InvalidDataException(bad + " De herstelde tenant krijgt dat wachtwoord.")
+                    : TenantKeys.WithPassword(key, password!);
         }
 
         var tenant = Add(name);
@@ -208,7 +243,7 @@ public sealed class TenantHub : IDisposable
         File.Copy(backupFile, path);
         try
         {
-            if (new Database(path).IntegrityCheck() is var check && check != "ok")
+            if (new Database(path, key).IntegrityCheck() is var check && check != "ok")
             {
                 throw new InvalidDataException("De back-up is beschadigd: " + check);
             }
@@ -219,6 +254,15 @@ public sealed class TenantHub : IDisposable
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             TenantFolders.Remove(_environment.Root, tenant.Id);
             throw new InvalidDataException(ex is InvalidDataException ? ex.Message : "Dit is geen back-up van Moss365: " + ex.Message, ex);
+        }
+
+        if (key is not null)
+        {
+            SaveEncryption(tenant.Id, protection);
+            lock (_lock)
+            {
+                _keys[tenant.Id] = key;
+            }
         }
 
         return tenant;

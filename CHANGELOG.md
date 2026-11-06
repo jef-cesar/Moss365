@@ -2,6 +2,26 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.16.0
+
+Encryption per tenant (second part of step R6 of the [roadmap](docs/roadmap-1.0.md); details in
+[docs/encryption.md](docs/encryption.md)).
+
+- **Versleuteling** (Settings > Databank): encrypt the database of a tenant with SQLCipher (AES-256). Off by default
+  (decision U7). Three ways to open it:
+  - **Windows account**: nothing to type; only you, signed in on this PC;
+  - **Password**: asked when the tenant opens (at start, or when switching to it);
+  - **AD group**: every member of the group, on a domain PC.
+- **Recovery key**: shown once (type its last group to confirm), kept nowhere by the app. It opens the database on its
+  own: another Windows user, a forgotten password, another PC, a lost `moss365.db`.
+- Change the protection, make a **new key** (the old recovery key stops working) or turn encryption off again. Every
+  switch makes a checked copy first; the copies from before database updates are removed then.
+- **Backups** of an encrypted tenant are encrypted too; restoring asks for the recovery key.
+- The study of option D (the Microsoft 365 sign-in via Azure Key Vault) is done: it works, but needs an Azure
+  subscription; it comes after 1.0.
+- Under the hood: SQLite now comes with SQLCipher (`SQLitePCLRaw.bundle_e_sqlcipher`); databases that are not
+  encrypted open as before.
+
 ## 0.15.0
 
 Maintenance of the database (first part of step R6 of the [roadmap](docs/roadmap-1.0.md); encryption follows in 0.16).

@@ -21,11 +21,18 @@ public partial class MainWindow : Window
 
         // One state per tenant, each with its own connections, tokens and sign-in (R3); the screens get the open tenant.
         // Switching reloads the page, which gives the screens a new scope with the other tenant.
-        var hub = new TenantHub(environment, tenant =>
+        var hub = new TenantHub(environment, (tenant, key) =>
         {
             var signIn = new SignInStatus();
-            return new ManagementState(environment, new ConnectionFactory(signIn), signIn, tenant);
-        });
+            return new ManagementState(environment, new ConnectionFactory(signIn), signIn, tenant, key);
+        }, new Moss365.Connections.Check.WindowsKeyProtector());
+        if (!UnlockAtStart(hub))
+        {
+            hub.Dispose();
+            Loaded += (_, _) => Close();
+            return;
+        }
+
         services.AddSingleton(hub);
         services.AddScoped(sp => sp.GetRequiredService<TenantHub>().Current);
         var provider = services.BuildServiceProvider();
@@ -34,6 +41,37 @@ public partial class MainWindow : Window
         InitializeComponent();
         Closing += (_, e) => e.Cancel = !CanClose(hub);
         Closed += (_, _) => hub.Dispose();
+    }
+
+    /// <summary>
+    /// An encrypted tenant with a password (or whose key Windows cannot open) asks for its password or recovery key
+    /// before the screens start. Cancel opens another tenant that needs nothing, if there is one.
+    /// </summary>
+    private static bool UnlockAtStart(TenantHub hub)
+    {
+        var tenant = hub.CurrentTenant;
+        while (hub.NeedsUnlock(tenant))
+        {
+            var method = hub.Encryption(tenant.Id)?.Method;
+            var secret = UnlockDialog.Ask(tenant.Name, method == Moss365.Core.Storage.EncryptionMethod.Password);
+            if (secret is null)
+            {
+                if (hub.FirstOpenable() is { } other)
+                {
+                    hub.Switch(other.Id);
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (!hub.Unlock(tenant.Id, secret))
+            {
+                MessageBox.Show("Dat wachtwoord of die herstelsleutel past niet.", "Moss365", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        return true;
     }
 
     /// <summary>If something is still open in any tenant (not saved, plan ready, form filled in), ask first.</summary>

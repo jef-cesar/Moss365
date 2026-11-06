@@ -210,7 +210,7 @@ source); the key is never stored in the database, the repository or a log.
 - To investigate: working offline (an unwrapped key kept in memory for a while), key rotation (`PRAGMA rekey`), and how
   this works on the Server (same approach, or C with the service account).
 
-Decided (U7): **no encryption by default**; can be turned on per tenant with A, B or C. **D after a successful study**.
+Decided (U7): **no encryption by default**; can be turned on per tenant with A, B or C. **D after a successful study**. Done in 0.16; the study of D is in [encryption.md](encryption.md): D comes after 1.0.
 
 ### Maintenance
 

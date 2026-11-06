@@ -82,6 +82,15 @@ else
                                 }
                             }
                         </span>
+                        @if (unlocking == t.Id)
+                        {
+                            <div class="kb-melding">
+                                <strong>@t.Name</strong> is versleuteld. Geef het wachtwoord of de herstelsleutel.
+                                <input type="password" class="kb-invoer" @bind="secret" aria-label="Wachtwoord of herstelsleutel" />
+                                <button class="kb-knop kb-klein kb-primair" disabled="@(secret.Length == 0)" @onclick="() => Unlock(hub, t)">Openen</button>
+                                <button class="kb-knop kb-klein" @onclick="() => { unlocking = null; secret = string.Empty; }">Annuleren</button>
+                            </div>
+                        }
                         @if (removing == t.Id)
                         {
                             <div class="kb-melding kb-fout">
@@ -120,6 +129,11 @@ else
         <div class="kb-rij">
             <label>Bestand <input class="kb-invoer" @bind="restoreFile" placeholder="Volledig pad naar Moss365-....db" /></label>
             <label>Naam <input class="kb-invoer" @bind="restoreName" placeholder="bv. Contoso (terug)" /></label>
+            <label>Herstelsleutel (versleutelde back-up) <input class="kb-invoer" @bind="restoreKey" aria-label="Herstelsleutel" /></label>
+            @if (!hub.CanProtect(Moss365.Core.Storage.EncryptionMethod.WindowsAccount))
+            {
+                <label>Nieuw wachtwoord <input type="password" class="kb-invoer" @bind="restorePassword" aria-label="Nieuw wachtwoord" /></label>
+            }
             <button class="kb-knop" disabled="@(restoreFile.Trim().Length == 0 || restoreName.Trim().Length == 0)" @onclick="() => Restore(hub)">Terugzetten als nieuwe tenant</button>
         </div>
     </section>
@@ -162,9 +176,9 @@ else
     {
         try
         {
-            var t = hub.Restore(restoreFile.Trim().Trim('"'), restoreName);
+            var t = hub.Restore(restoreFile.Trim().Trim('"'), restoreName, restoreKey.Length > 0 ? restoreKey : null, restorePassword.Length > 0 ? restorePassword : null);
             (message, error) = ($"Teruggezet als \"{t.Name}\". Open de tenant om hem te gebruiken.", false);
-            restoreFile = restoreName = string.Empty;
+            restoreFile = restoreName = restoreKey = restorePassword = string.Empty;
         }
         catch (Exception ex) when (ex is IOException or ArgumentException or InvalidDataException or UnauthorizedAccessException)
         {
@@ -206,8 +220,44 @@ else
         }
     }
 
+    private string? unlocking;
+    private string secret = string.Empty;
+    private string restoreKey = string.Empty;
+    private string restorePassword = string.Empty;
+
+    /// <summary>From the bar: a tenant that is locked comes here to be unlocked first.</summary>
+    [SupplyParameterFromQuery(Name = "openen")] public string? OpenId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (OpenId is { Length: > 0 } id && Hub is { } hub && hub.Tenants.FirstOrDefault(x => x.Id == id) is { } tenant)
+        {
+            Open(hub, tenant);
+        }
+    }
+
+    private void Unlock(TenantHub hub, TenantInfo t)
+    {
+        if (hub.Unlock(t.Id, secret))
+        {
+            secret = string.Empty;
+            unlocking = null;
+            Open(hub, t);
+        }
+        else
+        {
+            (message, error) = ("Dat wachtwoord of die herstelsleutel past niet.", true);
+        }
+    }
+
     private void Open(TenantHub hub, TenantInfo t)
     {
+        if (hub.NeedsUnlock(t))
+        {
+            unlocking = t.Id;
+            return;
+        }
+
         hub.Switch(t.Id);
         Nav.NavigateTo(string.Empty, forceLoad: true);
     }
