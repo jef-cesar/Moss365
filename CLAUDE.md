@@ -5,8 +5,8 @@ under the EUPL-1.2. Public repository: never add personal or organisation data (
 check in `.github/workflows/privacy.yml` refuses e-mail addresses outside the example domains, public IPs and a secret
 blocklist). The maintainer does not write code: changes must be tested, documented and built by GitHub Actions.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R4 are done (0.13.0): code in English, one
-database per tenant, several tenants, snapshots. The interface texts are still Dutch and move to dictionaries in R15; the inventory
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R5 are done (0.14.0): code in English, one
+database per tenant, several tenants, snapshots, the set-up wizard. The interface texts are still Dutch and move to dictionaries in R15; the inventory
 keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots), and the script
 header keys (`<#MOSS365 Naam: ... #>`) are renamed in R8. Data saved before 0.11 uses Dutch
 property and enum names: `Storage/LegacyNames.cs` reads them (use `WithLegacyNames()` on every `JsonSerializerOptions`
@@ -30,6 +30,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
 - Snapshots (`Storage/Snapshots.cs`, R4): every read becomes a snapshot (tables Snapshot, Object, Version); only
   changed rows are stored. `ManagementState.AsOf`/`IsHistoric` shows the past read only: `Can` refuses writes and
   `ExecuteAsync` throws, so every new write path must go through those.
+- Set-up (`Core/Setup`, R5): `TenantSetup.Assess` compares what the wizard read with `AppManifest` and plans only the
+  difference; `TenantSetupConnection` runs it with the Graph PowerShell client. Keep `AppManifest` and
+  `tools/Register-App.ps1` the same (permissions, app role ids).
 - `CHANGELOG.md`: a release is created when `Version` in `Directory.Build.props` has no release yet; the text comes
   from the `## <version>` section.
 

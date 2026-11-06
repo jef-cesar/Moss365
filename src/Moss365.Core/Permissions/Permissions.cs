@@ -153,6 +153,8 @@ public static class PermissionTable
             or ChangeAction.GraphAddGroupMember or ChangeAction.GraphRemoveGroupMember
             or ChangeAction.ExchangeAddGroupMember or ChangeAction.ExchangeRemoveGroupMember => Permission.GroupMembers,
         ChangeAction.GraphInviteGuest => Permission.InviteGuests,
+        ChangeAction.GraphCreateApplication or ChangeAction.GraphUpdateApplication or ChangeAction.GraphCreateServicePrincipal
+            or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole => Permission.Settings,
         _ => Permission.Manage,
     };
 
@@ -162,7 +164,10 @@ public static class PermissionTable
     /// </summary>
     public static string? Refusal(Role roles, Change w, InventoryData? data = null)
     {
-        var permission = ForAction(w.ChangeAction);
+        // The groups of the profiles (GG-Moss365-...) belong to the set-up of the app, like its app registration
+        var permission = w.ChangeAction == ChangeAction.GraphCreateGroup && AppRoles.Any(a => string.Equals(a.Group, w.P("displayName"), StringComparison.OrdinalIgnoreCase))
+            ? Permission.Settings
+            : ForAction(w.ChangeAction);
         if (!Can(roles, permission))
         {
             return $"Je profiel ({Text(roles, "en")}) laat dit niet toe; het vraagt {Text(RolesFor(permission))}.";

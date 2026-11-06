@@ -227,9 +227,9 @@ public sealed class RefreshTests : IDisposable
         Assert.Equal(CheckStatus.Good, rules.Single(r => r.Section == "Microsoft.Graph.Authentication").Status);
         Assert.Equal(CheckStatus.Warning, rules.Single(r => r.Section == "Microsoft.Graph.Users").Status);
 
-        // RSAT cannot be installed with Install-Module: no button, but the command
+        // RSAT cannot be installed with Install-Module: since R5 the app installs it as a Windows capability
         var rsat = rules.Single(r => r.Section.StartsWith("ActiveDirectory", StringComparison.Ordinal));
-        Assert.Null(rsat.Module);
+        Assert.Equal(SystemCheck.Rsat, rsat.Module);
         Assert.Contains("Add-WindowsCapability", rsat.Solution);
 
         // In the second PowerShell a missing Exchange module is only a warning
@@ -242,7 +242,9 @@ public sealed class RefreshTests : IDisposable
     {
         var starter = new JsonPowerShell("{\"PowerShell\":\"7.4.5\",\"Editie\":\"Core\",\"Modules\":[{\"Naam\":\"ExchangeOnlineManagement\",\"Versie\":\"3.7.2\"}],\"Installatie\":\"Gelukt\"}");
         var check = new SystemCheck(_ => starter, () => new[] { ("PowerShell 7", "pwsh.exe") },
-            (host, port, _) => Task.FromResult(host != "outlook.office365.com" && port != 636), _folder);
+            (host, port, _) => Task.FromResult(host != "outlook.office365.com" && port != 636), _folder,
+            serverTime: _ => Task.FromResult<DateTimeOffset?>(DateTimeOffset.UtcNow.AddMinutes(10)),
+            installComponent: (c, _) => Task.FromResult("Gelukt " + c));
 
         var rules = await check.CheckAsync(new ConnectionSettings { AdServer = "10.0.0.1" }, null, CancellationToken.None);
 
@@ -255,6 +257,12 @@ public sealed class RefreshTests : IDisposable
         Assert.Equal("Gelukt", await check.InstallAsync("pwsh.exe", "Microsoft.Graph.Users", CancellationToken.None));
         Assert.Contains("-Installeer", starter.Arguments);
         Assert.StartsWith("Mislukt", await check.InstallAsync("andere.exe", "x", CancellationToken.None));
+
+        // R5: the clock, and components outside PowerShell (only PowerShell 7 here, so no warning for it)
+        Assert.Equal(CheckStatus.Error, rules.Single(r => r.Section == "Klok").Status);
+        Assert.DoesNotContain(rules, r => r.Section == "PowerShell 7");
+        Assert.Equal(SystemCheck.Rsat, rules.Single(r => r.Section == "ActiveDirectory (RSAT)").Module);
+        Assert.Equal("Gelukt RSAT", await check.InstallAsync("pwsh.exe", SystemCheck.Rsat, CancellationToken.None));
     }
 
     private sealed class JsonPowerShell(string json) : IPowerShellStarter

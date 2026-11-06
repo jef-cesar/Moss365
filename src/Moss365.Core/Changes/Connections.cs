@@ -221,6 +221,17 @@ public interface IConnectionFactory
 
     /// <summary>Searching for a new version of the app; null where that is not possible.</summary>
     IUpdateCheck? Updates => null;
+
+    /// <summary>The wizard (R5): reads and sets up a tenant with the sign-in of Microsoft Graph PowerShell; null where
+    /// that is not possible.</summary>
+    Setup.ITenantSetupConnection? Setup(string tenantId) => null;
+
+    /// <summary>The tenant ID of a domain (Microsoft's OpenID metadata).</summary>
+    Task<Setup.TenantLookupResult> FindTenantAsync(string domainOrId, CancellationToken cancel)
+        => Task.FromResult(new Setup.TenantLookupResult(null, "Opzoeken is niet beschikbaar in deze omgeving."));
+
+    /// <summary>The domain of this PC and its domain controller, or null (not joined to a domain, or not Windows).</summary>
+    Setup.LocalDomain? FindLocalDomain() => null;
 }
 
 public enum CheckStatus

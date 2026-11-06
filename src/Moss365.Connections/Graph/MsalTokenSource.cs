@@ -11,7 +11,7 @@ namespace Moss365.Connections.Graph;
 /// </summary>
 public sealed class MsalTokenSource
 {
-    private static readonly string[] GraphScopes = { "https://graph.microsoft.com/.default" };
+    private static readonly string[] DefaultGraphScopes = { "https://graph.microsoft.com/.default" };
     private static readonly string[] ExchangeScopes = { "https://outlook.office365.com/.default" };
 
     private const string Succeeded = "<html><head><meta charset=\"utf-8\"><title>Moss365</title></head><body style=\"font-family:Segoe UI,sans-serif;color:#2d2c38;padding:3rem\">"
@@ -23,8 +23,12 @@ public sealed class MsalTokenSource
     private readonly SemaphoreSlim _lock = new(1, 1);
     private IAccount? _account;
 
-    public MsalTokenSource(string tenantId, string clientId, string? loginHint, SignInStatus? status = null)
+    private readonly string[] GraphScopes;
+
+    /// <param name="graphScopes">The Graph permissions to ask for; default .default (what the app registration has).</param>
+    public MsalTokenSource(string tenantId, string clientId, string? loginHint, SignInStatus? status = null, IEnumerable<string>? graphScopes = null)
     {
+        GraphScopes = graphScopes?.Select(x => x.Contains("://", StringComparison.Ordinal) ? x : "https://graph.microsoft.com/" + x).ToArray() ?? DefaultGraphScopes;
         _app = PublicClientApplicationBuilder.Create(clientId.Trim())
             .WithTenantId(tenantId.Trim())
             .WithRedirectUri("http://localhost")
@@ -87,7 +91,7 @@ public sealed class MsalTokenSource
         }
         catch (MsalException ex)
         {
-            ExchangeMessage = "Exchange kon niet met dezelfde aanmelding (" + ex.ErrorCode + "). Draai Register-App.ps1 opnieuw om het recht Exchange.Manage toe te voegen; tot dan meldt Exchange apart aan.";
+            ExchangeMessage = "Exchange kon niet met dezelfde aanmelding (" + ex.ErrorCode + "). Kijk de app-registratie na bij Tenant inrichten (recht Exchange.Manage); tot dan meldt Exchange apart aan.";
             return null;
         }
     }

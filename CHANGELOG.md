@@ -2,6 +2,30 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.14.0
+
+Setting up a tenant and this computer (step R5 of the [roadmap](docs/roadmap-1.0.md)).
+
+- **Tenant inrichten** (Settings): a wizard for the open tenant. You type a domain, sign in once as an Application or
+  Global Administrator, and the app finds the rest:
+  - the tenant ID (from Microsoft, without signing in);
+  - the app registration `Moss365`: found and checked, or created. What is missing (permissions, admin consent,
+    "assignment required", the profiles as app roles, a group `GG-Moss365-...` per profile, your own profiles
+    Administrator and AppAdmin) is a plan with a preview; only the difference, and everything in the change log;
+  - the client ID goes into Connections by itself; the domain controller of this PC and your account for Exchange with
+    one click;
+  - hybrid or cloud only;
+  - after the first read: suggestions for the organisation (AD domain, synchronised OUs, departments, offices, group
+    prefixes) and candidates for the emergency accounts (cloud-only Global Administrators outside every Conditional
+    Access policy). You choose what is taken over.
+  The wizard signs in with Microsoft Graph PowerShell, because the app registration may not exist yet. Setting up is
+  for the profile AppAdmin. `Register-App.ps1` stays, for whoever prefers PowerShell.
+- **Controle van deze pc**: also the clock (sign-in fails at more than five minutes off), PowerShell 7 (installed via
+  winget) and the AD module RSAT (installed as a Windows capability; Windows asks for administrator rights). "Install
+  everything that is missing" asks once; optionally the app proposes it right after the check. Every installation is
+  in the change log.
+- **WebView2**: when the runtime is missing, the app offers to download Microsoft's installer and run it.
+
 ## 0.13.0
 
 Snapshots and the organisation over time (step R4 of the [roadmap](docs/roadmap-1.0.md)).

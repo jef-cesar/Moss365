@@ -621,7 +621,7 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
     }
 
     /// <summary>Fake connections: remember what was run and always report success.</summary>
-    private sealed class FakeFactory : IConnectionFactory
+    private sealed partial class FakeFactory : IConnectionFactory
     {
         public List<Change> Executed { get; } = new();
         public string? GraphId { get; set; }

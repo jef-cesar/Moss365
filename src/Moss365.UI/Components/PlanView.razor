@@ -24,7 +24,7 @@
                     <br />@("Exchange gebruikt dezelfde aanmelding; verschijnt bovenaan een aanmeldlink, kopieer die naar je browser.")
                 }
             </p>
-            @if (State.MissingConnections(Plan) is { Count: > 0 } ontbreekt)
+            @if (Run is null && State.MissingConnections(Plan) is { Count: > 0 } ontbreekt)
             {
                 <div class="kb-melding kb-fout">
                     Geen verbinding ingesteld voor: @string.Join(", ", ontbreekt.Select(SystemName)). <a href="verbindingen">Verbindingen instellen</a>
@@ -116,6 +116,9 @@
     [Parameter] public string Title { get; set; } = "Voorbeeld van de wijzigingen";
     [Parameter, EditorRequired] public string Context { get; set; } = string.Empty;
     [Parameter] public EventCallback<IReadOnlyList<ChangeResult>> Executed { get; set; }
+
+    /// <summary>Runs the plan another way than the connections of the app (the wizard, with its own sign-in).</summary>
+    [Parameter] public Func<IReadOnlyList<Change>, string, IProgress<string>, Task<IReadOnlyList<ChangeResult>>>? Run { get; set; }
 
     private IReadOnlyList<ChangeResult>? results;
     private bool confirm;
@@ -240,7 +243,7 @@
                 progress = t;
                 _ = InvokeAsync(StateHasChanged);
             });
-            results = await State.ExecuteAsync(Plan, Context, reporter);
+            results = Run is { } run ? await run(Plan, Context, reporter) : await State.ExecuteAsync(Plan, Context, reporter);
             Report();
             await Executed.InvokeAsync(results);
         }

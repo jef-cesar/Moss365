@@ -1,12 +1,15 @@
 @page "/controle"
 @inject ManagementState State
+@inject IServiceProvider Services
 
 <h1>Controle van deze pc</h1>
 
 <p class="kb-zacht">
     Kijkt na of alles aanwezig is wat de app en de scripts nodig hebben: PowerShell, de modules (in Windows PowerShell en
-    PowerShell 7 apart, want elk heeft zijn eigen modules), de verbinding met de domeincontroller en met Microsoft 365.
-    Ontbreekt een module, dan kan je ze hier installeren voor jouw account (geen beheerdersrechten nodig).
+    PowerShell 7 apart, want elk heeft zijn eigen modules), de klok, de verbinding met de domeincontroller en met Microsoft
+    365. Ontbreekt iets, dan kan je het hier installeren, enkel uit officiële bronnen (PowerShell Gallery, winget,
+    Windows) en altijd na bevestiging; elke installatie komt in het logboek. Modules installeren voor jouw account vraagt
+    geen beheerdersrechten; PowerShell 7 en de AD-module (RSAT) wel: Windows vraagt dan om bevestiging.
 </p>
 
 <section class="kb-kaart" id="over">
@@ -50,7 +53,21 @@ else
     <div class="kb-filters">
         <button class="kb-knop kb-primair" disabled="@busy" @onclick="Check">@(rules is null ? "Controleren" : "Opnieuw controleren")</button>
         @if (busy && progress is not null) { <span class="kb-zacht">@progress</span> }
+        @if (rules is not null && Installable.Count > 0)
+        {
+            @if (confirmAll)
+            {
+                <span>@Installable.Count onderdeel(en) installeren: @string.Join(", ", Installable.Select(r => r.Section))?</span>
+                <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="InstallAll">Ja, alles installeren</button>
+                <button class="kb-knop" @onclick="() => confirmAll = false">Annuleren</button>
+            }
+            else
+            {
+                <button class="kb-knop" disabled="@busy" @onclick="() => confirmAll = true">Alles installeren wat ontbreekt (@Installable.Count)</button>
+            }
+        }
     </div>
+    <label><input type="checkbox" checked="@askAtOnce" @onchange="SetAskAtOnce" /> Ontbrekende onderdelen meteen voorstellen na het nakijken (de app vraagt één keer)</label>
 
     @if (rules is not null)
     {
@@ -90,7 +107,7 @@ else
                                         else
                                         {
                                             <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => confirm = Key(r)"
-                                                    title="Installeert @r.Module voor jouw account uit de PowerShell Gallery">Installeren</button>
+                                                    title="@InstallText(r)">Installeren</button>
                                         }
                                     }
                                 </td>
@@ -134,6 +151,7 @@ else
         {
             var p = new Progress<string>(t => { progress = t; _ = InvokeAsync(StateHasChanged); });
             rules = await State.Check!.CheckAsync(State.Settings, p, CancellationToken.None);
+            confirmAll = askAtOnce && Installable.Count > 0;
         }
         catch (Exception ex)
         {
@@ -153,13 +171,58 @@ else
         progress = $"{r.Module} installeren...";
         try
         {
-            messages[Key(r)] = await State.Check!.InstallAsync(r.PowerShell!, r.Module!, CancellationToken.None);
+            messages[Key(r)] = await State.InstallAsync(r);
         }
-        catch (Exception ex)
+        finally
         {
-            messages[Key(r)] = "Mislukt: " + ex.Message;
+            busy = false;
         }
 
         await Check();
     }
+
+    private bool confirmAll;
+    private bool askAtOnce;
+    private const string AskAtOnceSetting = "installeren-meteen-voorstellen";
+
+    private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
+
+    protected override void OnInitialized() => askAtOnce = Hub?.App.Setting(AskAtOnceSetting) == "1";
+
+    private void SetAskAtOnce(ChangeEventArgs e)
+    {
+        askAtOnce = e.Value is true;
+        Hub?.App.SetSetting(AskAtOnceSetting, askAtOnce ? "1" : "0");
+    }
+
+    private IReadOnlyList<CheckRule> Installable => rules?.Where(r => r.Status != CheckStatus.Good && r.Module is not null && r.PowerShell is not null)
+        .DistinctBy(r => (r.Module, r.PowerShell)).ToList() ?? new List<CheckRule>();
+
+    private async Task InstallAll()
+    {
+        busy = true;
+        confirmAll = false;
+        try
+        {
+            foreach (var r in Installable)
+            {
+                progress = $"{r.Section} installeren...";
+                StateHasChanged();
+                messages[Key(r)] = await State.InstallAsync(r);
+            }
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        await Check();
+    }
+
+    private static string InstallText(CheckRule r) => r.Module switch
+    {
+        "PowerShell7" => "Installeert PowerShell 7 via winget (Microsoft); Windows vraagt om bevestiging",
+        "RSAT" => "Installeert de AD-module als Windows-onderdeel; Windows vraagt beheerdersrechten",
+        _ => $"Installeert {r.Module} voor jouw account uit de PowerShell Gallery",
+    };
 }

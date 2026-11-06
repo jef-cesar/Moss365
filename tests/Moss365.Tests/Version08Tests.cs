@@ -35,12 +35,14 @@ public sealed class Version08Tests : IDisposable
     [MemberData(nameof(AllActions))]
     public void EveryActionHasAMinimumRole(ChangeAction action)
     {
-        // Reader and Auditor never change anything; Administrator may do everything; AppAdmin only the settings of the
-        // app
+        // Reader and Auditor never change anything; Administrator may do everything in the directory; AppAdmin only the
+        // settings of the app, which since R5 include the app registration of Moss365 (the wizard)
         Assert.NotNull(PermissionTable.Refusal(Role.Reader, W(action)));
         Assert.NotNull(PermissionTable.Refusal(Role.Auditor, W(action)));
-        Assert.NotNull(PermissionTable.Refusal(Role.AppAdmin, W(action)));
-        Assert.Null(PermissionTable.Refusal(Role.Administrator, W(action)));
+        var setup = action is ChangeAction.GraphCreateApplication or ChangeAction.GraphUpdateApplication or ChangeAction.GraphCreateServicePrincipal
+            or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole;
+        Assert.Equal(setup, PermissionTable.Refusal(Role.AppAdmin, W(action)) is null);
+        Assert.Equal(!setup, PermissionTable.Refusal(Role.Administrator, W(action)) is null);
 
         var helpdesk = action is ChangeAction.AdSetPassword or ChangeAction.AdUnlockAccount or ChangeAction.AdEnableAccount
             or ChangeAction.AdAddGroupMember or ChangeAction.AdRemoveGroupMember or ChangeAction.GraphAddGroupMember or ChangeAction.GraphRemoveGroupMember

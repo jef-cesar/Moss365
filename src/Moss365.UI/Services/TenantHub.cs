@@ -83,6 +83,7 @@ public sealed class TenantHub : IDisposable
             if (!_states.TryGetValue(tenant.Id, out var state))
             {
                 state = _open(tenant);
+                state.TenantChanged += t => App.SaveTenant(t);
                 _states[tenant.Id] = state;
             }
 

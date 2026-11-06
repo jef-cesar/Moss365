@@ -70,6 +70,10 @@ else
                                 {
                                     <button class="kb-knop kb-klein kb-primair" @onclick="() => Open(hub, t)">Openen</button>
                                 }
+                                else
+                                {
+                                    <a class="kb-knop kb-klein kb-primair" href="inrichten">Inrichten</a>
+                                }
                                 <button class="kb-knop kb-klein" @onclick="() => Edit(t)">Naam en kleur</button>
                                 <button class="kb-knop kb-klein" @onclick="() => Backup(hub, t)">Back-up</button>
                                 @if (!current)

@@ -85,6 +85,51 @@ public sealed class ConnectionFactory : IConnectionFactory
         return output;
     }
 
+    private TenantSetupConnection? _setup;
+
+    public Core.Setup.ITenantSetupConnection? Setup(string tenantId)
+    {
+        var id = tenantId.Trim();
+        if (!Core.Setup.TenantLookup.IsTenantId(id))
+        {
+            return null;
+        }
+
+        lock (_lock)
+        {
+            // One sign-in per tenant while the app is open
+            if (_setup is null || !string.Equals(_setup.TenantId, id, StringComparison.OrdinalIgnoreCase))
+            {
+                _setup = new TenantSetupConnection(_http, id, _signIn);
+            }
+
+            return _setup;
+        }
+    }
+
+    public async Task<Core.Setup.TenantLookupResult> FindTenantAsync(string domainOrId, CancellationToken cancel)
+    {
+        if (Core.Setup.TenantLookup.Clean(domainOrId) is not { } clean)
+        {
+            return new(null, "Geef een domein (bv. contoso.com) of een tenant ID.");
+        }
+
+        try
+        {
+            using var answer = await _http.GetAsync(Core.Setup.TenantLookup.MetadataUrl(clean), cancel);
+            var text = await answer.Content.ReadAsStringAsync(cancel);
+            return Core.Setup.TenantLookup.TenantIdFrom(text) is { } id
+                ? new(id, null)
+                : new(null, answer.StatusCode == System.Net.HttpStatusCode.BadRequest ? $"Microsoft kent geen tenant met het domein {clean}." : $"Geen tenant gevonden ({(int)answer.StatusCode}).");
+        }
+        catch (HttpRequestException ex)
+        {
+            return new(null, "login.microsoftonline.com niet bereikbaar: " + ex.Message);
+        }
+    }
+
+    public Core.Setup.LocalDomain? FindLocalDomain() => Connections.Check.LocalDomainFinder.Find();
+
     private MsalTokenSource Token(ConnectionSettings settings)
     {
         var key = $"{settings.TenantId.Trim()}|{settings.ClientId.Trim()}|{settings.ManagementUpn.Trim()}";

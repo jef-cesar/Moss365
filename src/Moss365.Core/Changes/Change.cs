@@ -69,6 +69,14 @@ public enum ChangeAction
     GraphUpdateCaPolicy,          // Target = policy id; json = partial JSON; Previous json = the same fields from before
     GraphCreateCaLocation,            // Target = "nieuw"; json = the named location
     GraphUpdateCaLocation,         // Target = location id; json = the location; Previous json = the location from before
+
+    // New in 0.14: setting up a tenant (the wizard, R5). appName = the name of the app registration ("Moss365")
+    GraphCreateApplication,       // Target = appName; json = the full application
+    GraphUpdateApplication,       // Target = object id of the application; json = the fields that change; Previous json
+    GraphCreateServicePrincipal,  // Target = appName; the enterprise app, with "assignment required" on
+    GraphUpdateServicePrincipal,  // Target = id of the service principal; json; Previous json
+    GraphGrantConsent,            // Target = appName; resourceId, scope, grantId (empty = new); Previous scope
+    GraphAssignAppRole,           // Target = id of the user or group, or the name of a group made in the same plan; appName, appRoleId, kind (user/group)
 }
 
 /// <summary>

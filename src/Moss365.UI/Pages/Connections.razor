@@ -53,8 +53,9 @@
         <input class="kb-invoer kb-breed" placeholder="bv. naam@contoso.com" @bind="State.Settings.ManagementUpn" />
     </div>
     <p class="kb-zacht">
-        Tenant ID en Client ID krijg je met <code>Register-App.ps1</code> (eenmalig, als Global Administrator). Dat maakt de
-        app-registratie "Moss365" aan met enkel gedelegeerde rechten en alleen toegewezen beheerders.
+        Tenant ID en Client ID vult <a href="inrichten">Tenant inrichten</a> zelf in (eenmalig, met een Application of Global
+        Administrator). Dat maakt de app-registratie "Moss365" aan met enkel gedelegeerde rechten en alleen toegewezen
+        beheerders; <code>Register-App.ps1</code> doet hetzelfde, voor wie dat liever in PowerShell doet.
         Bij de eerste actie verschijnt bovenaan een aanmeldlink: kopieer hem naar de browser van je keuze. Exchange gebruikt
         dezelfde aanmelding (module ExchangeOnlineManagement nodig).
     </p>

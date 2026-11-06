@@ -16,17 +16,27 @@ public sealed class SystemCheck : ISystemCheck
     private readonly Func<IReadOnlyList<(string Name, string FilePath)>> _powerShells;
     private readonly Func<string, int, CancellationToken, Task<bool>> _reachable;
     private readonly string _workFolder;
+    private readonly Func<CancellationToken, Task<DateTimeOffset?>> _serverTime;
+    private readonly Func<string, CancellationToken, Task<string>> _installComponent;
+
+    /// <summary>Components outside PowerShell that the app installs itself (after confirmation).</summary>
+    public const string PowerShell7 = "PowerShell7";
+    public const string Rsat = "RSAT";
 
     public SystemCheck(
         Func<string, IPowerShellStarter>? starter = null,
         Func<IReadOnlyList<(string Name, string FilePath)>>? powerShells = null,
         Func<string, int, CancellationToken, Task<bool>>? reachable = null,
-        string? workFolder = null)
+        string? workFolder = null,
+        Func<CancellationToken, Task<DateTimeOffset?>>? serverTime = null,
+        Func<string, CancellationToken, Task<string>>? installComponent = null)
     {
         _starter = starter ?? (path => new PowerShellProcess(path));
         _powerShells = powerShells ?? PowerShellProcess.Available;
         _reachable = reachable ?? Reachable;
         _workFolder = workFolder ?? Path.Combine(Path.GetTempPath(), "Moss365");
+        _serverTime = serverTime ?? ServerTimeAsync;
+        _installComponent = installComponent ?? ComponentInstaller.InstallAsync;
     }
 
     public sealed record ModuleVersion(string Name, string Version);
@@ -57,6 +67,16 @@ public sealed class SystemCheck : ISystemCheck
             }
         }
 
+        if (shells.Count > 0 && !shells.Any(s => s.Name == "PowerShell 7"))
+        {
+            rules.Add(new("Deze pc", "PowerShell 7", CheckStatus.Warning, "niet geïnstalleerd",
+                "Aanbevolen voor Exchange en de scripts (Windows PowerShell 5.1 volstaat voor de meeste scripts). Installeren via winget; Windows vraagt om bevestiging.",
+                "winget install --id Microsoft.PowerShell --source winget", PowerShell7, "winget"));
+        }
+
+        progress?.Report("Klok nakijken...");
+        rules.Add(Clock(DateTimeOffset.UtcNow, await _serverTime(cancel)));
+
         progress?.Report("Netwerk nakijken...");
         if (settings.AdFilled)
         {
@@ -80,13 +100,18 @@ public sealed class SystemCheck : ISystemCheck
         }
 
         rules.Add(settings.GraphFilled
-            ? new("Instellingen", "App-registratie", CheckStatus.Good, "Tenant ID en Client ID ingevuld", "Draai Register-App.ps1 opnieuw na een nieuwe versie van de app.")
-            : new("Instellingen", "App-registratie", CheckStatus.Warning, "niet ingevuld", "Draai Register-App.ps1 en vul Tenant ID en Client ID in op het scherm Verbindingen."));
+            ? new("Instellingen", "App-registratie", CheckStatus.Good, "Tenant ID en Client ID ingevuld", "Kijk na een nieuwe versie de app-registratie na bij Tenant inrichten.")
+            : new("Instellingen", "App-registratie", CheckStatus.Warning, "niet ingevuld", "Richt de tenant in (Instellingen > Tenant inrichten): de app vult Tenant ID en Client ID zelf in op het scherm Verbindingen."));
         return rules;
     }
 
     public async Task<string> InstallAsync(string powerShell, string module, CancellationToken cancel)
     {
+        if (module is PowerShell7 or Rsat)
+        {
+            return await _installComponent(module, cancel);
+        }
+
         if (!_powerShells().Any(s => string.Equals(s.FilePath, powerShell, StringComparison.OrdinalIgnoreCase)))
         {
             return "Mislukt: onbekende PowerShell.";
@@ -133,7 +158,7 @@ public sealed class SystemCheck : ISystemCheck
         yield return ad is null
             ? new(name, "ActiveDirectory (RSAT)", CheckStatus.Warning, "niet geïnstalleerd",
                 "Nodig voor het AD-deel van Export-Inventaris.ps1; de app zelf gebruikt LDAP. Installeren vraagt beheerdersrechten.",
-                "Add-WindowsCapability -Online -Name 'Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0'  (als administrator)")
+                "Add-WindowsCapability -Online -Name 'Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0'  (als administrator)", Rsat, path)
             : new(name, "ActiveDirectory (RSAT)", CheckStatus.Good, ad.ToString(), "Voor het AD-deel van Export-Inventaris.ps1.");
     }
 
@@ -178,6 +203,40 @@ public sealed class SystemCheck : ISystemCheck
             {
                 File.Delete(output);
             }
+        }
+    }
+
+    /// <summary>Kerberos and the sign-in fail when the clock of the PC is more than five minutes off.</summary>
+    internal static CheckRule Clock(DateTimeOffset now, DateTimeOffset? server)
+    {
+        if (server is not { } s)
+        {
+            return new("Deze pc", "Klok", CheckStatus.Warning, "niet te vergelijken", "Microsoft niet bereikbaar om de klok na te kijken.");
+        }
+
+        var off = Math.Abs((now - s).TotalSeconds);
+        var text = off < 60 ? "juist" : $"{Math.Round(off / 60)} min verschil";
+        return off switch
+        {
+            > 300 => new("Deze pc", "Klok", CheckStatus.Error, text, "Meer dan 5 minuten verschil met Microsoft: aanmelden bij AD (Kerberos) en Microsoft 365 mislukt. Zet de tijd juist (Instellingen > Tijd > Nu synchroniseren)."),
+            > 60 => new("Deze pc", "Klok", CheckStatus.Warning, text, "De klok loopt wat af; vanaf 5 minuten mislukt het aanmelden."),
+            _ => new("Deze pc", "Klok", CheckStatus.Good, text, "Gelijk met Microsoft."),
+        };
+    }
+
+    private static readonly HttpClient TimeClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+
+    private static async Task<DateTimeOffset?> ServerTimeAsync(CancellationToken cancel)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Head, "https://login.microsoftonline.com/");
+            using var answer = await TimeClient.SendAsync(request, cancel);
+            return answer.Headers.Date;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancel.IsCancellationRequested)
+        {
+            return null;
         }
     }
 

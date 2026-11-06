@@ -440,7 +440,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         {
             return new CaData(Array.Empty<CaPolicy>(), Array.Empty<NamedLocation>(), Array.Empty<AuthenticationStrength>(),
                 new Dictionary<string, string>(), null,
-                "Niet leesbaar: de app-registratie heeft het recht Policy.Read.All nodig (Register-App.ps1 opnieuw uitvoeren) en je account "
+                "Niet leesbaar: de app-registratie heeft het recht Policy.Read.All nodig (Tenant inrichten opnieuw nakijken) en je account "
                 + "de rol Security Reader, Global Reader of Conditional Access Administrator (" + ex.Message + ")");
         }
 

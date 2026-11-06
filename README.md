@@ -4,8 +4,18 @@
 that manage one or more organisations (tenants). Users, groups, shared mailboxes, rooms, guests, licences, security and
 Conditional Access on one screen, with the history of the organisation over time.
 
-> **Status**: in preparation. The app exists as an internal version (0.9) and moves to this public repository following
-> the roadmap. There is no download here yet.
+> **Status**: on the way to 1.0. Every step of the [roadmap](docs/roadmap-1.0.md) is a prerelease (0.x) on the
+> [Releases](https://github.com/jef-cesar/Moss365/releases) page. The interface is still in Dutch until the language
+> step (R15).
+
+## Getting started
+
+1. Download the zip of the newest release and check it against `SHA256SUMS.txt` (until 1.0 the app is not signed).
+2. Unzip it anywhere and start `Moss365.exe` (Windows 10 or 11; the app offers to install the WebView2 runtime if it is
+   missing).
+3. **Instellingen > Tenant inrichten**: type a domain of your organisation, sign in once as an Application or Global
+   Administrator, and confirm the plan. The app creates the app registration `Moss365`, the profiles and their groups,
+   and fills in the connection settings itself. Then **Controle van deze pc** installs what is missing.
 
 ## How Moss365 works
 

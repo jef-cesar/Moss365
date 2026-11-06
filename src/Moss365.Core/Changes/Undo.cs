@@ -71,6 +71,9 @@ public static class Undo
         {
             ChangeAction.AdCreateUser or ChangeAction.ExchangeCreateSharedMailbox or ChangeAction.ExchangeCreateGroup or ChangeAction.GraphCreateCaLocation
                 => "aangemaakte objecten verwijdert de app niet",
+            ChangeAction.GraphCreateApplication or ChangeAction.GraphUpdateApplication or ChangeAction.GraphCreateServicePrincipal
+                or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole
+                => "de app-registratie wijzig je via Tenants > Inrichten of in Entra",
             ChangeAction.GraphCreateCaPolicy => "zet het beleid uit bij Conditional Access > Beheren (de app verwijdert geen beleiden)",
             ChangeAction.GraphInviteGuest => "verwijder de gast via Gastgebruikers",
             ChangeAction.GraphRemoveGuest => "terugzetten via Entra > Verwijderde gebruikers (30 dagen)",

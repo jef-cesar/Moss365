@@ -101,6 +101,14 @@ public sealed partial class RefreshTargets
                 case ChangeAction.GraphUpdateCaLocation:
                     targets.ConditionalAccess = true;
                     continue;
+                case ChangeAction.GraphCreateApplication:
+                case ChangeAction.GraphUpdateApplication:
+                case ChangeAction.GraphCreateServicePrincipal:
+                case ChangeAction.GraphUpdateServicePrincipal:
+                case ChangeAction.GraphGrantConsent:
+                case ChangeAction.GraphAssignAppRole:
+                    // The app registration is not part of the inventory
+                    continue;
                 default:
                     targets.AddId(d, w.Target);
                     break;

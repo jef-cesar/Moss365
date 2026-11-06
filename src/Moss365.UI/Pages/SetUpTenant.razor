@@ -1,0 +1,266 @@
+@page "/inrichten"
+@using Moss365.Core.Setup
+@* The wizard (R5): sets up the open tenant. You only fill in what the app cannot find itself; every change in Entra is a
+   plan with a preview and goes to the change log. *@
+@inherits RefreshingPage
+
+<h1>Tenant inrichten</h1>
+
+<p class="kb-zacht">
+    De app zoekt zelf wat ze kan vinden en toont wat er ontbreekt. Wat ze in Entra moet maken of wijzigen (de
+    app-registratie <strong>@AppManifest.Name</strong>, toestemming, de profielen en hun groepen) staat eerst als plan
+    hieronder; er gebeurt pas iets na bevestiging, en alles komt in het logboek van <strong>@State.Tenant.Name</strong>.
+</p>
+
+@if (State.IsHistoric)
+{
+    <div class="kb-melding">Je bekijkt een stand uit het verleden. Ga terug naar nu om de tenant in te richten.</div>
+    return;
+}
+
+<section class="kb-kaart">
+    <h2>1. Tenant</h2>
+    <div class="kb-rij">
+        <label>Domein of tenant ID <input class="kb-invoer" @bind="domain" placeholder="contoso.com" aria-label="Domein of tenant ID" /></label>
+        <button class="kb-knop kb-primair" disabled="@busy" @onclick="Find">Opzoeken</button>
+    </div>
+    @if (State.Settings.TenantId.Length > 0)
+    {
+        <p>Tenant ID <code>@State.Settings.TenantId</code></p>
+    }
+    else
+    {
+        <p class="kb-zacht">Microsoft zegt welke tenant bij een domein hoort; daarvoor hoef je niet aangemeld te zijn.</p>
+    }
+    @if (findError is not null) { <div class="kb-melding kb-fout">@findError</div> }
+</section>
+
+<section class="kb-kaart">
+    <h2>2. Aanmelden en nakijken</h2>
+    <p class="kb-zacht">
+        Meld aan met een beheerder van deze tenant (rol Application Administrator of Global Administrator, één keer). De
+        aanmeldlink verschijnt bovenaan; de wizard gebruikt Microsoft Graph PowerShell, want de app-registratie van Moss365
+        bestaat misschien nog niet.
+    </p>
+    <div class="kb-rij">
+        <button class="kb-knop kb-primair" disabled="@(busy || !State.SetupAvailable)" @onclick="Read">@(State.SetupReading is null ? "Aanmelden en nakijken" : "Opnieuw nakijken")</button>
+        @if (busy && progress is not null) { <span class="kb-zacht">@progress</span> }
+        @if (State.SetupSignedInAs is { } who) { <span class="kb-zacht">Aangemeld als @who</span> }
+    </div>
+    @if (!State.SetupAvailable && State.Settings.TenantId.Length > 0)
+    {
+        <div class="kb-melding">De wizard werkt enkel in de Windows-app.</div>
+    }
+    @if (readError is not null) { <div class="kb-melding kb-fout">@readError</div> }
+</section>
+
+@if (State.SetupAssessment is { } a)
+{
+    <section class="kb-kaart">
+        <h2>3. App-registratie, rechten en profielen</h2>
+        <table class="kb-tabel">
+            <thead><tr><th></th><th>Onderdeel</th><th>Wat</th><th>Gevonden</th></tr></thead>
+            <tbody>
+                @foreach (var i in a.Items)
+                {
+                    <tr class="kb-controle-@Css(i.Status)">
+                        <td aria-label="@i.Status">@(i.Status switch { SetupStatus.InOrder => "✓", SetupStatus.Missing => "✗", SetupStatus.Unknown => "?", _ => "!" })</td>
+                        <td>@i.Step</td>
+                        <td>@i.Name</td>
+                        <td>@i.Explanation</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <label><input type="checkbox" checked="@State.SetupChoices.CreateGroups" @onchange="e => Choose(c => c with { CreateGroups = e.Value is true })" />
+            Een groep per profiel maken (GG-Moss365-...): wie in de groep zit, krijgt het profiel</label>
+        <label><input type="checkbox" checked="@State.SetupChoices.AssignSignedIn" @onchange="e => Choose(c => c with { AssignSignedIn = e.Value is true })" />
+            Mezelf de profielen Beheerder en Appbeheer geven</label>
+        @if (a.Plan.Count > 0)
+        {
+            <PlanView @key="planKey" Plan="a.Plan" Title="Wat de wizard in Entra doet" Context="@($"Tenant inrichten {State.Tenant.Name}")" Run="(p, c, r) => State.ExecuteSetupAsync(p, c, r)" Executed="AfterPlan" />
+        }
+        else
+        {
+            <p class="kb-ok">De app-registratie is in orde.</p>
+        }
+        @if (a.ClientId is { } clientId)
+        {
+            <p>
+                Client ID <code>@clientId</code>
+                @if (!string.Equals(State.Settings.ClientId.Trim(), clientId, StringComparison.OrdinalIgnoreCase))
+                {
+                    <button class="kb-knop kb-klein kb-primair" @onclick="() => State.TakeOverClientId()">Overnemen in Verbindingen</button>
+                }
+                else
+                {
+                    <span class="kb-zacht">staat in Verbindingen.</span>
+                }
+            </p>
+        }
+    </section>
+}
+
+<section class="kb-kaart">
+    <h2>4. Active Directory</h2>
+    @if (State.LocalDomain is { } d)
+    {
+        <p>Deze pc hoort bij het domein <strong>@d.Domain</strong>@(d.Controller is { } dc ? $", aangemeld via {dc}" : string.Empty).</p>
+        @if (d.Controller is not null && !string.Equals(State.Settings.AdServer.Trim(), d.Controller, StringComparison.OrdinalIgnoreCase))
+        {
+            <button class="kb-knop kb-primair" @onclick="() => State.TakeOverLocalDomain(d)">Overnemen</button>
+            @if (State.Settings.AdServer.Length > 0) { <span class="kb-zacht">Nu ingevuld: @State.Settings.AdServer</span> }
+        }
+        else if (State.Settings.AdFilled)
+        {
+            <p class="kb-ok">Domeincontroller @State.Settings.AdServer staat in Verbindingen.</p>
+        }
+    }
+    else
+    {
+        <p class="kb-zacht">
+            Deze pc hoort niet bij een domein (of dit is niet de Windows-app). Een tenant zonder AD (enkel cloud) werkt ook; vul
+            anders de domeincontroller in bij <a href="verbindingen">Verbindingen</a>.
+        </p>
+    }
+    @if (State.SetupReading is { SyncEnabled: true } && State.LocalDomain is null && !State.Settings.AdFilled)
+    {
+        <div class="kb-melding">De tenant synchroniseert met AD: zonder verbinding met AD kan de app gesynchroniseerde accounts niet wijzigen.</div>
+    }
+</section>
+
+<section class="kb-kaart">
+    <h2>5. Exchange Online</h2>
+    <p class="kb-zacht">
+        Exchange gebruikt dezelfde aanmelding als de app (recht Exchange.Manage). De module ExchangeOnlineManagement kijk je na
+        bij <a href="controle">Controle van deze pc</a>.
+    </p>
+    @if (State.SetupReading?.SignedIn.Upn is { Length: > 0 } upn && State.Settings.ManagementUpn.Trim().Length == 0)
+    {
+        <button class="kb-knop" @onclick="() => State.TakeOverManagementUpn()">@upn als beheeraccount voor Exchange gebruiken</button>
+    }
+    else if (State.Settings.ManagementUpn.Length > 0)
+    {
+        <p>Beheeraccount: @State.Settings.ManagementUpn</p>
+    }
+</section>
+
+<section class="kb-kaart">
+    <h2>6. Eerste lezing</h2>
+    <p class="kb-zacht">Leest AD, Entra, rooms en postvakken: de eerste momentopname. Daarna doet de wizard voorstellen voor de organisatie.</p>
+    <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="Load">Alles live laden</button>
+    @if (!State.CanConnect) { <span class="kb-zacht">Vul eerst de client ID in (stap 3).</span> }
+</section>
+
+@if (State.Data.Persons.Count > 0)
+{
+    var suggestions = State.Suggestions();
+    <section class="kb-kaart">
+        <h2>7. Voorstellen voor de organisatie en noodaccounts</h2>
+        @if (suggestions.Count == 0)
+        {
+            <p class="kb-ok">Niets voor te stellen: wat in de gegevens staat, staat ook bij <a href="organisatie">Organisatie</a>.</p>
+        }
+        else
+        {
+            <p class="kb-zacht">Gevonden in de geladen gegevens, nog niet bij Organisatie. Vink aan wat je wil overnemen; je kan alles nadien aanpassen.</p>
+            <table class="kb-tabel">
+                <thead><tr><th></th><th>Soort</th><th>Waarde</th><th>Aantal</th><th>Uitleg</th></tr></thead>
+                <tbody>
+                    @foreach (var s in suggestions)
+                    {
+                        var key = Key(s);
+                        <tr>
+                            <td><input type="checkbox" aria-label="@s.Value" checked="@chosen.Contains(key)" @onchange="e => Toggle(key, e.Value is true)" /></td>
+                            <td>@KindText(s.Kind)</td>
+                            <td>@s.Value</td>
+                            <td>@s.Count</td>
+                            <td>@s.Explanation</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0)" @onclick="() => TakeOver(suggestions)">Overnemen (@suggestions.Count(s => chosen.Contains(Key(s))))</button>
+        }
+        @if (State.Data.Security is null)
+        {
+            <p class="kb-zacht">Noodaccounts stelt de wizard voor zodra de beheerrollen geladen zijn (Alles live laden).</p>
+        }
+        @if (takenOver is not null) { <p class="kb-ok">@takenOver</p> }
+    </section>
+}
+
+@code {
+    private string domain = string.Empty;
+    private bool busy;
+    private string? progress;
+    private string? findError;
+    private string? readError;
+    private string? takenOver;
+    private int planKey;
+    private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
+
+    protected override void OnInitialized()
+    {
+        domain = State.Tenant.Domain ?? State.Settings.TenantId;
+    }
+
+    private async Task Find()
+    {
+        busy = true;
+        findError = await State.FindTenantAsync(domain);
+        busy = false;
+    }
+
+    private async Task Read()
+    {
+        busy = true;
+        var p = new Progress<string>(t => { progress = t; _ = InvokeAsync(StateHasChanged); });
+        readError = await State.ReadSetupAsync(p);
+        planKey++;
+        busy = false;
+        progress = null;
+    }
+
+    private void Choose(Func<SetupChoices, SetupChoices> change)
+    {
+        State.SetupChoices = change(State.SetupChoices);
+        planKey++;
+    }
+
+    private void AfterPlan(IReadOnlyList<Moss365.Core.Changes.ChangeResult> results) => planKey++;
+
+    private void Load() => State.StartLoading(LoadKind.Everything);
+
+    private static string Key(Suggestion s) => $"{s.Kind}|{s.Value}";
+
+    private void Toggle(string key, bool on)
+    {
+        if (on) { chosen.Add(key); } else { chosen.Remove(key); }
+    }
+
+    private void TakeOver(IReadOnlyList<Suggestion> suggestions)
+    {
+        var list = suggestions.Where(s => chosen.Contains(Key(s))).ToList();
+        State.TakeOver(list);
+        chosen.Clear();
+        takenOver = $"{list.Count} voorstel(len) overgenomen bij Organisatie.";
+    }
+
+    private static string KindText(SuggestionKind k) => k switch
+    {
+        SuggestionKind.AdDomain => "AD-domein",
+        SuggestionKind.SynchronisedOu => "Gesynchroniseerde OU",
+        SuggestionKind.Department => "Dienst",
+        SuggestionKind.Office => "Kantoor",
+        SuggestionKind.GroupPrefix => "Groepsvoorvoegsel",
+        _ => "Noodaccount",
+    };
+
+    private static string Css(SetupStatus s) => s switch
+    {
+        SetupStatus.InOrder => "good",
+        SetupStatus.Missing => "error",
+        _ => "warning",
+    };
+}
