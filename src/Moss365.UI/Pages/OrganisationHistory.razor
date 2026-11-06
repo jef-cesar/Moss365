@@ -1,0 +1,157 @@
+@page "/geschiedenis"
+@using Moss365.Core.Storage
+@* The organisation over time (R4): every read is a snapshot. Show the organisation as it was on a date (all screens,
+   read only), compare two dates, and compute the KPIs again from the snapshots. *@
+@inherits RefreshingPage
+
+<h1>Geschiedenis</h1>
+
+<p class="kb-zacht">
+    Elke lezing (live of een ingelezen inventaris) is een momentopname in de databank van <strong>@State.Tenant.Name</strong>.
+    De app bewaart enkel wat veranderde, zodat je kan zien hoe de organisatie eruitzag op elke datum en wat er tussen twee
+    datums veranderde, ook wat buiten Moss365 gebeurde.
+</p>
+
+@if (snapshots.Count == 0)
+{
+    <div class="kb-melding">Nog geen momentopnamen. Laad live via <a href="verbindingen">Verbindingen</a>: elke lezing wordt er een.</div>
+}
+else
+{
+    <section class="kb-kaart">
+        <h2>De organisatie op een datum</h2>
+        @if (State.AsOf is { } a)
+        {
+            <p>Alle schermen tonen nu de stand van <strong>@a.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</strong> (alleen lezen).</p>
+            <button class="kb-knop kb-primair" @onclick="State.BackToNow">Terug naar nu</button>
+        }
+        else
+        {
+            <div class="kb-rij">
+                <label>Datum <input type="date" class="kb-invoer" @bind="asOf" /></label>
+                <button class="kb-knop kb-primair" @onclick="Show">Tonen</button>
+            </div>
+            <p class="kb-zacht">De schermen tonen dan de laatste momentopname van voor het einde van die dag. Plannen kunnen dan niet.</p>
+        }
+        @if (message is not null) { <div class="kb-melding kb-fout">@message</div> }
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Wat veranderde er</h2>
+        <div class="kb-rij">
+            <label>Van <input type="date" class="kb-invoer" @bind="from" /></label>
+            <label>Tot en met <input type="date" class="kb-invoer" @bind="until" /></label>
+            <button class="kb-knop" @onclick="Compare">Vergelijken</button>
+        </div>
+        @if (changes is { } list)
+        {
+            if (list.Count == 0)
+            {
+                <p>Geen verschillen tussen deze datums.</p>
+            }
+            else
+            {
+                <p>@list.Count verschil(len)@(list.Count > Max ? $"; de eerste {Max} hieronder" : string.Empty).</p>
+                @foreach (var g in list.Take(Max).GroupBy(c => c.Table))
+                {
+                    <h3>@TableName(g.Key) <span class="kb-zacht">(@g.Count())</span></h3>
+                    <table class="kb-tabel">
+                        <thead><tr><th>Wat</th><th>Object</th><th>Veranderd</th></tr></thead>
+                        <tbody>
+                            @foreach (var c in g)
+                            {
+                                <tr>
+                                    <td><span class="kb-label">@c.Kind</span></td>
+                                    <td>@Name(c)</td>
+                                    <td class="kb-zacht">@(c.Kind == "gewijzigd" ? string.Join(", ", c.Columns.Select(k => $"{k}: {c.Before!.GetValueOrDefault(k)} → {c.After!.GetValueOrDefault(k)}")) : string.Empty)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            }
+        }
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Momentopnamen</h2>
+        <table class="kb-tabel">
+            <thead><tr><th>Wanneer</th><th>Bron</th><th class="kb-getal">Tabellen</th></tr></thead>
+            <tbody>
+                @foreach (var s in snapshots.AsEnumerable().Reverse().Take(50))
+                {
+                    <tr><td>@s.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</td><td>@s.Source</td><td class="kb-getal">@s.Tables.Count</td></tr>
+                }
+            </tbody>
+        </table>
+        <div class="kb-filters">
+            <button class="kb-knop" disabled="@State.IsHistoric" @onclick="Recompute">KPI's herberekenen uit de momentopnamen</button>
+            @if (recomputed is not null) { <span class="kb-zacht">@recomputed</span> }
+        </div>
+        <p class="kb-zacht">Zo krijgt ook een KPI die later toegevoegd werd zijn verloop terug, voor elke dag met een momentopname.</p>
+    </section>
+}
+
+@code {
+    private const int Max = 1000;
+
+    private IReadOnlyList<SnapshotInfo> snapshots = Array.Empty<SnapshotInfo>();
+    private DateTime asOf = DateTime.Today;
+    private DateTime from = DateTime.Today.AddDays(-30);
+    private DateTime until = DateTime.Today;
+    private IReadOnlyList<SnapshotChange>? changes;
+    private string? message;
+    private string? recomputed;
+
+    protected override void OnParametersSet() => snapshots = State.SnapshotList();
+
+    private static DateTimeOffset EndOf(DateTime day) => new(day.Date.AddDays(1).AddTicks(-1));
+
+    private void Show() => message = State.ShowAsOf(EndOf(asOf));
+
+    private void Compare()
+    {
+        changes = State.Differences(EndOf(from), EndOf(until));
+        message = changes is null ? "Voor een van beide datums is er geen momentopname." : null;
+        State.Access("Verschillen tussen datums bekeken", $"{from:yyyy-MM-dd} {until:yyyy-MM-dd}");
+    }
+
+    private void Recompute() => recomputed = $"{State.RecomputeKpis()} dag(en) herberekend.";
+
+    private static string TableName(string table) => table switch
+    {
+        "ad-gebruikers.csv" => "AD-gebruikers",
+        "ad-groepen.csv" => "AD-groepen",
+        "ad-groepsleden.csv" => "Leden van AD-groepen",
+        "entra-gebruikers.csv" => "Entra-gebruikers",
+        "entra-groepen.csv" => "Cloudgroepen",
+        "entra-groepsleden.csv" => "Leden van cloudgroepen",
+        "entra-licenties.csv" => "Licenties",
+        "entra-mfa.csv" => "MFA-registraties",
+        "entra-rollen.csv" => "Beheerrollen",
+        "entra-ca.json" => "Conditional Access",
+        "exo-rooms-overzicht.csv" => "Rooms",
+        "exo-groepen.csv" => "Exchange-groepen",
+        "exo-groepsleden.csv" => "Leden van Exchange-groepen",
+        "exo-postvakken-niet-gebruikers.csv" => "Gedeelde postvakken",
+        "exo-gedeelde-postvakrechten.csv" => "Rechten op postvakken",
+        _ => table,
+    };
+
+    /// <summary>A readable name for a row: the display name, or the key.</summary>
+    private static string Name(SnapshotChange c)
+    {
+        var row = c.After ?? c.Before!;
+        foreach (var k in new[] { "DisplayName", "Name", "UserPrincipalName", "Groep", "Postvak", "Rol", "SkuPartNumber" })
+        {
+            if (row.TryGetValue(k, out var v) && v.Length > 0)
+            {
+                return k is "Groep" or "Postvak" or "Rol" && row.FirstOrDefault(x => x.Key is "LidDN" or "LidId" or "Lid" or "Gebruiker" or "LidNaam").Value is { Length: > 0 } other
+                    ? $"{v} — {other}"
+                    : v;
+            }
+        }
+
+        return c.Key;
+    }
+}

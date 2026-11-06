@@ -17,8 +17,47 @@ public sealed record ChartColumn(string Label, string Tip, IReadOnlyList<int> Va
 }
 
 /// <summary>The trend of one KPI: the saved snapshots per day.</summary>
-public sealed record KpiTrend(Kpi Kpi, IReadOnlyList<(DateOnly Date, int Value)> Points)
+/// <summary>The steps of a trend: one point per day, week, month or year (the last value in that period).</summary>
+public enum TrendPeriod
 {
+    Day,
+    Week,
+    Month,
+    Year,
+}
+
+public sealed record KpiTrend(Kpi Kpi, IReadOnlyList<(DateOnly Date, int Value)> Points, TrendPeriod Period = TrendPeriod.Day)
+{
+    /// <summary>How far back a trend of this period goes, in days.</summary>
+    public static int DaysFor(TrendPeriod period) => period switch
+    {
+        TrendPeriod.Day => 90,
+        TrendPeriod.Week => 7 * 52,
+        TrendPeriod.Month => 2 * 365,
+        _ => 10 * 365,
+    };
+
+    /// <summary>The same trend with one point per period: the last value of every week, month or year.</summary>
+    public KpiTrend Per(TrendPeriod period)
+    {
+        if (period == TrendPeriod.Day)
+        {
+            return this with { Period = period };
+        }
+
+        DateOnly Start(DateOnly d) => period switch
+        {
+            TrendPeriod.Week => d.AddDays(-(((int)d.DayOfWeek + 6) % 7)),
+            TrendPeriod.Month => new DateOnly(d.Year, d.Month, 1),
+            _ => new DateOnly(d.Year, 1, 1),
+        };
+        var points = Points.GroupBy(p => Start(p.Date)).OrderBy(g => g.Key).Select(g => g.OrderBy(p => p.Date).Last()).ToList();
+        return new KpiTrend(Kpi, points, period);
+    }
+
+    /// <summary>The difference with the previous period (week, month, year), or null.</summary>
+    public int? DifferenceWithPrevious(int now) => Points.Count >= 2 ? now - Points[^2].Value : null;
+
     /// <summary>The difference with the snapshot of about this many days ago (the oldest snapshot that is at least that
     /// old), or null.</summary>
     public int? Difference(int days, int now)

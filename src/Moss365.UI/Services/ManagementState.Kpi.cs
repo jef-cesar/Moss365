@@ -44,11 +44,16 @@ public sealed partial class ManagementState
     }
 
     /// <summary>The trend of the KPIs with a history, the last days.</summary>
-    public IReadOnlyList<KpiTrend> KpiTrend(int days = 90)
+    public IReadOnlyList<KpiTrend> KpiTrend(int days = 90) => KpiTrend(TrendPeriod.Day, days);
+
+    /// <summary>The trend of every KPI, one point per day, week, month or year.</summary>
+    public IReadOnlyList<KpiTrend> KpiTrend(TrendPeriod period, int? days = null)
     {
-        var snapshot = Database.ReadKpiSnapshot(DateOnly.FromDateTime(DateTime.Now.AddDays(-days)));
+        var reference = AsOf?.Time.LocalDateTime ?? DateTime.Now;
+        var snapshot = Database.ReadKpiSnapshot(DateOnly.FromDateTime(reference.AddDays(-(days ?? Moss365.Core.Analysis.KpiTrend.DaysFor(period)))));
+        var until = DateOnly.FromDateTime(reference);
         return BiStatistics.WithTrend
-            .Select(k => new KpiTrend(k, snapshot.TryGetValue(k.Key, out var points) ? points : Array.Empty<(DateOnly, int)>()))
+            .Select(k => new KpiTrend(k, snapshot.TryGetValue(k.Key, out var points) ? points.Where(p => p.Date <= until).ToList() : Array.Empty<(DateOnly, int)>()).Per(period))
             .ToList();
     }
 

@@ -112,6 +112,13 @@
                 }
             </div>
         }
+        @if (State.AsOf is { } asOf)
+        {
+            <div class="kb-melding kb-verleden" role="status">
+                Je bekijkt de stand van <strong>@asOf.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</strong>: alleen lezen, plannen kunnen niet.
+                <button class="kb-knop kb-klein kb-primair" @onclick="State.BackToNow">Terug naar nu</button>
+            </div>
+        }
         <SignInBar />
         @if (State.Error is not null)
         {
@@ -144,7 +151,7 @@
         new MenuGroup("Opzoeken", new[]
         {
             ("", "Overzicht"), ("statistieken", "Statistieken"), ("gebruikers", "Gebruikers"), ("gasten", "Gastgebruikers"),
-            ("groepen", "Groepen"), ("postvakken", "Gedeelde postvakken"), ("rooms", "Rooms"), ("vergelijk", "AD tegenover Entra"), ("beveiliging", "Beveiliging"), ("conditional-access", "Conditional Access"),
+            ("groepen", "Groepen"), ("postvakken", "Gedeelde postvakken"), ("rooms", "Rooms"), ("vergelijk", "AD tegenover Entra"), ("beveiliging", "Beveiliging"), ("conditional-access", "Conditional Access"), ("geschiedenis", "Geschiedenis"),
         }),
         new MenuGroup("Acties", new[]
         {

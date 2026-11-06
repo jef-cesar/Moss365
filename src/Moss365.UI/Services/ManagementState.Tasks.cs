@@ -116,7 +116,7 @@ public sealed partial class ManagementState
     /// possible.</summary>
     public bool StartLoading(LoadKind kind)
     {
-        if (_factory is null)
+        if (_factory is null || IsHistoric)
         {
             return false;
         }
@@ -519,6 +519,7 @@ public sealed partial class ManagementState
         var folder = InventoryWriter.Save(Data, Files, components, DateTime.Now);
         SavedInventory = folder;
         SaveQuickSnapshot(folder, components);
+        SaveLiveSnapshot(components, folder);
         p.Report($"Bewaard in {folder[(folder.LastIndexOf('/') + 1)..]}.");
         if ((components & (InventoryComponent.Ad | InventoryComponent.Entra)) != 0)
         {

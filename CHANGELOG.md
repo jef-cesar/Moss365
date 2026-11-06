@@ -2,6 +2,24 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.13.0
+
+Snapshots and the organisation over time (step R4 of the [roadmap](docs/roadmap-1.0.md)).
+
+- **Every read is a snapshot** in the database of the tenant: a live read (of the parts that were read in full) and
+  every inventory folder that is read in. The database only keeps what changed, so a daily read costs little space.
+- **The organisation on a date** (menu Geschiedenis): all screens show the organisation as it was then, read only.
+  A banner says which date is shown; plans, loading and scripts are off until you go back to now.
+- **What changed between two dates**: new, vanished and changed objects (users, groups, mailboxes, rooms, ...), with
+  the columns that changed. This also shows what happened outside Moss365.
+- **Timeline of a user**: the versions of its AD and Entra account next to the changes made with Moss365, with
+  "Terugzetten zoals toen": a plan (preview, confirmation, change log) that puts the attributes and AD groups back as in
+  that version. Only what really differs; privileged and dynamic groups follow the usual rules.
+- **KPI trends per day, week, month and year** on Statistics. "KPI's herberekenen" computes the value of every day
+  again from the snapshots, also for a KPI that was added later.
+- Known limits: an inventory folder older than the last snapshot stays an inventory but does not become a snapshot;
+  thinning old snapshots (daily for a year, then monthly) comes with maintenance in R6.
+
 ## 0.12.1
 
 - **Fixed**: in 0.11.0 and 0.12.0 the pages of a user, a group, an offboarding, a script run and starting a script

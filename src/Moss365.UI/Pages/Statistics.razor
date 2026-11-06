@@ -83,9 +83,15 @@
 <section class="kb-kaart">
     <h2>Verloop</h2>
     <p class="kb-zacht">
-        Na elk live laden bewaart de app de stand van de dag (enkel aantallen, geen namen). Elke KPI heeft zijn eigen schaal;
-        het verschil is met ongeveer 30 dagen geleden.
+        Na elk live laden bewaart de app de stand van de dag (enkel aantallen, geen namen); ontbreekt een dag, dan rekent
+        <a href="geschiedenis">Geschiedenis</a> hem opnieuw uit de momentopnamen. Elke KPI heeft zijn eigen schaal.
     </p>
+    <span class="kb-segment" role="group" aria-label="Verloop per">
+        @foreach (var (p, text) in new[] { (TrendPeriod.Day, "Dag"), (TrendPeriod.Week, "Week"), (TrendPeriod.Month, "Maand"), (TrendPeriod.Year, "Jaar") })
+        {
+            <button class="kb-knop @(period == p ? "kb-primair" : null)" aria-pressed="@(period == p)" @onclick="() => ChoosePeriod(p)">@text</button>
+        }
+    </span>
     <div class="kb-verlopen">
         @foreach (var v in trend)
         {
@@ -205,12 +211,19 @@
     private string? Division => f.Division.Length == 0 ? null : f.Division;
 
     private IReadOnlyList<KpiTrend> trend = Array.Empty<KpiTrend>();
+    private TrendPeriod period = TrendPeriod.Day;
+
+    private void ChoosePeriod(TrendPeriod p)
+    {
+        period = p;
+        trend = State.KpiTrend(p);
+    }
     private IReadOnlyList<ChartColumn> perWeek = Array.Empty<ChartColumn>();
 
     protected override void OnParametersSet()
     {
         s = Statistic.Compute(State.Data, State.Config, DateTime.Now);
-        trend = State.KpiTrend();
+        trend = State.KpiTrend(period);
         perWeek = BiStatistics.ChangeLogPerWeek(State.ChangeLog.Recent(5000), DateTime.Now);
     }
 

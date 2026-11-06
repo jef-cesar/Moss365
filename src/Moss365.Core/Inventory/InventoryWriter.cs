@@ -40,6 +40,14 @@ public static class InventoryWriter
         return folder;
     }
 
+    /// <summary>The files an inventory of these parts would have (name to text), for a snapshot.</summary>
+    public static Dictionary<string, string> Files(InventoryData d, InventoryComponent components)
+    {
+        var files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Save(d, components, (file, text) => files[file] = text);
+        return files;
+    }
+
     private static void Save(InventoryData d, InventoryComponent components, Action<string, string> writeFile)
     {
         void Write(string file, IEnumerable<Dictionary<string, string?>> rows)

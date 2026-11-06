@@ -291,7 +291,9 @@ public sealed partial class ManagementState
     /// none.</summary>
     public Role Roles => PermissionTable.Determine(Graph()?.AppRoles, Config.ProfilesRequired);
 
-    public bool Can(Permission permission) => PermissionTable.Can(Roles, permission);
+    public bool Can(Permission permission)
+        => PermissionTable.Can(Roles, permission) && !(IsHistoric && permission is Permission.Helpdesk or Permission.GroupMembers or Permission.InviteGuests
+            or Permission.Actions or Permission.Manage or Permission.Privileged or Permission.Scripts);
 
     /// <summary>No roles in the sign-in: text for the bottom of the menu (transition or read only), otherwise
     /// null.</summary>
@@ -377,6 +379,8 @@ public sealed partial class ManagementState
             {
                 InventoryLoader.ImportFolders(Files, import, int.MaxValue);
             }
+
+            SnapshotNewFolders();
 
             Folders = InventoryLoader.SearchFolders(Files);
             var order = PreferenceFolder is null
@@ -562,6 +566,11 @@ public sealed partial class ManagementState
         if (_factory is null)
         {
             throw new InvalidOperationException("Wijzigingen uitvoeren is niet beschikbaar in deze omgeving.");
+        }
+
+        if (IsHistoric)
+        {
+            throw new InvalidOperationException("Je bekijkt een stand uit het verleden: ga eerst terug naar nu.");
         }
 
         var executors = new List<IExecutor>();

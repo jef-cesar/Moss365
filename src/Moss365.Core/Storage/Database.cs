@@ -77,6 +77,16 @@ public sealed partial class Database
         CREATE TABLE TechnicalLog (Id INTEGER PRIMARY KEY AUTOINCREMENT, Time TEXT NOT NULL, Level TEXT NOT NULL, Message TEXT NOT NULL);
         CREATE INDEX TechnicalLog_Time ON TechnicalLog (Time);
         """,
+
+        // 4 (0.13): snapshots of the organisation; every row of an inventory table is an object with versions
+        """
+        CREATE TABLE Snapshot (Id INTEGER PRIMARY KEY AUTOINCREMENT, Time TEXT NOT NULL, Source TEXT NOT NULL, Tables TEXT NOT NULL);
+        CREATE TABLE Object (Id INTEGER PRIMARY KEY AUTOINCREMENT, Kind TEXT NOT NULL, Key TEXT NOT NULL, UNIQUE (Kind, Key));
+        CREATE TABLE Version (Id INTEGER PRIMARY KEY AUTOINCREMENT, ObjectId INTEGER NOT NULL REFERENCES Object (Id),
+                              FromSnapshot INTEGER NOT NULL, UntilSnapshot INTEGER, Fingerprint TEXT NOT NULL, Content TEXT NOT NULL);
+        CREATE INDEX Version_Object ON Version (ObjectId, UntilSnapshot);
+        CREATE INDEX Version_From ON Version (FromSnapshot);
+        """,
     };
 
     public Database(string path)

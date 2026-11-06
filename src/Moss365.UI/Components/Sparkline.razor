@@ -27,11 +27,20 @@
 @code {
     [Parameter, EditorRequired] public KpiTrend Trend { get; set; } = default!;
 
+    private string Previous => Trend.Period switch { TrendPeriod.Week => "vorige week", TrendPeriod.Month => "vorige maand", _ => "vorig jaar" };
+
     private const int B = 160, H = 40, M = 5;
 
     private int Now => State.KpiCount(Trend.Kpi);
 
-    private string DifferenceText => Trend.Difference(30, Now) switch
+    private string DifferenceText => Trend.Period != TrendPeriod.Day
+        ? Trend.DifferenceWithPrevious(Now) switch
+        {
+            null => Trend.Points.Count == 0 ? "" : "één punt",
+            0 => $"gelijk t.o.v. {Previous}",
+            var v => $"{Sign(v.Value)} t.o.v. {Previous}",
+        }
+        : Trend.Difference(30, Now) switch
     {
         null => Trend.Points.Count == 0 ? "" : $"sinds {Trend.Points[0].Date:dd/MM}: {Sign(Now - Trend.Points[0].Value)}",
         0 => "gelijk t.o.v. 30 dagen",

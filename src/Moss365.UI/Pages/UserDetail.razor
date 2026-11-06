@@ -124,6 +124,50 @@ else
             </table>
         </section>
     </div>
+
+    <section class="kb-kaart">
+        <h2>Tijdlijn</h2>
+        @if (!showTimeline)
+        {
+            <button class="kb-knop" @onclick="LoadTimeline">Tijdlijn tonen</button>
+            <span class="kb-zacht">Wat er veranderde aan dit account volgens de momentopnamen, met de wijzigingen via Moss365 ernaast.</span>
+        }
+        else if (timeline.Count == 0)
+        {
+            <p class="kb-zacht">Nog geen momentopnamen van dit account.</p>
+        }
+        else
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>Wanneer</th><th>Wat</th><th>Veranderd</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var e in timeline)
+                    {
+                        <tr class="@(e.What == "Moss365" ? "kb-zacht" : null)">
+                            <td>@e.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@e.What</td>
+                            <td>@e.Details</td>
+                            <td>
+                                @if (e.Version is { } v && e.What == "AD-account" && State.Can(Permission.Actions))
+                                {
+                                    <button class="kb-knop kb-klein" @onclick="() => Restore(v)">Terugzetten zoals toen</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <p class="kb-zacht">Een verandering zonder regel van Moss365 ernaast gebeurde buiten de app (of in een andere app).</p>
+        }
+        @if (restoreErrors.Count > 0)
+        {
+            <ul class="kb-fouten">@foreach (var f in restoreErrors) { <li>@f</li> }</ul>
+        }
+        @if (restorePlan is not null)
+        {
+            <PlanView Plan="restorePlan" Context="@($"Terugzetten {person.Name}")" Title="Terugzetten zoals toen" />
+        }
+    </section>
 }
 
 @code {
@@ -136,6 +180,24 @@ else
     private IReadOnlyList<PermissionRule> mailboxPermissions = Array.Empty<PermissionRule>();
 
     private sealed record Row(string Attribute, string Ad, string Entra, bool Difference);
+
+    private bool showTimeline;
+    private IReadOnlyList<TimelineEntry> timeline = Array.Empty<TimelineEntry>();
+    private IReadOnlyList<Change>? restorePlan;
+    private IReadOnlyList<string> restoreErrors = Array.Empty<string>();
+
+    private void LoadTimeline()
+    {
+        showTimeline = true;
+        timeline = person is null ? Array.Empty<TimelineEntry>() : State.Timeline(person);
+    }
+
+    private void Restore(Moss365.Core.Storage.ObjectVersion v)
+    {
+        var u = State.RestorePlan(person!, v);
+        restorePlan = u.Plan.Count > 0 ? u.Plan : null;
+        restoreErrors = u.Errors;
+    }
 
     protected override void OnParametersSet()
     {
