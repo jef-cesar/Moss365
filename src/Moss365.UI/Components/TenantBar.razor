@@ -1,0 +1,41 @@
+@* The tenant you work in, always visible with its colour (R3), and switching to another tenant. Switching reloads the
+   screens, so that nothing of the previous tenant stays on a screen. *@
+@inject ManagementState State
+@inject IServiceProvider Services
+@inject NavigationManager Nav
+
+<div class="kb-tenant" style="--kb-tenant: @State.Tenant.Colour" role="status" aria-label="Tenant">
+    <span class="kb-tenant-kleur" aria-hidden="true"></span>
+    <span class="kb-tenant-naam" title="De tenant waarin je werkt">@State.Tenant.Name</span>
+    @if (Hub is { } hub && hub.Tenants.Count > 1)
+    {
+        <select class="kb-invoer kb-klein" aria-label="Een andere tenant openen" @onchange="Switch">
+            @foreach (var t in hub.Tenants)
+            {
+                <option value="@t.Id" selected="@(t.Id == State.Tenant.Id)">@t.Name</option>
+            }
+        </select>
+    }
+    <a class="kb-klein" href="tenants">Tenants</a>
+</div>
+@if (Hub is { } h && h.CurrentTenant.Id != State.Tenant.Id)
+{
+    @* Safety net: a screen that still shows another tenant than the open one *@
+    <div class="kb-melding kb-fout" role="alert">
+        Dit scherm toont nog <strong>@State.Tenant.Name</strong>, maar <strong>@h.CurrentTenant.Name</strong> is open.
+        <button class="kb-knop kb-klein" @onclick="@(() => Nav.NavigateTo(string.Empty, forceLoad: true))">Opnieuw laden</button>
+    </div>
+}
+
+@code {
+    private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
+
+    private void Switch(ChangeEventArgs e)
+    {
+        if (Hub is { } hub && e.Value?.ToString() is { Length: > 0 } id && id != State.Tenant.Id)
+        {
+            hub.Switch(id);
+            Nav.NavigateTo(string.Empty, forceLoad: true);
+        }
+    }
+}

@@ -128,20 +128,20 @@ public sealed partial class PlanScreenTests
         }).ToList();
         var view = RenderComponent<Moss365.UI.Components.PlanView>(p => p.Add(x => x.Plan, plan).Add(x => x.Context, "groot"));
         view.FindAll("button").First(b => b.TextContent.StartsWith("Uitvoeren (", StringComparison.Ordinal)).Click();
-        Assert.True(view.FindAll("button").First(b => b.TextContent == "Ja, uitvoeren").HasAttribute("disabled"));
+        Assert.True(view.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).HasAttribute("disabled"));
         view.Find(".kb-groot-plan input").Change(true);
-        Assert.False(view.FindAll("button").First(b => b.TextContent == "Ja, uitvoeren").HasAttribute("disabled"));
+        Assert.False(view.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).HasAttribute("disabled"));
     }
 
     // ---------------------------------------------------------------- logs, retention, automatic refresh (#17)
 
     private string TechnicalLog()
     {
+        // The technical log is in the tenant database (table TechnicalLog)
         var text = new System.Text.StringBuilder();
-        foreach (var path in Directory.Exists(State.LogFolder) ? Directory.GetFiles(State.LogFolder) : Array.Empty<string>())
+        foreach (var (time, level, message) in State.Database.ReadTechnicalLog(10000))
         {
-            using var f = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            text.Append(new StreamReader(f).ReadToEnd());
+            text.Append(time).Append(' ').Append(level).Append(' ').AppendLine(message);
         }
 
         return text.ToString();
@@ -197,7 +197,7 @@ public sealed partial class PlanScreenTests
         Assert.Contains("<strong>1</strong> regels ouder dan", cut.Markup);
         Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent == "Uit de databank halen"); // archive first
         cut.FindAll("button").First(b => b.TextContent == "Archiveren naar CSV").Click();
-        var csv = Assert.Single(Directory.GetFiles(State.AppEnvironment.ExportFolder, "Logboek-archief-*.csv"));
+        var csv = Assert.Single(Directory.GetFiles(State.ExportFolder, "Logboek-archief-*.csv"));
         Assert.Contains("heel oud", File.ReadAllText(csv));
         Assert.DoesNotContain("recent", File.ReadAllText(csv));
 

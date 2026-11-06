@@ -78,12 +78,13 @@
                 }
                 else
                 {
-                    <span><strong>@Selected wijziging(en)</strong> in @string.Join(", ", Plan.Where(w => w.Selected).Select(w => w.SystemText).Distinct()) uitvoeren?</span>
+                    <span><strong>@Selected wijziging(en)</strong> in @string.Join(", ", Plan.Where(w => w.Selected).Select(w => w.SystemText).Distinct()) van
+                        <strong class="kb-tenant-label" style="--kb-tenant: @State.Tenant.Colour">@State.Tenant.Name</strong> uitvoeren?</span>
                     @if (Selected > BulkPlans.LargePlan)
                     {
                         <label class="kb-groot-plan"><input type="checkbox" @bind="largeConfirmed" /> Ja, ik heb nagekeken dat deze <strong>@Selected</strong> wijzigingen kloppen</label>
                     }
-                    <button class="kb-knop kb-gevaar" disabled="@(busy || (Selected > BulkPlans.LargePlan && !largeConfirmed))" @onclick="Execute">Ja, uitvoeren</button>
+                    <button class="kb-knop kb-gevaar" disabled="@(busy || (Selected > BulkPlans.LargePlan && !largeConfirmed))" @onclick="Execute">Ja, uitvoeren in @State.Tenant.Name</button>
                     <button class="kb-knop" disabled="@busy" @onclick="() => confirm = false">Annuleren</button>
                 }
                 @if (progress is not null) { <span class="kb-zacht">@progress</span> }

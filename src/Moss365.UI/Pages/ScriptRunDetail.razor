@@ -28,11 +28,11 @@ else
         <ScriptResult @key="run.Folder" Run="run" Events="events" />
     }
 
-    @if (run.Once && File.Exists(Path.Combine(run.Folder, "script.ps1")))
+    @if (run.Once && State.Files.ReadText(run.Folder + "/script.ps1") is { } oneTime)
     {
         <details class="kb-kaart">
             <summary>Het script van deze eenmalige run</summary>
-            <pre class="kb-uitvoer">@File.ReadAllText(Path.Combine(run.Folder, "script.ps1"))</pre>
+            <pre class="kb-uitvoer">@oneTime</pre>
         </details>
     }
 }
@@ -61,8 +61,11 @@ else
 
     private void Load()
     {
-        run = ScriptRuns.Items(State.ScriptFolders, Key).FirstOrDefault(r => Path.GetFileName(r.Folder) == Id);
-        events = run is null ? Array.Empty<ScriptEvent>() : ScriptOutput.ReadFile(Path.Combine(run.Folder, "uitvoer.jsonl"));
+        run = ScriptRuns.Items(State.ScriptFolders, Key).FirstOrDefault(r => r.FolderName == Id)
+              ?? (State.ScriptRun is { } s && s.Run.Key == Key && s.Run.FolderName == Id ? s.Run : null);
+        events = run is null ? Array.Empty<ScriptEvent>()
+            : run.WorkFolder.Length > 0 ? ScriptOutput.ReadFile(Path.Combine(run.WorkFolder, "uitvoer.jsonl"))
+            : ScriptOutput.ReadStored(State.Files, run.Folder + "/uitvoer.jsonl");
     }
 
     private void Again()

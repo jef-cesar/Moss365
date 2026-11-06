@@ -45,6 +45,47 @@ public static class InventoryLoader
 
     /// <summary>Loads from the given folders; the first folder that contains a file wins.</summary>
     public static InventoryData Load(IEnumerable<string> foldersNewestFirst)
+        => Load(foldersNewestFirst, (folder, file) => File.Exists(Path.Combine(folder, file)) ? File.ReadAllText(Path.Combine(folder, file), System.Text.Encoding.UTF8) : null);
+
+    /// <summary>The prefix of the inventory folders in the tenant database.</summary>
+    public const string StorePrefix = "inventory";
+
+    /// <summary>The inventory folders in the tenant database (<c>inventory/Inventaris-...</c>), newest first.</summary>
+    public static IReadOnlyList<string> SearchFolders(Storage.IFileStore store)
+        => store.List(StorePrefix + "/")
+            .Select(f => f.Path.Split('/'))
+            .Where(p => p.Length == 3 && p[1].StartsWith("Inventaris-", StringComparison.OrdinalIgnoreCase))
+            .Select(p => $"{StorePrefix}/{p[1]}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(m => m, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>Loads from inventory folders in the tenant database; the first folder that contains a file wins.</summary>
+    public static InventoryData Load(Storage.IFileStore store, IEnumerable<string> foldersNewestFirst)
+        => Load(foldersNewestFirst, (folder, file) => store.ReadText($"{folder}/{file}"));
+
+    /// <summary>
+    /// Copies inventory folders from disk (the output of Export-Inventaris.ps1, or the folders of an older version) into
+    /// the tenant database: the newest ones that are not there yet. Returns how many folders were copied.
+    /// </summary>
+    public static int ImportFolders(Storage.IFileStore store, string baseFolder, int newest = 5)
+    {
+        var present = SearchFolders(store).Select(m => m[(m.IndexOf('/') + 1)..]).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var count = 0;
+        foreach (var folder in SearchFolders(baseFolder).Take(newest).Where(m => !present.Contains(Path.GetFileName(m))))
+        {
+            foreach (var file in Files.Append(EntraCa).Where(file => File.Exists(Path.Combine(folder, file))))
+            {
+                store.Write($"{StorePrefix}/{Path.GetFileName(folder)}/{file}", File.ReadAllBytes(Path.Combine(folder, file)));
+            }
+
+            count++;
+        }
+
+        return count;
+    }
+
+    private static InventoryData Load(IEnumerable<string> foldersNewestFirst, Func<string, string, string?> read)
     {
         var folders = foldersNewestFirst.ToList();
         var sources = new List<SourceFile>();
@@ -52,20 +93,22 @@ public static class InventoryLoader
 
         foreach (var file in Files)
         {
-            var folder = folders.FirstOrDefault(m => File.Exists(Path.Combine(m, file)));
-            var rows = folder is null ? new List<Dictionary<string, string>>() : CsvReader.ReadFile(Path.Combine(folder, file));
+            string? text = null;
+            var folder = folders.FirstOrDefault(m => (text = read(m, file)) is not null);
+            var rows = text is null ? new List<Dictionary<string, string>>() : CsvReader.Read(text.TrimStart('\uFEFF'));
             tables[file] = rows;
             sources.Add(new SourceFile(file, folder, rows.Count));
         }
 
         var data = Build(tables, sources);
-        var caFolder = folders.FirstOrDefault(m => File.Exists(Path.Combine(m, EntraCa)));
-        if (caFolder is null)
+        string? caText = null;
+        var caFolder = folders.FirstOrDefault(m => (caText = read(m, EntraCa)) is not null);
+        if (caFolder is null || caText is null)
         {
             return data;
         }
 
-        var ca = CaStorage.FromJson(File.ReadAllText(Path.Combine(caFolder, EntraCa)));
+        var ca = CaStorage.FromJson(caText);
         return data with
         {
             ConditionalAccess = ca,

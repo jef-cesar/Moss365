@@ -31,7 +31,7 @@ public sealed record ScriptEvent(
 public sealed record ScriptTable(string Name, IReadOnlyList<string> Columns, IReadOnlyList<IReadOnlyDictionary<string, string>> Rows, string? File = null);
 
 /// <summary>What has to run: which script, with which values, and whether it is a preview (-WhatIf).</summary>
-public sealed record ScriptCommand(ScriptFile Script, IReadOnlyDictionary<string, string> Values, bool Preview, string RunFolder);
+public sealed record ScriptCommand(ScriptFile Script, IReadOnlyDictionary<string, string> Values, bool Preview, string RunFolder, string? ScriptPath = null);
 
 /// <summary>Runs a script in a separate PowerShell process with the sign-in of the app.</summary>
 public interface IScriptExecutor
@@ -116,6 +116,25 @@ public static class ScriptOutput
     public static IReadOnlyList<ScriptEvent> ReadFile(string path)
         => File.Exists(path) ? File.ReadLines(path).Where(r => r.Length > 0).Select(Read).ToList() : Array.Empty<ScriptEvent>();
 
+    /// <summary>The events of a finished run, from the store (uitvoer.jsonl).</summary>
+    public static IReadOnlyList<ScriptEvent> ReadStored(Storage.IFileStore store, string path)
+        => store.ReadText(path) is { } text ? text.Split('\n').Select(r => r.TrimEnd('\r')).Where(r => r.Length > 0).Select(Read).ToList() : Array.Empty<ScriptEvent>();
+
+    /// <summary>Like <see cref="Tables(IEnumerable{ScriptEvent}, string?)"/>, with the files of the run in the store.</summary>
+    public static IReadOnlyList<ScriptTable> Tables(IEnumerable<ScriptEvent> events, Storage.IFileStore store, string filesPrefix)
+    {
+        var output = Tables(events).ToList();
+        foreach (var csv in store.List(filesPrefix.TrimEnd('/') + "/").Where(f => f.Path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)))
+        {
+            if (store.ReadText(csv.Path) is { } text && ReadCsvLines(text.Split('\n').Select(r => r.TrimEnd('\r')).Take(20001).ToList(), csv.Name, csv.Path) is { } table)
+            {
+                output.Add(table);
+            }
+        }
+
+        return output;
+    }
+
     /// <summary>
     /// The tables of a run: the returned objects per kind (same name and columns together), and every CSV in the folder
     /// with files.
@@ -159,8 +178,18 @@ public static class ScriptOutput
     {
         try
         {
-            var rules = File.ReadLines(path).Take(maxRows + 1).ToList();
-            if (rules.Count == 0)
+            return ReadCsvLines(File.ReadLines(path).Take(maxRows + 1).ToList(), Path.GetFileName(path), path);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+    }
+
+    private static ScriptTable? ReadCsvLines(List<string> rules, string name, string path)
+    {
+        {
+            if (rules.Count == 0 || rules[0].Length == 0)
             {
                 return null;
             }
@@ -172,11 +201,7 @@ public static class ScriptOutput
                 var v = Splits(r, separation);
                 return (IReadOnlyDictionary<string, string>)header.Select((k, i) => (k, i)).GroupBy(x => x.k).ToDictionary(g => g.Key, g => g.First().i < v.Count ? v[g.First().i] : string.Empty);
             }).ToList();
-            return new ScriptTable(Path.GetFileName(path), header.Distinct().ToList(), rows, path);
-        }
-        catch (IOException)
-        {
-            return null;
+            return new ScriptTable(name, header.Distinct().ToList(), rows, path);
         }
     }
 

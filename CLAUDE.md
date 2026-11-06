@@ -5,9 +5,10 @@ under the EUPL-1.2. Public repository: never add personal or organisation data (
 check in `.github/workflows/privacy.yml` refuses e-mail addresses outside the example domains, public IPs and a secret
 blocklist). The maintainer does not write code: changes must be tested, documented and built by GitHub Actions.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: step R1 is done (0.11.0): code, comments and tests are
-in English. The interface texts are still Dutch and move to dictionaries in R15; the CSV inventory (file names) and the
-script header keys (`<#MOSS365 Naam: ... #>`) are renamed when R2 and R8 rework them. Data saved before 0.11 uses Dutch
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R3 are done (0.12.0): code in English, one
+database per tenant, several tenants. The interface texts are still Dutch and move to dictionaries in R15; the inventory
+keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` until R4 replaces it with snapshots, and the script
+header keys (`<#MOSS365 Naam: ... #>`) are renamed in R8. Data saved before 0.11 uses Dutch
 property and enum names: `Storage/LegacyNames.cs` reads them (use `WithLegacyNames()` on every `JsonSerializerOptions`
 that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as text).
 
@@ -16,11 +17,16 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
 - `src/Moss365.Core` (net8.0): all logic, no UI, no Windows dependencies, fully tested.
 - `src/Moss365.Connections` (net8.0): AD via LDAP, Graph via HttpClient + MSAL, Exchange via a separate PowerShell
   process with the embedded `Exchange/Exchange.ps1` (fixed commands, ASCII only), scripts via `Scripts/Startup.ps1`.
-- `src/Moss365.UI` (Razor class library): the screens; logic in screens limited to presentation.
+- `src/Moss365.UI` (Razor class library): the screens; logic in screens limited to presentation. `TenantHub` holds the
+  tenants; every tenant has its own `ManagementState` (database, connections, sign-in). Screens get the open tenant's
+  state (scoped); switching reloads the page.
 - `src/Moss365.Desktop` (net8.0-windows, WPF + BlazorWebView): the window and dependency injection only.
 - `tests/Moss365.Tests`: xUnit for the core, bUnit for the screens; `tests/powershell` and `tools/tests`: Pester.
 - `config/organisatie.json`: the sample organisation (Contoso, made up).
 - `scripts/`: the script library (header `<#MOSS365 ... #>`), shipped in the download.
+- Storage: `%LOCALAPPDATA%\Moss365\moss365.db` (`AppDatabase`: the list of tenants) and
+  `tenants\<id>\tenant.db` (`Database`): everything of a tenant, files included (`IFileStore`, table File). Never data
+  of two tenants in one database, list, plan, export or log; never loose files next to a tenant database.
 - `CHANGELOG.md`: a release is created when `Version` in `Directory.Build.props` has no release yet; the text comes
   from the `## <version>` section.
 

@@ -43,7 +43,7 @@ public sealed partial class PlanScreenTests
         cut.Find(".kb-openbalk button.kb-primair").Click();
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("main.kb-openstaand")));
         Assert.DoesNotContain("●", MenuItem(cut, "Organisatie").TextContent);
-        Assert.True(File.Exists(State.AppEnvironment.ConfigUsersPath));
+        Assert.NotNull(State.Database.ReadDocument(Moss365.Core.Storage.Documents.Organisation));
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public sealed partial class PlanScreenTests
         Assert.Contains(cut.FindAll(".kb-openbalk button"), b => b.TextContent == "Naar het plan");
 
         cut.FindAll("section.kb-plan button").First(b => b.TextContent.StartsWith("Uitvoeren (", StringComparison.Ordinal)).Click();
-        cut.FindAll("button").First(b => b.TextContent == "Ja, uitvoeren").Click();
+        cut.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).Click();
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("main.kb-openstaand")));
         Assert.DoesNotContain("●", MenuItem(cut, "Spiegelgebruiker").TextContent);
     }

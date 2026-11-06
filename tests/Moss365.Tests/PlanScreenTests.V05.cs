@@ -11,7 +11,7 @@ namespace Moss365.Tests;
 /// <summary>Screen tests for 0.5: export, helpdesk, undo, scheduling, cleanup, security and quick load.</summary>
 public sealed partial class PlanScreenTests
 {
-    private string ExportFolder => Path.Combine(_base, "eigen", "export");
+    private string ExportFolder => State.ExportFolder;
 
     [Fact]
     public void ExportListToCsv()
@@ -189,7 +189,7 @@ public sealed partial class PlanScreenTests
         Assert.Contains("beheerders zonder MFA", stat.Markup);
 
         // Saved in the live inventory and read back
-        var again = InventoryLoader.Load(new[] { State.SavedInventory! });
+        var again = InventoryLoader.Load(State.Files, new[] { State.SavedInventory! });
         Assert.Equal(2, again.Security!.Mfa.Count);
         Assert.Equal("Global Administrator", Assert.Single(again.Security.Roles).Role);
     }
@@ -237,8 +237,7 @@ public sealed partial class PlanScreenTests
     [Fact]
     public void BrokenOwnOrganisationGivesAVisibleWarning()
     {
-        Directory.CreateDirectory(Path.Combine(_base, "eigen"));
-        File.WriteAllText(Path.Combine(_base, "eigen", "organisatie.json"), "{ kapot");
+        State.Database.SaveDocument(Moss365.Core.Storage.Documents.Organisation, "{ kapot");
         State.LoadConfig();
         State.LoadInventory(); // clears Error, but not the warning about the organisation
 
@@ -257,6 +256,9 @@ public sealed partial class PlanScreenTests
         }
 
         Assert.False(State.TaskBusy);
+
+        // The task reports its end to the screens just after it stops being busy: let that notification pass
+        Thread.Sleep(100);
     }
 
     /// <summary>

@@ -8,24 +8,32 @@ using System.Text.Json.Serialization;
 
 namespace Moss365.Core.Scripts;
 
-/// <summary>A script in the library: built-in (shipped with the app, read-only) or own (saved locally).</summary>
+/// <summary>
+/// A script in the library: built-in (shipped with the app, read-only, a file on disk) or own (in the tenant database,
+/// <see cref="FilePath"/> is then a path in the file store such as <c>scripts/own/Report.ps1</c>).
+/// </summary>
 public sealed record ScriptFile(string FilePath, ScriptHeader Header, bool BuiltIn, string Fingerprint, string Folder = "")
 {
     /// <summary>Key for the last values and the runs: the file name without extension (as Get-ScriptWaarde
     /// does).</summary>
-    public string Key => Path.GetFileNameWithoutExtension(FilePath);
+    public string Key => Path.GetFileNameWithoutExtension(FileName);
+
+    public string FileName => FilePath[(FilePath.Replace('\\', '/').LastIndexOf('/') + 1)..];
 
     public string Origin => BuiltIn ? "ingebouwd" : "eigen";
 }
 
-/// <summary>Where the scripts and their data are. Everything local; in the web version this goes to the
-/// server.</summary>
-public sealed record ScriptFolders(string BuiltIn, string Data)
+/// <summary>
+/// Where the scripts and their data are: the built-in scripts in a folder on disk, the own scripts, last values and runs
+/// in the file store of the tenant database, and a work folder on disk where a script runs (PowerShell needs real
+/// files; when the run is done, its files move into the store and the work folder is removed).
+/// </summary>
+public sealed record ScriptFolders(string BuiltIn, IFileStore Store, string Work)
 {
-    public string Own => Path.Combine(Data, "eigen");
-    public string Values => Path.Combine(Data, "waarden");
-    public string Runs => Path.Combine(Data, "runs");
-    public string Approved => Path.Combine(Own, "goedgekeurd.json");
+    public const string Own = "scripts/own";
+    public const string Values = "scripts/values";
+    public const string Runs = "runs";
+    public const string Approved = "scripts/approvals.json";
 }
 
 /// <summary>Reading, saving, importing and deleting scripts, with the fingerprint of the own scripts.</summary>
@@ -40,32 +48,63 @@ public static class ScriptLibrary
     /// name.</summary>
     public static IReadOnlyList<ScriptFile> Load(ScriptFolders folders)
     {
-        var output = new List<ScriptFile>();
-        if (Directory.Exists(folders.BuiltIn))
-        {
-            // Only scripts with a MOSS365 header: the others are in the download for use outside the app
-            foreach (var path in Directory.EnumerateFiles(folders.BuiltIn, "*.ps1", SearchOption.AllDirectories))
-            {
-                var script = ReadFile(path, true, Path.GetRelativePath(folders.BuiltIn, Path.GetDirectoryName(path)!).Replace('\\', '/') is var m && m != "." ? m : string.Empty);
-                if (script.Header.FromBlock)
-                {
-                    output.Add(script);
-                }
-            }
-        }
-
-        if (Directory.Exists(folders.Own))
-        {
-            output.AddRange(Directory.EnumerateFiles(folders.Own, "*.ps1").Select(p => ReadFile(p, false)));
-        }
-
+        var output = new List<ScriptFile>(BuiltIns(folders));
+        output.AddRange(folders.Store.List(ScriptFolders.Own + "/")
+            .Where(f => f.Path.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase) && f.Path.Count(c => c == '/') == 2)
+            .Select(f => ReadStored(folders.Store, f.Path)));
         return output.OrderBy(s => s.Header.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
+    private static IEnumerable<ScriptFile> BuiltIns(ScriptFolders folders)
+    {
+        if (!Directory.Exists(folders.BuiltIn))
+        {
+            yield break;
+        }
+
+        // Only scripts with a MOSS365 header: the others are in the download for use outside the app
+        foreach (var path in Directory.EnumerateFiles(folders.BuiltIn, "*.ps1", SearchOption.AllDirectories))
+        {
+            var script = ReadFile(path, true, Path.GetRelativePath(folders.BuiltIn, Path.GetDirectoryName(path)!).Replace('\\', '/') is var m && m != "." ? m : string.Empty);
+            if (script.Header.FromBlock)
+            {
+                yield return script;
+            }
+        }
+    }
+
+    /// <summary>A script file on disk (built-in, or a one-time script in the work folder).</summary>
     public static ScriptFile ReadFile(string path, bool builtIn, string folder = "")
     {
         var text = File.ReadAllText(path);
         return new ScriptFile(path, ScriptText.Read(text, path), builtIn, Fingerprint(text), folder);
+    }
+
+    private static ScriptFile ReadStored(IFileStore store, string path)
+    {
+        var text = store.ReadText(path) ?? string.Empty;
+        return new ScriptFile(path, ScriptText.Read(text, path), false, Fingerprint(text));
+    }
+
+    /// <summary>The text of a script, wherever it is.</summary>
+    public static string Text(ScriptFolders folders, ScriptFile script)
+        => script.BuiltIn || !IsOwn(script.FilePath) ? File.ReadAllText(script.FilePath) : folders.Store.ReadText(script.FilePath) ?? string.Empty;
+
+    /// <summary>
+    /// A file on disk with the text of the script, for PowerShell: the built-in file itself, or the own script written
+    /// into the folder (with a BOM, so that Windows PowerShell 5.1 reads it as UTF-8).
+    /// </summary>
+    public static string ToDisk(ScriptFolders folders, ScriptFile script, string folder)
+    {
+        if (script.BuiltIn || !IsOwn(script.FilePath))
+        {
+            return script.FilePath;
+        }
+
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, script.FileName);
+        File.WriteAllText(path, Text(folders, script).Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(true));
+        return path;
     }
 
     /// <summary>A valid file name from the name of the script.</summary>
@@ -78,49 +117,50 @@ public static class ScriptLibrary
     /// <summary>Saves an own script (new or updated) and approves it with its fingerprint.</summary>
     public static ScriptFile Store(ScriptFolders folders, string text, string? existingPath = null)
     {
-        Directory.CreateDirectory(folders.Own);
         var header = ScriptText.Read(text, existingPath ?? "script.ps1");
         var path = existingPath;
-        if (path is null || !IsOwn(folders, path))
+        if (path is null || !IsOwn(path))
         {
-            path = Path.Combine(folders.Own, FileName(header.Name));
-            var builtInNames = Load(folders with { Data = Path.Combine(folders.Data, "-geen-") }).Select(s => s.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            path = $"{ScriptFolders.Own}/{FileName(header.Name)}";
+            var builtInNames = BuiltIns(folders).Select(s => s.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var baseline = Path.GetFileNameWithoutExtension(path);
             var n = 1;
-            while (File.Exists(path) || builtInNames.Contains(Path.GetFileNameWithoutExtension(path)))
+            while (folders.Store.Exists(path) || builtInNames.Contains(Path.GetFileNameWithoutExtension(path)))
             {
-                path = Path.Combine(folders.Own, $"{baseline}-{++n}.ps1");
+                path = $"{ScriptFolders.Own}/{baseline}-{++n}.ps1";
             }
         }
 
-        // Always with a BOM: Windows PowerShell 5.1 reads a file without a BOM as ANSI
-        File.WriteAllText(path, text.Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(true));
-        var file = ReadFile(path, false);
+        // Always with a BOM and Windows line endings: Windows PowerShell 5.1 reads a file without a BOM as ANSI
+        folders.Store.WriteText(path, text.Replace("\r\n", "\n").Replace("\n", "\r\n"), bom: true);
+        var file = ReadStored(folders.Store, path);
         Approve(folders, file);
         return file;
     }
 
-    public static bool IsOwn(ScriptFolders folders, string path)
-        => string.Equals(Path.GetFullPath(Path.GetDirectoryName(path)!), Path.GetFullPath(folders.Own), StringComparison.OrdinalIgnoreCase);
+    /// <summary>Is this path an own script in the store (and not a file on disk)?</summary>
+    public static bool IsOwn(string path)
+        => FileStorePaths.Normalise(path).StartsWith(ScriptFolders.Own + "/", StringComparison.OrdinalIgnoreCase) && !Path.IsPathRooted(path);
 
     public static void Remove(ScriptFolders folders, ScriptFile script)
     {
-        if (script.BuiltIn || !IsOwn(folders, script.FilePath))
+        if (script.BuiltIn || !IsOwn(script.FilePath))
         {
             throw new InvalidOperationException("Een ingebouwd script kan je niet verwijderen.");
         }
 
-        File.Delete(script.FilePath);
+        folders.Store.Delete(script.FilePath);
         var list = Approvals(folders);
-        list.Remove(Path.GetFileName(script.FilePath));
+        list.Remove(script.FileName);
         SaveApprovals(folders, list);
     }
 
     /// <summary>Imports a .ps1 as an own script (a copy; the original stays where it was).</summary>
-    public static ScriptFile Import(ScriptFolders folders, string sourcePath)
+    public static ScriptFile Import(ScriptFolders folders, string sourcePath) => ImportText(folders, File.ReadAllText(sourcePath), sourcePath);
+
+    public static ScriptFile ImportText(ScriptFolders folders, string text, string name)
     {
-        var text = File.ReadAllText(sourcePath);
-        var header = ScriptText.Read(text, sourcePath);
+        var header = ScriptText.Read(text, name);
         if (!header.FromBlock)
         {
             text = ScriptText.Write(header, text);
@@ -131,12 +171,12 @@ public static class ScriptLibrary
 
     /// <summary>Was this own script changed outside the app since it was saved or approved?</summary>
     public static bool IsChangedOutsideApp(ScriptFolders folders, ScriptFile script)
-        => !script.BuiltIn && (!Approvals(folders).TryGetValue(Path.GetFileName(script.FilePath), out var v) || v != script.Fingerprint);
+        => !script.BuiltIn && IsOwn(script.FilePath) && (!Approvals(folders).TryGetValue(script.FileName, out var v) || v != script.Fingerprint);
 
     public static void Approve(ScriptFolders folders, ScriptFile script)
     {
         var list = Approvals(folders);
-        list[Path.GetFileName(script.FilePath)] = script.Fingerprint;
+        list[script.FileName] = script.Fingerprint;
         SaveApprovals(folders, list);
     }
 
@@ -144,10 +184,9 @@ public static class ScriptLibrary
     {
         try
         {
-            return File.Exists(folders.Approved)
-                ? JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(folders.Approved)) is { } d
-                    ? new Dictionary<string, string>(d, StringComparer.OrdinalIgnoreCase)
-                    : new(StringComparer.OrdinalIgnoreCase)
+            return folders.Store.ReadText(ScriptFolders.Approved) is { } json
+                && JsonSerializer.Deserialize<Dictionary<string, string>>(json) is { } d
+                ? new Dictionary<string, string>(d, StringComparer.OrdinalIgnoreCase)
                 : new(StringComparer.OrdinalIgnoreCase);
         }
         catch (JsonException)
@@ -157,10 +196,7 @@ public static class ScriptLibrary
     }
 
     private static void SaveApprovals(ScriptFolders folders, Dictionary<string, string> list)
-    {
-        Directory.CreateDirectory(folders.Own);
-        File.WriteAllText(folders.Approved, JsonSerializer.Serialize(list, Json));
-    }
+        => folders.Store.WriteText(ScriptFolders.Approved, JsonSerializer.Serialize(list, Json));
 
     /// <summary>A new, empty script with an example.</summary>
     public static string NewScript(string name) => ScriptText.Write(new ScriptHeader
@@ -181,8 +217,8 @@ Get-Mailbox -Identity $Postvak | Select-Object DisplayName, PrimarySmtpAddress, 
 }
 
 /// <summary>
-/// The last used values per script, in the same file as the Get-ScriptWaarde block in the scripts:
-/// <c>waarden\&lt;script&gt;.json</c>, with a text or a list per name.
+/// The last used values per script, in the tenant database (<c>scripts/values/&lt;script&gt;.json</c>, the same format
+/// as the Get-ScriptWaarde block in the scripts uses outside the app), with a text or a list per name.
 /// </summary>
 public static class ScriptValues
 {
@@ -191,15 +227,14 @@ public static class ScriptValues
     public static Dictionary<string, string> Read(ScriptFolders folders, string key)
     {
         var output = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var path = Path.Combine(folders.Values, key + ".json");
-        if (!File.Exists(path))
+        if (folders.Store.ReadText($"{ScriptFolders.Values}/{key}.json") is not { } json)
         {
             return output;
         }
 
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            using var doc = JsonDocument.Parse(json);
             foreach (var p in doc.RootElement.EnumerateObject())
             {
                 output[p.Name] = p.Value.ValueKind switch
@@ -222,8 +257,6 @@ public static class ScriptValues
     /// does.</summary>
     public static void Save(ScriptFolders folders, string key, ScriptHeader header, IReadOnlyDictionary<string, string> values)
     {
-        Directory.CreateDirectory(folders.Values);
-        var path = Path.Combine(folders.Values, key + ".json");
         var existing = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
         foreach (var (k, v) in Read(folders, key))
         {
@@ -236,7 +269,7 @@ public static class ScriptValues
             existing[name] = kind == VariableKind.Items ? Items(value) : value;
         }
 
-        File.WriteAllText(path, JsonSerializer.Serialize(existing, Json), new UTF8Encoding(true));
+        folders.Store.WriteText($"{ScriptFolders.Values}/{key}.json", JsonSerializer.Serialize(existing, Json));
     }
 
     public static string[] Items(string value)
@@ -310,7 +343,10 @@ public enum RunResult
     Cancelled,
 }
 
-/// <summary>One run of a script, saved as run.json in the folder of the run.</summary>
+/// <summary>
+/// One run of a script, saved as run.json. While it runs, its files are in <see cref="WorkFolder"/> on disk; when it is
+/// done they move into the store under <see cref="Folder"/> (<c>runs/&lt;script&gt;/&lt;id&gt;</c>).
+/// </summary>
 public sealed record ScriptRun
 {
     public string Id { get; init; } = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
@@ -331,8 +367,16 @@ public sealed record ScriptRun
     public int Errors { get; init; }
     public int Warnings { get; init; }
 
+    /// <summary>The run in the file store: <c>runs/&lt;script&gt;/&lt;id&gt;</c>.</summary>
     [JsonIgnore]
     public string Folder { get; init; } = string.Empty;
+
+    /// <summary>The folder on disk while the script runs (empty when it is done).</summary>
+    [JsonIgnore]
+    public string WorkFolder { get; init; } = string.Empty;
+
+    /// <summary>The last part of <see cref="Folder"/>: the id in the address of the run.</summary>
+    public string FolderName => Folder[(Folder.LastIndexOf('/') + 1)..];
 
     public TimeSpan? Duration => End - Start;
 
@@ -346,43 +390,72 @@ public sealed record ScriptRun
     };
 }
 
-/// <summary>The runs on disk: runs\&lt;script&gt;\&lt;id&gt;\ with run.json, uitvoer.jsonl, tables and files.</summary>
+/// <summary>
+/// The runs in the store: <c>runs/&lt;script&gt;/&lt;id&gt;/</c> with run.json, uitvoer.jsonl, script.ps1 (one-time
+/// scripts) and the files the script made (bestanden/).
+/// </summary>
 public static class ScriptRuns
 {
-    public const int SaveDays = 90;
+    public const int SaveDays = 365;
     private static readonly JsonSerializerOptions Json = new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }.WithLegacyNames();
 
-    public static string NewFolder(ScriptFolders folders, string key, string id)
+    /// <summary>A new run: its place in the store and an empty work folder on disk (with bestanden/).</summary>
+    public static ScriptRun New(ScriptFolders folders, ScriptRun run)
     {
-        var folder = Path.Combine(folders.Runs, key, id);
+        var id = run.Id;
         var n = 1;
-        while (Directory.Exists(folder))
+        while (folders.Store.List($"{ScriptFolders.Runs}/{run.Key}/{id}/").Count > 0 || Directory.Exists(Path.Combine(folders.Work, run.Key, id)))
         {
-            folder = Path.Combine(folders.Runs, key, $"{id}-{++n}");
+            id = $"{run.Id}-{++n}";
         }
 
-        Directory.CreateDirectory(Path.Combine(folder, "bestanden"));
-        return folder;
+        var work = Path.Combine(folders.Work, run.Key, id);
+        Directory.CreateDirectory(Path.Combine(work, "bestanden"));
+        return run with { Folder = $"{ScriptFolders.Runs}/{run.Key}/{id}", WorkFolder = work };
     }
 
-    public static void Save(ScriptRun run) => File.WriteAllText(Path.Combine(run.Folder, "run.json"), JsonSerializer.Serialize(run, Json));
+    /// <summary>Saves run.json: in the work folder while it runs, in the store when it is done.</summary>
+    public static void Save(ScriptFolders folders, ScriptRun run)
+    {
+        var json = JsonSerializer.Serialize(run, Json);
+        if (run.WorkFolder.Length > 0 && Directory.Exists(run.WorkFolder))
+        {
+            File.WriteAllText(Path.Combine(run.WorkFolder, "run.json"), json);
+        }
+        else
+        {
+            folders.Store.WriteText($"{run.Folder}/run.json", json);
+        }
+    }
+
+    /// <summary>The run is done: its files go into the store and the work folder is removed.</summary>
+    public static ScriptRun Finish(ScriptFolders folders, ScriptRun run)
+    {
+        Save(folders, run);
+        folders.Store.Import(run.WorkFolder, run.Folder);
+        try
+        {
+            Directory.Delete(run.WorkFolder, true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The files are in the store; the work folder is cleaned up the next time
+        }
+
+        return run with { WorkFolder = string.Empty };
+    }
 
     public static IReadOnlyList<ScriptRun> Items(ScriptFolders folders, string? key = null)
     {
-        var baseline = key is null ? folders.Runs : Path.Combine(folders.Runs, key);
-        if (!Directory.Exists(baseline))
-        {
-            return Array.Empty<ScriptRun>();
-        }
-
         var output = new List<ScriptRun>();
-        foreach (var file in Directory.EnumerateFiles(baseline, "run.json", SearchOption.AllDirectories))
+        foreach (var file in folders.Store.List(key is null ? ScriptFolders.Runs + "/" : $"{ScriptFolders.Runs}/{key}/")
+                     .Where(f => f.Name.Equals("run.json", StringComparison.OrdinalIgnoreCase) && f.Path.Count(c => c == '/') == 3))
         {
             try
             {
-                if (JsonSerializer.Deserialize<ScriptRun>(File.ReadAllText(file), Json) is { } r)
+                if (JsonSerializer.Deserialize<ScriptRun>(folders.Store.ReadText(file.Path)!, Json) is { } r)
                 {
-                    output.Add(r with { Folder = Path.GetDirectoryName(file)! });
+                    output.Add(r with { Folder = file.Path[..file.Path.LastIndexOf('/')] });
                 }
             }
             catch (JsonException)
@@ -393,25 +466,36 @@ public static class ScriptRuns
         return output.OrderByDescending(r => r.Start).ToList();
     }
 
-    /// <summary>Deletes the runs older than 90 days; returns the count.</summary>
+    /// <summary>The files of a run that the script made (under bestanden/).</summary>
+    public static IReadOnlyList<StoredFile> Files(ScriptFolders folders, ScriptRun run) => folders.Store.List($"{run.Folder}/bestanden/");
+
+    /// <summary>Deletes the runs older than a year (decision U9), and work folders left behind; returns the count.</summary>
     public static int Cleanup(ScriptFolders folders, DateTimeOffset now, int days = SaveDays)
     {
-        var route = 0;
+        var count = 0;
         foreach (var r in Items(folders).Where(r => r.Start < now.AddDays(-days)))
         {
-            try
+            folders.Store.DeleteAll(r.Folder + "/");
+            count++;
+        }
+
+        if (Directory.Exists(folders.Work))
+        {
+            foreach (var dir in Directory.EnumerateDirectories(folders.Work).SelectMany(Directory.EnumerateDirectories))
             {
-                Directory.Delete(r.Folder, true);
-                route++;
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
+                try
+                {
+                    if (Directory.GetLastWriteTime(dir) < now.AddDays(-1).LocalDateTime)
+                    {
+                        Directory.Delete(dir, true);
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                }
             }
         }
 
-        return route;
+        return count;
     }
 }

@@ -563,7 +563,7 @@
 
         var columns = Visible().ToList();
         var rows = onlySelected ? filtered.Where(x => SelectedSet.Contains(KeyOf!(x))).ToList() : filtered;
-        var path = Path.Combine(State.AppEnvironment.ExportFolder, CsvWriter.FileName($"{ExportName ?? (Id.Length > 0 ? char.ToUpperInvariant(Id[0]) + Id[1..] : "Lijst")}-{DateTime.Now:yyyyMMdd-HHmmss}") + ".csv");
+        var path = Path.Combine(State.ExportFolder, CsvWriter.FileName($"{ExportName ?? (Id.Length > 0 ? char.ToUpperInvariant(Id[0]) + Id[1..] : "Lijst")}-{DateTime.Now:yyyyMMdd-HHmmss}") + ".csv");
         try
         {
             CsvWriter.Write(path, columns.Select(k => k.Title), rows.Select(r => columns.Select(k => k.TextOf(r))), forExcel: true);

@@ -93,9 +93,10 @@
             <div class="kb-versie">Moss365 @ManagementState.AppVersion</div>
         </div>
     </nav>
-    <main class="kb-inhoud @(here.Count > 0 ? "kb-openstaand" : null)">
+    <main class="kb-inhoud @(here.Count > 0 ? "kb-openstaand" : null)" style="--kb-tenant: @State.Tenant.Colour">
         <div class="kb-bovenbalk">
             <Navigation />
+            <TenantBar />
         </div>
         @if (here.Count > 0)
         {
@@ -153,7 +154,7 @@
         }),
         new MenuGroup("Instellingen", new[]
         {
-            ("organisatie", "Organisatie"), ("verbindingen", "Verbindingen"), ("controle", "Controle van deze pc"),
+            ("organisatie", "Organisatie"), ("verbindingen", "Verbindingen"), ("tenants", "Tenants"), ("controle", "Controle van deze pc"),
         }),
     };
 

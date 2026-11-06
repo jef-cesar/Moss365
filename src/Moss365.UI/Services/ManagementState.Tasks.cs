@@ -516,31 +516,24 @@ public sealed partial class ManagementState
 
     private void SaveAsInventory(InventoryComponent components, IProgress<string> p)
     {
-        var folder = InventoryWriter.Save(Data, _environment.InventoryBase, components, DateTime.Now);
+        var folder = InventoryWriter.Save(Data, Files, components, DateTime.Now);
         SavedInventory = folder;
         SaveQuickSnapshot(folder, components);
-        p.Report($"Bewaard in {Path.GetFileName(folder)}.");
+        p.Report($"Bewaard in {folder[(folder.LastIndexOf('/') + 1)..]}.");
         if ((components & (InventoryComponent.Ad | InventoryComponent.Entra)) != 0)
         {
             SaveKpiSnapshot();
         }
 
         // Keep only the latest live inventories (those of Export-Inventaris.ps1 stay)
-        foreach (var old in InventoryLoader.SearchFolders(_environment.InventoryBase)
+        foreach (var old in InventoryLoader.SearchFolders(Files)
                      .Where(m => m.EndsWith("-live", StringComparison.OrdinalIgnoreCase))
                      .Skip(SavedLiveInventories))
         {
-            try
-            {
-                Directory.Delete(old, recursive: true);
-            }
-            catch (Exception)
-            {
-                // No problem; again the next time
-            }
+            Files.DeleteAll(old + "/");
         }
 
-        Folders = InventoryLoader.SearchFolders(_environment.InventoryBase);
+        Folders = InventoryLoader.SearchFolders(Files);
     }
 
     /// <summary>After a plan was run: mark the objects involved and read them again in the background.</summary>

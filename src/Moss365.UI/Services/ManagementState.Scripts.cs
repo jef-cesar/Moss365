@@ -43,7 +43,7 @@ public sealed partial class ManagementState
     /// <summary>Values to fill in the next start form with (Start again with the same values).</summary>
     public IReadOnlyDictionary<string, string>? ScriptPrefill { get; set; }
 
-    public ScriptFolders ScriptFolders => new(_environment.BuiltInScripts, _environment.ScriptsData);
+    public ScriptFolders ScriptFolders => new(_environment.BuiltInScripts, Files, Path.Combine(_environment.TempFolder, "runs", Tenant.Id));
 
     /// <summary>The script that runs now or ran last (one at a time).</summary>
     public ScriptRunStatus? ScriptRun { get; private set; }
@@ -114,17 +114,23 @@ public sealed partial class ManagementState
             Once = oneTimeText is not null,
             Values = new Dictionary<string, string>(clean),
         };
-        run = run with { Folder = ScriptRuns.NewFolder(ScriptFolders, key, run.Id) };
+        run = ScriptRuns.New(ScriptFolders, run);
 
-        // A one-time script runs from the folder of the run (so the text stays with the output)
+        // A one-time script runs from the folder of the run (so the text stays with the output); an own script is
+        // written into the work folder for PowerShell
+        string scriptPath;
         if (oneTimeText is not null)
         {
-            var path = Path.Combine(run.Folder, "script.ps1");
-            File.WriteAllText(path, oneTimeText, new System.Text.UTF8Encoding(true));
-            script = ScriptLibrary.ReadFile(path, false);
+            scriptPath = Path.Combine(run.WorkFolder, "script.ps1");
+            File.WriteAllText(scriptPath, oneTimeText, new System.Text.UTF8Encoding(true));
+            script = ScriptLibrary.ReadFile(scriptPath, false);
+        }
+        else
+        {
+            scriptPath = ScriptLibrary.ToDisk(ScriptFolders, script, Path.Combine(run.WorkFolder, "script"));
         }
 
-        ScriptRuns.Save(run);
+        ScriptRuns.Save(ScriptFolders, run);
         if (oneTimeText is null)
         {
             ScriptValues.Save(ScriptFolders, script.Key, script.Header, clean);
@@ -133,7 +139,7 @@ public sealed partial class ManagementState
         var status = new ScriptRunStatus { Script = script, Run = run };
         ScriptRun = status;
         Changed?.Invoke();
-        _ = RunAsync(executor, status, clean, preview, oneTimeText, scheduled);
+        _ = RunAsync(executor, status, clean, preview, oneTimeText, scheduled, scriptPath);
         return (status, null);
     }
 
@@ -145,7 +151,7 @@ public sealed partial class ManagementState
         }
     }
 
-    private async Task RunAsync(IScriptExecutor executor, ScriptRunStatus status, Dictionary<string, string> values, bool preview, string? oneTimeText, Guid? scheduled)
+    private async Task RunAsync(IScriptExecutor executor, ScriptRunStatus status, Dictionary<string, string> values, bool preview, string? oneTimeText, Guid? scheduled, string scriptPath)
     {
         // Synchronous and in order (Progress<T> would report via the thread pool, even after the end of the script)
         var reporter = new ScriptReporter(g =>
@@ -170,7 +176,7 @@ public sealed partial class ManagementState
         var cancelled = false;
         try
         {
-            var command = new ScriptCommand(status.Script, values, preview, status.Run.Folder);
+            var command = new ScriptCommand(status.Script, values, preview, status.Run.WorkFolder, scriptPath);
             code = await Task.Run(() => executor.ExecuteAsync(command, reporter, status.Cancel.Token));
         }
         catch (OperationCanceledException)
@@ -193,7 +199,14 @@ public sealed partial class ManagementState
             Errors = countErrors,
             Warnings = list.Count(g => g.Kind == EventKind.Warning),
         };
-        ScriptRuns.Save(status.Run);
+        // An own script was copied into the work folder for PowerShell: not part of the result
+        var copy = Path.Combine(status.Run.WorkFolder, "script");
+        if (Directory.Exists(copy))
+        {
+            Directory.Delete(copy, true);
+        }
+
+        status.Run = ScriptRuns.Finish(ScriptFolders, status.Run);
         status.Progress = null;
 
         var parameters = new Dictionary<string, string>(values, StringComparer.OrdinalIgnoreCase)
@@ -209,7 +222,7 @@ public sealed partial class ManagementState
         ChangeLog.Write(new LogEntry(DateTimeOffset.Now, User, oneTimeText is null ? "Script" : "Eenmalig script", "Script",
             preview ? "ScriptVoorbeeld" : "ScriptUitvoeren", status.Run.Key, status.Run.Name,
             (preview ? "Voorbeeld (-WhatIf) van " : "Script ") + status.Run.Name + " (kan niet automatisch ongedaan gemaakt worden)",
-            parameters, result is RunResult.Succeeded or RunResult.Warnings ? "Gelukt" : result == RunResult.Cancelled ? "Geannuleerd" : "Mislukt", message));
+            parameters, result is RunResult.Succeeded or RunResult.Warnings ? nameof(ResultStatus.Succeeded) : result == RunResult.Cancelled ? nameof(ResultStatus.Skipped) : nameof(ResultStatus.Failed), message));
 
         // A scheduled script: after a real run, schedule the next time (or remove it)
         if (scheduled is { } id && !preview && Scheduled.Read().FirstOrDefault(a => a.Id == id) is { } action)

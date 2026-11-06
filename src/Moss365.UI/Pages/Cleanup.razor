@@ -135,7 +135,7 @@
     {
         try
         {
-            report = CleanupPlans.SaveReport(State.AppEnvironment.ExportFolder, choice.Kind, choice.Days, checkedValue, selectedAtPlan,
+            report = CleanupPlans.SaveReport(State.ExportFolder, choice.Kind, choice.Days, checkedValue, selectedAtPlan,
                 plan ?? Array.Empty<Change>(), results, State.User, DateTime.Now);
         }
         catch (Exception ex)

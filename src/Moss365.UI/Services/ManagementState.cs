@@ -11,26 +11,26 @@ namespace Moss365.UI.Services;
 /// <summary>Where the app finds its files. The Windows app fills this in; tests use temporary folders.</summary>
 public interface IAppEnvironment
 {
-    /// <summary>Base folder with the inventory folders (Inventaris-yyyyMMdd-HHmm).</summary>
-    string InventoryBase { get; }
+    /// <summary>The data folder: <c>moss365.db</c> (the list of tenants) and <c>tenants\&lt;id&gt;\tenant.db</c>.</summary>
+    string Root { get; }
 
-    /// <summary>The bundled organisatie.json (read only).</summary>
+    /// <summary>
+    /// A folder with inventory folders (the output of Export-Inventaris.ps1) that is imported into the tenant at every
+    /// start; null in the Windows app, where you import a folder on request (start page).
+    /// </summary>
+    string? InventoryImport => null;
+
+    /// <summary>The bundled organisatie.json (read only): the starting point of a new tenant.</summary>
     string ConfigDefaultPath { get; }
 
-    /// <summary>Where the app saves changes to the organisation.</summary>
-    string ConfigUsersPath { get; }
-
-    /// <summary>Folder for the own files of the app: connections, change log, follow-up.</summary>
-    string DataFolder => Path.GetDirectoryName(ConfigUsersPath) ?? ".";
-
-    /// <summary>Where exports (lists, cleanup rounds) go.</summary>
-    string ExportFolder => Path.Combine(DataFolder, "export");
+    /// <summary>Where exports (lists, cleanup rounds) go; every tenant gets its own subfolder.</summary>
+    string ExportFolder => Path.Combine(Root, "export");
 
     /// <summary>The built-in scripts (the scripts folder next to the app).</summary>
     string BuiltInScripts => Path.Combine(AppContext.BaseDirectory, "scripts");
 
-    /// <summary>Own scripts, last values and runs.</summary>
-    string ScriptsData => Path.Combine(DataFolder, "scripts");
+    /// <summary>Temporary files: the work folders of running scripts.</summary>
+    string TempFolder => Path.Combine(Path.GetTempPath(), "Moss365");
 
     /// <summary>Shows a file in Explorer (only in the Windows app).</summary>
     void ShowFile(string path)
@@ -38,11 +38,19 @@ public interface IAppEnvironment
     }
 }
 
+/// <summary>For tests: inventory folders to import, the bundled organisation, and the data folder (the folder of the
+/// third path, for compatibility with older tests).</summary>
 public sealed record FixedEnvironment(string InventoryBase, string ConfigDefaultPath, string ConfigUsersPath, string? Export = null, string? Scripts = null) : IAppEnvironment
 {
+    public string Root => Path.GetDirectoryName(ConfigUsersPath) ?? ".";
+
+    public string? InventoryImport => InventoryBase;
+
     public string BuiltInScripts => Scripts ?? Path.Combine(AppContext.BaseDirectory, "scripts");
 
-    public string ExportFolder => Export ?? Path.Combine(Path.GetDirectoryName(ConfigUsersPath) ?? ".", "export");
+    public string ExportFolder => Export ?? Path.Combine(Root, "export");
+
+    public string TempFolder => Path.Combine(Root, "temp");
 }
 
 /// <summary>The shared state of the app: data, organisation, connections, change log and follow-up.</summary>
@@ -55,23 +63,19 @@ public sealed partial class ManagementState
     private IGraphConnection? _graph;
     private string? _graphKey;
 
-    public ManagementState(IAppEnvironment environment, IConnectionFactory? factory = null, SignInStatus? signIn = null)
+    public ManagementState(IAppEnvironment environment, IConnectionFactory? factory = null, SignInStatus? signIn = null, TenantInfo? tenant = null)
     {
         _environment = environment;
         _factory = factory;
         SignInEvent = signIn ?? new SignInStatus();
 
-        // Since 0.8 one database (SQLite); the separate files from before are migrated once (and stay as .bak)
-        Database = new Database(Path.Combine(environment.DataFolder, Database.FileName));
-        try
-        {
-            Migrated = Migrate.OfFiles(Database, environment.DataFolder);
-        }
-        catch (Exception ex)
-        {
-            Migrated = new[] { "Overzetten naar de databank mislukt: " + ex.Message };
-        }
-
+        // Since 0.12 one database per tenant (tenants\<id>\tenant.db) with everything of that tenant in it. Without a
+        // tenant (tests): the database directly in the data folder.
+        Tenant = tenant ?? new TenantInfo { Id = "default", Name = "Tenant" };
+        TenantFolder = tenant is null ? environment.Root : TenantFolders.Folder(environment.Root, tenant.Id);
+        Database = new Database(Path.Combine(TenantFolder, TenantFolders.DatabaseName));
+        Files = new DatabaseFileStore(Database);
+        Migrated = Database.BackupBeforeMigration is { } copy ? new[] { $"Kopie voor de migratie van de databank: {Path.GetFileName(copy)}" } : Array.Empty<string>();
         StartLog();
         Log.Information("Moss365 {Versie} gestart; databank versie {Schema}", AppVersion, Database.Version);
         foreach (var m in Migrated)
@@ -80,10 +84,11 @@ public sealed partial class ManagementState
         }
 
         ChangeLog = new DatabaseChangeLog(Database);
-        FollowUp = new FollowUpStorage(new DatabaseText(Database, "opvolging"));
-        Scheduled = new ScheduledStorage(new DatabaseText(Database, "gepland"));
-        View = new ViewStorage(new DatabaseText(Database, "weergave"));
-        _settingsStorage = new DatabaseText(Database, "verbinding");
+        FollowUp = new FollowUpStorage(new DatabaseText(Database, Documents.FollowUp));
+        Scheduled = new ScheduledStorage(new DatabaseText(Database, Documents.Scheduled));
+        View = new ViewStorage(new DatabaseText(Database, Documents.View));
+        _settingsStorage = new DatabaseText(Database, Documents.Connection);
+        _configStorage = new DatabaseText(Database, Documents.Organisation);
         Settings = ReadSettings();
         _settingsSaved = JsonSerializer.Serialize(Settings, JsonOptions);
         LoadConfig();
@@ -296,15 +301,36 @@ public sealed partial class ManagementState
             ? Graph()?.AppRoles is null ? "Nog niet aangemeld: enkel lezen tot je aanmeldt." : "Geen profiel in Moss365: enkel lezen."
             : "Profielen nog niet ingesteld: iedereen mag alles.";
 
-    public bool ConfigIsModified => ConfigSource is not null
-                                      && string.Equals(Path.GetFullPath(ConfigSource), Path.GetFullPath(_environment.ConfigUsersPath), StringComparison.OrdinalIgnoreCase);
+    /// <summary>The tenant has its own organisation (saved in its database), not (only) the bundled one.</summary>
+    public bool ConfigIsModified => ConfigSource == OwnConfigName;
+
+    /// <summary>How the own organisation is named in messages.</summary>
+    public const string OwnConfigName = "de databank van deze tenant";
 
     public int CountFollowUpTasks => FollowUp.Read().Count;
 
     private readonly ITextStorage _settingsStorage;
+    private readonly ITextStorage _configStorage;
 
-    /// <summary>The database of the app (change log, scheduled, follow-up, view, connection, access log).</summary>
+    /// <summary>The tenant this state belongs to: everything below is of this tenant only.</summary>
+    public TenantInfo Tenant { get; internal set; }
+
+    /// <summary>The folder of the tenant (with tenant.db and the automatic copies).</summary>
+    public string TenantFolder { get; }
+
+    /// <summary>
+    /// The database of the tenant: change log, documents (scheduled, follow-up, view, connection, organisation), access
+    /// log, technical log, KPIs and the file store.
+    /// </summary>
     public Database Database { get; }
+
+    /// <summary>Files of the tenant in its database: inventory, Conditional Access backups, scripts and runs.</summary>
+    public IFileStore Files { get; }
+
+    /// <summary>Where the exports of this tenant go (a subfolder per tenant, so that exports never mix).</summary>
+    public string ExportFolder => Path.Combine(_environment.ExportFolder, InventoryWriterSafeName(Tenant.Name));
+
+    private static string InventoryWriterSafeName(string name) => CsvWriter.FileName(name).TrimEnd('.').Trim() is { Length: > 0 } n ? n : "tenant";
 
     /// <summary>What was migrated from separate files to the database at this start.</summary>
     public IReadOnlyList<string> Migrated { get; }
@@ -317,15 +343,46 @@ public sealed partial class ManagementState
         LoadInventory();
     }
 
+    /// <summary>Reads the inventory folders of Export-Inventaris.ps1 in a folder (or the folder itself) into this tenant.</summary>
+    public string ImportInventory(string folder)
+    {
+        folder = folder.Trim().Trim('"');
+        if (folder.Length == 0 || !Directory.Exists(folder))
+        {
+            return "Die map bestaat niet.";
+        }
+
+        try
+        {
+            var name = Path.GetFileName(folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var count = name.StartsWith("Inventaris-", StringComparison.OrdinalIgnoreCase)
+                ? InventoryLoader.ImportFolders(Files, Path.GetDirectoryName(folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))!, int.MaxValue)
+                : InventoryLoader.ImportFolders(Files, folder, int.MaxValue);
+            Log.Information("Inventaris ingelezen: {Aantal} map(pen)", count);
+            LoadInventory();
+            return count == 0 ? "Geen nieuwe inventarismappen gevonden (Inventaris-...)." : $"{count} inventarismap(pen) ingelezen in {Tenant.Name}.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return "Inlezen mislukt: " + ex.Message;
+        }
+    }
+
     public void LoadInventory()
     {
         try
         {
-            Folders = InventoryLoader.SearchFolders(_environment.InventoryBase);
+            // Tests: inventory folders on disk are read into the tenant first (the Windows app imports on request)
+            if (_environment.InventoryImport is { } import)
+            {
+                InventoryLoader.ImportFolders(Files, import, int.MaxValue);
+            }
+
+            Folders = InventoryLoader.SearchFolders(Files);
             var order = PreferenceFolder is null
                 ? Folders
                 : new[] { PreferenceFolder }.Concat(Folders.Where(m => !string.Equals(m, PreferenceFolder, StringComparison.OrdinalIgnoreCase))).ToList();
-            Data = InventoryLoader.Load(order);
+            Data = InventoryLoader.Load(Files, order);
             LoadedOn = DateTime.Now;
             Error = null;
             ClearLiveStatus();
@@ -346,7 +403,7 @@ public sealed partial class ManagementState
     {
         try
         {
-            (Config, ConfigSource, ConfigWarning) = ConfigStorage.LoadSafe(_environment.ConfigDefaultPath, _environment.ConfigUsersPath);
+            (Config, ConfigSource, ConfigWarning) = ConfigStorage.LoadSafe(_environment.ConfigDefaultPath, _configStorage, OwnConfigName);
         }
         catch (Exception ex)
         {
@@ -361,8 +418,8 @@ public sealed partial class ManagementState
 
     public void SaveConfig()
     {
-        ConfigStorage.Save(Config, _environment.ConfigUsersPath);
-        ConfigSource = _environment.ConfigUsersPath;
+        ConfigStorage.Save(Config, _configStorage);
+        ConfigSource = OwnConfigName;
         ConfigModifications = 0;
         Changed?.Invoke();
     }
@@ -370,10 +427,7 @@ public sealed partial class ManagementState
     /// <summary>Deletes the own changes and loads the bundled organisatie.json again.</summary>
     public void RestoreDefaultConfig()
     {
-        if (File.Exists(_environment.ConfigUsersPath))
-        {
-            File.Delete(_environment.ConfigUsersPath);
-        }
+        Database.DeleteDocument(Documents.Organisation);
 
         LoadConfig();
     }
@@ -396,7 +450,6 @@ public sealed partial class ManagementState
 
     public void SaveSettings()
     {
-        Directory.CreateDirectory(_environment.DataFolder);
         _settingsSaved = JsonSerializer.Serialize(Settings, JsonOptions);
         _settingsStorage.Save(_settingsSaved);
         Changed?.Invoke();

@@ -21,8 +21,8 @@
     @if (State.Folders.Count == 0 && State.PreferenceFolder is null)
     {
         <div class="kb-melding">
-            Geen inventaris gevonden in <code>@State.AppEnvironment.InventoryBase</code>.
-            Draai eerst <code>Export-Inventaris.ps1</code> of geef hieronder een andere map op.
+            Nog geen inventaris in deze tenant. Laad live via <a href="verbindingen">Verbindingen</a>, of lees hieronder de map
+            in die <code>Export-Inventaris.ps1</code> maakte.
         </div>
     }
 
@@ -32,16 +32,20 @@
             <option value="" selected="@(State.PreferenceFolder is null)">Automatisch (per bestand de nieuwste)</option>
             @foreach (var m in State.Folders)
             {
-                <option value="@m" selected="@(m == State.PreferenceFolder)">@Path.GetFileName(m)</option>
+                <option value="@m" selected="@(m == State.PreferenceFolder)">@m[(m.LastIndexOf('/') + 1)..]</option>
             }
         </select>
         <button class="kb-knop" @onclick="State.LoadInventory">Opnieuw laden</button>
     </div>
     <div class="kb-rij">
-        <label>Andere map</label>
-        <input class="kb-invoer" placeholder="Volledig pad naar een inventarismap" @bind="otherFolder" />
-        <button class="kb-knop" @onclick="() => State.ChooseFolder(otherFolder)">Gebruiken</button>
+        <label>Map inlezen</label>
+        <input class="kb-invoer" placeholder="Volledig pad naar een map van Export-Inventaris.ps1" @bind="otherFolder" />
+        <button class="kb-knop" @onclick="Import">Inlezen in @State.Tenant.Name</button>
     </div>
+    @if (importMessage is not null)
+    {
+        <p class="kb-zacht">@importMessage</p>
+    }
 
     <table class="kb-tabel">
         <thead><tr><th>Bestand</th><th>Uit map</th><th class="kb-getal">Rijen</th></tr></thead>
@@ -50,7 +54,7 @@
             {
                 <tr class="@(b.Folder is null ? "kb-ontbreekt" : null)">
                     <td><code>@b.File</code></td>
-                    <td>@(b.Folder is null ? "niet gevonden" : Path.GetFileName(b.Folder))</td>
+                    <td>@(b.Folder is null ? "niet gevonden" : b.Folder[(b.Folder.LastIndexOf('/') + 1)..])</td>
                     <td class="kb-getal">@b.Rows</td>
                 </tr>
             }
@@ -90,6 +94,9 @@
 
 @code {
     private string otherFolder = string.Empty;
+    private string? importMessage;
+
+    private void Import() => importMessage = State.ImportInventory(otherFolder);
 
     private void ChooseFolder(ChangeEventArgs e) => State.ChooseFolder(e.Value?.ToString());
 }

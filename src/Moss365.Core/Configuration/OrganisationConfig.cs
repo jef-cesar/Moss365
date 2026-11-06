@@ -209,6 +209,14 @@ public static class ConfigStorage
     /// shows (without kinds or departments you cannot, for example, create a new user).
     /// </summary>
     public static (OrganisationConfig Config, string? Source, string? Warning) LoadSafe(string? defaultPath, string? usersPath)
+        => LoadSafe(defaultPath, () => !string.IsNullOrWhiteSpace(usersPath) && File.Exists(usersPath) ? File.ReadAllText(usersPath) : null, usersPath ?? string.Empty);
+
+    /// <summary>Like <see cref="LoadSafe(string?, string?)"/>, with the own organisation in the tenant database (since
+    /// 0.12).</summary>
+    public static (OrganisationConfig Config, string? Source, string? Warning) LoadSafe(string? defaultPath, Storage.ITextStorage users, string usersName)
+        => LoadSafe(defaultPath, users.Read, usersName);
+
+    private static (OrganisationConfig Config, string? Source, string? Warning) LoadSafe(string? defaultPath, Func<string?> readUsers, string usersPath)
     {
         OrganisationConfig? defaultValue = null;
         string? defaultError = null;
@@ -224,11 +232,22 @@ public static class ConfigStorage
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(usersPath) && File.Exists(usersPath))
+        string? ownText;
+        try
+        {
+            ownText = readUsers();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ownText = null;
+            defaultError ??= ex.Message;
+        }
+
+        if (ownText is not null)
         {
             try
             {
-                var own = JsonSerializer.Deserialize<OrganisationConfig>(File.ReadAllText(usersPath), Options) ?? new OrganisationConfig();
+                var own = JsonSerializer.Deserialize<OrganisationConfig>(ownText, Options) ?? new OrganisationConfig();
                 if (own.Populations.Count == 0 && defaultValue is { Populations.Count: > 0 })
                 {
                     return (defaultValue, defaultPath,
@@ -271,6 +290,8 @@ public static class ConfigStorage
         File.WriteAllText(temporary, To(config));
         File.Move(temporary, path, overwrite: true);
     }
+
+    public static void Save(OrganisationConfig config, Storage.ITextStorage users) => users.Save(To(config));
 
     public static string To(OrganisationConfig config) => JsonSerializer.Serialize(config, Options);
 }

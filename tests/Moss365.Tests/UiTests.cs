@@ -87,8 +87,9 @@ public sealed class UiTests : TestContext, IDisposable
         save.Click();
 
         Assert.Contains("Bewaard.", cut.Markup);
-        var (stored, source) = ConfigStorage.Load(_environment.ConfigDefaultPath, _environment.ConfigUsersPath);
-        Assert.Equal(_environment.ConfigUsersPath, source);
+        var (stored, source, _) = ConfigStorage.LoadSafe(_environment.ConfigDefaultPath,
+            new Moss365.Core.Storage.DatabaseText(Services.GetRequiredService<ManagementState>().Database, Moss365.Core.Storage.Documents.Organisation), ManagementState.OwnConfigName);
+        Assert.Equal(ManagementState.OwnConfigName, source);
         Assert.Equal("Burger en welzijn", stored.DivisionFor("gezinszorg")!.Name);
 
         // The bundled list stays untouched

@@ -62,7 +62,7 @@ else
                     @foreach (var r in runs)
                     {
                         <tr>
-                            <td><a href="@($"scripts/run/{Uri.EscapeDataString(r.Key)}/{Uri.EscapeDataString(Path.GetFileName(r.Folder))}")">@r.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</a></td>
+                            <td><a href="@($"scripts/run/{Uri.EscapeDataString(r.Key)}/{Uri.EscapeDataString(r.FolderName)}")">@r.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</a></td>
                             <td>@r.Who</td>
                             <td><RunLabel Run="r" /></td>
                             <td class="kb-zacht">@string.Join("; ", r.Values.Select(w => $"{w.Key}={w.Value.Replace("\n", ", ")}"))</td>

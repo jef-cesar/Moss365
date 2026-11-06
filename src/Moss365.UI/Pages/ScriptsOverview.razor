@@ -125,7 +125,7 @@
 
     private static string StartLink(ScriptFile s) => $"scripts/starten/{Uri.EscapeDataString(s.Key)}";
 
-    private static string RunLink(ScriptRun r) => $"scripts/run/{Uri.EscapeDataString(r.Key)}/{Uri.EscapeDataString(Path.GetFileName(r.Folder))}";
+    private static string RunLink(ScriptRun r) => $"scripts/run/{Uri.EscapeDataString(r.Key)}/{Uri.EscapeDataString(r.FolderName)}";
 
     private async Task Import(InputFileChangeEventArgs e)
     {
@@ -133,16 +133,9 @@
         error = false;
         try
         {
-            var temporary = Path.Combine(Path.GetTempPath(), "Moss365", "import-" + Guid.NewGuid().ToString("N"), Path.GetFileName(e.File.Name));
-            Directory.CreateDirectory(Path.GetDirectoryName(temporary)!);
-            await using (var source = e.File.OpenReadStream(2 * 1024 * 1024))
-            await using (var target = File.Create(temporary))
-            {
-                await source.CopyToAsync(target);
-            }
-
-            var s = ScriptLibrary.Import(State.ScriptFolders, temporary);
-            Directory.Delete(Path.GetDirectoryName(temporary)!, true);
+            await using var source = e.File.OpenReadStream(2 * 1024 * 1024);
+            using var reader = new StreamReader(source, System.Text.Encoding.UTF8);
+            var s = ScriptLibrary.ImportText(State.ScriptFolders, await reader.ReadToEndAsync(), e.File.Name);
             message = $"Geimporteerd als eigen script: {s.Header.Name}. Kijk het na voor je het start.";
             Load();
         }
@@ -155,10 +148,10 @@
 
     private void Export(ScriptFile s)
     {
-        var folder = Path.Combine(State.AppEnvironment.ExportFolder, "Scripts");
+        var folder = Path.Combine(State.ExportFolder, "Scripts");
         Directory.CreateDirectory(folder);
-        var target = Path.Combine(folder, Path.GetFileName(s.FilePath));
-        File.Copy(s.FilePath, target, overwrite: true);
+        var target = Path.Combine(folder, s.FileName);
+        File.WriteAllText(target, ScriptLibrary.Text(State.ScriptFolders, s), new System.Text.UTF8Encoding(true));
         message = $"Geexporteerd naar {target}.";
         error = false;
         State.AppEnvironment.ShowFile(target);

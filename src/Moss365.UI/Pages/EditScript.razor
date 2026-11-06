@@ -121,7 +121,7 @@
         once = OnceQuestion == 1;
         if (Key is { Length: > 0 } s && State.SearchScript(s) is { } script)
         {
-            text = File.ReadAllText(script.FilePath);
+            text = ScriptLibrary.Text(State.ScriptFolders, script);
             if (script.BuiltIn)
             {
                 builtInSource = script.Header.Name;
@@ -224,7 +224,7 @@
 
         // The text that runs is fixed: changing it in the editor no longer affects this run
         oneTimeText = ScriptText.Write(header, text);
-        var temporary = Path.Combine(Path.GetTempPath(), "Moss365", "eenmalig.ps1");
+        var temporary = Path.Combine(State.AppEnvironment.TempFolder, "eenmalig.ps1");
         Directory.CreateDirectory(Path.GetDirectoryName(temporary)!);
         File.WriteAllText(temporary, oneTimeText);
         onceScript = ScriptLibrary.ReadFile(temporary, false);

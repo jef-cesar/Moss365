@@ -43,7 +43,7 @@ public sealed record AccessEntry(DateTimeOffset Time, string User, string What, 
 /// follow-up, view, connection) and the access log. The schema has versions; <see cref="Migrations"/> upgrades an older
 /// database. The same code later on the server (W1 in the roadmap).
 /// </summary>
-public sealed class Database
+public sealed partial class Database
 {
     public const string FileName = "moss365.db";
 
@@ -69,6 +69,14 @@ public sealed class Database
         """
         CREATE TABLE KpiStand (Datum TEXT NOT NULL, Sleutel TEXT NOT NULL, Waarde INTEGER NOT NULL, PRIMARY KEY (Datum, Sleutel));
         """,
+
+        // 3 (0.12): one database per tenant holds everything: files (organisation, inventory, Conditional Access
+        // backups, own scripts, script runs) and the technical log
+        """
+        CREATE TABLE File (Path TEXT PRIMARY KEY, Content BLOB NOT NULL, Modified TEXT NOT NULL);
+        CREATE TABLE TechnicalLog (Id INTEGER PRIMARY KEY AUTOINCREMENT, Time TEXT NOT NULL, Level TEXT NOT NULL, Message TEXT NOT NULL);
+        CREATE INDEX TechnicalLog_Time ON TechnicalLog (Time);
+        """,
     };
 
     public Database(string path)
@@ -76,10 +84,24 @@ public sealed class Database
         FilePath = path;
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         _connection = new SqliteConnectionStringBuilder { DataSource = path, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false }.ToString();
+        var existed = File.Exists(path) && new FileInfo(path).Length > 0;
         using var c = Open();
         Run(c, "PRAGMA journal_mode=WAL;");
+        var version = ReadVersion(c);
+        if (existed && version > 0 && version < Migrations.Count)
+        {
+            // An automatic copy before every migration (tenant.db.bak-<date>)
+            Run(c, "PRAGMA wal_checkpoint(TRUNCATE);");
+            var copy = $"{path}.bak-{DateTime.Now:yyyyMMdd-HHmmss}";
+            File.Copy(path, copy, overwrite: true);
+            BackupBeforeMigration = copy;
+        }
+
         Update(c);
     }
+
+    /// <summary>The copy made before this start migrated the schema, or null.</summary>
+    public string? BackupBeforeMigration { get; }
 
     public string FilePath { get; }
 
@@ -151,6 +173,18 @@ public sealed class Database
             cmd.Parameters.AddWithValue("$s", key);
             cmd.Parameters.AddWithValue("$j", json);
             cmd.Parameters.AddWithValue("$t", DateTimeOffset.Now.ToString("o"));
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    public void DeleteDocument(string key)
+    {
+        lock (_lock)
+        {
+            using var c = Open();
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = "DELETE FROM Document WHERE Sleutel = $s;";
+            cmd.Parameters.AddWithValue("$s", key);
             cmd.ExecuteNonQuery();
         }
     }

@@ -114,7 +114,7 @@ public sealed partial class PlanScreenTests
         var script = State.SearchScript("Agenda-export")!;
         Assert.Equal(new[] { "Postvak", "Van" }, script.Header.Variables.Select(v => v.Name));
         Assert.Equal("@werkjaar.van", script.Header.Variables[1].Default);
-        var text = File.ReadAllText(script.FilePath);
+        var text = ScriptLibrary.Text(State.ScriptFolders, script);
         Assert.Contains("[datetime]$Van", text);
         Assert.False(ScriptLibrary.IsChangedOutsideApp(State.ScriptFolders, script));
     }
@@ -144,7 +144,7 @@ public sealed partial class PlanScreenTests
         cut.Find("input[list=kb-keuzes-mailbox]").Change("info@test.be");
 
         cut.FindAll("button").First(b => b.TextContent == "Uitvoeren").Click();
-        cut.FindAll("button").First(b => b.TextContent == "Ja, uitvoeren").Click();
+        cut.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).Click();
         WaitOnScript();
         cut.WaitForAssertion(() => Assert.Contains("gelukt", cut.Markup));
         Assert.False(_factory.FakeScripts.Commands[1].Preview);
@@ -155,7 +155,7 @@ public sealed partial class PlanScreenTests
         Assert.Contains("export.csv", cut.Markup);
         var log = State.ChangeLog.Recent(5);
         Assert.Contains(log, r => r.ChangeAction == "ScriptVoorbeeld");
-        Assert.Contains(log, r => r.ChangeAction == "ScriptUitvoeren" && r.Status == "Gelukt" && r.Parameters["Postvak"] == "info@test.be");
+        Assert.Contains(log, r => r.ChangeAction == "ScriptUitvoeren" && r.Succeeded && r.Parameters["Postvak"] == "info@test.be");
 
         // The last values are remembered (the same file as Get-ScriptWaarde)
         Assert.Equal("info@test.be", ScriptValues.Read(State.ScriptFolders, script.Key)["Postvak"]);

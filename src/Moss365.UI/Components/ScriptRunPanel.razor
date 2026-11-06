@@ -165,7 +165,7 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private static string RunLink(ScriptRun r) => $"scripts/run/{Uri.EscapeDataString(r.Key)}/{Uri.EscapeDataString(Path.GetFileName(r.Folder))}";
+    private static string RunLink(ScriptRun r) => $"scripts/run/{Uri.EscapeDataString(r.Key)}/{Uri.EscapeDataString(r.FolderName)}";
 
     private void Reload() => _ = InvokeAsync(StateHasChanged);
 

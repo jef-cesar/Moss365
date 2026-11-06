@@ -5,8 +5,8 @@
 <h1>Organisatie</h1>
 
 <p class="kb-zacht">
-    Keuzelijsten voor nieuwe gebruikers. Bewaren schrijft naar <code>@State.AppEnvironment.ConfigUsersPath</code>;
-    de meegeleverde lijst blijft ongewijzigd. Stuur dat bestand door om het in de repo op te nemen.
+    Keuzelijsten voor nieuwe gebruikers. Bewaren schrijft naar de databank van <strong>@State.Tenant.Name</strong>;
+    de meegeleverde lijst blijft ongewijzigd.
 </p>
 
 <LeaveConfirm Active="changed" CanSave="@(Errors.Count == 0)" Saving="Save" Discard="Undone"

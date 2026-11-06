@@ -2,6 +2,27 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.12.0
+
+One database per tenant, and several tenants side by side (steps R2 and R3 of the [roadmap](docs/roadmap-1.0.md)).
+
+- **Several organisations (tenants)**: add, rename and colour them under Settings > Tenants. The name and colour of the
+  open tenant are always at the top, and every plan asks "Ja, uitvoeren in <tenant>". Each tenant has its own
+  connections, sign-in and tokens; switching reloads the screens, so that no screen keeps data of another tenant.
+- **Everything of a tenant in its own database** (`%LOCALAPPDATA%\Moss365\tenants\<id>\tenant.db`): the change log,
+  the access log, the technical log (kept 90 days), the organisation, the inventory, Conditional Access backups, own
+  scripts, last values, script runs with their output files, scheduled actions, follow-up tasks and view choices. No
+  loose files next to it any more; `moss365.db` only holds the list of tenants.
+- **Exports per tenant**: `Documents\Moss365\<tenant>\`.
+- **Backup and restore** of a tenant: the whole database in one file; restoring always creates a new tenant.
+- **Automatic copy** of a tenant database before its schema is migrated (`tenant.db.bak-<date>`).
+- **From 0.11**: at the first start the existing data becomes the first tenant (named after the company in your
+  organisation). Nothing is deleted: the old files move to `%LOCALAPPDATA%\Moss365\old-0.11\`; remove that folder
+  when everything works.
+- **The inventory of `Export-Inventaris.ps1`**: read a folder into the open tenant on the start page.
+- Script runs: while a script runs its files are in a temporary folder; when it is done they move into the database.
+  "Openen" on a file of a run puts a copy in the export folder.
+
 ## 0.11.0
 
 The code in English (step R1, part B of the [roadmap](docs/roadmap-1.0.md)). Nothing changes in what the app does.

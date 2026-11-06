@@ -50,15 +50,19 @@
                     @foreach (var b in files)
                     {
                         <tr>
-                            <td>@Path.GetRelativePath(FilesFolder, b.FullName)</td>
-                            <td class="kb-getal">@Size(b.Length)</td>
-                            <td><button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(b.FullName)">Tonen in Verkenner</button></td>
+                            <td>@b.Path[(FilesFolder.Length + 1)..]</td>
+                            <td class="kb-getal">@Size(b.Size)</td>
+                            <td><button class="kb-knop kb-klein" @onclick="() => Open(b)">Openen</button></td>
                         </tr>
                     }
                 </tbody>
             </table>
+            @if (opened is not null)
+            {
+                <p class="kb-zacht">Gekopieerd naar <code>@opened</code>.</p>
+            }
         }
-        <p class="kb-zacht">Map van deze run: <code>@Run.Folder</code></p>
+        <p class="kb-zacht">De bestanden van deze run staan in de databank van @State.Tenant.Name; Openen zet een kopie in de exportmap.</p>
         break;
     default:
         <table class="kb-tabel kb-naast">
@@ -82,17 +86,16 @@
     private int part;
     private int tableIndex;
     private IReadOnlyList<ScriptTable> tables = Array.Empty<ScriptTable>();
-    private List<FileInfo> files = new();
+    private IReadOnlyList<Moss365.Core.Storage.StoredFile> files = Array.Empty<Moss365.Core.Storage.StoredFile>();
+    private string? opened;
     private readonly Dictionary<ScriptTable, IReadOnlyList<Column<IReadOnlyDictionary<string, string>>>> columns = new();
 
-    private string FilesFolder => Path.Combine(Run.Folder, "bestanden");
+    private string FilesFolder => Run.Folder + "/bestanden";
 
     protected override void OnParametersSet()
     {
-        tables = ScriptOutput.Tables(Events, FilesFolder);
-        files = Directory.Exists(FilesFolder)
-            ? new DirectoryInfo(FilesFolder).EnumerateFiles("*", SearchOption.AllDirectories).OrderBy(f => f.FullName).ToList()
-            : new List<FileInfo>();
+        tables = ScriptOutput.Tables(Events, State.Files, FilesFolder);
+        files = ScriptRuns.Files(State.ScriptFolders, Run);
         if (part == 0 && tables.Count > 0 && Events.All(g => g.Kind is EventKind.Row or EventKind.Info or EventKind.Progress))
         {
             part = 1;
@@ -117,4 +120,15 @@
     }
 
     private static string Size(long b) => b < 1024 ? $"{b} B" : b < 1024 * 1024 ? $"{b / 1024.0:0.#} kB" : $"{b / 1024.0 / 1024.0:0.#} MB";
+
+    /// <summary>A copy of the file in the export folder of the tenant, shown in Explorer.</summary>
+    private void Open(Moss365.Core.Storage.StoredFile file)
+    {
+        var target = Path.Combine(State.ExportFolder, "Scripts", $"{Run.Key}-{Run.FolderName}", file.Path[(FilesFolder.Length + 1)..].Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        File.WriteAllBytes(target, State.Files.ReadBytes(file.Path)!);
+        State.Access("Bestand van een script-run geopend", file.Name);
+        opened = target;
+        State.AppEnvironment.ShowFile(target);
+    }
 }

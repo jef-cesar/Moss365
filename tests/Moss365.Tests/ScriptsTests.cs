@@ -8,7 +8,10 @@ namespace Moss365.Tests;
 public sealed class ScriptsTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "kb-scripts-" + Guid.NewGuid().ToString("N"));
-    private ScriptFolders Folders => new(Path.Combine(_folder, "ingebouwd"), Path.Combine(_folder, "gegevens"));
+    private ScriptFolders? _folders;
+
+    private ScriptFolders Folders => _folders ??= new(Path.Combine(_folder, "ingebouwd"),
+        new Moss365.Core.Storage.DatabaseFileStore(new Moss365.Core.Storage.Database(Path.Combine(_folder, "tenant.db"))), Path.Combine(_folder, "werk"));
 
     public void Dispose()
     {
@@ -155,9 +158,9 @@ public sealed class ScriptsTests : IDisposable
         Assert.Equal("Exchange", builtIn.Folder);
         Assert.Throws<InvalidOperationException>(() => ScriptLibrary.Remove(m, builtIn));
 
-        // Changed outside the app: approve again
-        File.AppendAllText(own.FilePath, "\nRemove-Item C:\\");
-        var changed = ScriptLibrary.ReadFile(own.FilePath, false);
+        // Changed outside the app (here: straight in the database): approve again
+        m.Store.WriteText(own.FilePath, m.Store.ReadText(own.FilePath) + "\nRemove-Item C:\\");
+        var changed = ScriptLibrary.Load(m).Single(s => s.FilePath == own.FilePath);
         Assert.True(ScriptLibrary.IsChangedOutsideApp(m, changed));
         ScriptLibrary.Approve(m, changed);
         Assert.False(ScriptLibrary.IsChangedOutsideApp(m, changed));
@@ -171,7 +174,8 @@ public sealed class ScriptsTests : IDisposable
         Assert.Equal(ScriptConnection.Exchange, imported.Header.Connection);
 
         ScriptLibrary.Remove(m, imported);
-        Assert.False(File.Exists(imported.FilePath));
+        Assert.False(m.Store.Exists(imported.FilePath));
+        Assert.Equal("scripts/own/Mijn-script.ps1", own.FilePath);
         Assert.Equal("Mijn-script.ps1", ScriptLibrary.FileName("Mijn script"));
         Assert.Equal("a_b.ps1", ScriptLibrary.FileName("a/b"));
     }
@@ -230,22 +234,21 @@ public sealed class ScriptsTests : IDisposable
     public void LastValuesLikeGetScriptValue()
     {
         var m = Folders;
-        Directory.CreateDirectory(m.Values);
 
         // As the block in the scripts writes it (a list as a JSON list)
-        File.WriteAllText(Path.Combine(m.Values, "AddToSignatureGroup.json"), """{ "Groep": "Signature_All", "Gebruikers": ["a@test.be", "b@test.be"] }""");
+        m.Store.WriteText($"{ScriptFolders.Values}/AddToSignatureGroup.json", """{ "Groep": "Signature_All", "Gebruikers": ["a@test.be", "b@test.be"] }""");
         var w = ScriptValues.Read(m, "AddToSignatureGroup");
         Assert.Equal("Signature_All", w["groep"]);
         Assert.Equal("a@test.be\nb@test.be", w["Gebruikers"]);
 
         var header = new ScriptHeader { Variables = new[] { new ScriptVariable("Groep"), new ScriptVariable("Gebruikers", VariableKind.Items) } };
         ScriptValues.Save(m, "AddToSignatureGroup", header, new Dictionary<string, string> { ["Gebruikers"] = "c@test.be, d@test.be" });
-        var json = File.ReadAllText(Path.Combine(m.Values, "AddToSignatureGroup.json"));
+        var json = m.Store.ReadText($"{ScriptFolders.Values}/AddToSignatureGroup.json")!;
         Assert.Contains("\"c@test.be\"", json);
         Assert.Contains("\"Groep\": \"Signature_All\"", json);
         Assert.Equal("c@test.be\nd@test.be", ScriptValues.Read(m, "AddToSignatureGroup")["Gebruikers"]);
 
-        File.WriteAllText(Path.Combine(m.Values, "kapot.json"), "{kapot");
+        m.Store.WriteText($"{ScriptFolders.Values}/kapot.json", "{kapot");
         Assert.Empty(ScriptValues.Read(m, "kapot"));
     }
 
@@ -283,22 +286,30 @@ public sealed class ScriptsTests : IDisposable
     {
         var m = Folders;
         var now = DateTimeOffset.Now;
-        var old = new ScriptRun { Id = "oud", Key = "A", Name = "A", Start = now.AddDays(-91), Result = RunResult.Succeeded, Folder = ScriptRuns.NewFolder(m, "A", "oud") };
-        var newValue = new ScriptRun { Id = "nieuw", Key = "A", Name = "A", Start = now.AddDays(-1), Result = RunResult.Error, Folder = ScriptRuns.NewFolder(m, "A", "nieuw") };
-        var other = new ScriptRun { Id = "x", Key = "B", Name = "B", Start = now, Preview = true, Result = RunResult.Succeeded, Folder = ScriptRuns.NewFolder(m, "B", "x") };
+        var old = ScriptRuns.New(m, new ScriptRun { Id = "oud", Key = "A", Name = "A", Start = now.AddDays(-366), Result = RunResult.Succeeded });
+        var newValue = ScriptRuns.New(m, new ScriptRun { Id = "nieuw", Key = "A", Name = "A", Start = now.AddDays(-1), Result = RunResult.Error });
+        var other = ScriptRuns.New(m, new ScriptRun { Id = "x", Key = "B", Name = "B", Start = now, Preview = true, Result = RunResult.Succeeded });
+
+        // While it runs: a work folder on disk, not yet in the database
+        Assert.True(Directory.Exists(Path.Combine(newValue.WorkFolder, "bestanden")));
+        File.WriteAllText(Path.Combine(newValue.WorkFolder, "bestanden", "rapport.csv"), "a;b\n1;2");
+        Assert.Empty(ScriptRuns.Items(m));
+
+        // Done: everything moves into the database and the work folder is gone
         foreach (var r in new[] { old, newValue, other })
         {
-            ScriptRuns.Save(r);
+            Assert.Empty(ScriptRuns.Finish(m, r).WorkFolder);
+            Assert.False(Directory.Exists(r.WorkFolder));
         }
 
-        Assert.True(Directory.Exists(Path.Combine(newValue.Folder, "bestanden")));
+        Assert.Equal("rapport.csv", Assert.Single(ScriptRuns.Files(m, newValue)).Name);
         Assert.Equal(new[] { "x", "nieuw", "oud" }, ScriptRuns.Items(m).Select(r => r.Id));
         Assert.Equal(new[] { "nieuw", "oud" }, ScriptRuns.Items(m, "A").Select(r => r.Id));
         Assert.Equal("voorbeeld: gelukt", ScriptRuns.Items(m, "B").Single().ResultText);
 
         Assert.Equal(1, ScriptRuns.Cleanup(m, now));
         Assert.Equal(new[] { "nieuw" }, ScriptRuns.Items(m, "A").Select(r => r.Id));
-        Assert.NotEqual(newValue.Folder, ScriptRuns.NewFolder(m, "A", "nieuw"));
+        Assert.NotEqual(newValue.Folder, ScriptRuns.New(m, new ScriptRun { Id = "nieuw", Key = "A" }).Folder);
     }
 
     [Fact]

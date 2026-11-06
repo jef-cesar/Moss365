@@ -179,8 +179,8 @@
 
         case Section.Backups:
             <p class="kb-zacht">
-                Na elk live laden bewaart de app een kopie van alle beleiden en locaties, als er iets veranderde. De bestanden staan in
-                <code>@State.CaBackupFolder</code>; ze bevatten id's van personen en groepen: hou ze lokaal en zet een kopie op een plek
+                Na elk live laden bewaart de app een kopie van alle beleiden en locaties, als er iets veranderde. Ze staan in de databank van
+                <strong>@State.Tenant.Name</strong>; ze bevatten id's van personen en groepen: hou ze lokaal en zet een kopie op een plek
                 met beperkte toegang.
             </p>
             <div class="kb-filters">
@@ -386,10 +386,10 @@
     {
         try
         {
-            var path = Moss365.Core.Storage.CaBackup.Save(Ca, State.CaBackupFolder, DateTime.Now);
+            var path = Moss365.Core.Storage.CaBackup.Save(Ca, State.Files, DateTime.Now);
             backupMessage = path is null
                 ? (Ca.Policies.Any(b => b.Json.Length == 0) ? "Geen back-up: de beleiden komen niet rechtstreeks uit Entra. Laad eerst live." : "Geen nieuwe back-up nodig: er veranderde niets sinds de vorige.")
-                : $"Bewaard: {Path.GetFileName(path)}";
+                : $"Bewaard: {path[(path.LastIndexOf('/') + 1)..]}";
         }
         catch (IOException ex)
         {
@@ -402,7 +402,7 @@
     private void ChooseBackup(ChangeEventArgs e)
     {
         backupPath = e.Value?.ToString() ?? string.Empty;
-        backup = backupPath.Length == 0 ? null : Moss365.Core.Storage.CaBackup.Read(backupPath);
+        backup = backupPath.Length == 0 ? null : Moss365.Core.Storage.CaBackup.Read(State.Files, backupPath);
         differences = backup is null ? Array.Empty<CaDifference>() : CaComparison.Compare(backup.Policies, Ca.Policies, CaReader.Names(State.Data), Ca);
         plan = null;
         errors = Array.Empty<string>();

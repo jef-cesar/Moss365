@@ -5,8 +5,8 @@
 <h1>Logboek</h1>
 
 <p class="kb-zacht">
-    Elke uitgevoerde wijziging: wie, wanneer, wat en met welk resultaat. Wachtwoorden staan er nooit in.
-    Bestanden: <code>@((State.ChangeLog as JsonlChangeLog)?.Folder)</code> (één per maand).
+    Elke uitgevoerde wijziging in <strong>@State.Tenant.Name</strong>: wie, wanneer, wat en met welk resultaat. Wachtwoorden
+    staan er nooit in.
 </p>
 
 <div class="kb-filters">
@@ -274,7 +274,7 @@ else
 
     private void Archive()
     {
-        archive = Moss365.Core.Storage.Retention.Archive(State.Database, Limit, State.AppEnvironment.ExportFolder, DateTime.Now);
+        archive = Moss365.Core.Storage.Retention.Archive(State.Database, Limit, State.ExportFolder, DateTime.Now);
         State.Access("Logboek gearchiveerd", $"{archive.Value.Count} regels ouder dan {Limit:yyyy-MM-dd}");
     }
 

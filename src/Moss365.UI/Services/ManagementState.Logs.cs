@@ -4,8 +4,8 @@ using Serilog;
 namespace Moss365.UI.Services;
 
 /// <summary>
-/// Logs next to the change log (0.8): the technical log (Serilog, one file per day in the logs folder, kept 30 days)
-/// and the access log in the database (who exported or viewed sign-ins and security). The technical log never contains
+/// Logs next to the change log: the technical log (Serilog, in the tenant database since 0.12, kept 90 days) and the
+/// access log in the database (who exported or viewed sign-ins and security). The technical log never contains
 /// passwords, tokens, parameters of changes or names of people: only what happened, how many, and error messages.
 /// </summary>
 public sealed partial class ManagementState : IDisposable
@@ -22,7 +22,8 @@ public sealed partial class ManagementState : IDisposable
     /// <summary>The technical log (errors and the course of loading and running).</summary>
     public ILogger Log { get; private set; } = Serilog.Core.Logger.None;
 
-    public string LogFolder => Path.Combine(_environment.DataFolder, "logs");
+    /// <summary>How long the technical log is kept (decision U9).</summary>
+    public const int TechnicalLogDays = 90;
 
     private void StartLog()
     {
@@ -30,8 +31,8 @@ public sealed partial class ManagementState : IDisposable
         {
             var config = new LoggerConfiguration()
                 .MinimumLevel.Information()
-                .WriteTo.File(Path.Combine(LogFolder, "moss365-.log"), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30, shared: true,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}");
+                .WriteTo.Sink(new DatabaseLogSink(Database));
+            Database.CleanupTechnicalLog(DateTimeOffset.Now.AddDays(-TechnicalLogDays));
 
             // Warnings and errors also in the Windows event log (Application, source Moss365). An administrator
             // registers the source once: New-EventLog -LogName Application -Source Moss365. Without the source only the
@@ -99,5 +100,32 @@ public sealed partial class ManagementState : IDisposable
 
         Log.Information("Automatisch vernieuwen");
         return StartLoading(LoadKind.AdAndEntra);
+    }
+}
+
+/// <summary>Writes the technical log into the tenant database (table TechnicalLog).</summary>
+internal sealed class DatabaseLogSink(Database db) : Serilog.Core.ILogEventSink
+{
+    // Strings without quotes, as in the file of older versions
+    private static readonly Serilog.Formatting.Display.MessageTemplateTextFormatter Formatter = new("{Message:lj}", System.Globalization.CultureInfo.InvariantCulture);
+
+    public void Emit(Serilog.Events.LogEvent logEvent)
+    {
+        try
+        {
+            using var writer = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
+            Formatter.Format(logEvent, writer);
+            var message = writer.ToString();
+            if (logEvent.Exception is { } ex)
+            {
+                message += " | " + ex.GetType().Name + ": " + ex.Message;
+            }
+
+            db.WriteTechnicalLog(logEvent.Timestamp, logEvent.Level.ToString(), message);
+        }
+        catch (Exception)
+        {
+            // The technical log never stops the app
+        }
     }
 }

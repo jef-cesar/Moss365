@@ -18,20 +18,28 @@ public partial class MainWindow : Window
         services.AddBlazorWebViewDeveloperTools();
 #endif
         services.AddSingleton<IAppEnvironment>(environment);
-        services.AddSingleton<SignInStatus>();
-        services.AddSingleton<IConnectionFactory, ConnectionFactory>();
-        services.AddSingleton<ManagementState>();
+
+        // One state per tenant, each with its own connections, tokens and sign-in (R3); the screens get the open tenant.
+        // Switching reloads the page, which gives the screens a new scope with the other tenant.
+        var hub = new TenantHub(environment, tenant =>
+        {
+            var signIn = new SignInStatus();
+            return new ManagementState(environment, new ConnectionFactory(signIn), signIn, tenant);
+        });
+        services.AddSingleton(hub);
+        services.AddScoped(sp => sp.GetRequiredService<TenantHub>().Current);
         var provider = services.BuildServiceProvider();
         Resources.Add("services", provider);
 
         InitializeComponent();
-        Closing += (_, e) => e.Cancel = !CanClose(provider.GetRequiredService<ManagementState>());
+        Closing += (_, e) => e.Cancel = !CanClose(hub);
+        Closed += (_, _) => hub.Dispose();
     }
 
-    /// <summary>If something is still open (not saved, plan ready, form filled in), ask first.</summary>
-    private bool CanClose(ManagementState state)
+    /// <summary>If something is still open in any tenant (not saved, plan ready, form filled in), ask first.</summary>
+    private bool CanClose(TenantHub hub)
     {
-        var open = state.Pending.Everything;
+        var open = hub.Opened.SelectMany(s => s.Pending.Everything.Select(i => i with { Screen = $"{s.Tenant.Name}: {(i.Screen.Length > 0 ? i.Screen : i.FilePath)}" })).ToList();
         if (open.Count == 0)
         {
             return true;

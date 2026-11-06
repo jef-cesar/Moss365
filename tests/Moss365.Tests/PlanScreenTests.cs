@@ -61,7 +61,7 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
     private static void Confirm(IRenderedFragment cut)
     {
         cut.FindAll("button").First(b => b.TextContent.StartsWith("Uitvoeren (", StringComparison.Ordinal)).Click();
-        cut.FindAll("button").First(b => b.TextContent == "Ja, uitvoeren").Click();
+        cut.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).Click();
     }
 
     private static IElement Field(IRenderedFragment cut, string label, string kind = "input")
@@ -80,7 +80,7 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
         // Run first, then confirm: only then does something happen
         cut.FindAll("button").First(b => b.TextContent.StartsWith("Uitvoeren (", StringComparison.Ordinal)).Click();
         Assert.Empty(_factory.Executed);
-        cut.FindAll("button").First(b => b.TextContent == "Ja, uitvoeren").Click();
+        cut.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).Click();
 
         cut.WaitForAssertion(() => Assert.Contains("gelukt,", cut.Markup));
         // The synchronised group via AD (once), the mail groups via Exchange
@@ -500,7 +500,7 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         // Saved as an inventory, and the app finds that folder
         Assert.NotNull(State.SavedInventory);
-        Assert.True(File.Exists(Path.Combine(State.SavedInventory!, InventoryLoader.AdUsers)));
+        Assert.True(State.Files.Exists($"{State.SavedInventory}/{InventoryLoader.AdUsers}"));
         Assert.Contains(State.Folders, m => m.EndsWith("-live", StringComparison.Ordinal));
 
         // Away and back to the screen: the progress is still there; the menu shows the status

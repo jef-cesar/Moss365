@@ -68,7 +68,7 @@ public sealed class ScriptExecutor : IScriptExecutor
         var arguments = new List<string>
         {
             "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", startup,
-            "-Script", command.Script.FilePath, "-Invoer", input, "-Uitvoer", files, "-Verbinding", string.Join(',', departments),
+            "-Script", command.ScriptPath ?? command.Script.FilePath, "-Invoer", input, "-Uitvoer", files, "-Verbinding", string.Join(',', departments),
         };
         if (command.Preview)
         {

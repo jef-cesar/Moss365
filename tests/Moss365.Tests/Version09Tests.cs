@@ -347,24 +347,28 @@ public sealed class Version09Tests : IDisposable
 
     // ---------------------------------------------------------------- back-ups
 
+    private IFileStore? _store;
+
+    private IFileStore Store() => _store ??= new DatabaseFileStore(new Database(Path.Combine(_folder, "tenant.db")));
+
     [Fact]
     public void BackupOnlyOnDifferenceAndRestore()
     {
         var d = Data();
         var ca = d.ConditionalAccess!;
-        var first = CaBackup.Save(ca, _folder, Now);
+        var first = CaBackup.Save(ca, Store(), Now);
         Assert.NotNull(first);
-        Assert.Null(CaBackup.Save(ca, _folder, Now.AddHours(1))); // nothing changed
+        Assert.Null(CaBackup.Save(ca, Store(), Now.AddHours(1))); // nothing changed
 
         // Someone turns off "Block abroad" and deletes "Block legacy"
         var country = WithJson(B(d, "ca-land") with { Status = CaStatus.Off });
         var now = ca with { Policies = ca.Policies.Where(b => b.Id != "ca-legacy").Select(b => b.Id == "ca-land" ? country : b).ToList() };
-        Assert.NotNull(CaBackup.Save(now, _folder, Now.AddDays(1)));
+        Assert.NotNull(CaBackup.Save(now, Store(), Now.AddDays(1)));
 
-        var list = CaBackup.Items(_folder);
+        var list = CaBackup.Items(Store());
         Assert.Equal(2, list.Count);
         Assert.Equal(Now.AddDays(1), list[0].Time);
-        var old = CaBackup.Read(list[1].FilePath);
+        var old = CaBackup.Read(Store(), list[1].FilePath);
         Assert.Equal(4, old.Policies.Count);
         Assert.Equal(2, old.Locations.Count);
 
@@ -390,7 +394,7 @@ public sealed class Version09Tests : IDisposable
         Assert.Equal("Verouderd blokkeren", Json(legacy)["displayName"]!.GetValue<string>());
 
         // A policy without JSON (not from Graph): no backup that would later lose something
-        Assert.Null(CaBackup.Save(TestData.Ca(new DateTimeOffset(Now)), Path.Combine(_folder, "ander"), Now));
+        Assert.Null(CaBackup.Save(TestData.Ca(new DateTimeOffset(Now)), new DatabaseFileStore(new Database(Path.Combine(_folder, "other.db"))), Now));
     }
 
     // ---------------------------------------------------------------- refreshing and Graph

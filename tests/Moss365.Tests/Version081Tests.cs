@@ -393,7 +393,7 @@ public sealed class Version081Tests : IDisposable
     {
         Directory.CreateDirectory(_folder);
         var db = new Moss365.Core.Storage.Database(Path.Combine(_folder, "moss365.db"));
-        Assert.Equal(2, db.Version);
+        Assert.Equal(Moss365.Core.Storage.Database.Migrations.Count, db.Version);
         var today = new DateOnly(2026, 10, 31);
         db.SaveKpiSnapshot(today.AddDays(-35), new Dictionary<string, int> { ["actief"] = 150 });
         db.SaveKpiSnapshot(today.AddDays(-10), new Dictionary<string, int> { ["actief"] = 155 });

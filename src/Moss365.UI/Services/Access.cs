@@ -23,7 +23,7 @@ public static class Access
             "opkuis" => Permission.Manage,
             "scripts" => Permission.Scripts,
             "logboek" => Permission.ChangeLogOwn,
-            "organisatie" => Permission.Settings,
+            "organisatie" or "tenants" => Permission.Settings,
             _ => Permission.View,
         };
     }

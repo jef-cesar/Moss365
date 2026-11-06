@@ -30,17 +30,15 @@ public sealed class WindowsEnvironment : IAppEnvironment
         _ = MigratedOf;
     }
 
-    public string InventoryBase { get; } = Path.Combine(Local, "Inventaris");
+    public string Root => Local;
 
     public string ConfigDefaultPath { get; } = DefaultConfig();
-
-    public string ConfigUsersPath { get; } = Path.Combine(Local, "organisatie.json");
 
     public string ExportFolder { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Moss365");
 
     /// <summary>
     /// The bundled organisatie.json next to the exe; if it is missing (e.g. Moss365.exe started straight from the zip),
-    /// the copy inside the exe, unpacked in the data folder.
+    /// the copy inside the exe, unpacked in the temporary folder.
     /// </summary>
     private static string DefaultConfig()
     {
@@ -58,8 +56,9 @@ public sealed class WindowsEnvironment : IAppEnvironment
                 return besideExe;
             }
 
-            Directory.CreateDirectory(Local);
-            var copy = Path.Combine(Local, "organisatie-meegeleverd.json");
+            var temp = Path.Combine(Path.GetTempPath(), "Moss365");
+            Directory.CreateDirectory(temp);
+            var copy = Path.Combine(temp, "organisatie-meegeleverd.json");
             using (var target = File.Create(copy))
             {
                 source.CopyTo(target);

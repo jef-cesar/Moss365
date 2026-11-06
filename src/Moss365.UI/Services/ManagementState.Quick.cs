@@ -66,15 +66,15 @@ public sealed partial class ManagementState
         {
             if (components.HasFlag(InventoryComponent.Ad) && _adSnapshot is { } a)
             {
-                File.WriteAllLines(Path.Combine(folder, AdSnapshotFile), new[]
+                Files.WriteText($"{folder}/{AdSnapshotFile}", string.Join('\n', new[]
                 {
                     a.Snapshot.DomainController, a.Snapshot.HighestUsn.ToString(CultureInfo.InvariantCulture), a.Full.ToString("o", CultureInfo.InvariantCulture),
-                });
+                }));
             }
 
             if (components.HasFlag(InventoryComponent.Entra) && _graphDelta is { } g)
             {
-                File.WriteAllLines(Path.Combine(folder, EntraDeltaFile), new[] { g.Link, g.Full.ToString("o", CultureInfo.InvariantCulture) });
+                Files.WriteText($"{folder}/{EntraDeltaFile}", string.Join('\n', g.Link, g.Full.ToString("o", CultureInfo.InvariantCulture)));
             }
         }
         catch (Exception)
@@ -95,9 +95,9 @@ public sealed partial class ManagementState
         try
         {
             if (OnlyFolder(InventoryLoader.AdUsers, InventoryLoader.AdGroups, InventoryLoader.AdGroupMembers) is { } adFolder
-                && File.Exists(Path.Combine(adFolder, AdSnapshotFile)))
+                && Files.ReadText($"{adFolder}/{AdSnapshotFile}") is { } adText)
             {
-                var r = File.ReadAllLines(Path.Combine(adFolder, AdSnapshotFile));
+                var r = adText.Split('\n');
                 if (r.Length >= 3 && long.TryParse(r[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var usn)
                     && DateTime.TryParse(r[2], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var full))
                 {
@@ -106,9 +106,9 @@ public sealed partial class ManagementState
             }
 
             if (OnlyFolder(InventoryLoader.EntraGroups, InventoryLoader.EntraGroupMembers) is { } entraFolder
-                && File.Exists(Path.Combine(entraFolder, EntraDeltaFile)))
+                && Files.ReadText($"{entraFolder}/{EntraDeltaFile}") is { } entraText)
             {
-                var r = File.ReadAllLines(Path.Combine(entraFolder, EntraDeltaFile));
+                var r = entraText.Split('\n');
                 if (r.Length >= 2 && r[0].StartsWith("https://graph.microsoft.com/", StringComparison.OrdinalIgnoreCase)
                     && DateTime.TryParse(r[1], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var full))
                 {
@@ -127,6 +127,6 @@ public sealed partial class ManagementState
     private string? OnlyFolder(params string[] files)
     {
         var folders = files.Select(b => Data.Sources.FirstOrDefault(x => x.File == b)?.Folder).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        return folders.Count == 1 && folders[0] is { } m && Directory.Exists(m) ? m : null;
+        return folders.Count == 1 && folders[0] is { } m && Files.List(m + "/").Count > 0 ? m : null;
     }
 }

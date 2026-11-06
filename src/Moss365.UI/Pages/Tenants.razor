@@ -1,0 +1,224 @@
+@page "/tenants"
+@using Moss365.Core.Storage
+@* The tenants of this installation (R3): each with its own database, connections, sign-in and colour. Removing a tenant
+   never deletes its data: its folder moves to tenants\removed. *@
+@inject ManagementState State
+@inject IServiceProvider Services
+@inject NavigationManager Nav
+
+<h1>Tenants</h1>
+
+<p class="kb-zacht">
+    Elke organisatie (tenant) heeft een eigen databank, eigen verbindingen en een eigen aanmelding. Lijsten, plannen,
+    exports en het logboek mengen nooit twee tenants. De kleur en de naam staan bovenaan, en elk plan vraagt bevestiging
+    met de naam van de tenant.
+</p>
+
+@if (Hub is not { } hub)
+{
+    <div class="kb-melding">Tenants beheren kan enkel in de Windows-app.</div>
+}
+else
+{
+    @foreach (var m in hub.Messages)
+    {
+        <div class="kb-melding">@m</div>
+    }
+
+    <table class="kb-tabel">
+        <thead><tr><th>Naam</th><th>Kleur</th><th>Tenant ID</th><th>Map</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var t in hub.Tenants)
+            {
+                var current = t.Id == State.Tenant.Id;
+                <tr>
+                    <td>
+                        @if (editing == t.Id)
+                        {
+                            <input class="kb-invoer" @bind="editName" aria-label="Naam" />
+                        }
+                        else
+                        {
+                            <strong style="color: @t.Colour">@t.Name</strong> @if (current) { <span class="kb-label">open</span> }
+                        }
+                    </td>
+                    <td>
+                        @if (editing == t.Id)
+                        {
+                            @foreach (var c in TenantColours.All)
+                            {
+                                <button class="kb-tenant-staal" style="--kb-tenant: @c" aria-pressed="@(c == editColour)" aria-label="Kleur @c" @onclick="() => editColour = c"></button>
+                            }
+                        }
+                        else
+                        {
+                            <span class="kb-tenant-staal" style="--kb-tenant: @t.Colour"></span>
+                        }
+                    </td>
+                    <td><code>@(t.TenantId ?? "(nog niet gekend)")</code></td>
+                    <td class="kb-zacht"><code>tenants\@t.Id</code></td>
+                    <td>
+                        <span class="kb-filters">
+                            @if (editing == t.Id)
+                            {
+                                <button class="kb-knop kb-klein kb-primair" @onclick="() => Save(hub, t)">Bewaren</button>
+                                <button class="kb-knop kb-klein" @onclick="() => editing = null">Annuleren</button>
+                            }
+                            else
+                            {
+                                @if (!current)
+                                {
+                                    <button class="kb-knop kb-klein kb-primair" @onclick="() => Open(hub, t)">Openen</button>
+                                }
+                                <button class="kb-knop kb-klein" @onclick="() => Edit(t)">Naam en kleur</button>
+                                <button class="kb-knop kb-klein" @onclick="() => Backup(hub, t)">Back-up</button>
+                                @if (!current)
+                                {
+                                    <button class="kb-knop kb-klein kb-gevaar" @onclick="() => { removing = t.Id; confirmName = string.Empty; }">Uit de lijst halen</button>
+                                }
+                            }
+                        </span>
+                        @if (removing == t.Id)
+                        {
+                            <div class="kb-melding kb-fout">
+                                De databank van <strong>@t.Name</strong> blijft bewaard in <code>tenants\removed</code>; de app toont de
+                                tenant niet meer. Typ de naam om te bevestigen.
+                                <input class="kb-invoer" @bind="confirmName" @bind:event="oninput" aria-label="Naam ter bevestiging" />
+                                <button class="kb-knop kb-klein kb-gevaar" disabled="@(confirmName.Trim() != t.Name)" @onclick="() => Remove(hub, t)">Uit de lijst halen</button>
+                                <button class="kb-knop kb-klein" @onclick="() => removing = null">Annuleren</button>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <section class="kb-kaart">
+        <h2>Tenant toevoegen</h2>
+        <div class="kb-rij">
+            <label>Naam <input class="kb-invoer" @bind="newName" placeholder="bv. Contoso" /></label>
+            <button class="kb-knop kb-primair" disabled="@(newName.Trim().Length == 0)" @onclick="() => Add(hub)">Toevoegen</button>
+        </div>
+        <p class="kb-zacht">
+            Een nieuwe tenant begint leeg, met de meegeleverde organisatie. Open hem en stel bij Verbindingen de Tenant ID en
+            de Client ID in.
+        </p>
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Back-up terugzetten</h2>
+        <p class="kb-zacht">
+            Een back-up is de volledige databank van een tenant in één bestand (in de exportmap). Terugzetten maakt altijd
+            een nieuwe tenant; een bestaande tenant wordt nooit overschreven. Een back-up bevat persoonsgegevens: bewaar ze
+            op een plek met beperkte toegang.
+        </p>
+        <div class="kb-rij">
+            <label>Bestand <input class="kb-invoer" @bind="restoreFile" placeholder="Volledig pad naar Moss365-....db" /></label>
+            <label>Naam <input class="kb-invoer" @bind="restoreName" placeholder="bv. Contoso (terug)" /></label>
+            <button class="kb-knop" disabled="@(restoreFile.Trim().Length == 0 || restoreName.Trim().Length == 0)" @onclick="() => Restore(hub)">Terugzetten als nieuwe tenant</button>
+        </div>
+    </section>
+
+    @if (message is not null)
+    {
+        <div class="kb-melding @(error ? "kb-fout" : null)">@message</div>
+    }
+}
+
+@code {
+    private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
+
+    private string newName = string.Empty;
+    private string? editing;
+    private string editName = string.Empty;
+    private string editColour = TenantColours.All[0];
+    private string? removing;
+    private string confirmName = string.Empty;
+    private string? message;
+    private bool error;
+    private string restoreFile = string.Empty;
+    private string restoreName = string.Empty;
+
+    private void Backup(TenantHub hub, TenantInfo t)
+    {
+        try
+        {
+            var path = hub.Backup(t, Path.Combine(State.AppEnvironment.ExportFolder, "Back-ups"));
+            (message, error) = ($"Back-up van \"{t.Name}\" bewaard: {path}", false);
+            State.AppEnvironment.ShowFile(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            (message, error) = ("Back-up mislukt: " + ex.Message, true);
+        }
+    }
+
+    private void Restore(TenantHub hub)
+    {
+        try
+        {
+            var t = hub.Restore(restoreFile.Trim().Trim('"'), restoreName);
+            (message, error) = ($"Teruggezet als \"{t.Name}\". Open de tenant om hem te gebruiken.", false);
+            restoreFile = restoreName = string.Empty;
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or InvalidDataException or UnauthorizedAccessException)
+        {
+            (message, error) = (ex.Message.Split(" (Parameter")[0], true);
+        }
+    }
+
+    private void Add(TenantHub hub)
+    {
+        try
+        {
+            var t = hub.Add(newName);
+            newName = string.Empty;
+            (message, error) = ($"Tenant \"{t.Name}\" toegevoegd. Open hem om te verbinden.", false);
+        }
+        catch (ArgumentException ex)
+        {
+            (message, error) = (ex.Message.Split(" (Parameter")[0], true);
+        }
+    }
+
+    private void Edit(TenantInfo t) => (editing, editName, editColour) = (t.Id, t.Name, t.Colour);
+
+    private void Save(TenantHub hub, TenantInfo t)
+    {
+        try
+        {
+            hub.Update(t with { Name = editName, Colour = editColour });
+            editing = null;
+            (message, error) = (null, false);
+            if (t.Id == State.Tenant.Id)
+            {
+                Nav.NavigateTo("tenants", forceLoad: true);
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            (message, error) = (ex.Message.Split(" (Parameter")[0], true);
+        }
+    }
+
+    private void Open(TenantHub hub, TenantInfo t)
+    {
+        hub.Switch(t.Id);
+        Nav.NavigateTo(string.Empty, forceLoad: true);
+    }
+
+    private void Remove(TenantHub hub, TenantInfo t)
+    {
+        try
+        {
+            var folder = hub.Remove(t.Id);
+            removing = null;
+            (message, error) = ($"\"{t.Name}\" staat niet meer in de lijst." + (folder is null ? string.Empty : $" De gegevens staan in {folder}."), false);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            (message, error) = (ex.Message, true);
+        }
+    }
+}
