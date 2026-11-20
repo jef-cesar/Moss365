@@ -396,9 +396,17 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
     /// <summary>Read a file the app still has open (database, technical log): otherwise Windows refuses.</summary>
     private static string ReadShared(string path)
     {
-        using var f = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        using var r = new StreamReader(f, System.Text.Encoding.Latin1);
-        return r.ReadToEnd();
+        try
+        {
+            using var f = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var r = new StreamReader(f, System.Text.Encoding.Latin1);
+            return r.ReadToEnd();
+        }
+        catch (FileNotFoundException)
+        {
+            // A write-ahead log that SQLite removed after the listing: its content is in the database, which is read too
+            return string.Empty;
+        }
     }
 
     /// <summary>Everything the database has on disk (also the WAL file), as text: to prove that a secret is not in

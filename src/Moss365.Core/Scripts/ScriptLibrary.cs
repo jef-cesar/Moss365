@@ -1,3 +1,4 @@
+using Moss365.Core.Changes;
 using Moss365.Core.Storage;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -48,12 +49,63 @@ public static class ScriptLibrary
     /// name.</summary>
     public static IReadOnlyList<ScriptFile> Load(ScriptFolders folders)
     {
-        var output = new List<ScriptFile>(BuiltIns(folders));
+        var output = new List<ScriptFile>(LibraryScripts(folders));
         output.AddRange(folders.Store.List(ScriptFolders.Own + "/")
             .Where(f => f.Path.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase) && f.Path.Count(c => c == '/') == 2)
             .Select(f => ReadStored(folders.Store, f.Path)));
         return output.OrderBy(s => s.Header.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
+
+    /// <summary>
+    /// The library: the shipped scripts, and for each the copy downloaded with Update library (R8) when that one is
+    /// newer or pinned in this tenant (a pinned script stays on its version, also after an update of the app).
+    /// </summary>
+    private static IEnumerable<ScriptFile> LibraryScripts(ScriptFolders folders)
+    {
+        var shipped = BuiltIns(folders).ToDictionary(s => (s.Folder.Length > 0 ? s.Folder + "/" : string.Empty) + s.FileName, StringComparer.OrdinalIgnoreCase);
+        var pins = LibraryUpdate.Pins(folders.Store).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var f in folders.Store.List(LibraryUpdate.Folder + "/").Where(f => f.Path.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase)))
+        {
+            var relative = f.Path[(LibraryUpdate.Folder.Length + 1)..];
+            var stored = ReadStored(folders.Store, f.Path);
+            var folder = relative.Contains('/') ? relative[..relative.LastIndexOf('/')] : string.Empty;
+            stored = stored with { BuiltIn = true, Folder = folder };
+            if (!stored.Header.FromBlock)
+            {
+                continue;
+            }
+
+            if (!shipped.TryGetValue(relative, out var builtIn) || pins.Contains(relative) || Versions.IsNewer(stored.Header.Version, builtIn.Header.Version))
+            {
+                shipped[relative] = stored;
+            }
+        }
+
+        return shipped.Values;
+    }
+
+    /// <summary>A script of the library in the store (downloaded or pinned), not a file on disk.</summary>
+    public static bool IsLibrary(string path)
+        => FileStorePaths.Normalise(path).StartsWith(LibraryUpdate.Folder + "/", StringComparison.OrdinalIgnoreCase) && !Path.IsPathRooted(path);
+
+    /// <summary>
+    /// Pins a script of the library in this tenant: its current text is kept in the tenant database, so that it stays
+    /// on this version (also when the app brings a newer one). Releasing it follows the library again.
+    /// </summary>
+    public static void Pin(ScriptFolders folders, ScriptFile script, bool pinned)
+    {
+        var relative = (script.Folder.Length > 0 ? script.Folder + "/" : string.Empty) + script.FileName;
+        if (pinned && !IsLibrary(script.FilePath))
+        {
+            var bytes = File.ReadAllBytes(script.FilePath);
+            LibraryUpdate.Take(folders, new IndexEntry(relative, script.Header.Name, script.Header.Version, ScriptIndex.Sha256(bytes)), bytes);
+        }
+
+        LibraryUpdate.Pin(folders, relative, pinned);
+    }
+
+    public static bool IsPinned(ScriptFolders folders, ScriptFile script)
+        => LibraryUpdate.Pins(folders.Store).Contains((script.Folder.Length > 0 ? script.Folder + "/" : string.Empty) + script.FileName, StringComparer.OrdinalIgnoreCase);
 
     private static IEnumerable<ScriptFile> BuiltIns(ScriptFolders folders)
     {
@@ -88,7 +140,7 @@ public static class ScriptLibrary
 
     /// <summary>The text of a script, wherever it is.</summary>
     public static string Text(ScriptFolders folders, ScriptFile script)
-        => script.BuiltIn || !IsOwn(script.FilePath) ? File.ReadAllText(script.FilePath) : folders.Store.ReadText(script.FilePath) ?? string.Empty;
+        => IsOwn(script.FilePath) || IsLibrary(script.FilePath) ? folders.Store.ReadText(script.FilePath) ?? string.Empty : File.ReadAllText(script.FilePath);
 
     /// <summary>
     /// A file on disk with the text of the script, for PowerShell: the built-in file itself, or the own script written
@@ -96,7 +148,7 @@ public static class ScriptLibrary
     /// </summary>
     public static string ToDisk(ScriptFolders folders, ScriptFile script, string folder)
     {
-        if (script.BuiltIn || !IsOwn(script.FilePath))
+        if (!IsOwn(script.FilePath) && !IsLibrary(script.FilePath))
         {
             return script.FilePath;
         }

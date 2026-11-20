@@ -75,6 +75,12 @@ public sealed record ScriptHeader
 
     /// <summary>The header came from a MOSS365 block (otherwise derived from the param() block).</summary>
     public bool FromBlock { get; init; }
+
+    /// <summary>The version of the script (R8: the library index and pinning per tenant), e.g. "1.2"; empty when not set.</summary>
+    public string Version { get; init; } = string.Empty;
+
+    /// <summary>The lowest version of Moss365 the script needs, e.g. "0.18.0"; empty when any version will do.</summary>
+    public string MinimumApp { get; init; } = string.Empty;
 }
 
 /// <summary>Reads and writes the header and the param() block of a script. No PowerShell needed.</summary>
@@ -111,19 +117,33 @@ public static class ScriptText
                 continue;
             }
 
-            var key = r[..dp].Trim().ToLowerInvariant();
+            // English keys since R8 (0.18); the Dutch keys of older scripts are still read
+            var key = r[..dp].Trim().ToLowerInvariant().Replace(" ", string.Empty, StringComparison.Ordinal) switch
+            {
+                "naam" => "name",
+                "omschrijving" => "description",
+                "verbinding" => "connection",
+                "schrijft" => "writes",
+                "duur" => "duration",
+                "variabele" => "variable",
+                "versie" => "version",
+                "minimumapp" or "minimumversie" => "minimumapp",
+                var k => k,
+            };
             var value = r[(dp + 1)..].Trim();
             header = key switch
             {
-                "naam" => header with { Name = value },
-                "omschrijving" => header with { Description = header.Description.Length == 0 ? value : header.Description + " " + value },
-                "verbinding" => header with { Connection = ReadConnection(value) },
-                "schrijft" => header with { Writes = value.StartsWith("j", StringComparison.OrdinalIgnoreCase) },
+                "name" => header with { Name = value },
+                "description" => header with { Description = header.Description.Length == 0 ? value : header.Description + " " + value },
+                "connection" => header with { Connection = ReadConnection(value) },
+                "writes" => header with { Writes = value.StartsWith("j", StringComparison.OrdinalIgnoreCase) || value.StartsWith("y", StringComparison.OrdinalIgnoreCase) },
                 "powershell" => header with { PowerShell = value is "7" or "5.1" ? value : string.Empty },
-                "duur" => header with { DurationMinutes = int.TryParse(value, out var d) && d > 0 ? Math.Min(d, 24 * 60) : 30 },
+                "duration" => header with { DurationMinutes = int.TryParse(value, out var d) && d > 0 ? Math.Min(d, 24 * 60) : 30 },
+                "version" => header with { Version = value },
+                "minimumapp" => header with { MinimumApp = value.TrimStart('v', 'V') },
                 _ => header,
             };
-            if (key == "variabele" && ReadVariable(value) is { } v)
+            if (key == "variable" && ReadVariable(value) is { } v)
             {
                 variables.Add(v);
             }
@@ -174,14 +194,24 @@ public static class ScriptText
     {
         var sb = new StringBuilder();
         sb.Append(BlockStart).Append('\n');
-        sb.Append("Naam: ").Append(SingleLine(header.Name)).Append('\n');
+        sb.Append("Name: ").Append(SingleLine(header.Name)).Append('\n');
         if (header.Description.Length > 0)
         {
-            sb.Append("Omschrijving: ").Append(SingleLine(header.Description)).Append('\n');
+            sb.Append("Description: ").Append(SingleLine(header.Description)).Append('\n');
         }
 
-        sb.Append("Verbinding: ").Append(ConnectionText(header.Connection)).Append('\n');
-        sb.Append("Schrijft: ").Append(header.Writes ? "ja" : "nee").Append('\n');
+        if (header.Version.Length > 0)
+        {
+            sb.Append("Version: ").Append(SingleLine(header.Version)).Append('\n');
+        }
+
+        if (header.MinimumApp.Length > 0)
+        {
+            sb.Append("MinimumApp: ").Append(SingleLine(header.MinimumApp)).Append('\n');
+        }
+
+        sb.Append("Connection: ").Append(ConnectionText(header.Connection)).Append('\n');
+        sb.Append("Writes: ").Append(header.Writes ? "yes" : "no").Append('\n');
         if (header.PowerShell.Length > 0)
         {
             sb.Append("PowerShell: ").Append(header.PowerShell).Append('\n');
@@ -189,12 +219,12 @@ public static class ScriptText
 
         if (header.DurationMinutes != 30)
         {
-            sb.Append("Duur: ").Append(header.DurationMinutes.ToString(CultureInfo.InvariantCulture)).Append('\n');
+            sb.Append("Duration: ").Append(header.DurationMinutes.ToString(CultureInfo.InvariantCulture)).Append('\n');
         }
 
         foreach (var v in header.Variables)
         {
-            sb.Append("Variabele: ").Append(v.Name).Append(" | ").Append(v.Kind).Append(" | ").Append(v.Required ? "verplicht" : "optioneel")
+            sb.Append("Variable: ").Append(v.Name).Append(" | ").Append(v.Kind).Append(" | ").Append(v.Required ? "required" : "optional")
                 .Append(" | ").Append(SingleLine(v.Question).Replace("|", "/", StringComparison.Ordinal))
                 .Append(" | ").Append(SingleLine(v.Default ?? string.Empty).Replace("|", "/", StringComparison.Ordinal))
                 .Append(" | ").Append(string.Join(';', v.Options ?? Array.Empty<string>()));
@@ -207,9 +237,9 @@ public static class ScriptText
 
     public static string ConnectionText(ScriptConnection v)
     {
-        var share = new[] { (ScriptConnection.Exchange, "Exchange"), (ScriptConnection.Graph, "Graph"), (ScriptConnection.Ad, "AD"), (ScriptConnection.Local, "Lokaal") }
+        var share = new[] { (ScriptConnection.Exchange, "Exchange"), (ScriptConnection.Graph, "Graph"), (ScriptConnection.Ad, "AD"), (ScriptConnection.Local, "Local") }
             .Where(x => v.HasFlag(x.Item1)).Select(x => x.Item2).ToList();
-        return share.Count == 0 ? "Lokaal" : string.Join(", ", share);
+        return share.Count == 0 ? "Local" : string.Join(", ", share);
     }
 
     public static ScriptConnection ReadConnection(string text)
@@ -222,7 +252,7 @@ public static class ScriptText
                 "exchange" => ScriptConnection.Exchange,
                 "graph" => ScriptConnection.Graph,
                 "ad" => ScriptConnection.Ad,
-                "lokaal" => ScriptConnection.Local,
+                "lokaal" or "local" => ScriptConnection.Local,
                 _ => ScriptConnection.No,
             };
         }
@@ -544,7 +574,7 @@ public static class ScriptText
         }
 
         var kind = d.Length > 1 && LegacyNames.TryParseEnum<VariableKind>(d[1], out var s) ? s : VariableKind.Text;
-        var requiredValue = d.Length > 2 && d[2].StartsWith("verplicht", StringComparison.OrdinalIgnoreCase);
+        var requiredValue = d.Length > 2 && (d[2].StartsWith("verplicht", StringComparison.OrdinalIgnoreCase) || d[2].StartsWith("required", StringComparison.OrdinalIgnoreCase));
         var options = d.Length > 5 && d[5].Length > 0 ? d[5].Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) : null;
         return new ScriptVariable(d[0], kind, requiredValue, d.Length > 3 ? d[3] : string.Empty, d.Length > 4 && d[4].Length > 0 ? d[4] : null, options);
     }

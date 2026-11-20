@@ -1,9 +1,10 @@
 <#MOSS365
-Naam: Office-lockbestanden opruimen
-Omschrijving: Zoekt Office-lockbestanden (~$...) op de bestandsserver en verwijdert ze
-Verbinding: Lokaal
-Schrijft: ja
-Variabele: Map | Map | verplicht | Map om te doorzoeken | \\fileserver\share\teams | 
+Name: Office-lockbestanden opruimen
+Description: Zoekt Office-lockbestanden (~$...) op de bestandsserver en verwijdert ze
+Version: 1.0
+Connection: Local
+Writes: yes
+Variable: Map | Folder | required | Map om te doorzoeken | \\fileserver\share\teams | 
 #>
 <#
 .SYNOPSIS

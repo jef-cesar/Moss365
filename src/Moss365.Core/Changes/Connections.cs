@@ -232,6 +232,9 @@ public interface IConnectionFactory
 
     /// <summary>The domain of this PC and its domain controller, or null (not joined to a domain, or not Windows).</summary>
     Setup.LocalDomain? FindLocalDomain() => null;
+
+    /// <summary>Where Update library gets the scripts (R8): a shared folder, or (null) this repository on GitHub.</summary>
+    Scripts.IScriptLibrarySource? ScriptLibrary(string? folder) => null;
 }
 
 public enum CheckStatus

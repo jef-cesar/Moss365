@@ -55,6 +55,34 @@ public sealed class ScriptsTests : IDisposable
     }
 
     [Fact]
+    public void TheEnglishHeaderReadsTheSameAndIsWritten()
+    {
+        // R8: English keys; the Dutch header of older scripts (above) reads the same
+        var english = ScriptText.MakeBlock(ScriptText.Read(WithHeader, "Export-Agenda.ps1") with { Version = "1.2", MinimumApp = "0.18.0" });
+        Assert.Contains("Name: Agenda-export", english, StringComparison.Ordinal);
+        Assert.Contains("Connection: Exchange, Graph", english, StringComparison.Ordinal);
+        Assert.Contains("Writes: no", english, StringComparison.Ordinal);
+        Assert.Contains("Variable: Postvak | Mailbox | required | Welk postvak? |  | ", english, StringComparison.Ordinal);
+        Assert.DoesNotContain("Naam:", english, StringComparison.Ordinal);
+
+        var back = ScriptText.Read(english + "\nparam([string]$Postvak)", "Export-Agenda.ps1");
+        var dutch = ScriptText.Read(WithHeader, "Export-Agenda.ps1");
+        Assert.Equal(("1.2", "0.18.0"), (back.Version, back.MinimumApp));
+        Assert.Equal((dutch.Name, dutch.Description, dutch.Connection, dutch.Writes, dutch.PowerShell, dutch.DurationMinutes),
+            (back.Name, back.Description, back.Connection, back.Writes, back.PowerShell, back.DurationMinutes));
+        Assert.Equal(dutch.Variables, back.Variables, new VariableComparer());
+        Assert.True(ScriptText.Read("<#MOSS365\nName: x\nWrites: yes\nConnection: Local\n#>", "x.ps1").Writes);
+    }
+
+    private sealed class VariableComparer : IEqualityComparer<ScriptVariable>
+    {
+        public bool Equals(ScriptVariable? x, ScriptVariable? y) => x is not null && y is not null && x.Name == y.Name && x.Kind == y.Kind
+            && x.Required == y.Required && x.Question == y.Question && x.Default == y.Default && (x.Options ?? Array.Empty<string>()).SequenceEqual(y.Options ?? Array.Empty<string>());
+
+        public int GetHashCode(ScriptVariable obj) => obj.Name.GetHashCode(StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WithoutHeaderDeriveFromParamAndHelp()
     {
         const string text = """

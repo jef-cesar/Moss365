@@ -1,0 +1,14 @@
+{
+  "format": 1,
+  "scripts": [
+    {
+      "path": "FileServer/Remove-OfficeLockFiles.ps1",
+      "name": "Office-lockbestanden opruimen",
+      "version": "1.0",
+      "sha256": "42ea24f3456b7c83663301d78e86d86fcdf4e1dfab797daa7e2e11033dbe6f61",
+      "minimumApp": "",
+      "writes": true,
+      "connection": "Local"
+    }
+  ]
+}

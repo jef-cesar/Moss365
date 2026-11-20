@@ -2,6 +2,26 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.18.0
+
+The script library from this repository (step R8 of the [roadmap](docs/roadmap-1.0.md)). Closes #10.
+
+- **Bibliotheek bijwerken** (Scripts): shows which scripts in `scripts/` of the repository are new or changed for this
+  tenant, with the difference line by line, and downloads after confirmation. New scripts reach you without a new
+  version of the app.
+- **Checked**: `scripts/index.json` lists every script with its version and SHA-256. A downloaded script whose SHA-256
+  differs from the index is refused; so is a path outside the library. From 1.0 the scripts and the index are also
+  signed (U8). A downloaded script never runs by itself: as always, first a preview and a confirmation.
+- **Pinned per tenant**: a pinned script stays on its version in that tenant, also when the app or the library brings a
+  newer one. Release it to follow the library again.
+- A script can ask for a minimum version of Moss365 (`MinimumApp`); an older app does not offer it.
+- The update goes to the change log (which scripts, which version, which SHA-256).
+- **Script headers in English**: `Name`, `Description`, `Version`, `MinimumApp`, `Connection`, `Writes`, `Variable`.
+  Scripts with the Dutch header (`Naam`, `Verbinding`, ...) keep working; the app writes the English one when you save.
+- The source of the library follows the own source of the updates (a shared folder), or GitHub.
+- The tests check every script in `scripts/`: ASCII only, a header with a version, `-WhatIf` for a script that
+  changes something, no fixed e-mail addresses, and an index that matches. How to add one: `CONTRIBUTING.md`.
+
 ## 0.17.0
 
 Automatic updates (step R7 of the [roadmap](docs/roadmap-1.0.md), decision U4: Velopack). Closes #9.

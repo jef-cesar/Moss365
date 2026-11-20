@@ -1,0 +1,160 @@
+@using Moss365.Core.Scripts
+@* Update library (R8): what is new or changed in the script library of the repository, the difference, and downloading
+   after confirmation (each script checked against the SHA-256 in the index). Pinning per tenant. *@
+@inject ManagementState State
+@inject IServiceProvider Services
+
+<section class="kb-kaart" id="bibliotheek">
+    <h2>Bibliotheek bijwerken</h2>
+    <p class="kb-zacht">
+        Nieuwe en gewijzigde scripts uit de bibliotheek van Moss365 (<code>scripts/</code> in de repository), zonder de app bij te
+        werken. Elk script wordt nagekeken tegen zijn vingerafdruk in de index; een script dat niet klopt, wordt geweigerd. Een
+        gedownload script draait nooit vanzelf. Een vastgezet script blijft in <strong>@State.Tenant.Name</strong> op zijn versie.
+    </p>
+    <div class="kb-rij">
+        <button class="kb-knop kb-primair" disabled="@busy" @onclick="Check">Nakijken</button>
+        @if (State.LibraryWhere is { } where) { <span class="kb-zacht">Bron: @where</span> }
+    </div>
+
+    @if (changes is not null)
+    {
+        @if (changes.Count == 0)
+        {
+            <p class="kb-ok">De bibliotheek is bij: niets nieuws of gewijzigd.</p>
+        }
+        else
+        {
+            <table class="kb-tabel">
+                <thead><tr><th></th><th>Script</th><th>Nu</th><th>Nieuw</th><th>Wat</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var c in changes)
+                    {
+                        <tr>
+                            <td>@if (c.CanTake) { <input type="checkbox" aria-label="@c.Entry.Path" checked="@chosen.Contains(c.Entry.Path)" @onchange="e => Toggle(c, e.Value is true)" /> }</td>
+                            <td>@c.Entry.Name <div class="kb-zacht"><code>@c.Entry.Path</code></div></td>
+                            <td>@(c.CurrentVersion ?? "-")</td>
+                            <td>@c.Entry.Version @if (c.Entry.Writes) { <span class="kb-label">wijzigt</span> }</td>
+                            <td>@KindText(c)</td>
+                            <td>@if (c.Kind == LibraryChangeKind.Changed) { <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => ShowDiff(c)">Verschil</button> }</td>
+                        </tr>
+                        @if (diffFor == c.Entry.Path && diff is not null)
+                        {
+                            <tr><td colspan="6"><pre class="kb-nota kb-diff">@foreach (var line in diff) { <span class="@(line.StartsWith("+ ") ? "kb-plus" : line.StartsWith("- ") ? "kb-min" : null)">@line</span>@("\n") }</pre></td></tr>
+                        }
+                    }
+                </tbody>
+            </table>
+            @if (confirm)
+            {
+                <div class="kb-rij">
+                    <span>@chosen.Count script(s) downloaden in <strong>@State.Tenant.Name</strong>?</span>
+                    <button class="kb-knop kb-primair" disabled="@busy" @onclick="Take">Ja, downloaden</button>
+                    <button class="kb-knop" @onclick="() => confirm = false">Annuleren</button>
+                </div>
+            }
+            else
+            {
+                <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0 || busy)" @onclick="() => confirm = true">Downloaden (@chosen.Count)</button>
+            }
+        }
+    }
+
+    @if (done is not null) { <p class="kb-ok">@done</p> }
+    @foreach (var e in errors) { <div class="kb-melding kb-fout">@e</div> }
+
+    @if (Library.Count > 0)
+    {
+        <h3>Vastzetten in deze tenant</h3>
+        <ul class="kb-lijst-plat">
+            @foreach (var s in Library)
+            {
+                <li>
+                    <label><input type="checkbox" checked="@State.IsPinned(s)" @onchange="e => State.Pin(s, e.Value is true)" aria-label="Vastzetten @s.Header.Name" />
+                        @s.Header.Name <span class="kb-zacht">@(s.Header.Version.Length > 0 ? "versie " + s.Header.Version : string.Empty)</span></label>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<LibraryChange>? changes;
+    private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private IReadOnlyList<string>? diff;
+    private string? diffFor;
+    private string? done;
+    private bool busy;
+    private bool confirm;
+
+    private IReadOnlyList<ScriptFile> Library => State.ReadScripts().Where(s => s.BuiltIn).ToList();
+
+    /// <summary>The own source of the updates (a shared folder), when one is set.</summary>
+    private string? Folder => (Services.GetService(typeof(AppUpdates)) as AppUpdates)?.Settings.Source;
+
+    private async Task Check()
+    {
+        busy = true;
+        errors = Array.Empty<string>();
+        done = null;
+        diff = null;
+        try
+        {
+            changes = await State.CheckLibraryAsync(Folder);
+            chosen.Clear();
+            chosen.UnionWith(changes.Where(c => c.CanTake).Select(c => c.Entry.Path));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or System.Text.Json.JsonException or TaskCanceledException)
+        {
+            errors = new[] { "Nakijken mislukt: " + ex.Message };
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void Toggle(LibraryChange c, bool on)
+    {
+        if (on) { chosen.Add(c.Entry.Path); } else { chosen.Remove(c.Entry.Path); }
+        confirm = false;
+    }
+
+    private async Task ShowDiff(LibraryChange c)
+    {
+        busy = true;
+        try
+        {
+            diff = await State.LibraryDiffAsync(c);
+            diffFor = c.Entry.Path;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or InvalidOperationException)
+        {
+            errors = new[] { $"{c.Entry.Path}: {ex.Message}" };
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task Take()
+    {
+        busy = true;
+        confirm = false;
+        var list = changes!.Where(c => chosen.Contains(c.Entry.Path)).ToList();
+        errors = await State.TakeLibraryAsync(list);
+        done = $"{list.Count - errors.Count} script(s) gedownload.";
+        changes = await State.CheckLibraryAsync(Folder);
+        chosen.Clear();
+        busy = false;
+    }
+
+    private static string KindText(LibraryChange c) => c.Kind switch
+    {
+        LibraryChangeKind.New => "nieuw",
+        LibraryChangeKind.Changed => "gewijzigd",
+        LibraryChangeKind.TooNew => $"vraagt Moss365 {c.Entry.MinimumApp} of nieuwer",
+        _ => "vastgezet in deze tenant",
+    };
+}

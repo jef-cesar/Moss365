@@ -128,6 +128,9 @@ public sealed class ConnectionFactory : IConnectionFactory
         }
     }
 
+    public Core.Scripts.IScriptLibrarySource? ScriptLibrary(string? folder)
+        => string.IsNullOrWhiteSpace(folder) ? new Scripts.GitHubScriptSource(_http) : new Scripts.FolderScriptSource(folder.Trim());
+
     public Core.Setup.LocalDomain? FindLocalDomain() => Connections.Check.LocalDomainFinder.Find();
 
     private MsalTokenSource Token(ConnectionSettings settings)

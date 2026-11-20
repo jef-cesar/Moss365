@@ -5,11 +5,11 @@ under the EUPL-1.2. Public repository: never add personal or organisation data (
 check in `.github/workflows/privacy.yml` refuses e-mail addresses outside the example domains, public IPs and a secret
 blocklist). The maintainer does not write code: changes must be tested, documented and built by GitHub Actions.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R7 are done (0.17.0): code in English, one database
-per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption and updates. Open work is in the
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R8 are done (0.18.0): code in English, one database
+per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. Open work is in the
 GitHub issues (label `roadmap` per step, `limitation`, `test`). The interface texts are still Dutch and move to dictionaries in R15; the inventory
-keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots), and the script
-header keys (`<#MOSS365 Naam: ... #>`) are renamed in R8. Data saved before 0.11 uses Dutch
+keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots). Script headers are English since 0.18 (`Name:`, `Version:`, ...); the
+Dutch keys of older scripts are still read. Data saved before 0.11 uses Dutch
 property and enum names: `Storage/LegacyNames.cs` reads them (use `WithLegacyNames()` on every `JsonSerializerOptions`
 that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as text).
 
@@ -44,6 +44,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   and `%LOCALAPPDATA%\Moss365` holds the data). `Program.Main` runs `VelopackApp` first. `AppUpdates` refuses while
   anything runs or is open and copies every database first. The release workflow packs channel `stable`, or `preview`
   for a version with a suffix.
+- Script library (R8, `Scripts/ScriptIndex.cs`): `scripts/index.json` must match `scripts/` (a test; regenerate with
+  `MOSS365_WRITE_INDEX=1`, see CONTRIBUTING). Downloads are checked against the SHA-256 in the index; pins per tenant in
+  `scripts/pins.json` of the tenant store. Never change the bytes of `scripts/` through Git (`.gitattributes`).
 - `CHANGELOG.md`: a release is created when `Version` in `Directory.Build.props` has no release yet; the text comes
   from the `## <version>` section.
 
