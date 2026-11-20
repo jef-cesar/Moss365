@@ -250,6 +250,8 @@ A **Database** screen per tenant:
 - Channels: **stable** (default) and **preview**.
 - For organisations without access to GitHub: a custom source (a shared folder with the releases).
 - Technology (U4): **Velopack** (open source, small delta updates, per-user install without admin rights).
+- Done in 0.17: the app installs in `%LOCALAPPDATA%\Moss365.Desktop` (pack id `Moss365.Desktop`), so that removing it
+  never touches the data in `%LOCALAPPDATA%\Moss365`. Until 1.0 the default channel is preview.
 
 ## 9. Organisation: universal settings, job profiles and logon scripts
 

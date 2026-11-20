@@ -29,8 +29,8 @@
         }
     </p>
     <p class="kb-zacht">
-        Elke versie staat als release op GitHub (zip met Moss365.exe en de scripts). Pak een nieuwe versie uit over de oude
-        map: je instellingen, logboek en inventarissen staan apart en blijven bewaard.
+        Elke versie staat als release op GitHub: <code>Moss365.Desktop-stable-Setup.exe</code> (installeert voor jouw account
+        en werkt zichzelf bij) en een zip. Je gegevens staan apart in <code>%LOCALAPPDATA%\Moss365</code> en blijven bewaard.
     </p>
     <div class="kb-filters">
         <CopyField Value="@(State.Update?.Link ?? State.ReleasesLink)" Label="Link naar de releases" />
@@ -43,6 +43,8 @@
         @if (State.ConfigWarning is { } w) { <span class="kb-label kb-rood">@w</span> }
     </p>
 </section>
+
+<UpdatePanel />
 
 @if (State.Check is null)
 {

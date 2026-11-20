@@ -76,6 +76,22 @@ public sealed partial class Database
         }
     }
 
+    /// <summary>
+    /// A copy of the whole database next to it (tenant.db.bak-...), as before a migration: before an update of the app
+    /// (R7). An encrypted database stays encrypted. Returns the copy.
+    /// </summary>
+    public string CopyNextToIt(string stamp)
+    {
+        lock (_lock)
+        {
+            using var c = Open();
+            Run(c, "PRAGMA wal_checkpoint(TRUNCATE);");
+            var copy = $"{FilePath}.bak-{stamp}";
+            File.Copy(FilePath, copy, overwrite: true);
+            return copy;
+        }
+    }
+
     /// <summary>Gives the free space back to the disk (VACUUM).</summary>
     public void Compact()
     {

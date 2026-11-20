@@ -516,3 +516,6 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 
 /* R6: the recovery key, large and easy to copy by hand */
 .kb-herstelsleutel { display: inline-block; font-size: 1.15rem; letter-spacing: .08em; padding: .4rem .6rem; user-select: all; word-break: break-all; }
+
+/* R7: the release notes of a version */
+.kb-nota { white-space: pre-wrap; max-height: 16rem; overflow: auto; font-size: .9rem; }

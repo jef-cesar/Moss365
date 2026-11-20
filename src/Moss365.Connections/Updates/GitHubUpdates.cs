@@ -22,11 +22,12 @@ public sealed class GitHubUpdates : IUpdateCheck
 
     public string ReleasesLink => $"https://github.com/{_repo}/releases/latest";
 
-    public async Task<UpdateInfo> CheckAsync(CancellationToken cancel)
+    public async Task<UpdateInfo> CheckAsync(UpdateChannel channel, CancellationToken cancel)
     {
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{_repo}/releases/latest");
+            // Not releases/latest: GitHub leaves prereleases out of that, and every 0.x release is one
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{_repo}/releases?per_page=30");
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("Moss365", "1.0"));
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             using var answer = await _http.SendAsync(request, cancel);
@@ -40,14 +41,27 @@ public sealed class GitHubUpdates : IUpdateCheck
                 return new UpdateInfo(null, ReleasesLink, $"GitHub antwoordde {(int)answer.StatusCode}.");
             }
 
-            using var doc = JsonDocument.Parse(await answer.Content.ReadAsStringAsync(cancel));
-            var tag = doc.RootElement.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
-            var link = doc.RootElement.TryGetProperty("html_url", out var l) ? l.GetString() : null;
-            return new UpdateInfo(tag?.TrimStart('v', 'V'), link ?? ReleasesLink, tag is null ? "Geen versie in het antwoord." : null);
+            return Newest(await answer.Content.ReadAsStringAsync(cancel), channel) ?? new UpdateInfo(null, ReleasesLink, "Nog geen release in dit kanaal.");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             return new UpdateInfo(null, ReleasesLink, "GitHub is niet bereikbaar: " + ex.Message);
         }
+    }
+
+    /// <summary>The newest release of the channel in GitHub's list (drafts never count).</summary>
+    internal UpdateInfo? Newest(string json, UpdateChannel channel)
+    {
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.EnumerateArray()
+            .Where(r => !(r.TryGetProperty("draft", out var d) && d.ValueKind == JsonValueKind.True))
+            .Select(r => (Tag: (r.TryGetProperty("tag_name", out var t) ? t.GetString() : null)?.TrimStart('v', 'V'),
+                Link: r.TryGetProperty("html_url", out var l) ? l.GetString() : null))
+            .Where(r => r.Tag is not null && Versions.Read(r.Tag) is not null
+                        && (channel == UpdateChannel.Preview || UpdateSettings.ChannelOf(r.Tag) == UpdateChannel.Stable))
+            .OrderByDescending(r => Versions.Read(r.Tag))
+            .ThenBy(r => r.Tag!.Contains('-'))
+            .Select(r => new UpdateInfo(r.Tag, r.Link ?? ReleasesLink, null))
+            .FirstOrDefault();
     }
 }

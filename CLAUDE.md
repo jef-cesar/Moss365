@@ -5,8 +5,9 @@ under the EUPL-1.2. Public repository: never add personal or organisation data (
 check in `.github/workflows/privacy.yml` refuses e-mail addresses outside the example domains, public IPs and a secret
 blocklist). The maintainer does not write code: changes must be tested, documented and built by GitHub Actions.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R6 are done (0.16.0): code in English, one database
-per tenant, several tenants, snapshots, the set-up wizard, maintenance and encryption. The interface texts are still Dutch and move to dictionaries in R15; the inventory
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R7 are done (0.17.0): code in English, one database
+per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption and updates. Open work is in the
+GitHub issues (label `roadmap` per step, `limitation`, `test`). The interface texts are still Dutch and move to dictionaries in R15; the inventory
 keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots), and the script
 header keys (`<#MOSS365 Naam: ... #>`) are renamed in R8. Data saved before 0.11 uses Dutch
 property and enum names: `Storage/LegacyNames.cs` reads them (use `WithLegacyNames()` on every `JsonSerializerOptions`
@@ -39,6 +40,10 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
 - Encryption (`Storage/Encryption.cs`, `TenantHub.Encryption.cs`, [docs/encryption.md](docs/encryption.md)): a random
   key per tenant, opened with `Database(path, key)`; moss365.db keeps only the protected key. Never log a key, password
   or recovery key; `TenantHub.Open` throws `TenantLockedException` until the tenant is unlocked.
+- Updates (R7): Velopack, pack id `Moss365.Desktop` (never `Moss365`: Velopack removes its install folder on uninstall,
+  and `%LOCALAPPDATA%\Moss365` holds the data). `Program.Main` runs `VelopackApp` first. `AppUpdates` refuses while
+  anything runs or is open and copies every database first. The release workflow packs channel `stable`, or `preview`
+  for a version with a suffix.
 - `CHANGELOG.md`: a release is created when `Version` in `Directory.Build.props` has no release yet; the text comes
   from the `## <version>` section.
 

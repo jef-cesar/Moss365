@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         }
 
         services.AddSingleton(hub);
+        services.AddSingleton(new AppUpdates(new Moss365.Connections.Updates.VelopackUpdater(), hub));
         services.AddScoped(sp => sp.GetRequiredService<TenantHub>().Current);
         var provider = services.BuildServiceProvider();
         Resources.Add("services", provider);

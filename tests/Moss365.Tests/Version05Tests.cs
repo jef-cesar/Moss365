@@ -55,13 +55,21 @@ public sealed class Version05Tests : IDisposable
     [Fact]
     public async Task FindUpdateOnGitHub()
     {
-        var found = await new GitHubUpdates(new HttpClient(new FakeHttp(HttpStatusCode.OK, """{"tag_name":"v0.6.0","html_url":"https://github.com/x/y/releases/tag/v0.6.0"}""")), "x/y")
-            .CheckAsync(CancellationToken.None);
+        // The list of releases, not releases/latest (that leaves out prereleases, and every 0.x release is one)
+        const string list = """
+            [{"tag_name":"v0.7.0-preview.1","html_url":"https://github.com/x/y/releases/tag/v0.7.0-preview.1","prerelease":true},
+             {"tag_name":"v0.8.0","html_url":"https://github.com/x/y/releases/tag/v0.8.0","draft":true},
+             {"tag_name":"v0.6.0","html_url":"https://github.com/x/y/releases/tag/v0.6.0","prerelease":true},
+             {"tag_name":"v0.5.0","html_url":"https://github.com/x/y/releases/tag/v0.5.0","prerelease":true}]
+            """;
+        var found = await new GitHubUpdates(new HttpClient(new FakeHttp(HttpStatusCode.OK, list)), "x/y").CheckAsync(UpdateChannel.Stable, CancellationToken.None);
         Assert.Equal("0.6.0", found.NewestVersion);
         Assert.True(found.IsNewer("0.5.0"));
         Assert.EndsWith("/tag/v0.6.0", found.Link);
+        var preview = await new GitHubUpdates(new HttpClient(new FakeHttp(HttpStatusCode.OK, list)), "x/y").CheckAsync(UpdateChannel.Preview, CancellationToken.None);
+        Assert.Equal("0.7.0-preview.1", preview.NewestVersion);
 
-        var privateValue = await new GitHubUpdates(new HttpClient(new FakeHttp(HttpStatusCode.NotFound, "{}")), "x/y").CheckAsync(CancellationToken.None);
+        var privateValue = await new GitHubUpdates(new HttpClient(new FakeHttp(HttpStatusCode.NotFound, "{}")), "x/y").CheckAsync(UpdateChannel.Stable, CancellationToken.None);
         Assert.Null(privateValue.NewestVersion);
         Assert.Contains("privé", privateValue.Message);
         Assert.Equal("https://github.com/x/y/releases/latest", privateValue.Link);

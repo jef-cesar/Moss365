@@ -10,9 +10,10 @@ Conditional Access on one screen, with the history of the organisation over time
 
 ## Getting started
 
-1. Download the zip of the newest release and check it against `SHA256SUMS.txt` (until 1.0 the app is not signed).
-2. Unzip it anywhere and start `Moss365.exe` (Windows 10 or 11; the app offers to install the WebView2 runtime if it is
-   missing).
+1. Download `Moss365.Desktop-stable-Setup.exe` from the newest release and check it against `SHA256SUMS.txt` (until 1.0
+   the app is not signed).
+2. Run it (Windows 10 or 11, no administrator rights needed). The app updates itself from then on (Settings > Controle
+   van deze pc > Updates). The zip in the release still works without installing, but does not update itself.
 3. **Instellingen > Tenant inrichten**: type a domain of your organisation, sign in once as an Application or Global
    Administrator, and confirm the plan. The app creates the app registration `Moss365`, the profiles and their groups,
    and fills in the connection settings itself. Then **Controle van deze pc** installs what is missing.

@@ -96,6 +96,12 @@ public sealed partial class TenantHub : IDisposable
                 }
 
                 state = _open(tenant, key);
+                state.UpdateChannel = App.Setting("update.channel") switch
+                {
+                    "stable" => Moss365.Core.Changes.UpdateChannel.Stable,
+                    "preview" => Moss365.Core.Changes.UpdateChannel.Preview,
+                    _ => state.UpdateChannel,
+                };
                 state.TenantChanged += t => App.SaveTenant(t);
                 _states[tenant.Id] = state;
             }
@@ -266,6 +272,59 @@ public sealed partial class TenantHub : IDisposable
         }
 
         return tenant;
+    }
+
+    /// <summary>
+    /// Before an update of the app (R7): a copy of every tenant database and of moss365.db, next to each database (they
+    /// are cleaned up with the other copies on the Databank screen). Returns the copies.
+    /// </summary>
+    public IReadOnlyList<string> CopyBeforeUpdate()
+    {
+        var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+        var copies = new List<string>();
+        foreach (var t in App.Tenants())
+        {
+            ManagementState? open;
+            lock (_lock)
+            {
+                _states.TryGetValue(t.Id, out open);
+            }
+
+            if (open is not null)
+            {
+                copies.Add(open.Database.CopyNextToIt(stamp));
+                continue;
+            }
+
+            // Not open in this session: nobody writes to it, so a copy of the file (and a write-ahead log, if any) is whole
+            var path = TenantFolders.DatabasePath(_environment.Root, t.Id);
+            if (File.Exists(path))
+            {
+                var copy = $"{path}.bak-{stamp}";
+                File.Copy(path, copy, overwrite: true);
+                if (File.Exists(path + "-wal") && new FileInfo(path + "-wal").Length > 0)
+                {
+                    File.Copy(path + "-wal", copy + "-wal", overwrite: true);
+                }
+
+                copies.Add(copy);
+            }
+        }
+
+        var app = Path.Combine(_environment.Root, AppDatabase.FileName);
+        if (File.Exists(app))
+        {
+            var copy = $"{app}.bak-{stamp}";
+            File.Copy(app, copy, overwrite: true);
+            if (File.Exists(app + "-wal") && new FileInfo(app + "-wal").Length > 0)
+            {
+                File.Copy(app + "-wal", copy + "-wal", overwrite: true);
+            }
+
+            copies.Add(copy);
+        }
+
+        return copies;
     }
 
     private static string CsvSafe(string name)

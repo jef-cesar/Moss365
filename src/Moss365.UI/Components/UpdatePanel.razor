@@ -1,0 +1,157 @@
+@using Moss365.Core.Changes
+@* Updating the app (R7): channel, own source, update now or later, back to an older version. Never while something
+   runs or is open; first a copy of every database; the fingerprint of the download is checked. *@
+@inject IServiceProvider Services
+
+<section class="kb-kaart" id="updates">
+    <h2>Updates</h2>
+    @if (Updates is not { } u)
+    {
+        <p class="kb-zacht">Bijwerken kan enkel in de Windows-app.</p>
+    }
+    else
+    {
+        var settings = u.Settings;
+        <fieldset class="kb-formulier">
+            <legend>Kanaal</legend>
+            <label><input type="radio" name="kanaal" checked="@(settings.Channel == UpdateChannel.Stable)" @onchange="() => Save(settings with { Channel = UpdateChannel.Stable })" />
+                <strong>Stabiel</strong>: enkel de versies na een volledige stap</label>
+            <label><input type="radio" name="kanaal" checked="@(settings.Channel == UpdateChannel.Preview)" @onchange="() => Save(settings with { Channel = UpdateChannel.Preview })" />
+                <strong>Preview</strong>: ook de voorlopige versies (0.17.0-preview.1), om vooraf te testen</label>
+            <label>Eigen bron (gedeelde map met de releases, leeg = GitHub)
+                <input class="kb-invoer kb-breed" @bind="source" placeholder="\\server\share\Moss365" aria-label="Eigen bron" /></label>
+            <div><button class="kb-knop kb-klein" @onclick="() => Save(settings with { Source = source })">Bron bewaren</button></div>
+        </fieldset>
+        <p class="kb-zacht">
+            Tot 1.0 volgt elke installatie standaard het kanaal Preview. Van Preview naar Stabiel gaan kan een oudere versie
+            terugzetten; dat staat er dan bij.
+        </p>
+
+        @if (!u.CanUpdate)
+        {
+            <div class="kb-melding">
+                Deze kopie is niet geïnstalleerd met <code>Moss365.Desktop-stable-Setup.exe</code> (bijvoorbeeld gestart uit de zip),
+                dus ze kan zichzelf niet bijwerken. Installeer met de Setup.exe uit de laatste release: zonder beheerdersrechten, en
+                je gegevens blijven waar ze zijn.
+            </div>
+        }
+        else
+        {
+            <div class="kb-rij">
+                <button class="kb-knop kb-primair" disabled="@busy" @onclick="Check">Nu zoeken</button>
+                <button class="kb-knop" disabled="@busy" @onclick="LoadOlder">Naar een vorige versie</button>
+            </div>
+
+            @if (older is { Count: > 0 })
+            {
+                <div class="kb-rij">
+                    <label>Versie
+                        <select class="kb-invoer" @bind="olderChoice" aria-label="Vorige versie">
+                            <option value="">(kies)</option>
+                            @foreach (var v in older) { <option value="@v">@v</option> }
+                        </select>
+                    </label>
+                    <button class="kb-knop" disabled="@(olderChoice.Length == 0 || busy)" @onclick="ChooseOlder">Deze versie nemen</button>
+                </div>
+            }
+            else if (older is { Count: 0 })
+            {
+                <p class="kb-zacht">Geen vorige versie in dit kanaal.</p>
+            }
+
+            @if (checkedOnce && u.Found is null && u.Message is null)
+            {
+                <p class="kb-ok">Dit is de nieuwste versie in dit kanaal (@ManagementState.AppVersion).</p>
+            }
+
+            @if (u.Found is { } found)
+            {
+                <div class="kb-melding">
+                    <p>
+                        <strong>Versie @found.Version</strong> @(found.Downgrade ? "(een oudere versie: terugzetten)" : "beschikbaar").
+                        @if (found.Sha256 is { } sha) { <span class="kb-zacht">SHA-256 <code>@sha[..Math.Min(16, sha.Length)]…</code>, wordt nagekeken na het downloaden.</span> }
+                    </p>
+                    @if (found.Notes.Length > 0) { <pre class="kb-nota">@found.Notes</pre> }
+                    @if (u.Blockers() is { Count: > 0 } blockers)
+                    {
+                        <p>Nu niet: </p>
+                        <ul>@foreach (var b in blockers) { <li>@b</li> }</ul>
+                    }
+                    else
+                    {
+                        <p class="kb-zacht">Voor het installeren maakt de app een kopie van elke databank; daarna sluit en herstart Moss365.</p>
+                    }
+                    <div class="kb-rij">
+                        <button class="kb-knop kb-primair" disabled="@(busy || u.Blockers().Count > 0)" @onclick="Install">@(found.Downgrade ? "Nu terugzetten" : "Nu bijwerken")</button>
+                        <button class="kb-knop" disabled="@busy" @onclick="Later">Later</button>
+                        @if (progress is { } p) { <span class="kb-zacht">Downloaden… @p%</span> }
+                    </div>
+                </div>
+            }
+        }
+
+        @if (u.Message is { } m) { <div class="kb-melding kb-fout">@m</div> }
+        @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
+    }
+</section>
+
+@code {
+    private AppUpdates? Updates => Services.GetService(typeof(AppUpdates)) as AppUpdates;
+
+    private string source = string.Empty;
+    private bool busy;
+    private bool checkedOnce;
+    private int? progress;
+    private string? error;
+    private IReadOnlyList<string>? older;
+    private string olderChoice = string.Empty;
+
+    protected override void OnInitialized() => source = Updates?.Settings.Source ?? string.Empty;
+
+    private void Save(UpdateSettings settings)
+    {
+        Updates!.Save(settings);
+        source = settings.Source ?? string.Empty;
+        older = null;
+        checkedOnce = false;
+    }
+
+    private async Task Check()
+    {
+        busy = true;
+        error = null;
+        await Updates!.CheckAsync();
+        checkedOnce = true;
+        busy = false;
+    }
+
+    private async Task LoadOlder()
+    {
+        busy = true;
+        older = await Updates!.OlderVersionsAsync();
+        busy = false;
+    }
+
+    private async Task ChooseOlder()
+    {
+        busy = true;
+        await Updates!.ChooseAsync(olderChoice);
+        busy = false;
+    }
+
+    private void Later()
+    {
+        Updates!.Save(Updates.Settings);
+        checkedOnce = false;
+    }
+
+    private async Task Install()
+    {
+        busy = true;
+        error = null;
+        var reporter = new Progress<int>(p => { progress = p; _ = InvokeAsync(StateHasChanged); });
+        error = await Updates!.InstallAsync(reporter);
+        busy = false;
+        progress = null;
+    }
+}

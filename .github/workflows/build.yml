@@ -109,15 +109,38 @@ jobs:
           }
           if ($out.Count -eq 0) { $out = @("Moss365 $version") }
 
+          # Velopack (R7): Setup.exe (per-user install that updates itself), the update package and the feed of the
+          # channel. A version with a suffix (0.17.0-preview.1) is a preview, otherwise stable.
+          $channel = if ($version -match '-') { 'preview' } else { 'stable' }
+          $versionNotes = Join-Path $env:RUNNER_TEMP 'version-notes.md'
+          $out | Set-Content $versionNotes -Encoding UTF8
+          $releases = Join-Path $env:RUNNER_TEMP 'releases'
+          dotnet tool install -g vpk --version 1.2.161
+          if ($LASTEXITCODE -ne 0) { throw "Installing vpk failed ($LASTEXITCODE)." }
+          # The previous release of the channel, so that vpk can make a small delta package (not there the first time)
+          vpk download github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --channel $channel --token $env:GH_TOKEN --pre -o $releases
+          if ($LASTEXITCODE -ne 0) { Write-Host "No earlier release in channel $channel; only a full package." }
+          vpk pack --packId Moss365.Desktop --packVersion $version --packDir publish --mainExe Moss365.exe `
+            --packTitle Moss365 --packAuthors "Moss365 contributors" --channel $channel `
+            --releaseNotes $versionNotes --icon src/Moss365.Desktop/moss365.ico -o $releases
+          if ($LASTEXITCODE -ne 0) { throw "vpk pack failed ($LASTEXITCODE)." }
+          # Only the files of this version and the new feed (not the earlier package that was downloaded)
+          $velopack = @(Get-ChildItem $releases -File | Where-Object {
+            $_.Name -like "*-$version-*" -or $_.Name -in @("releases.$channel.json", "assets.$channel.json", "RELEASES-$channel",
+              "Moss365.Desktop-$channel-Setup.exe", "Moss365.Desktop-$channel-Portable.zip") })
+          $velopack | ForEach-Object { Write-Host "  $($_.Name)" }
+
           $zip = Join-Path $env:RUNNER_TEMP "Moss365-win-x64-$tag.zip"
           Compress-Archive -Path publish/* -DestinationPath $zip
           $sums = Join-Path $env:RUNNER_TEMP 'SHA256SUMS.txt'
-          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $(Split-Path $zip -Leaf)" | Set-Content $sums -Encoding ascii
+          $files = @(Get-Item $zip) + @($velopack | Where-Object { $_.Extension -in '.zip', '.exe', '.nupkg' })
+          $files | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } | Set-Content $sums -Encoding ascii
           $out += ''
-          $out += "SHA-256 of ``$(Split-Path $zip -Leaf)``: ``$hash``"
+          $out += "Install with ``Moss365.Desktop-$channel-Setup.exe`` (no administrator rights; updates itself, channel $channel), or unzip ``$(Split-Path $zip -Leaf)``."
+          $out += "SHA-256 of every file: ``SHA256SUMS.txt``."
           $out | Set-Content $notes -Encoding UTF8
 
-          gh release create $tag $zip $sums --target $env:GITHUB_SHA --title "Moss365 $version" --notes-file $notes --prerelease
+          $assets = @($zip, $sums) + @($velopack | ForEach-Object { $_.FullName })
+          gh release create $tag @assets --target $env:GITHUB_SHA --title "Moss365 $version" --notes-file $notes --prerelease
           if ($LASTEXITCODE -ne 0) { throw "Creating the release failed ($LASTEXITCODE)." }
           exit 0

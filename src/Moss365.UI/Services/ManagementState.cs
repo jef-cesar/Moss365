@@ -112,6 +112,9 @@ public sealed partial class ManagementState
         }
     }
 
+    /// <summary>The update channel of this installation (set by the hub from the app settings).</summary>
+    public UpdateChannel UpdateChannel { get; set; } = UpdateSettings.DefaultChannel(AppVersion);
+
     /// <summary>Result of the last search for a new version (null = not searched yet).</summary>
     public UpdateInfo? Update { get; private set; }
 
@@ -129,7 +132,7 @@ public sealed partial class ManagementState
 
         try
         {
-            Update = await updates.CheckAsync(CancellationToken.None);
+            Update = await updates.CheckAsync(UpdateChannel, CancellationToken.None);
         }
         catch (Exception ex)
         {

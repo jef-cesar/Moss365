@@ -2,6 +2,26 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.17.0
+
+Automatic updates (step R7 of the [roadmap](docs/roadmap-1.0.md), decision U4: Velopack). Closes #9.
+
+- **Install with `Moss365.Desktop-stable-Setup.exe`**: for your own account, without administrator rights. The app is
+  installed in `%LOCALAPPDATA%\Moss365.Desktop`; your data stays where it was (`%LOCALAPPDATA%\Moss365`), also when
+  the app is removed. The zip still works without installing, but does not update itself.
+- **Updates** (Settings > Controle van deze pc): search now, see what is new, **Update now** or **Later**. The download
+  is checked against the SHA-256 published with the release; from 1.0 the packages are also signed (U8). Small delta
+  packages where possible.
+- **Never during work**: no update while a task or script runs, or a plan, form or setting is still open (in any
+  tenant). Before installing: a copy of every tenant database and of `moss365.db` (cleaned up with the other copies on
+  the Databank screen); the update goes to the change log.
+- **Channels**: Stable and Preview (versions such as 0.17.0-preview.1). Until 1.0 every installation follows Preview.
+  Going from Preview to Stable can install an older version; the screen says so.
+- **Back to an earlier version**: choose a version of the channel and install it.
+- **Own source**: a shared folder with the releases, for organisations without access to GitHub.
+- **Fixed**: searching for a new version always said the releases were private: GitHub leaves prereleases (every 0.x
+  release) out of "latest". The app now reads the list of releases, per channel.
+
 ## 0.16.0
 
 Encryption per tenant (second part of step R6 of the [roadmap](docs/roadmap-1.0.md); details in
