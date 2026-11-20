@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- SQLite with SQLCipher (R6): the same build opens plain and encrypted tenant databases -->
-    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.11" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.15" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.10" />
   </ItemGroup>
 </Project>
