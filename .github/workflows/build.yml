@@ -76,7 +76,7 @@ jobs:
         shell: pwsh
         run: Write-Host '::notice::Moss365.exe is not signed (signing starts at 1.0). Verify downloads with SHA256SUMS.txt.'
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: Moss365-win-x64
           path: publish
