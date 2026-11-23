@@ -342,6 +342,7 @@ data (recovery keys, passwords, message traces) is written to the access log and
 | **Group Policy (GPO)**: which policies are linked where, disabled and empty policies (read only) | An overview the standard tools make hard |
 | **Microsoft Secure Score** with its trend and the actions that gain the most | One number for management |
 | **Admin roles and PIM**: who has what permanently, who is eligible | Least privilege |
+| **Conditional Access editor**: change every condition of an existing policy (users and groups, apps, platforms, locations, client apps, device filters, grant and session controls), with the same checks as today (emergency accounts excluded, never lock yourself out, a preview with the difference, never delete) | Since 0.9 the app switches policies on and off, manages exclusions, named locations, templates and backups; the rest still needs the Entra portal |
 | **Weak MFA methods** (SMS, phone) and who has no stronger one yet | Becoming phishing resistant |
 | **Risky users and sign-ins** (requires Entra ID P2) | React quickly |
 
@@ -421,7 +422,7 @@ Further:
 
 ## 12. Decisions
 
-All decisions were made on 5 November 2026 (U1 to U3 directly, the rest interactively the same day).
+U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interactively the same day); U13 on 23 November 2026.
 
 | # | Decision | Outcome |
 | --- | --- | --- |
@@ -437,7 +438,7 @@ All decisions were made on 5 November 2026 (U1 to U3 directly, the rest interact
 | U9 | **Retention** (defaults, adjustable per tenant) | **Longer**: snapshots daily for 1 year, then monthly; change log 5 years; technical log 90 days; script runs 1 year |
 | U10 | **Language of code and documentation** | **English**: names in the code, comments, tests and documentation (from R1). The interface in five languages via dictionaries (R15) |
 | U11 | **House style** | **Moss green and purple** by default (fits the name), colour and logo per tenant |
-| U13 | **Google Workspace** (open) | Proposal: in the same app, as a system a tenant can have (**MossSpace**), next to or instead of AD and Microsoft 365; not a separate product. To decide before step G1 (chapter 15) |
+| U13 | **Google Workspace** | **In the same app**, as a system a tenant can have (**MossSpace**), next to or instead of AD and Microsoft 365; not a separate edition (decided 23 November 2026, chapter 15) |
 
 ## 13. The steps to 1.0
 
@@ -534,5 +535,5 @@ this part is **MossSpace**.
 | **G3 Security** | 2-Step Verification, admin roles, login audit, alerts, context-aware access (read) | Every check says "OK", "attention", "problem" or "unknown" |
 | **G4 Mixed** | AD with Google Cloud Directory Sync; Microsoft 365 and Google Workspace in one tenant | Writing goes to the source of truth; nothing is written twice |
 
-Decision U13 (open): Google Workspace in the same app (proposal) or as a separate edition.
+Decided (U13, 23 November 2026): Google Workspace comes **in the same app**, not as a separate edition.
 
