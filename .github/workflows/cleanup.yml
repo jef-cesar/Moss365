@@ -30,13 +30,18 @@ jobs:
             --jq '.artifacts[] | select(.expired | not) | .size_in_bytes' \
             | awk '{s+=$1; n++} END {printf "Artifacts: %d, %.1f MB\n", n, s/1048576}'
 
-      - name: Artifacts (keep only the newest of each name)
+      - name: Artifacts (keep only the newest of each name; drop those whose run is gone)
         run: |
           gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
-            --jq '.artifacts[] | [.id, .name, .created_at] | @tsv' \
+            --jq '.artifacts[] | select(.workflow_run != null) | [.id, .name, .created_at] | @tsv' \
             | sort -t$'\t' -k3,3r | awk -F'\t' 'seen[$2]++' \
             | while IFS=$'\t' read -r id name created; do
                 gh api -X DELETE "repos/$REPO/actions/artifacts/$id" && echo "Artifact deleted: $name ($created)"
+              done
+          gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.workflow_run == null) | [.id, .name, .created_at] | @tsv' \
+            | while IFS=$'\t' read -r id name created; do
+                gh api -X DELETE "repos/$REPO/actions/artifacts/$id" && echo "Artifact without run deleted: $name ($created)"
               done
 
       - name: Workflow runs (keep the newest per workflow)
