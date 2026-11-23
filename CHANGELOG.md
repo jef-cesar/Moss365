@@ -2,6 +2,20 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.21.1
+
+A tenant with only Microsoft 365 now shows nothing of Active Directory, and the choice is easy to find.
+
+- **The choice is where you look for it**: Verbindingen starts with "Wat heeft deze tenant?" (AD en Microsoft 365,
+  enkel Microsoft 365 or enkel Active Directory) with a Bewaren button; adding a tenant asks it right away; on Tenants
+  it has its own column and the button is now called Aanpassen (it used to hide behind "Naam en kleur").
+- **Nothing of AD for a tenant without AD**: what was read or imported from AD earlier is left out of every screen at
+  once (and comes back when you switch AD on again); Gebruikers has no Bron, OU or sAMAccountName and no AD filters,
+  Groepen no AD tiles or columns, Uitstroom only the cloud steps (disable, sessions, groups, mailbox, licences), Nieuwe
+  groep only the cloud kinds, Spiegelgebruiker only the cloud groups, and Overzicht describes only Microsoft 365.
+- **Nieuwe gebruiker** is hidden for a tenant without AD: it creates accounts in AD. Creating users directly in the
+  cloud is added to step R9 of the [roadmap](docs/roadmap-1.0.md).
+
 ## 0.21.0
 
 A shorter, calmer menu, asked for after 0.20.

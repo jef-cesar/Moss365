@@ -18,10 +18,25 @@
     <div class="kb-melding">Live verbinden is enkel beschikbaar in de Windows-app.</div>
 }
 
-<p class="kb-zacht">
-    Deze tenant heeft: <strong>@SystemsText(State.Tenant.Systems)</strong>. Aanpassen bij <a href="tenants">Tenants</a>
-    (Naam en kleur); wat de tenant niet heeft, laat de app weg.
-</p>
+<section class="kb-kaart">
+    <h2>Wat heeft deze tenant?</h2>
+    @if (Hub is { } hub && State.Can(Permission.Settings) && !State.IsHistoric)
+    {
+        <SystemsChoice @bind-Value="systems" Legend="@($"Systemen van {State.Tenant.Name}")" />
+        <div class="kb-rij">
+            <button class="kb-knop kb-primair" disabled="@(systems == Current)" @onclick="() => SaveSystems(hub)">Bewaren</button>
+            @if (systems != Current) { <span class="kb-label">niet bewaard</span> }
+        </div>
+    }
+    else
+    {
+        <p>Deze tenant heeft <strong>@SystemsChoice.Text(State.Tenant.Systems)</strong>.</p>
+    }
+    <p class="kb-zacht">
+        Wat de tenant niet heeft, laat de app weg: uit het menu, de schermen, de verbindingen en de gegevens. Gegevens die al
+        ingelezen zijn, blijven bewaard en komen terug als je het systeem weer aanzet.
+    </p>
+</section>
 
 @if (State.HasAd)
 {
@@ -125,12 +140,20 @@
 </section>
 
 @code {
-    private static string SystemsText(Moss365.Core.Storage.TenantSystems s) => s switch
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
+    private Moss365.Core.Storage.TenantSystems Current => State.Tenant.Systems == Moss365.Core.Storage.TenantSystems.None ? Moss365.Core.Storage.TenantSystems.Both : State.Tenant.Systems;
+    private Moss365.Core.Storage.TenantSystems? _systems;
+    private Moss365.Core.Storage.TenantSystems systems { get => _systems ?? Current; set => _systems = value; }
+
+    /// <summary>Saves the choice and reloads, so that the menu, the screens and the data follow it.</summary>
+    private void SaveSystems(TenantHub hub)
     {
-        Moss365.Core.Storage.TenantSystems.ActiveDirectory => "enkel Active Directory",
-        Moss365.Core.Storage.TenantSystems.Microsoft365 => "enkel Microsoft 365",
-        _ => "Active Directory en Microsoft 365",
-    };
+        hub.Update(State.Tenant with { Systems = systems });
+        Nav.NavigateTo("verbindingen", forceLoad: true);
+    }
 
     private string? message;
 

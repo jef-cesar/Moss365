@@ -110,7 +110,7 @@ public sealed partial class ManagementState
             return "Er is geen momentopname van voor die datum.";
         }
 
-        _presentData ??= Data;
+        _presentData ??= _data;
         Data = Snapshots.Data(Database.TablesAt(s.Id), $"Stand van {s.Time.LocalDateTime:dd/MM/yyyy HH:mm}");
         AsOf = s;
         Access("Stand uit het verleden bekeken", s.Time.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));

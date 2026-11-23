@@ -107,7 +107,7 @@ public sealed partial class ManagementState
     {
         lock (_dataLock)
         {
-            Data = change(Data);
+            Data = change(_data);
             return Data;
         }
     }

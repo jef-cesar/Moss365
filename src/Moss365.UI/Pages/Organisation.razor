@@ -226,10 +226,13 @@
 <section class="kb-kaart">
     <h2>Nieuwe groepen</h2>
     <div class="kb-raster">
+        @if (State.HasAd)
+        {
         <label>OU voor nieuwe AD-groepen
             <input class="kb-invoer" placeholder="bv. GEMEENTEBESTUUR/GROEPEN" value="@State.Config.GroupsOu"
                    @onchange="e => Set(() => State.Config.GroupsOu = EmptyIsNull(e.Value))" />
         </label>
+        }
         <label>Voorvoegsels (naamgeving, gescheiden door komma's)
             <input class="kb-invoer" placeholder="gg_, AFD_, DNST_, SG-, WKG_" value="@string.Join(", ", State.Config.GroupPrefixes)"
                    @onchange="e => Set(() => State.Config.GroupPrefixes = (e.Value?.ToString() ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList())" />

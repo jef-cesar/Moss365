@@ -5,7 +5,7 @@ under the EUPL-1.2. Public repository: never add personal or organisation data (
 check in `.github/workflows/privacy.yml` refuses e-mail addresses outside the example domains, public IPs and a secret
 blocklist). The maintainer does not write code: changes must be tested, documented and built by GitHub Actions.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R8 are done, R9 in progress (0.21.0): code in English, one database
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R8 are done, R9 in progress (0.21.1): code in English, one database
 per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. Open work is in the
 GitHub issues (label `roadmap` per step, `limitation`, `test`). The interface texts are still Dutch and move to dictionaries in R15; the inventory
 keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots). Script headers are English since 0.18 (`Name:`, `Version:`, ...); the
@@ -49,7 +49,8 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   `scripts/pins.json` of the tenant store. Never change the bytes of `scripts/` through Git (`.gitattributes`).
 - Systems per tenant (0.19, `TenantInfo.Systems`: AD, Microsoft 365 or both): connections always use
   `ManagementState.EffectiveSettings`, never `Settings`, so that nothing touches a system the tenant does not have;
-  screens check `State.HasAd` / `State.HasMicrosoft365`, the menu `Access.FitsTenant`.
+  screens check `State.HasAd` / `State.HasMicrosoft365`, the menu `Access.FitsTenant`. Without AD, `State.Data` leaves
+  every AD object out (`InventoryData.WithoutAd`); background steps update the full data (`_data`), never `Data`.
 - Organisation settings (R9): naming in `Configuration/Naming.cs` (`OrganisationConfig.Naming`, used by
   `PlanBuilder.NewUser`), suggestions in `Setup/OrganisationSuggestions.cs` (shown by `SuggestionsPanel` on Organisatie
   and in the wizard), templates in `Configuration/OrganisationTemplates.cs` (only add what is missing).

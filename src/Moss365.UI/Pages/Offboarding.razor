@@ -6,8 +6,15 @@
 <h1>Uitstroom</h1>
 
 <p class="kb-zacht">
-    Het account wordt uitgeschakeld en naar <code>@(State.Config.Offboarding?.Ou ?? "(geen OU ingesteld)")</code> verplaatst,
-    nooit verwijderd. Bevoorrechte groepen worden altijd verwijderd. Kies hieronder wat er verder moet gebeuren; in het plan
+    @if (State.HasAd)
+    {
+        <text>Het account wordt uitgeschakeld en naar <code>@(State.Config.Offboarding?.Ou ?? "(geen OU ingesteld)")</code> verplaatst,
+        nooit verwijderd.</text>
+    }
+    else
+    {
+        <text>Het account wordt uitgeschakeld (aanmelden geblokkeerd), nooit verwijderd.</text>
+    } Bevoorrechte groepen worden altijd verwijderd. Kies hieronder wat er verder moet gebeuren; in het plan
     kan je elke stap nog aan- of uitvinken.
 </p>
 
@@ -27,10 +34,13 @@
         </div>
         <div class="kb-keuzelijst">
             <label><input type="checkbox" @bind="options.Disable" @bind:after="Clear" /> Account uitschakelen</label>
-            <label><input type="checkbox" @bind="options.CompleteDescription" @bind:after="Clear" /> Datum in de omschrijving zetten</label>
-            <label><input type="checkbox" @bind="options.Move" @bind:after="Clear" /> Verplaatsen naar de uitstroom-OU</label>
+            @if (State.HasAd)
+            {
+                <label><input type="checkbox" @bind="options.CompleteDescription" @bind:after="Clear" /> Datum in de omschrijving zetten</label>
+                <label><input type="checkbox" @bind="options.Move" @bind:after="Clear" /> Verplaatsen naar de uitstroom-OU</label>
+            }
             <label><input type="checkbox" @bind="options.RevokeSessions" @bind:after="Clear" /> Aanmeldsessies intrekken</label>
-            <label><input type="checkbox" @bind="options.AdRemoveGroups" @bind:after="Clear" /> Uit alle AD-groepen halen</label>
+            @if (State.HasAd) { <label><input type="checkbox" @bind="options.AdRemoveGroups" @bind:after="Clear" /> Uit alle AD-groepen halen</label> }
             <label><input type="checkbox" @bind="options.RemoveCloudGroups" @bind:after="Clear" /> Uit alle cloudgroepen halen</label>
             <label><input type="checkbox" @bind="options.ToSharedMailbox" @bind:after="Clear" /> Postvak omzetten naar een gedeeld postvak</label>
             <label><input type="checkbox" @bind="options.RemoveLicences" @bind:after="Clear" /> Licenties verwijderen</label>

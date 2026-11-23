@@ -9,7 +9,14 @@
     <a href="opvolging">Opvolging</a>).
 </p>
 
-@if (State.Config.Populations.Count == 0)
+@if (!State.HasAd)
+{
+    <div class="kb-melding">
+        Deze tenant heeft geen Active Directory. Een nieuwe gebruiker maakt de app voorlopig enkel in AD aan; cloudgebruikers
+        rechtstreeks aanmaken staat op de <a href="https://github.com/jef-cesar/Moss365/blob/main/docs/roadmap-1.0.md">roadmap</a>.
+    </div>
+}
+else if (State.Config.Populations.Count == 0)
 {
     <div class="kb-melding kb-fout">
         Er zijn geen soorten (gemeente, OCMW, vrijwilliger) in de organisatie, dus kan je nog geen gebruiker aanmaken.

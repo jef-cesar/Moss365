@@ -295,6 +295,13 @@ Use:
 - **Mirror user** stays, but a profile is better: it does not depend on one person.
 - Profiles have versions (snapshots), so you can see which version was applied when.
 
+### New users in the cloud
+
+For a tenant with only Microsoft 365 (no AD), **New user** creates the account directly in Entra ID through Graph, with
+its licence, groups and mailbox access in the same plan (no follow-up after synchronisation). The first password is
+shown once, never stored or logged; the user changes it at the first sign-in. Until then, New user is hidden for such a
+tenant (0.21.1).
+
 (Naming: to avoid confusion with the app's roles, these are called **job profiles**, and the app's access levels are
 called **roles**.)
 
@@ -453,7 +460,7 @@ U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interacti
 | **R6 Encryption and maintenance** | Encryption A, B and C per tenant, off by default (U7), recovery key, study D; Database screen: size, compact, clean-up with preview and archive, integrity check | An encrypted tenant only opens with the right key; clean-up never deletes without a preview |
 | **R7 Updates** | Velopack (U4): check at startup, fingerprint (signed from 1.0, U8), copy before migration, rollback, channels, custom source | An update from preview to stable and back works on a test PC |
 | **R8 Scripts from the repository** | `scripts/` with index and fingerprints, Update library in the app, pin per tenant | A new script in the repository appears in the app after Update; a changed script with a wrong fingerprint (from 1.0: without a valid signature) is refused |
-| **R9 Universal organisation** | Settings with suggestions from the data, templates, export and import; job profiles; logon scripts | A sample organisation with different naming rules, OUs and group names works without a single code change |
+| **R9 Universal organisation** | Settings with suggestions from the data, templates, export and import; job profiles; new users in the cloud; logon scripts | A sample organisation with different naming rules, OUs and group names works without a single code change |
 | **R10 Helpdesk** | Everything from chapter 10, Helpdesk and daily work | Each proposal with tests, in the change log or access log, with the right role |
 | **R11 Security** | Everything from chapter 10, Security (alerts build on R4) | Same; every check says "OK", "attention" or "problem", and "unknown" when the data is insufficient |
 | **R12 Licences and costs** | Everything from chapter 10, Licences and costs | Same; the savings are a KPI with its trend |

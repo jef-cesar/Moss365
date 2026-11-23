@@ -27,7 +27,7 @@ else
     }
 
     <table class="kb-tabel">
-        <thead><tr><th>Naam</th><th>Kleur</th><th>Tenant ID</th><th>Map</th><th></th></tr></thead>
+        <thead><tr><th>Naam</th><th>Kleur</th><th>Systemen</th><th>Tenant ID</th><th>Map</th><th></th></tr></thead>
         <tbody>
             @foreach (var t in hub.Tenants)
             {
@@ -55,16 +55,15 @@ else
                         {
                             <span class="kb-tenant-staal" style="--kb-tenant: @t.Colour"></span>
                         }
+                    </td>
+                    <td>
                         @if (editing == t.Id)
                         {
-                            <div class="kb-rij">
-                                <label><input type="checkbox" checked="@editSystems.HasFlag(TenantSystems.ActiveDirectory)" @onchange="e => SetSystem(TenantSystems.ActiveDirectory, e.Value is true)" aria-label="Active Directory" /> Active Directory</label>
-                                <label><input type="checkbox" checked="@editSystems.HasFlag(TenantSystems.Microsoft365)" @onchange="e => SetSystem(TenantSystems.Microsoft365, e.Value is true)" aria-label="Microsoft 365" /> Microsoft 365</label>
-                            </div>
+                            <SystemsChoice @bind-Value="editSystems" />
                         }
                         else
                         {
-                            <div class="kb-zacht">@SystemsText(t.Systems)</div>
+                            @SystemsText(t.Systems)
                         }
                     </td>
                     <td><code>@(t.TenantId ?? "(nog niet gekend)")</code></td>
@@ -86,7 +85,7 @@ else
                                 {
                                     <a class="kb-knop kb-klein kb-primair" href="inrichten">Inrichten</a>
                                 }
-                                <button class="kb-knop kb-klein" @onclick="() => Edit(t)">Naam en kleur</button>
+                                <button class="kb-knop kb-klein" @onclick="() => Edit(t)">Aanpassen</button>
                                 <button class="kb-knop kb-klein" @onclick="() => Backup(hub, t)">Back-up</button>
                                 @if (!current)
                                 {
@@ -123,12 +122,15 @@ else
         <h2>Tenant toevoegen</h2>
         <div class="kb-rij">
             <label>Naam <input class="kb-invoer" @bind="newName" placeholder="bv. Contoso" /></label>
+        </div>
+        <SystemsChoice @bind-Value="newSystems" Legend="Wat heeft deze tenant?" />
+        <div class="kb-rij">
             <button class="kb-knop kb-primair" disabled="@(newName.Trim().Length == 0)" @onclick="() => Add(hub)">Toevoegen</button>
         </div>
         <p class="kb-zacht">
-            Een nieuwe tenant begint leeg, met de meegeleverde organisatie, en met AD en Microsoft 365 (aan te passen met Naam en
-            kleur: wat de tenant niet heeft, verdwijnt uit het menu en de schermen). Open hem en stel bij Verbindingen de Tenant ID en
-            de Client ID in.
+            Een nieuwe tenant begint leeg, met de meegeleverde organisatie. Wat de tenant niet heeft, verdwijnt uit het menu en de
+            schermen; dat pas je later aan met Aanpassen hierboven of bij Verbindingen. Open hem en stel bij Verbindingen de
+            verbinding in.
         </p>
     </section>
 
@@ -203,8 +205,9 @@ else
     {
         try
         {
-            var t = hub.Add(newName);
+            var t = hub.Add(newName, systems: newSystems);
             newName = string.Empty;
+            newSystems = TenantSystems.Both;
             (message, error) = ($"Tenant \"{t.Name}\" toegevoegd. Open hem om te verbinden.", false);
         }
         catch (ArgumentException ex)
@@ -214,15 +217,9 @@ else
     }
 
     private TenantSystems editSystems = TenantSystems.Both;
+    private TenantSystems newSystems = TenantSystems.Both;
 
     private void Edit(TenantInfo t) => (editing, editName, editColour, editSystems) = (t.Id, t.Name, t.Colour, t.Systems == TenantSystems.None ? TenantSystems.Both : t.Systems);
-
-    /// <summary>At least one of the two stays on.</summary>
-    private void SetSystem(TenantSystems system, bool on)
-    {
-        var next = on ? editSystems | system : editSystems & ~system;
-        editSystems = next == TenantSystems.None ? editSystems : next;
-    }
 
     private static string SystemsText(TenantSystems s) => s switch
     {

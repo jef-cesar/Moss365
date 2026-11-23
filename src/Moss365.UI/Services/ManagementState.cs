@@ -145,7 +145,31 @@ public sealed partial class ManagementState
     public event Action? Changed;
 
     public IAppEnvironment AppEnvironment => _environment;
-    public InventoryData Data { get; private set; } = new();
+    private InventoryData _data = new();
+    private (InventoryData Of, InventoryData Without)? _withoutAd;
+
+    /// <summary>The data shown; for a tenant without AD everything of AD is left out (0.21.1), whatever was read or
+    /// imported, also right after the systems of the tenant change. What was read stays in <see cref="_data"/>.</summary>
+    public InventoryData Data
+    {
+        get
+        {
+            if (HasAd)
+            {
+                return _data;
+            }
+
+            var data = _data;
+            if (_withoutAd is not { } w || !ReferenceEquals(w.Of, data))
+            {
+                w = (data, data.WithoutAd());
+                _withoutAd = w;
+            }
+
+            return w.Without;
+        }
+        private set => _data = value;
+    }
     public OrganisationConfig Config { get; private set; } = new();
     public string? ConfigSource { get; private set; }
     public IReadOnlyList<string> Folders { get; private set; } = Array.Empty<string>();

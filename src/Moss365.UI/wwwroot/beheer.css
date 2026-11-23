@@ -466,6 +466,8 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 .kb-keuze { display: flex; flex-direction: column; gap: 0.2rem; border: 1px solid var(--kb-lijn); border-radius: 8px; padding: 0.6rem 0.8rem; cursor: pointer; }
 .kb-keuze input { align-self: flex-start; }
 .kb-keuze.kb-actief { border-color: var(--kb-paars); background: var(--kb-open-vlak); }
+.kb-systemen { border: 0; padding: 0; margin: 0 0 0.6rem; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.6rem; }
+.kb-systemen legend { font-weight: 600; margin-bottom: 0.4rem; padding: 0; }
 .kb-bulk { border-left: 4px solid var(--kb-accent); }
 .kb-bulk-taken { display: flex; flex-direction: column; gap: 0.6rem; }
 .kb-groot-plan { color: var(--kb-rood); font-weight: 600; }

@@ -135,7 +135,7 @@ public sealed partial class TenantHub : IDisposable
     }
 
     /// <summary>A new, empty tenant with its own database; it starts from the bundled organisation.</summary>
-    public TenantInfo Add(string name, string? colour = null)
+    public TenantInfo Add(string name, string? colour = null, TenantSystems systems = TenantSystems.Both)
     {
         name = name.Trim();
         if (name.Length == 0)
@@ -154,6 +154,7 @@ public sealed partial class TenantHub : IDisposable
             Id = TenantFolders.NewId(),
             Name = name,
             Colour = colour ?? TenantColours.All.FirstOrDefault(c => !used.Contains(c)) ?? TenantColours.All[App.Tenants().Count % TenantColours.All.Count],
+            Systems = systems == TenantSystems.None ? TenantSystems.Both : systems,
         };
         App.SaveTenant(tenant);
         return tenant;

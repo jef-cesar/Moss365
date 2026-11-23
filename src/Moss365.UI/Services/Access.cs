@@ -39,6 +39,7 @@ public static class Access
         {
             "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "beveiliging" or "conditional-access" or "inrichten" => hasMicrosoft365,
             "vergelijk" => hasAd && hasMicrosoft365,
+            "nieuw" => hasAd, // a new user is created in AD (cloud-only users: see the roadmap)
             _ => true,
         };
     }

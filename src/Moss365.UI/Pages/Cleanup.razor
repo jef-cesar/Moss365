@@ -7,7 +7,7 @@
     Accounts die lang niet aangemeld zijn, om na te kijken. Vink aan wat weg mag: medewerkers worden <strong>uitgeschakeld</strong>
     (met de reden in de omschrijving, nooit verwijderd; voor een volledige uitstroom gebruik je Uitstroom), gasten worden
     <strong>verwijderd</strong>. Na het uitvoeren bewaart de app een rapport met elk nagekeken account en de beslissing, als
-    bewijs van de controle. Laatste aanmelding: de recentste uit AD en Entra.
+    bewijs van de controle. Laatste aanmelding: @(State.HasAd && State.HasMicrosoft365 ? "de recentste uit AD en Entra" : State.HasAd ? "uit AD" : "uit Entra").
 </p>
 
 @if (!State.IsLive)

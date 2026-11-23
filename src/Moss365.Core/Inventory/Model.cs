@@ -281,6 +281,25 @@ public sealed record InventoryData
     public bool HasAd => AdUsers.Count > 0;
     public bool HasEntra => EntraUsers.Count > 0;
 
+    /// <summary>
+    /// The same data without anything from Active Directory, for a tenant that has only Microsoft 365 (0.21.1): an
+    /// inventory or snapshot that still holds AD files then shows nothing of AD. People are linked again from Entra
+    /// alone.
+    /// </summary>
+    public InventoryData WithoutAd()
+        => AdUsers.Count == 0 && AdGroupsByDn.Count == 0 && DomainDn.Length == 0 && !Sources.Any(IsAdSource)
+            ? this
+            : this with
+            {
+                AdUsers = Array.Empty<AdUser>(),
+                AdGroupsByDn = new Dictionary<string, AdGroup>(StringComparer.OrdinalIgnoreCase),
+                Persons = InventoryLoader.LinkPersons(Array.Empty<AdUser>(), EntraUsers),
+                DomainDn = string.Empty,
+                Sources = Sources.Where(f => !IsAdSource(f)).ToList(),
+            };
+
+    private static bool IsAdSource(SourceFile f) => f.File.StartsWith("ad-", StringComparison.OrdinalIgnoreCase);
+
     public Person? SearchPerson(string key)
         => Persons.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase));
 

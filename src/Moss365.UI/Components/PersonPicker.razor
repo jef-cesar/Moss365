@@ -11,7 +11,7 @@
     }
     else
     {
-        <input class="kb-invoer" placeholder="Zoek op naam, UPN of sAMAccountName" @bind="search" @bind:event="oninput" />
+        <input class="kb-invoer" placeholder="@(State.HasAd ? "Zoek op naam, UPN of sAMAccountName" : "Zoek op naam of UPN")" @bind="search" @bind:event="oninput" />
         @if (Results.Count > 0)
         {
             <ul class="kb-keuzes">

@@ -11,7 +11,7 @@
 <section class="kb-kaart">
     <h2>Soort</h2>
     <div class="kb-keuzes">
-        @foreach (var (kind, title, explanation) in Kinds)
+        @foreach (var (kind, title, explanation) in Kinds.Where(k => Fits(k.Item1)))
         {
             <label class="kb-keuze @(request.Kind == kind ? "kb-actief" : null)">
                 <input type="radio" name="soort" checked="@(request.Kind == kind)" @onchange="() => ChooseKind(kind)" />
@@ -94,7 +94,17 @@
     private IReadOnlyList<string> errors = Array.Empty<string>();
 
     // The form is kept until you run or clear it
-    protected override void OnInitialized() => request = Saved();
+    protected override void OnInitialized()
+    {
+        request = Saved();
+        if (!Fits(request.Kind))
+        {
+            request.Kind = State.HasMicrosoft365 ? NewGroupKind.CloudSecurity : NewGroupKind.AdSecurity;
+        }
+    }
+
+    /// <summary>Kinds of a system the tenant does not have are left out (0.21.1).</summary>
+    private bool Fits(NewGroupKind kind) => kind == NewGroupKind.AdSecurity ? State.HasAd : State.HasMicrosoft365;
 
     private NewGroupRequest Saved() => State.PageState.Form<NewGroupRequest>(Form, Form, "Nieuwe groep",
         filled: a => a.Name.Trim().Length > 0 || a.Members.Count > 0);

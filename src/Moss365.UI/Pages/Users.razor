@@ -4,7 +4,7 @@
 
 <div class="kb-titelbalk">
     <h1>Gebruikers</h1>
-    @if (State.Can(Permission.Actions)) { <a class="kb-knop kb-primair" href="nieuw">+ Nieuwe gebruiker</a> }
+    @if (State.Can(Permission.Actions) && State.HasAd) { <a class="kb-knop kb-primair" href="nieuw">+ Nieuwe gebruiker</a> }
 </div>
 
 <KpiFilter Kpi="ActiveKpi" Count="KpiRows.Count" Shown="Filtered.Count" Cleared="() => z.Kpi = null">
@@ -13,11 +13,13 @@
 </KpiFilter>
 
 <div class="kb-filters">
-    <input class="kb-invoer kb-breed" placeholder="Zoek op naam, UPN, sAMAccountName, e-mail of dienst" @bind="z.Find" @bind:event="oninput" />
+    <input class="kb-invoer kb-breed" placeholder="@(State.HasAd ? "Zoek op naam, UPN, sAMAccountName, e-mail of dienst" : "Zoek op naam, UPN, e-mail of dienst")" @bind="z.Find" @bind:event="oninput" />
     @if (ActiveKpi is null)
     {
-        <label><input type="checkbox" @bind="z.WithGuests" /> Gasten tonen</label>
+        @if (State.HasMicrosoft365) { <label><input type="checkbox" @bind="z.WithGuests" /> Gasten tonen</label> }
         <label><input type="checkbox" @bind="z.OnlyEnabled" /> Actieve gebruikers</label>
+        @if (State.HasAd && State.HasMicrosoft365)
+        {
         <select class="kb-invoer" @bind="z.Source">
             <option value="">Alle bronnen</option>
             <option>AD + Entra</option>
@@ -25,6 +27,7 @@
             <option>Alleen Entra</option>
             <option>Gast</option>
         </select>
+        }
     }
 </div>
 
@@ -90,6 +93,15 @@
         new() { Key = "licenties", Title = "Licenties", Hidden = true, Cell = p => @<text>@(p.Entra is null ? null : string.Join(", ", p.Entra.Licences))</text>, SortBy = p => p.Entra is null ? null : string.Join(", ", p.Entra.Licences) },
         new() { Key = "aangemaakt", Title = "Aangemaakt", Hidden = true, Cell = p => @<text>@(p.Ad?.WhenCreated ?? p.Entra?.CreatedDateTime)</text>, SortBy = p => p.Ad?.WhenCreated ?? p.Entra?.CreatedDateTime },
         new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = p => @<code>@(p.Entra?.Id)</code>, SortBy = p => p.Entra?.Id },
+    }.Where(c => Fits(c.Key)).ToList();
+
+    /// <summary>Columns of a system the tenant does not have are left out (0.21.1).</summary>
+    private bool Fits(string key) => key switch
+    {
+        "bron" => State.HasAd && State.HasMicrosoft365,
+        "ou" or "sam" => State.HasAd,
+        "licenties" or "entraid" => State.HasMicrosoft365,
+        _ => true,
     };
 
     /// <summary>The most recent of AD and Entra (ISO dates sort correctly as text).</summary>

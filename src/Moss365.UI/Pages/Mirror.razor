@@ -5,7 +5,7 @@
 <h1>Spiegelgebruiker</h1>
 
 <p class="kb-zacht">
-    Kies een referentiegebruiker (de spiegel) en een doelgebruiker. De app toont per groep, in AD en in de cloud, wat er zou
+    Kies een referentiegebruiker (de spiegel) en een doelgebruiker. De app toont per groep@(State.HasAd && State.HasMicrosoft365 ? ", in AD en in de cloud," : null) wat er zou
     moeten gebeuren en via welke weg. Met <strong>Plan maken</strong> zie je eerst de wijzigingen; er gebeurt pas iets na
     bevestiging. Bevoorrechte en dynamische groepen worden nooit gekopieerd.
 </p>
@@ -38,7 +38,7 @@
             }
         </div>
 
-        @foreach (var layer in new[] { "AD", "Cloud" })
+        @foreach (var layer in new[] { "AD", "Cloud" }.Where(l => l == "AD" ? State.HasAd : State.HasMicrosoft365))
         {
             <section class="kb-kaart">
                 <h2>@(layer == "AD" ? "On-prem AD" : "Cloud (Entra en Exchange)")</h2>

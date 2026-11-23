@@ -8,7 +8,18 @@
 </div>
 
 <p class="kb-zacht">
-    Alle groepen uit AD, Entra en Exchange. Een uit AD gesynchroniseerde groep staat er één keer, met zijn AD- en cloudkant samen.
+    @if (State.HasAd && State.HasMicrosoft365)
+    {
+        <text>Alle groepen uit AD, Entra en Exchange. Een uit AD gesynchroniseerde groep staat er één keer, met zijn AD- en cloudkant samen.</text>
+    }
+    else if (State.HasAd)
+    {
+        <text>Alle groepen uit Active Directory.</text>
+    }
+    else
+    {
+        <text>Alle groepen uit Entra en Exchange.</text>
+    }
 </p>
 
 <div class="kb-tegels">
@@ -23,7 +34,7 @@
 <KpiFilter Kpi="ActiveKpi" Count="KpiRows.Count" Shown="Items.Count" Cleared="() => z.Kpi = null" />
 
 <div class="kb-filters kb-plak">
-    <input class="kb-invoer kb-breed" placeholder="Zoek op naam, adres of sAMAccountName" @bind="z.Find" @bind:event="oninput" aria-label="Zoeken" />
+    <input class="kb-invoer kb-breed" placeholder="@(State.HasAd ? "Zoek op naam, adres of sAMAccountName" : "Zoek op naam of adres")" @bind="z.Find" @bind:event="oninput" aria-label="Zoeken" />
 </div>
 
 <KbTable Id="groepen" Items="Items" Columns="columns" Selectable KeyOf="g => g.Key" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@($"{Items.Count} groepen")" />
@@ -69,7 +80,7 @@
         new() { Key = "ou", Title = "OU", Hidden = true, Cell = g => @<text>@g.Ad?.OuPath</text>, SortBy = g => g.Ad?.OuPath },
         new() { Key = "weg", Title = "Wijzigen via", Hidden = true, Cell = g => @<text>@g.Route</text>, SortBy = g => g.Route.ToString() },
         new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = g => @<code>@(g.Cloud?.Id)</code>, SortBy = g => g.Cloud?.Id },
-    };
+    }.Where(c => c.Key switch { "sam" or "ou" => State.HasAd, "entraid" => State.HasMicrosoft365, "waar" => State.HasAd && State.HasMicrosoft365, _ => true }).ToList();
 
     private static int? Members(Group g) => g.Cloud?.CountMembers ?? g.Exo?.CountMembers ?? g.Ad?.CountMembers;
 
@@ -84,6 +95,13 @@
         var all = State.Data.Index.Groups.ToList();
         foreach (var (label, filter) in new[] { ("Alleen AD", "ad"), ("AD, gesynchroniseerd", "ad-sync"), ("Microsoft 365", "m365"), ("Mailgroepen", "mail"), ("Cloudbeveiliging", "cloud"), ("Dynamisch", "dynamisch") })
         {
+            // Tiles of a system the tenant does not have are left out (0.21.1)
+            var fits = filter switch { "ad" => State.HasAd, "ad-sync" => State.HasAd && State.HasMicrosoft365, _ => State.HasMicrosoft365 };
+            if (!fits)
+            {
+                continue;
+            }
+
             yield return (label, all.Count(g => Category(g) == filter), filter);
         }
     }

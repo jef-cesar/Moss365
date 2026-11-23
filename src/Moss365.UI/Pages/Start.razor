@@ -8,9 +8,9 @@
 <h1>Overzicht</h1>
 
 <p class="kb-zacht">
-    Moss365 (The Moss Directory) beheert gebruikers, groepen en rooms over on-prem AD, Entra ID en Exchange Online heen.
+    Moss365 (The Moss Directory) beheert gebruikers, groepen en rooms in @Systems.
     De app start met de inventaris van <code>Export-Inventaris.ps1</code> (per bestand de nieuwste map). Via
-    <a href="verbindingen">Verbindingen</a> laad je live gegevens uit AD, Entra en Exchange. Wijzigingen gebeuren altijd als
+    <a href="verbindingen">Verbindingen</a> laad je live gegevens uit @Systems. Wijzigingen gebeuren altijd als
     plan: eerst een voorbeeld, dan bevestigen, dan uitvoeren, en alles komt in het <a href="logboek">logboek</a>.
 </p>
 
@@ -70,10 +70,13 @@
             <Tile Kpi="Kpis.Source(g.Key)" />
         }
     </div>
+    @if (State.HasAd && State.HasMicrosoft365)
+    {
     <p class="kb-zacht">
         "AD + Entra" zijn gesynchroniseerde accounts. "Alleen Entra" zijn vooral de accounts achter gedeelde, room- en
         planningspostvakken. "Alleen AD" zijn uitgeschakelde, technische en niet-gesynchroniseerde accounts.
     </p>
+    }
 </section>
 
 <section class="kb-kaart">
@@ -93,6 +96,14 @@
 </section>
 
 @code {
+    /// <summary>The systems of this tenant, in words (0.21.1).</summary>
+    private string Systems => (State.HasAd, State.HasMicrosoft365) switch
+    {
+        (true, true) => "on-prem AD, Entra ID en Exchange Online",
+        (true, false) => "on-prem Active Directory",
+        _ => "Entra ID en Exchange Online (Microsoft 365)",
+    };
+
     private string otherFolder = string.Empty;
     private string? importMessage;
 
