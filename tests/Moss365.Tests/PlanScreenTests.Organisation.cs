@@ -33,7 +33,7 @@ public sealed partial class PlanScreenTests
 
         exported.Company = "Ander bedrijf";
         exported.AdDomain = "ander.local";
-        exported.EmergencyAccounts = new() { "nood@ander.example" };
+        exported.EmergencyAccounts = new() { "nood@fabrikam.com" };
         State.Config.EmergencyAccounts = new() { "breakglass@test.onmicrosoft.com" };
         cut.FindComponent<Microsoft.AspNetCore.Components.Forms.InputFile>().UploadFiles(InputFileContent.CreateFromText(ConfigStorage.To(exported), "organisatie.json"));
         cut.WaitForAssertion(() => Assert.Contains("Geïmporteerd uit organisatie.json", cut.Markup, StringComparison.Ordinal));
