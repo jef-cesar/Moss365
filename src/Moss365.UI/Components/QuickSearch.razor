@@ -1,0 +1,167 @@
+@* Searching with Ctrl+K (0.21): pages of the app and objects (users, groups, mailboxes, rooms), only what the profile
+   allows and the tenant has. Enter opens the first result, Escape closes. *@
+@using Moss365.Core.Inventory
+@implements IAsyncDisposable
+@inject ManagementState State
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@if (open)
+{
+    <div class="kb-zoek-achtergrond" @onclick="Close"></div>
+    <div class="kb-zoek" role="dialog" aria-label="Zoeken">
+        <input class="kb-invoer kb-zoek-veld" placeholder="Zoek een pagina, gebruiker, groep, postvak of room" aria-label="Zoeken"
+               @bind="text" @bind:event="oninput" @onkeydown="Key" @ref="field" />
+        @if (text.Trim().Length > 0)
+        {
+            @if (results.Count == 0)
+            {
+                <p class="kb-zacht">Niets gevonden.</p>
+            }
+            <ul class="kb-zoek-lijst">
+                @for (var n = 0; n < results.Count; n++)
+                {
+                    var r = results[n];
+                    <li class="@(n == selected ? "kb-zoek-gekozen" : null)">
+                        <a href="@r.Href" @onclick="Close"><span class="kb-label">@r.Kind</span> @r.Text <span class="kb-zacht">@r.Detail</span></a>
+                    </li>
+                }
+            </ul>
+        }
+        <p class="kb-zacht kb-zoek-hulp">Enter opent het gekozen resultaat, pijltjes kiezen, Escape sluit.</p>
+    </div>
+}
+
+@code {
+    private sealed record Result(string Kind, string Text, string Detail, string Href);
+
+    private bool open;
+    private string text = string.Empty;
+    private int selected;
+    private ElementReference field;
+    private DotNetObjectReference<QuickSearch>? self;
+
+    private IReadOnlyList<Result> results => Search(text).Take(20).ToList();
+
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (first)
+        {
+            self = DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("moss365.sneltoets", self);
+            }
+            catch (Exception)
+            {
+                // No script (tests): the button in the menu still opens the search
+            }
+        }
+
+        if (open)
+        {
+            try
+            {
+                await field.FocusAsync();
+            }
+            catch (Exception)
+            {
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void Open()
+    {
+        open = true;
+        text = string.Empty;
+        selected = 0;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void Close()
+    {
+        open = false;
+        text = string.Empty;
+    }
+
+    private void Key(KeyboardEventArgs e)
+    {
+        var list = results;
+        switch (e.Key)
+        {
+            case "Escape":
+                Close();
+                break;
+            case "ArrowDown":
+                selected = Math.Min(selected + 1, Math.Max(0, list.Count - 1));
+                break;
+            case "ArrowUp":
+                selected = Math.Max(0, selected - 1);
+                break;
+            case "Enter" when list.Count > 0:
+                var href = list[Math.Min(selected, list.Count - 1)].Href;
+                Close();
+                Nav.NavigateTo(href);
+                break;
+            default:
+                selected = 0;
+                break;
+        }
+    }
+
+    private bool Allowed(string href) => (Access.ForPath(href) is not { } r || State.Can(r)) && Access.FitsTenant(href, State.HasAd, State.HasMicrosoft365);
+
+    private IEnumerable<Result> Search(string q)
+    {
+        q = q.Trim();
+        if (q.Length == 0)
+        {
+            yield break;
+        }
+
+        bool Hit(params string?[] values) => values.Any(v => v is not null && v.Contains(q, StringComparison.CurrentCultureIgnoreCase));
+
+        foreach (var p in MenuModel.AllPages.Where(p => Hit(p.Text) && Allowed(p.Href)))
+        {
+            yield return new("pagina", p.Text, string.Empty, p.Href);
+        }
+
+        if (q.Length < 2 || !Allowed("gebruikers"))
+        {
+            yield break;
+        }
+
+        var d = State.Data;
+        foreach (var p in d.Persons.Where(p => Hit(p.Name, p.Upn, p.Ad?.SamAccountName)).OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase).Take(8))
+        {
+            yield return new(p.IsGuest ? "gast" : "gebruiker", p.Name, p.Upn, d.Index.Ref(p).Route!);
+        }
+
+        foreach (var g in d.Index.Groups.Where(g => Hit(g.Name, g.Mail)).OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).Take(8))
+        {
+            yield return new("groep", g.Name, g.Layers, g.Ref.Route!);
+        }
+
+        if (!State.HasMicrosoft365)
+        {
+            yield break;
+        }
+
+        foreach (var m in d.Mailboxes.Where(m => Hit(m.DisplayName, m.Smtp)).OrderBy(m => m.DisplayName, StringComparer.CurrentCultureIgnoreCase).Take(8))
+        {
+            yield return new("postvak", m.DisplayName, m.Smtp, "postvak/" + Uri.EscapeDataString(m.Smtp));
+        }
+
+        foreach (var r in d.Rooms.Where(r => Hit(r.DisplayName, r.Smtp)).OrderBy(r => r.DisplayName, StringComparer.CurrentCultureIgnoreCase).Take(8))
+        {
+            yield return new("room", r.DisplayName, r.Smtp, "room/" + Uri.EscapeDataString(r.Smtp));
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        self?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

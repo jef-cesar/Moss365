@@ -228,7 +228,7 @@ public sealed partial class PlanScreenTests
     [Fact]
     public void CheckShowsTheVersion()
     {
-        var cut = RenderComponent<ThisComputer>();
+        var cut = RenderComponent<AboutAndUpdates>();
         Assert.Contains("Over Moss365", cut.Markup);
         Assert.Contains($"Versie <strong>{ManagementState.AppVersion}</strong>", cut.Markup);
         Assert.Contains("github.com/jef-cesar/Moss365/releases", cut.Markup);

@@ -1,4 +1,5 @@
 @page "/controle"
+@layout SettingsLayout
 @inject ManagementState State
 @inject IServiceProvider Services
 
@@ -12,39 +13,7 @@
     geen beheerdersrechten; PowerShell 7 en de AD-module (RSAT) wel: Windows vraagt dan om bevestiging.
 </p>
 
-<section class="kb-kaart" id="over">
-    <h2>Over Moss365</h2>
-    <p>Versie <strong>@ManagementState.AppVersion</strong>.
-        @if (State.UpdateAvailable)
-        {
-            <span class="kb-label kb-label-let">versie @State.Update!.NewestVersion beschikbaar</span>
-        }
-        else if (State.Update is { NewestVersion: not null })
-        {
-            <span class="kb-zacht">Dit is de nieuwste versie.</span>
-        }
-        else if (State.Update?.Message is { } message)
-        {
-            <span class="kb-zacht">@message</span>
-        }
-    </p>
-    <p class="kb-zacht">
-        Elke versie staat als release op GitHub: <code>Moss365.Desktop-stable-Setup.exe</code> (installeert voor jouw account
-        en werkt zichzelf bij) en een zip. Je gegevens staan apart in <code>%LOCALAPPDATA%\Moss365</code> en blijven bewaard.
-    </p>
-    <div class="kb-filters">
-        <CopyField Value="@(State.Update?.Link ?? State.ReleasesLink)" Label="Link naar de releases" />
-        <button class="kb-knop" disabled="@searches" @onclick="SearchUpdate">Nu zoeken</button>
-    </div>
-    <label><input type="checkbox" checked="@State.Settings.SearchUpdates" @onchange="SetUpdateSearch" /> Bij het starten zoeken naar een nieuwe versie</label>
-    <p>
-        Organisatie: <code>@(State.ConfigSource ?? "niet gevonden")</code>
-        (@State.Config.Populations.Count soorten, @State.Config.Departments.Count diensten, @State.Config.Offices.Count kantoren)
-        @if (State.ConfigWarning is { } w) { <span class="kb-label kb-rood">@w</span> }
-    </p>
-</section>
-
-<UpdatePanel />
+<p class="kb-zacht">De versie van Moss365 en de updates staan bij <a href="updates">Versie en updates</a>.</p>
 
 @if (State.Check is null)
 {
@@ -123,20 +92,6 @@ else
 }
 
 @code {
-    private bool searches;
-
-    private async Task SearchUpdate()
-    {
-        searches = true;
-        await State.SearchUpdateAsync();
-        searches = false;
-    }
-
-    private void SetUpdateSearch(ChangeEventArgs e)
-    {
-        State.Settings.SearchUpdates = e.Value is true;
-        State.SaveSettings();
-    }
 
     private IReadOnlyList<CheckRule>? rules;
     private bool busy;

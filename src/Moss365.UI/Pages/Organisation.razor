@@ -1,8 +1,10 @@
 @page "/organisatie"
+@page "/organisatie/{Part}"
+@layout SettingsLayout
 @implements IDisposable
 @inject ManagementState State
 
-<h1>Organisatie</h1>
+<h1>Organisatie<span class="kb-zacht">: @PartTitle</span></h1>
 
 <p class="kb-zacht">
     Keuzelijsten voor nieuwe gebruikers. Bewaren schrijft naar de databank van <strong>@State.Tenant.Name</strong>;
@@ -34,6 +36,8 @@
     <div class="kb-melding kb-fout">@f</div>
 }
 
+@if (Is(null))
+{
 <SuggestionsPanel TakenOver="Recompute" />
 
 <section class="kb-kaart">
@@ -89,7 +93,10 @@
     </p>
     @if (exchangeMessage is not null) { <div class="kb-melding @(exchangeError ? "kb-fout" : null)">@exchangeMessage</div> }
 </section>
+}
 
+@if (Is("diensten"))
+{
 <section class="kb-kaart">
     <h2>Diensten en afdelingen</h2>
     <p class="kb-zacht">
@@ -174,7 +181,10 @@
         <button class="kb-knop" @onclick="AddDivision">Afdeling toevoegen</button>
     </div>
 </section>
+}
 
+@if (Is("kantoren"))
+{
 <section class="kb-kaart">
     <h2>Kantoren</h2>
     <p class="kb-zacht">
@@ -209,7 +219,10 @@
         </table>
     }
 </section>
+}
 
+@if (Is("groepen"))
+{
 <section class="kb-kaart">
     <h2>Nieuwe groepen</h2>
     <div class="kb-raster">
@@ -224,7 +237,10 @@
     </div>
     <p class="kb-zacht">Een naam die niet met een van de voorvoegsels begint, geeft een waarschuwing in het plan.</p>
 </section>
+}
 
+@if (Is("profielen"))
+{
 <section class="kb-kaart">
     <h2>Profielen</h2>
     <p class="kb-zacht">
@@ -235,7 +251,10 @@
     <label><input type="checkbox" checked="@State.Config.ProfilesRequired" @onchange="e => Set(() => State.Config.ProfilesRequired = e.Value is true)" />
         Profielen verplicht: zonder rol enkel lezen</label>
 </section>
+}
 
+@if (Is("noodaccounts"))
+{
 <section class="kb-kaart">
     <h2>Noodaccounts</h2>
     <p class="kb-zacht">
@@ -253,6 +272,7 @@
         <button class="kb-knop" @onclick="AddEmergencyAccount">Noodaccount toevoegen</button>
     </div>
 </section>
+}
 
 @code {
     private string newEmergencyAccount = string.Empty;
@@ -294,6 +314,13 @@
         departmentsInData = OrganisationAnalysis.DepartmentsInData(State.Data, State.Config);
         officesInData = OrganisationAnalysis.OfficesInData(State.Data, State.Config);
     }
+
+    /// <summary>The part of the organisation settings on this page (0.21: one page per part); null = company and naming.</summary>
+    [Parameter] public string? Part { get; set; }
+
+    private bool Is(string? part) => string.Equals(Part, part, StringComparison.OrdinalIgnoreCase);
+
+    private string PartTitle => MenuModel.OrganisationParts.FirstOrDefault(p => p.Href == (Part is null ? "organisatie" : "organisatie/" + Part))?.Text ?? "Bedrijf en naamgeving";
 
     private string templateKey = string.Empty;
     private string? exchangeMessage;

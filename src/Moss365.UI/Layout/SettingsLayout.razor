@@ -1,0 +1,42 @@
+@inherits LayoutComponentBase
+@layout MainLayout
+@* The settings screen (0.21): one item in the menu, with its own side bar here. Only what the profile allows and what
+   fits the systems of the tenant. *@
+@inject ManagementState State
+@inject NavigationManager Nav
+
+<div class="kb-instellingen">
+    <nav class="kb-instellingen-nav" aria-label="Instellingen">
+        <div class="kb-instellingen-titel">⚙ Instellingen</div>
+        @foreach (var g in MenuModel.Settings)
+        {
+            var items = g.Items.Where(Visible).ToList();
+            if (items.Count == 0)
+            {
+                continue;
+            }
+
+            <div class="kb-instellingen-groep">@g.Name</div>
+            @foreach (var i in items)
+            {
+                <NavLink href="@i.Href" Match="NavLinkMatch.Prefix">@i.Text@if (State.Pending.UnderMenu(i.Href)) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }</NavLink>
+                @if (i.Href == "organisatie" && MenuModel.Section(Nav.ToBaseRelativePath(Nav.Uri)) == "organisatie")
+                {
+                    <div class="kb-instellingen-sub">
+                        @foreach (var p in MenuModel.OrganisationParts)
+                        {
+                            <NavLink href="@p.Href" Match="NavLinkMatch.All">@p.Text</NavLink>
+                        }
+                    </div>
+                }
+            }
+        }
+    </nav>
+    <div class="kb-instellingen-inhoud">
+        @Body
+    </div>
+</div>
+
+@code {
+    private bool Visible(MenuItem i) => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.HasAd, State.HasMicrosoft365);
+}

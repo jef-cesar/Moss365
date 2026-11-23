@@ -80,6 +80,42 @@ public sealed class ViewStorage
     {
         public Dictionary<string, TableView> Tables { get; set; } = new();
         public List<string> CollapsedMenuGroups { get; set; } = new();
+
+        /// <summary>Menu items marked as favourite (0.21), in the order they were added.</summary>
+        public List<string> Favourites { get; set; } = new();
+    }
+
+    public IReadOnlyList<string> Favourites
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _content.Favourites.ToList();
+            }
+        }
+    }
+
+    public bool IsFavourite(string href)
+    {
+        lock (_lock)
+        {
+            return _content.Favourites.Contains(href, StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    public void SetFavourite(string href, bool favourite)
+    {
+        lock (_lock)
+        {
+            _content.Favourites.RemoveAll(f => string.Equals(f, href, StringComparison.OrdinalIgnoreCase));
+            if (favourite)
+            {
+                _content.Favourites.Add(href);
+            }
+        }
+
+        Save();
     }
 
     public TableView Table(string id)

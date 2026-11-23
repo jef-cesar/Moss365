@@ -36,6 +36,18 @@ window.moss365 = {
             if (location.href === vorige) { staat.scroll[vorige] = window.scrollY; } else { vorige = location.href; }
         }, { passive: true });
     },
+    // Ctrl+K (of Cmd+K): zoeken in de app (0.21)
+    sneltoets: function (ref) {
+        if (window.mossZoeken) { window.mossZoeken.ref = ref; return; }
+        window.mossZoeken = { ref: ref };
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
+                if (e.target && e.target.closest && e.target.closest('.monaco-editor')) { return; }
+                e.preventDefault();
+                window.mossZoeken.ref.invokeMethodAsync('Open');
+            }
+        }, true);
+    },
     herstelScroll: function (adres) {
         var staat = window.mossNavigatie;
         var y = staat && staat.scroll[adres];

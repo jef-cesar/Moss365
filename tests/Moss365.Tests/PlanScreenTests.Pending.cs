@@ -13,13 +13,18 @@ namespace Moss365.Tests;
 public sealed partial class PlanScreenTests
 {
     /// <summary>The whole app (menu, bar) with this screen in it, at this address.</summary>
-    private IRenderedComponent<MainLayout> RenderWithLayout<TPage>(string address) where TPage : IComponent
+    private IRenderedComponent<MainLayout> RenderWithLayout<TPage>(string address, string? part = null) where TPage : IComponent
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.GetRequiredService<NavigationManager>().NavigateTo(address);
         return RenderComponent<MainLayout>(p => p.Add(x => x.Body, b =>
         {
             b.OpenComponent<TPage>(0);
+            if (part is not null)
+            {
+                b.AddAttribute(1, "Part", part);
+            }
+
             b.CloseComponent();
         }));
     }
@@ -30,19 +35,19 @@ public sealed partial class PlanScreenTests
     [Fact]
     public void UnsavedOrganisationShowsTintBarAndDot()
     {
-        var cut = RenderWithLayout<Organisation>("organisatie");
+        var cut = RenderWithLayout<Organisation>("organisatie/diensten", "diensten");
         Assert.Empty(cut.FindAll("main.kb-openstaand"));
 
         cut.Find("select[aria-label='Afdeling voor gezinszorg']").Change("Burger en welzijn");
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("main.kb-openstaand")));
         Assert.Contains("Niet bewaard: 1 wijziging", cut.Find(".kb-openbalk").TextContent);
-        Assert.Contains("●", MenuItem(cut, "Organisatie").TextContent);
+        Assert.Contains("●", MenuItem(cut, "⚙ Instellingen").TextContent);
         Assert.Contains("1 scherm niet bewaard", cut.Find(".kb-nav-openstaand").TextContent);
 
         // Save via the bar: everything gone, and the file is written
         cut.Find(".kb-openbalk button.kb-primair").Click();
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("main.kb-openstaand")));
-        Assert.DoesNotContain("●", MenuItem(cut, "Organisatie").TextContent);
+        Assert.DoesNotContain("●", MenuItem(cut, "⚙ Instellingen").TextContent);
         Assert.NotNull(State.Database.ReadDocument(Moss365.Core.Storage.Documents.Organisation));
     }
 
@@ -50,11 +55,11 @@ public sealed partial class PlanScreenTests
     public void LeavingWithUnsavedSettingsAsksConfirmation()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
-        var cut = RenderWithLayout<Organisation>("organisatie");
+        var cut = RenderWithLayout<Organisation>("organisatie/diensten", "diensten");
         cut.Find("select[aria-label='Afdeling voor gezinszorg']").Change("Burger en welzijn");
 
         nav.NavigateTo("gebruikers");
-        Assert.EndsWith("/organisatie", nav.Uri);
+        Assert.EndsWith("/organisatie/diensten", nav.Uri);
         cut.WaitForAssertion(() => Assert.Contains("Niet bewaard", cut.Find(".kb-dialoog").TextContent));
 
         // Stay: nothing changes

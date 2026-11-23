@@ -2,6 +2,25 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.21.0
+
+A shorter, calmer menu, asked for after 0.20.
+
+- **The menu is grouped by subject**: Mensen, Groepen en toegang, Beveiliging, Inzicht and Werk. The group of the
+  page you are on is always open; the others open and close with a click and the app remembers which ones you closed.
+  A closed group shows a dot when something under it is still open.
+- **Instellingen is one item** with its own screen and side bar: Deze tenant (Organisatie, Verbindingen, Tenant
+  inrichten, Databank en versleuteling), Alle tenants (Tenants) and Deze pc en de app (Controle van deze pc, Versie en
+  updates).
+- **Organisatie is split into parts**, each its own page: Bedrijf en naamgeving, Diensten en afdelingen, Kantoren,
+  Nieuwe groepen, Profielen and Noodaccounts.
+- **Versie en updates** is a page of its own (about Moss365, the update channel and searching for updates); Controle
+  van deze pc keeps only the check of the computer.
+- **Favourites**: the star next to a menu item puts it at the top of the menu.
+- **Search with Ctrl+K** (or the Zoeken button): pages, users, groups, shared mailboxes and rooms; arrows and Enter to
+  go, Escape to close.
+- Screen readers now hear whether a menu group is open or closed.
+
 ## 0.20.0
 
 The settings of an organisation, suggested from its own data (first part of step R9 of the

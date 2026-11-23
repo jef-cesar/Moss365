@@ -1,0 +1,20 @@
+@page "/instellingen"
+@layout SettingsLayout
+@* The settings item of the menu: goes to the first settings page this profile may open. *@
+@inject ManagementState State
+@inject NavigationManager Nav
+
+<h1>Instellingen</h1>
+<p class="kb-zacht">Kies links wat je wil instellen.</p>
+
+@code {
+    protected override void OnInitialized()
+    {
+        var first = MenuModel.Settings.SelectMany(g => g.Items)
+            .FirstOrDefault(i => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.HasAd, State.HasMicrosoft365));
+        if (first is not null)
+        {
+            Nav.NavigateTo(first.Href, replace: true);
+        }
+    }
+}

@@ -78,7 +78,7 @@ public sealed class UiTests : TestContext, IDisposable
     [Fact]
     public void CreateAndSaveOrganisationLink()
     {
-        var cut = RenderComponent<Organisation>();
+        var cut = RenderComponent<Organisation>(p => p.Add(x => x.Part, "diensten"));
         Assert.True(cut.Find("button.kb-primair").HasAttribute("disabled"));
 
         cut.Find("select[aria-label='Afdeling voor gezinszorg']").Change("Burger en welzijn");
@@ -100,7 +100,7 @@ public sealed class UiTests : TestContext, IDisposable
     [Fact]
     public void OrganisationShowsUnknownDepartmentsAndAddsThem()
     {
-        var cut = RenderComponent<Organisation>();
+        var cut = RenderComponent<Organisation>(p => p.Add(x => x.Part, "diensten"));
         Assert.Contains("\"strijkatelier\"", cut.Markup);
         cut.FindAll("button").First(b => b.TextContent == "Toevoegen" && b.ParentElement!.ParentElement!.TextContent.Contains("strijkatelier")).Click();
         Assert.NotNull(Services.GetRequiredService<ManagementState>().Config.SearchDepartment("strijkatelier"));
@@ -110,7 +110,7 @@ public sealed class UiTests : TestContext, IDisposable
     [Fact]
     public void DuplicateDepartmentBlocksSave()
     {
-        var cut = RenderComponent<Organisation>();
+        var cut = RenderComponent<Organisation>(p => p.Add(x => x.Part, "diensten"));
         var input = cut.FindAll("input.kb-invoer").First(i => i.GetAttribute("value") == "gezinszorg");
         input.Change("Cultuur ");
         Assert.Contains("staat 2 keer in de lijst", cut.Markup);

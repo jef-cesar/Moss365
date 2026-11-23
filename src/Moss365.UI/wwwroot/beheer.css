@@ -545,3 +545,36 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 .kb-statusbalk a { color: var(--kb-accent); }
 .kb-online { color: var(--kb-ok); }
 .kb-offline { color: var(--kb-rood); font-weight: 600; }
+
+/* 0.21: the menu by subject, favourites, search, and the settings screen */
+.kb-nav-zoek { display: flex; align-items: center; gap: 0.45rem; margin: 0 1rem 0.6rem; padding: 0.4rem 0.7rem; border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.06); color: var(--kb-nav-tekst); cursor: pointer; font: inherit; text-align: left; }
+.kb-nav-zoek kbd { margin-left: auto; font-size: 0.75em; opacity: 0.7; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 4px; padding: 0 0.3rem; }
+.kb-nav-kop { padding: 0.6rem 1.25rem 0.2rem; font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.65; }
+.kb-nav-item { display: flex; align-items: stretch; }
+.kb-nav-item a { flex: 1; min-width: 0; }
+.kb-nav-ster { background: none; border: none; color: var(--kb-nav-tekst); opacity: 0; cursor: pointer; padding: 0 0.7rem; font-size: 0.9em; }
+.kb-nav-item:hover .kb-nav-ster, .kb-nav-ster:focus-visible { opacity: 0.55; }
+.kb-nav-ster.kb-nav-ster-aan { opacity: 1; color: #f3c26b; }
+.kb-nav a.kb-nav-instellingen { margin-top: 0.6rem; border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 0.75rem; }
+
+.kb-instellingen { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.kb-instellingen-nav { position: sticky; top: 1rem; display: flex; flex-direction: column; background: var(--kb-vlak); border: 1px solid var(--kb-lijn);
+    border-radius: 8px; padding: 0.6rem 0; }
+.kb-instellingen-titel { font-weight: 700; padding: 0.2rem 1rem 0.5rem; }
+.kb-instellingen-groep { padding: 0.6rem 1rem 0.2rem; font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--kb-zacht); }
+.kb-instellingen-nav a { color: var(--kb-tekst); text-decoration: none; padding: 0.4rem 1rem; border-left: 3px solid transparent; }
+.kb-instellingen-nav a:hover { background: var(--kb-achtergrond); }
+.kb-instellingen-nav a.active { border-left-color: var(--kb-paars); font-weight: 600; background: var(--kb-achtergrond); }
+.kb-instellingen-sub { display: flex; flex-direction: column; }
+.kb-instellingen-sub a { padding-left: 1.9rem; font-size: 0.92em; }
+@media (max-width: 900px) { .kb-instellingen { grid-template-columns: 1fr; } .kb-instellingen-nav { position: static; } }
+
+.kb-zoek-achtergrond { position: fixed; inset: 0; background: rgba(20, 18, 28, 0.45); z-index: 20; }
+.kb-zoek { position: fixed; top: 12vh; left: 50%; transform: translateX(-50%); width: min(40rem, 92vw); z-index: 21; background: var(--kb-vlak);
+    border: 1px solid var(--kb-lijn); border-radius: 10px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); padding: 1rem; }
+.kb-zoek-veld { width: 100%; font-size: 1.05rem; }
+.kb-zoek-lijst { list-style: none; padding: 0; margin: 0.6rem 0 0; max-height: 50vh; overflow-y: auto; }
+.kb-zoek-lijst a { display: block; padding: 0.4rem 0.6rem; border-radius: 6px; color: var(--kb-tekst); text-decoration: none; }
+.kb-zoek-lijst li.kb-zoek-gekozen a, .kb-zoek-lijst a:hover { background: var(--kb-achtergrond); }
+.kb-zoek-hulp { margin: 0.6rem 0 0; font-size: 0.8em; }

@@ -11,20 +11,50 @@
             <div><span class="kb-merk-naam">Moss<span>365</span></span><span class="kb-merk-sub">The Moss Directory</span></div>
         </div>
 
-        @foreach (var groupValue in Menu)
+        <button class="kb-nav-zoek" @onclick="() => search?.Open()" title="Zoek een pagina, gebruiker, groep of postvak (Ctrl+K)">
+            <span aria-hidden="true">⌕</span> Zoeken <kbd>Ctrl+K</kbd>
+        </button>
+
+        @{ var favourites = State.View.Favourites.Select(f => AllItems.FirstOrDefault(i => i.Href == f)).OfType<MenuItem>().Where(Visible).ToList(); }
+        @if (favourites.Count > 0)
         {
-            var closed = State.View.MenuGroupClosed(groupValue.Name);
-            <button class="kb-nav-groep" aria-expanded="@(!closed)" @onclick="() => State.View.SetMenuGroup(groupValue.Name, !closed)">
+            <div class="kb-nav-kop">★ Favorieten</div>
+            @foreach (var item in favourites)
+            {
+                @Item(item)
+            }
+        }
+
+        <NavLink href="" Match="NavLinkMatch.All">Overzicht</NavLink>
+
+        @foreach (var groupValue in MenuModel.Main)
+        {
+            var items = groupValue.Items.Where(Visible).ToList();
+            if (items.Count == 0)
+            {
+                continue;
+            }
+
+            // The group of the page you are on is always open; the others stay as you left them
+            var active = MenuModel.GroupOf(Nav.ToBaseRelativePath(Nav.Uri)) == groupValue.Name;
+            var closed = State.View.MenuGroupClosed(groupValue.Name) && !active;
+            <button class="kb-nav-groep" aria-expanded="@(closed ? "false" : "true")" @onclick="() => State.View.SetMenuGroup(groupValue.Name, !closed)">
                 <span aria-hidden="true">@(closed ? "▸" : "▾")</span> @groupValue.Name
+                @if (closed && items.Any(i => State.Pending.UnderMenu(i.Href))) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }
             </button>
             @if (!closed)
             {
-                @foreach (var (href, text) in groupValue.Items.Where(i => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.HasAd, State.HasMicrosoft365)))
+                @foreach (var item in items)
                 {
-                    <NavLink href="@href" Match="@(href.Length == 0 ? NavLinkMatch.All : NavLinkMatch.Prefix)">@text@if (href.Length > 0 && open.Any(i => i.Menu == Pending.MenuOf(href))) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }</NavLink>
+                    @Item(item)
                 }
             }
         }
+
+        <NavLink class="kb-nav-instellingen" href="@MenuModel.SettingsHref" Match="NavLinkMatch.Prefix" @onclick:preventDefault="false">
+            <span aria-hidden="true">⚙</span> <span>Instellingen</span>
+            @if (MenuModel.Settings.SelectMany(g => g.Items).Any(i => State.Pending.UnderMenu(i.Href))) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }
+        </NavLink>
 
         <div class="kb-nav-voet">
             @if (State.Job is { } task && (task.Busy || task.End > DateTime.Now.AddMinutes(-10)))
@@ -62,7 +92,7 @@
 
             @if (State.UpdateAvailable)
             {
-                <a class="kb-nav-update" href="controle#over">Nieuwe versie @State.Update!.NewestVersion beschikbaar</a>
+                <a class="kb-nav-update" href="updates">Nieuwe versie @State.Update!.NewestVersion beschikbaar</a>
             }
 
             @if (open.Count > 0)
@@ -140,29 +170,34 @@
             @Body
         }
         <StatusBar />
+        <QuickSearch @ref="search" />
     </main>
 </div>
 
 @code {
-    private sealed record MenuGroup(string Name, IReadOnlyList<(string Href, string Text)> Items);
+    private QuickSearch? search;
 
-    private IReadOnlyList<MenuGroup> Menu => new[]
+    private IEnumerable<MenuItem> AllItems => MenuModel.Main.SelectMany(g => g.Items);
+
+    private bool Visible(MenuItem i) => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.HasAd, State.HasMicrosoft365);
+
+    /// <summary>The text of an item, with what is waiting (a running script, actions that are due, follow-up tasks).</summary>
+    private string Label(MenuItem i) => i.Href switch
     {
-        new MenuGroup("Opzoeken", new[]
-        {
-            ("", "Overzicht"), ("statistieken", "Statistieken"), ("gebruikers", "Gebruikers"), ("gasten", "Gastgebruikers"),
-            ("groepen", "Groepen"), ("postvakken", "Gedeelde postvakken"), ("rooms", "Rooms"), ("vergelijk", "AD tegenover Entra"), ("beveiliging", "Beveiliging"), ("conditional-access", "Conditional Access"), ("geschiedenis", "Geschiedenis"),
-        }),
-        new MenuGroup("Acties", new[]
-        {
-            ("spiegel", "Spiegelgebruiker"), ("nieuw", "Nieuwe gebruiker"), ("uitstroom", "Uitstroom"), ("opkuis", "Opkuisronde"), ("scripts", "Scripts" + (State.ScriptBusy ? " (bezig)" : string.Empty)),
-            ("gepland", "Gepland" + (due > 0 ? $" ({due})" : string.Empty)),
-            ("opvolging", "Opvolging" + (State.CountFollowUpTasks > 0 ? $" ({State.CountFollowUpTasks})" : string.Empty)), ("logboek", "Logboek"),
-        }),
-        new MenuGroup("Instellingen", new[]
-        {
-            ("organisatie", "Organisatie"), ("verbindingen", "Verbindingen"), ("tenants", "Tenants"), ("inrichten", "Tenant inrichten"), ("databank", "Databank"), ("controle", "Controle van deze pc"),
-        }),
+        "scripts" when State.ScriptBusy => i.Text + " (bezig)",
+        "gepland" when due > 0 => $"{i.Text} ({due})",
+        "opvolging" when State.CountFollowUpTasks > 0 => $"{i.Text} ({State.CountFollowUpTasks})",
+        _ => i.Text,
+    };
+
+    private RenderFragment Item(MenuItem item) => __builder =>
+    {
+        var favourite = State.View.IsFavourite(item.Href);
+        <div class="kb-nav-item">
+            <NavLink href="@item.Href" Match="NavLinkMatch.Prefix">@Label(item)@if (State.Pending.UnderMenu(item.Href)) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }</NavLink>
+            <button class="kb-nav-ster @(favourite ? "kb-nav-ster-aan" : null)" aria-pressed="@favourite" aria-label="@($"{item.Text} {(favourite ? "uit de favorieten" : "bij de favorieten")}")"
+                    title="@(favourite ? "Uit de favorieten" : "Bij de favorieten")" @onclick="() => State.View.SetFavourite(item.Href, !favourite)">★</button>
+        </div>
     };
 
     private int due;
@@ -177,7 +212,9 @@
     {
         open = State.Pending.Everything;
         var path = Pending.Normalise(Nav.ToBaseRelativePath(Nav.Uri));
-        here = open.Where(i => string.Equals(i.FilePath, path, StringComparison.OrdinalIgnoreCase)).ToList();
+        // Also the parts of a page (organisatie/diensten shows what is open on organisatie)
+        here = open.Where(i => string.Equals(i.FilePath, path, StringComparison.OrdinalIgnoreCase)
+                               || string.Equals(i.FilePath, MenuModel.Section(path), StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
     private async Task ToPlan(string anchor)
