@@ -92,7 +92,7 @@ public sealed partial class ManagementState : IDisposable
             return false;
         }
 
-        if (Settings.GraphFilled && (Graph() is not { } graph || !await graph.SilentSignedInAsync(CancellationToken.None)))
+        if (EffectiveSettings.GraphFilled && (Graph() is not { } graph || !await graph.SilentSignedInAsync(CancellationToken.None)))
         {
             Log.Information("Automatisch vernieuwen overgeslagen: niet (meer) aangemeld");
             return false;

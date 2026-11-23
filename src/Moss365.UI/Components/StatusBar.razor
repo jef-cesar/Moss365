@@ -1,0 +1,93 @@
+@* The status bar at the bottom of every screen: the version, how fresh the data is, online or offline, and the
+   project on GitHub. *@
+@using System.Net.NetworkInformation
+@implements IDisposable
+@inject ManagementState State
+
+<footer class="kb-statusbalk" role="contentinfo">
+    <span title="De versie van Moss365">Moss365 @ManagementState.AppVersion</span>
+    <span title="Hoe vers de gegevens op de schermen zijn">@DataText</span>
+    <span class="@(online ? "kb-online" : "kb-offline")" title="De netwerkverbinding van deze pc">
+        <span aria-hidden="true">●</span> @(online ? "online" : "offline")
+    </span>
+    <a href="https://github.com/jef-cesar/Moss365" target="_blank" rel="noopener" title="De broncode, de releases en de issues op GitHub">GitHub</a>
+</footer>
+
+@code {
+    private bool online = Online();
+    private System.Threading.Timer? timer;
+
+    private static bool Online()
+    {
+        try
+        {
+            return NetworkInterface.GetIsNetworkAvailable();
+        }
+        catch (Exception)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>The past (read only), live with the time of the newest read, or the inventory with its date.</summary>
+    private string DataText
+    {
+        get
+        {
+            if (State.AsOf is { } asOf)
+            {
+                return $"Stand van {asOf.Time.LocalDateTime:dd/MM/yyyy HH:mm} (alleen lezen)";
+            }
+
+            if (State.LiveOn.Count > 0)
+            {
+                var newest = State.LiveOn.Values.Max();
+                var oldest = State.LiveOn.Values.Min();
+                return newest.Date == oldest.Date && (newest - oldest).TotalMinutes < 2
+                    ? $"Live gegevens van {newest:dd/MM/yyyy HH:mm}"
+                    : $"Live gegevens van {oldest:dd/MM HH:mm} tot {newest:dd/MM HH:mm}";
+            }
+
+            return (State.InventoryDate(Moss365.Core.Inventory.InventoryLoader.AdUsers) ?? State.InventoryDate(Moss365.Core.Inventory.InventoryLoader.EntraUsers)) is { } d
+                ? $"Inventaris van {d:dd/MM/yyyy HH:mm} (niet live)"
+                : "Nog geen gegevens geladen";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        State.Changed += Reload;
+        try
+        {
+            NetworkChange.NetworkAvailabilityChanged += OnNetwork;
+        }
+        catch (Exception)
+        {
+            // Not on every platform: the timer below still checks
+        }
+
+        timer = new System.Threading.Timer(_ => { online = Online(); Reload(); }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private void OnNetwork(object? sender, NetworkAvailabilityEventArgs e)
+    {
+        online = e.IsAvailable;
+        Reload();
+    }
+
+    private void Reload() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        State.Changed -= Reload;
+        try
+        {
+            NetworkChange.NetworkAvailabilityChanged -= OnNetwork;
+        }
+        catch (Exception)
+        {
+        }
+
+        timer?.Dispose();
+    }
+}

@@ -19,7 +19,7 @@
             </button>
             @if (!closed)
             {
-                @foreach (var (href, text) in groupValue.Items.Where(i => Access.ForPath(i.Href) is not { } r || State.Can(r)))
+                @foreach (var (href, text) in groupValue.Items.Where(i => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.HasAd, State.HasMicrosoft365)))
                 {
                     <NavLink href="@href" Match="@(href.Length == 0 ? NavLinkMatch.All : NavLinkMatch.Prefix)">@text@if (href.Length > 0 && open.Any(i => i.Menu == Pending.MenuOf(href))) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }</NavLink>
                 }
@@ -48,7 +48,7 @@
             else
             {
                 <div class="kb-live">
-                    @foreach (var part in new[] { "AD", "Entra", "Rooms", "Postvakken" })
+                    @foreach (var part in new[] { "AD", "Entra", "Rooms", "Postvakken" }.Where(x => x == "AD" ? State.HasAd : State.HasMicrosoft365))
                     {
                         <div>@part: @(State.LiveOn.TryGetValue(part, out var t) ? $"live {t:HH:mm}" : "inventaris")</div>
                     }
@@ -90,7 +90,6 @@
             }
 
             <div class="kb-slogan">Have you tried turning the user off and on again?</div>
-            <div class="kb-versie">Moss365 @ManagementState.AppVersion</div>
         </div>
     </nav>
     <main class="kb-inhoud @(here.Count > 0 ? "kb-openstaand" : null)" style="--kb-tenant: @State.Tenant.Colour">
@@ -140,6 +139,7 @@
         {
             @Body
         }
+        <StatusBar />
     </main>
 </div>
 

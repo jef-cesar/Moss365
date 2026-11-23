@@ -279,6 +279,30 @@ public sealed partial class ManagementState
 
     public bool CanConnect => _factory is not null;
 
+    /// <summary>This tenant has on-premises AD (chosen per tenant, Settings > Tenants).</summary>
+    public bool HasAd => Tenant.Systems.HasFlag(TenantSystems.ActiveDirectory);
+
+    /// <summary>This tenant has Microsoft 365: Entra ID and Exchange Online.</summary>
+    public bool HasMicrosoft365 => Tenant.Systems.HasFlag(TenantSystems.Microsoft365);
+
+    /// <summary>The connection settings as the connections use them: without AD for a tenant that has no AD, without
+    /// Microsoft 365 for one that has no Microsoft 365, so that nothing reads or writes there.</summary>
+    public ConnectionSettings EffectiveSettings => (HasAd, HasMicrosoft365) switch
+    {
+        (true, true) => Settings,
+        _ => new ConnectionSettings
+        {
+            AdServer = HasAd ? Settings.AdServer : string.Empty,
+            AdUser = HasAd ? Settings.AdUser : string.Empty,
+            TenantId = HasMicrosoft365 ? Settings.TenantId : string.Empty,
+            ClientId = HasMicrosoft365 ? Settings.ClientId : string.Empty,
+            ManagementUpn = HasMicrosoft365 ? Settings.ManagementUpn : string.Empty,
+            SearchUpdates = Settings.SearchUpdates,
+            QuickLoad = Settings.QuickLoad,
+            RefreshAuto = Settings.RefreshAuto,
+        },
+    };
+
     /// <summary>Check of this PC; null outside the Windows app.</summary>
     public ISystemCheck? Check => _factory?.Check;
 
@@ -465,15 +489,15 @@ public sealed partial class ManagementState
 
     private IGraphConnection? Graph()
     {
-        if (_factory is null || !Settings.GraphFilled)
+        if (_factory is null || !EffectiveSettings.GraphFilled)
         {
             return null;
         }
 
-        var key = $"{Settings.TenantId}|{Settings.ClientId}|{Settings.ManagementUpn}";
+        var key = $"{EffectiveSettings.TenantId}|{EffectiveSettings.ClientId}|{EffectiveSettings.ManagementUpn}";
         if (_graph is null || _graphKey != key)
         {
-            _graph = _factory.Graph(Settings);
+            _graph = _factory.Graph(EffectiveSettings);
             _graphKey = key;
         }
 
@@ -559,9 +583,9 @@ public sealed partial class ManagementState
         var needed = plan.Where(w => w.Selected).Select(w => w.TargetSystem).Distinct();
         return needed.Where(s => s switch
         {
-            TargetSystem.ActiveDirectory => _factory is null || !Settings.AdFilled,
-            TargetSystem.Graph => _factory is null || !Settings.GraphFilled,
-            _ => _factory is null,
+            TargetSystem.ActiveDirectory => _factory is null || !EffectiveSettings.AdFilled,
+            TargetSystem.Graph => _factory is null || !EffectiveSettings.GraphFilled,
+            _ => _factory is null || !HasMicrosoft365,
         }).ToList();
     }
 
@@ -578,7 +602,7 @@ public sealed partial class ManagementState
         }
 
         var executors = new List<IExecutor>();
-        if (_factory.Ad(Settings, AdPassword) is IExecutor ad)
+        if (_factory.Ad(EffectiveSettings, AdPassword) is IExecutor ad)
         {
             executors.Add(ad);
         }
@@ -588,7 +612,7 @@ public sealed partial class ManagementState
             executors.Add(graph);
         }
 
-        if (_factory.Exchange(Settings) is IExecutor exchange)
+        if (HasMicrosoft365 && _factory.Exchange(EffectiveSettings) is IExecutor exchange)
         {
             executors.Add(exchange);
         }

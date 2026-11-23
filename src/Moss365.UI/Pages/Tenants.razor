@@ -54,6 +54,17 @@ else
                         {
                             <span class="kb-tenant-staal" style="--kb-tenant: @t.Colour"></span>
                         }
+                        @if (editing == t.Id)
+                        {
+                            <div class="kb-rij">
+                                <label><input type="checkbox" checked="@editSystems.HasFlag(TenantSystems.ActiveDirectory)" @onchange="e => SetSystem(TenantSystems.ActiveDirectory, e.Value is true)" aria-label="Active Directory" /> Active Directory</label>
+                                <label><input type="checkbox" checked="@editSystems.HasFlag(TenantSystems.Microsoft365)" @onchange="e => SetSystem(TenantSystems.Microsoft365, e.Value is true)" aria-label="Microsoft 365" /> Microsoft 365</label>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="kb-zacht">@SystemsText(t.Systems)</div>
+                        }
                     </td>
                     <td><code>@(t.TenantId ?? "(nog niet gekend)")</code></td>
                     <td class="kb-zacht"><code>tenants\@t.Id</code></td>
@@ -114,7 +125,8 @@ else
             <button class="kb-knop kb-primair" disabled="@(newName.Trim().Length == 0)" @onclick="() => Add(hub)">Toevoegen</button>
         </div>
         <p class="kb-zacht">
-            Een nieuwe tenant begint leeg, met de meegeleverde organisatie. Open hem en stel bij Verbindingen de Tenant ID en
+            Een nieuwe tenant begint leeg, met de meegeleverde organisatie, en met AD en Microsoft 365 (aan te passen met Naam en
+            kleur: wat de tenant niet heeft, verdwijnt uit het menu en de schermen). Open hem en stel bij Verbindingen de Tenant ID en
             de Client ID in.
         </p>
     </section>
@@ -200,13 +212,29 @@ else
         }
     }
 
-    private void Edit(TenantInfo t) => (editing, editName, editColour) = (t.Id, t.Name, t.Colour);
+    private TenantSystems editSystems = TenantSystems.Both;
+
+    private void Edit(TenantInfo t) => (editing, editName, editColour, editSystems) = (t.Id, t.Name, t.Colour, t.Systems == TenantSystems.None ? TenantSystems.Both : t.Systems);
+
+    /// <summary>At least one of the two stays on.</summary>
+    private void SetSystem(TenantSystems system, bool on)
+    {
+        var next = on ? editSystems | system : editSystems & ~system;
+        editSystems = next == TenantSystems.None ? editSystems : next;
+    }
+
+    private static string SystemsText(TenantSystems s) => s switch
+    {
+        TenantSystems.ActiveDirectory => "Active Directory",
+        TenantSystems.Microsoft365 => "Microsoft 365",
+        _ => "Active Directory en Microsoft 365",
+    };
 
     private void Save(TenantHub hub, TenantInfo t)
     {
         try
         {
-            hub.Update(t with { Name = editName, Colour = editColour });
+            hub.Update(t with { Name = editName, Colour = editColour, Systems = editSystems });
             editing = null;
             (message, error) = (null, false);
             if (t.Id == State.Tenant.Id)

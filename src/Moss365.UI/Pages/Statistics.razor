@@ -15,11 +15,17 @@
         <Tile Kpi="Kpis.Active" />
         <Tile Kpi="Kpis.Disabled" />
         <Tile Kpi="Kpis.Guests" />
-        <Tile Kpi="Kpis.AdAndEntra" />
-        <Tile Kpi="Kpis.OnlyAd" />
-        <Tile Kpi="Kpis.OnlyEntra" />
-        <Tile Kpi="Kpis.MailboxAccounts" />
-        <Tile Kpi="Kpis.SignInAllowed" />
+        @if (State.HasAd && State.HasMicrosoft365)
+        {
+            <Tile Kpi="Kpis.AdAndEntra" />
+            <Tile Kpi="Kpis.OnlyAd" />
+            <Tile Kpi="Kpis.OnlyEntra" />
+        }
+        @if (State.HasMicrosoft365)
+        {
+            <Tile Kpi="Kpis.MailboxAccounts" />
+            <Tile Kpi="Kpis.SignInAllowed" />
+        }
     </div>
     <p class="kb-zacht">
         Gedeelde postvakken, rooms en planningspostvakken hebben ook een account, maar niemand meldt zich ermee aan. Ze tellen
@@ -34,9 +40,15 @@
         <Tile Kpi="Kpis.Inactive90" />
         <Tile Kpi="Kpis.Inactive180" />
         <Tile Kpi="Kpis.NeverSignedIn" />
-        <Tile Kpi="Kpis.PasswordExpiresNever" />
-        <Tile Kpi="Kpis.Privileged" />
-        <Tile Count="s.DifferencesAdEntra.Sum(v => v.Count)" Label="verschillen AD en Entra" Link="vergelijk" />
+        @if (State.HasAd)
+        {
+            <Tile Kpi="Kpis.PasswordExpiresNever" />
+            <Tile Kpi="Kpis.Privileged" />
+        }
+        @if (State.HasAd && State.HasMicrosoft365)
+        {
+            <Tile Count="s.DifferencesAdEntra.Sum(v => v.Count)" Label="verschillen AD en Entra" Link="vergelijk" />
+        }
     </div>
 </section>
 
@@ -59,17 +71,23 @@
             <h3>Laatste aanmelding</h3>
             <Distribution Share="BiStatistics.SignInRecency(State.KpiSource, Division)" />
         </div>
+        @if (State.HasMicrosoft365)
+        {
         <div>
             <h3>MFA</h3>
             <Distribution Share="BiStatistics.Mfa(State.KpiSource, Division)" EmptyText="Geen actieve medewerkers." />
             @if (State.Data.Security is null) { <p class="kb-zacht">MFA-registraties nog niet geladen: alles staat op onbekend.</p> }
         </div>
+        }
     </div>
     <div class="kb-kolommen">
+        @if (State.HasAd)
+        {
         <div>
             <h3>Leeftijd van het wachtwoord (AD)</h3>
             <Distribution Share="BiStatistics.PasswordAge(State.KpiSource, Division)" EmptyText="Geen actieve AD-accounts." />
         </div>
+        }
         <div>
             <h3>Per kantoor</h3>
             <BarList Bars="PerOffice" />
@@ -100,6 +118,8 @@
     </div>
 </section>
 
+@if (State.HasMicrosoft365)
+{
 <section class="kb-kaart">
     <h2>Beveiliging</h2>
     @if (s.Security is not { } bv)
@@ -139,8 +159,11 @@
         </div>
     }
 </section>
+}
 
 <div class="kb-kolommen">
+    @if (State.HasMicrosoft365)
+    {
     <section class="kb-kaart">
         <h2>Licenties</h2>
         @if (s.Licences.Count == 0)
@@ -149,6 +172,7 @@
         }
         <BarList Bars="s.Licences" Warning="Statistic.AlmostFull" WarningText="bijna vol" />
     </section>
+    }
     <section class="kb-kaart">
         <h2>Actieve medewerkers per afdeling</h2>
         <BarList Bars="s.PerDivision" />
@@ -156,6 +180,8 @@
 </div>
 
 <div class="kb-kolommen">
+    @if (State.HasMicrosoft365)
+    {
     <section class="kb-kaart">
         <h2>Gedeelde postvakken (@s.SharedMailboxes)</h2>
         <BarList Bars="s.PermissionModel" />
@@ -164,6 +190,7 @@
             <Tile Kpi="Kpis.WithoutAccessGroup" />
         </div>
     </section>
+    }
     <section class="kb-kaart">
         <h2>Groepen (@s.Groups)</h2>
         <BarList Bars="s.GroupsPerKind" />
@@ -174,6 +201,8 @@
     </section>
 </div>
 
+@if (State.HasMicrosoft365)
+{
 <div class="kb-kolommen">
     <section class="kb-kaart">
         <h2>Rooms</h2>
@@ -188,6 +217,7 @@
         @if (GuestsPerDomain.Count == 0) { <p class="kb-zacht">Geen gastgebruikers geladen.</p> }
     </section>
 </div>
+}
 
 <section class="kb-kaart">
     <h2>Activiteit in de app</h2>

@@ -2,6 +2,26 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.19.0
+
+Improvements asked for after 0.18.
+
+- **The sign-in box stands out**: warm amber with a thick border that pulses gently (not with "reduce motion"), in
+  light and dark mode, so that it no longer blends into the screen.
+- **Status bar** at the bottom of every screen: the version, how fresh the data is (live with date and time, the
+  inventory with its date, or the date you are looking at in Geschiedenis), online or offline, and a link to GitHub.
+- **AD, Microsoft 365, or both, per tenant** (Settings > Tenants > Naam en kleur): whatever a tenant does not have, the
+  app leaves out. Menu items (shared mailboxes, rooms, guests, security, Conditional Access, set-up wizard, AD versus
+  Entra), the sections on the user page and Statistics, the connection settings and the load buttons follow the
+  choice; nothing reads from or writes to a system the tenant does not have. Existing tenants keep both.
+- **Edit groups and mailboxes from the user page**: tick groups to remove, add AD or cloud groups, take away or give
+  access to shared mailboxes (through the access group of the mailbox, as its model wants). One plan with preview,
+  confirmation and change log; dynamic groups cannot be ticked, privileged groups still need the profile
+  Administrator.
+- **Roadmap**: Google Workspace after 1.0 (chapter 15, working name MossSpace): the same app with Google as a system of a
+  tenant; open decision U13.
+- Conditional Access > Beheren no longer points to an internal document.
+
 ## 0.18.0
 
 The script library from this repository (step R8 of the [roadmap](docs/roadmap-1.0.md)). Closes #10.

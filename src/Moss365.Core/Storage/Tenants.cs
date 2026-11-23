@@ -22,7 +22,20 @@ public sealed record TenantInfo
     /// <summary>A domain of the tenant, e.g. contoso.com, when known.</summary>
     public string? Domain { get; init; }
 
+    /// <summary>What this organisation has: AD, Microsoft 365, or both (default). What it does not have, the app leaves out.</summary>
+    public TenantSystems Systems { get; init; } = TenantSystems.Both;
+
     public DateTimeOffset Created { get; init; } = DateTimeOffset.Now;
+}
+
+/// <summary>The systems an organisation has: on-premises Active Directory, Microsoft 365 (Entra ID and Exchange Online), or both.</summary>
+[Flags]
+public enum TenantSystems
+{
+    None = 0,
+    ActiveDirectory = 1,
+    Microsoft365 = 2,
+    Both = ActiveDirectory | Microsoft365,
 }
 
 public static class TenantColours

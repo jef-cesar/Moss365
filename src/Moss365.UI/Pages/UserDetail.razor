@@ -19,7 +19,7 @@ else
     </p>
 
     @if (State.Can(Permission.Helpdesk)) { <Helpdesk Person="person" /> }
-    @if (State.Can(Permission.Security))
+    @if (State.Can(Permission.Security) && State.HasMicrosoft365)
     {
         <SecurityCard Person="person" />
         <CaUserCard Person="person" />
@@ -28,19 +28,22 @@ else
     <section class="kb-kaart">
         <h2>Kenmerken</h2>
         <table class="kb-tabel kb-naast">
-            <thead><tr><th>Kenmerk</th><th>On-prem AD</th><th>Entra ID</th></tr></thead>
+            <thead><tr><th>Kenmerk</th>@if (State.HasAd) { <th>On-prem AD</th> }@if (State.HasMicrosoft365) { <th>Entra ID</th> }</tr></thead>
             <tbody>
-                @foreach (var r in Rows())
+                @foreach (var r in Rows().Where(r => (State.HasAd && r.Ad.Length > 0) || (State.HasMicrosoft365 && r.Entra.Length > 0) || (State.HasAd && State.HasMicrosoft365)))
                 {
                     <tr class="@(r.Difference ? "kb-verschil" : null)">
                         <th>@r.Attribute</th>
-                        <td>@r.Ad</td>
-                        <td>@r.Entra</td>
+                        @if (State.HasAd) { <td>@r.Ad</td> }
+                        @if (State.HasMicrosoft365) { <td>@r.Entra</td> }
                     </tr>
                 }
             </tbody>
         </table>
-        <p class="kb-zacht">Gemarkeerde rijen verschillen tussen AD en Entra (spaties vooraan of achteraan tellen niet mee).</p>
+        @if (State.HasAd && State.HasMicrosoft365)
+        {
+            <p class="kb-zacht">Gemarkeerde rijen verschillen tussen AD en Entra (spaties vooraan of achteraan tellen niet mee).</p>
+        }
     </section>
 
     @if (State.Can(Permission.Manage) && !person.IsGuest)
@@ -48,7 +51,14 @@ else
         <EditUser Person="person" />
     }
 
+    @if (State.Can(Permission.GroupMembers) && !person.IsGuest && !State.IsHistoric)
+    {
+        <UserMemberships Person="person" />
+    }
+
     <div class="kb-kolommen">
+        @if (State.HasAd)
+        {
         <section class="kb-kaart">
             <h2>AD-groepen (@adGroups.Count)</h2>
             @if (person.Ad is null)
@@ -72,6 +82,9 @@ else
                 </table>
             }
         </section>
+        }
+        @if (State.HasMicrosoft365)
+        {
         <section class="kb-kaart">
             <h2>Cloudgroepen (@cloudGroups.Count)</h2>
             @if (person.Entra is null)
@@ -94,8 +107,11 @@ else
                 </table>
             }
         </section>
+        }
     </div>
 
+    @if (State.HasMicrosoft365)
+    {
     <div class="kb-kolommen">
         <section class="kb-kaart">
             <h2>Alleen in Exchange (@exoGroups.Count)</h2>
@@ -124,6 +140,7 @@ else
             </table>
         </section>
     </div>
+    }
 
     <section class="kb-kaart">
         <h2>Tijdlijn</h2>

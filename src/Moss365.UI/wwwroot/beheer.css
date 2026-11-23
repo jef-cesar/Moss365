@@ -31,6 +31,9 @@
     --kb-rood: #b3261e;
     --kb-goed-vlak: #e4f0ef;
     --kb-let: #8a5300;
+    --kb-aanmelden-vlak: #ffe7a3;
+    --kb-aanmelden-tekst: #3b2600;
+    --kb-aanmelden-rand: #d97a00;
     --kb-let-vlak: #fff1d6;
     --kb-fout-vlak: #fde8e6;
     --kb-open-vlak: #f1ecf6;
@@ -64,6 +67,9 @@
         --kb-rood: #ff8a80;
         --kb-goed-vlak: #1b302f;
         --kb-let: #f3c26b;
+        --kb-aanmelden-vlak: #5a3d00;
+        --kb-aanmelden-tekst: #fff3d6;
+        --kb-aanmelden-rand: #ffb020;
         --kb-let-vlak: #3a2e14;
         --kb-open-vlak: #221f2b;
         --kb-open-balk: #2f2840;
@@ -248,8 +254,15 @@ tr.kb-uit td { color: var(--kb-zacht); text-decoration: line-through; }
 .kb-nav a.active:hover { background: var(--kb-paars); }
 
 /* Aanmeldlink */
-.kb-aanmelden { position: sticky; top: 0; z-index: 5; background: var(--kb-vlak); border: 2px solid var(--kb-paars); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; box-shadow: 0 4px 14px rgba(45, 44, 56, 0.15); }
+/* Warm and unmistakable (0.19): it must not blend into the screen; it pulses gently until you act */
+.kb-aanmelden { position: sticky; top: 0; z-index: 5; background: var(--kb-aanmelden-vlak); color: var(--kb-aanmelden-tekst);
+    border: 3px solid var(--kb-aanmelden-rand); border-left-width: 10px; border-radius: 8px; padding: 0.9rem 1.1rem; margin-bottom: 1rem;
+    box-shadow: 0 6px 22px rgba(176, 106, 0, 0.35); animation: kb-aanmelden-puls 2s ease-in-out infinite; }
+.kb-aanmelden strong { font-size: 1.1rem; }
 .kb-aanmelden-tekst { display: flex; flex-direction: column; gap: 0.2rem; }
+.kb-aanmelden .kb-link-veld { background: #ffffff; color: #1f1d27; border-color: var(--kb-aanmelden-rand); }
+@keyframes kb-aanmelden-puls { 0%, 100% { box-shadow: 0 6px 22px rgba(176, 106, 0, 0.30); } 50% { box-shadow: 0 6px 30px rgba(176, 106, 0, 0.65); } }
+@media (prefers-reduced-motion: reduce) { .kb-aanmelden { animation: none; } }
 .kb-link-veld { font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.85em; }
 
 /* Objecten als link, met hun soort */
@@ -524,3 +537,11 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 .kb-diff .kb-plus { color: var(--kb-ok, #2e7d32); }
 .kb-diff .kb-min { color: var(--kb-fout, #b3261e); }
 .kb-lijst-plat { list-style: none; padding-left: 0; }
+
+/* 0.19: the status bar at the bottom of every screen */
+.kb-inhoud { padding-bottom: 3rem; }
+.kb-statusbalk { position: fixed; bottom: 0; right: 0; left: 220px; z-index: 4; display: flex; flex-wrap: wrap; gap: 0.4rem 1.5rem;
+    align-items: center; padding: 0.35rem 1.25rem; font-size: 0.85rem; background: var(--kb-vlak); color: var(--kb-zacht); border-top: 1px solid var(--kb-lijn); }
+.kb-statusbalk a { color: var(--kb-accent); }
+.kb-online { color: var(--kb-ok); }
+.kb-offline { color: var(--kb-rood); font-weight: 600; }

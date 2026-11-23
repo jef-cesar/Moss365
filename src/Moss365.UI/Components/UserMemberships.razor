@@ -1,0 +1,166 @@
+@using Moss365.Core.Changes
+@using Moss365.Core.Inventory
+@* Editing the groups and shared mailboxes of one user, on the page of the user: tick what goes, choose what comes,
+   one plan with preview and confirmation (the usual rules: no dynamic groups, privileged groups need Administrator). *@
+@inject ManagementState State
+
+<section class="kb-kaart" id="lidmaatschappen">
+    <h2>Groepen en postvakken bewerken</h2>
+    @if (Groups.Count > 0)
+    {
+        <h3>Groepen</h3>
+        <ul class="kb-lijst-plat">
+            @foreach (var g in Groups)
+            {
+                <li>
+                    <label>
+                        <input type="checkbox" checked="@removeGroups.Contains(g.Key)" disabled="@(g.Dynamic)" aria-label="@($"{g.Name} weghalen")" @onchange="e => Toggle(removeGroups, g.Key, e.Value is true)" />
+                        @g.Name <span class="kb-zacht">@g.Layers</span>
+                        @if (g.Dynamic) { <span class="kb-label">automatisch, niet met de hand</span> }
+                    </label>
+                </li>
+            }
+        </ul>
+        <p class="kb-zacht">Aangevinkt = weghalen.</p>
+    }
+
+    <div class="kb-rij">
+        <label>Groep toevoegen
+            <input class="kb-invoer kb-breed" list="kb-groepen-@Person.Key.GetHashCode()" @bind="groupToAdd" placeholder="naam van de groep" aria-label="Groep toevoegen" />
+        </label>
+        <datalist id="kb-groepen-@Person.Key.GetHashCode()">
+            @foreach (var g in Candidates) { <option value="@g.Name">@g.Layers</option> }
+        </datalist>
+        <button class="kb-knop kb-klein" disabled="@(groupToAdd.Trim().Length == 0)" @onclick="AddGroup">Erbij</button>
+    </div>
+    @if (addGroups.Count > 0)
+    {
+        <p>Erbij: @foreach (var g in addGroups) { <span class="kb-label">@g.Name <button class="kb-knop kb-klein" aria-label="@($"{g.Name} niet toevoegen")" @onclick="() => addGroups.Remove(g)">&times;</button></span> }</p>
+    }
+
+    @if (State.HasMicrosoft365)
+    {
+        <h3>Gedeelde postvakken</h3>
+        @if (MailboxAccess.Count == 0) { <p class="kb-zacht">Geen toegang tot gedeelde postvakken.</p> }
+        <ul class="kb-lijst-plat">
+            @foreach (var m in MailboxAccess)
+            {
+                <li>
+                    <label>
+                        <input type="checkbox" checked="@removeMailboxes.Contains(m.Smtp)" aria-label="@($"Toegang tot {m.DisplayName} weghalen")" @onchange="e => Toggle(removeMailboxes, m.Smtp, e.Value is true)" />
+                        @m.DisplayName <span class="kb-zacht">@m.Smtp</span>
+                    </label>
+                </li>
+            }
+        </ul>
+        <div class="kb-rij">
+            <label>Toegang geven tot
+                <select class="kb-invoer" @bind="mailboxToAdd" aria-label="Toegang geven tot postvak">
+                    <option value="">(kies een postvak)</option>
+                    @foreach (var m in State.Data.Mailboxes.Where(m => MailboxAccess.All(x => x.Smtp != m.Smtp)).OrderBy(m => m.DisplayName))
+                    {
+                        <option value="@m.Smtp">@m.DisplayName</option>
+                    }
+                </select>
+            </label>
+            <button class="kb-knop kb-klein" disabled="@(mailboxToAdd.Length == 0)" @onclick="AddMailbox">Erbij</button>
+        </div>
+        @if (addMailboxes.Count > 0)
+        {
+            <p>Toegang erbij: @foreach (var m in addMailboxes) { <span class="kb-label">@m.DisplayName <button class="kb-knop kb-klein" aria-label="@($"{m.DisplayName} niet toevoegen")" @onclick="() => addMailboxes.Remove(m)">&times;</button></span> }</p>
+        }
+    }
+
+    <button class="kb-knop kb-primair" disabled="@(Nothing)" @onclick="MakePlan">Plan maken</button>
+    @if (errors.Count > 0)
+    {
+        <ul class="kb-fouten">@foreach (var f in errors) { <li>@f</li> }</ul>
+    }
+    @if (plan is not null)
+    {
+        <PlanView @key="planKey" Plan="plan" Context="@($"Groepen en postvakken {Person.Name}")" Title="Groepen en postvakken" Executed="Done" />
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = default!;
+
+    private readonly HashSet<string> removeGroups = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> removeMailboxes = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<Group> addGroups = new();
+    private readonly List<Mailbox> addMailboxes = new();
+    private string groupToAdd = string.Empty;
+    private string mailboxToAdd = string.Empty;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private int planKey;
+
+    /// <summary>The groups of this user, in the layers this tenant has.</summary>
+    private IReadOnlyList<Group> Groups => State.Data.Index.GroupsOf(Person).Where(Fits).OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+
+    private IEnumerable<Group> Candidates => State.Data.Index.Groups.Where(g => Fits(g) && !g.Dynamic && Groups.All(x => x.Key != g.Key) && addGroups.All(x => x.Key != g.Key))
+        .OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).Take(500);
+
+    private IReadOnlyList<Mailbox> MailboxAccess => State.Data.Index.MailboxPermissionsOf(Person).Select(r => r.Mailbox).Distinct().OrderBy(m => m.DisplayName).ToList();
+
+    private bool Fits(Group g) => (State.HasAd && g.Ad is not null) || (State.HasMicrosoft365 && (g.Cloud is not null || g.Exo is not null));
+
+    private bool Nothing => removeGroups.Count + removeMailboxes.Count + addGroups.Count + addMailboxes.Count == 0;
+
+    private static void Toggle(HashSet<string> set, string key, bool on)
+    {
+        if (on) { set.Add(key); } else { set.Remove(key); }
+    }
+
+    private void AddGroup()
+    {
+        var name = groupToAdd.Trim();
+        var found = State.Data.Index.Groups.Where(Fits).FirstOrDefault(g => string.Equals(g.Name, name, StringComparison.CurrentCultureIgnoreCase));
+        if (found is null)
+        {
+            errors = new[] { $"Geen groep \"{name}\" gevonden." };
+            return;
+        }
+
+        if (Groups.All(x => x.Key != found.Key) && addGroups.All(x => x.Key != found.Key))
+        {
+            addGroups.Add(found);
+        }
+
+        groupToAdd = string.Empty;
+        errors = Array.Empty<string>();
+    }
+
+    private void AddMailbox()
+    {
+        if (State.Data.Index.Mailbox(mailboxToAdd) is { } m && addMailboxes.All(x => x.Smtp != m.Smtp))
+        {
+            addMailboxes.Add(m);
+        }
+
+        mailboxToAdd = string.Empty;
+    }
+
+    private void MakePlan()
+    {
+        var d = State.Data;
+        var who = d.Index.Ref(Person);
+        var outcomes = new List<PlanOutcome>();
+        outcomes.AddRange(Groups.Where(g => removeGroups.Contains(g.Key)).Select(g => GroupPlans.RemoveMember(d, g, who)));
+        outcomes.AddRange(addGroups.Select(g => GroupPlans.AddMember(d, g, who)));
+        outcomes.AddRange(MailboxAccess.Where(m => removeMailboxes.Contains(m.Smtp)).Select(m => MailboxPlans.RemoveAccess(d, m, Person)));
+        outcomes.AddRange(addMailboxes.Select(m => MailboxPlans.GiveAccess(d, m, Person)));
+        var all = outcomes.SelectMany(o => o.Plan).ToList();
+        errors = outcomes.SelectMany(o => o.Errors).ToList();
+        plan = all.Count > 0 ? all : null;
+        planKey++;
+    }
+
+    private void Done(IReadOnlyList<ChangeResult> results)
+    {
+        removeGroups.Clear();
+        removeMailboxes.Clear();
+        addGroups.Clear();
+        addMailboxes.Clear();
+    }
+}

@@ -17,6 +17,13 @@
     <div class="kb-melding">Live verbinden is enkel beschikbaar in de Windows-app.</div>
 }
 
+<p class="kb-zacht">
+    Deze tenant heeft: <strong>@SystemsText(State.Tenant.Systems)</strong>. Aanpassen bij <a href="tenants">Tenants</a>
+    (Naam en kleur); wat de tenant niet heeft, laat de app weg.
+</p>
+
+@if (State.HasAd)
+{
 <section class="kb-kaart">
     <h2>On-prem AD</h2>
     <div class="kb-rij">
@@ -37,7 +44,10 @@
         op de OU's en groepen; om te lezen volstaan gewone leesrechten.
     </p>
 </section>
+}
 
+@if (State.HasMicrosoft365)
+{
 <section class="kb-kaart">
     <h2>Entra ID en Exchange Online</h2>
     <div class="kb-rij">
@@ -60,13 +70,17 @@
         dezelfde aanmelding (module ExchangeOnlineManagement nodig).
     </p>
 </section>
+}
 
 <div class="kb-filters">
     <button class="kb-knop" @onclick="Save">Instellingen bewaren</button>
     <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Everything)">Alles live laden</button>
-    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">Live laden (AD en Entra)</button>
-    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Rooms)">Rooms laden uit Exchange</button>
-    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Mailboxes)">Postvakken en groepen laden uit Exchange</button>
+    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">Live laden (@(State.HasAd && State.HasMicrosoft365 ? "AD en Entra" : State.HasAd ? "AD" : "Entra"))</button>
+    @if (State.HasMicrosoft365)
+    {
+        <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Rooms)">Rooms laden uit Exchange</button>
+        <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Mailboxes)">Postvakken en groepen laden uit Exchange</button>
+    }
     @if (message is not null) { <span class="kb-ok">@message</span> }
 </div>
 <p class="kb-zacht">Het laden loopt op de achtergrond: je kan intussen andere schermen gebruiken. Onderaan het menu zie je de status. Na het laden bewaart de app de gegevens als inventaris, zodat hij de volgende keer al met recente gegevens start.</p>
@@ -110,6 +124,13 @@
 </section>
 
 @code {
+    private static string SystemsText(Moss365.Core.Storage.TenantSystems s) => s switch
+    {
+        Moss365.Core.Storage.TenantSystems.ActiveDirectory => "enkel Active Directory",
+        Moss365.Core.Storage.TenantSystems.Microsoft365 => "enkel Microsoft 365",
+        _ => "Active Directory en Microsoft 365",
+    };
+
     private string? message;
 
     protected override void OnInitialized() => State.Changed += Reload;

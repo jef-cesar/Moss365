@@ -51,7 +51,7 @@ public sealed partial class ManagementState
     public bool ScriptBusy => ScriptRun is { Done: false };
 
     /// <summary>Scripts can run (Windows app with PowerShell); a fake executor in the test environment.</summary>
-    public bool ScriptsAvailable => _factory?.Scripts(Settings, AdPassword) is not null;
+    public bool ScriptsAvailable => _factory?.Scripts(EffectiveSettings, AdPassword) is not null;
 
     public IReadOnlyList<ScriptFile> ReadScripts() => ScriptLibrary.Load(ScriptFolders);
 
@@ -72,7 +72,7 @@ public sealed partial class ManagementState
     }
 
     public async Task<IReadOnlyList<ScriptEvent>> CheckScriptAsync(string text)
-        => _factory?.Scripts(Settings, AdPassword) is { } u ? await u.CheckAsync(text, CancellationToken.None) : Array.Empty<ScriptEvent>();
+        => _factory?.Scripts(EffectiveSettings, AdPassword) is { } u ? await u.CheckAsync(text, CancellationToken.None) : Array.Empty<ScriptEvent>();
 
     /// <summary>
     /// Starts a script in the background. For a one-time script (not saved) the text is given: it goes to the folder of
@@ -85,7 +85,7 @@ public sealed partial class ManagementState
             return (null, "Er draait al een script. Wacht tot het klaar is, of annuleer het.");
         }
 
-        if (_factory?.Scripts(Settings, AdPassword) is not { } executor)
+        if (_factory?.Scripts(EffectiveSettings, AdPassword) is not { } executor)
         {
             return (null, "Scripts kunnen hier niet draaien (enkel in de Windows-app).");
         }

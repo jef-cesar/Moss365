@@ -437,6 +437,7 @@ All decisions were made on 5 November 2026 (U1 to U3 directly, the rest interact
 | U9 | **Retention** (defaults, adjustable per tenant) | **Longer**: snapshots daily for 1 year, then monthly; change log 5 years; technical log 90 days; script runs 1 year |
 | U10 | **Language of code and documentation** | **English**: names in the code, comments, tests and documentation (from R1). The interface in five languages via dictionaries (R15) |
 | U11 | **House style** | **Moss green and purple** by default (fits the name), colour and logo per tenant |
+| U13 | **Google Workspace** (open) | Proposal: in the same app, as a system a tenant can have (**MossSpace**), next to or instead of AD and Microsoft 365; not a separate product. To decide before step G1 (chapter 15) |
 
 ## 13. The steps to 1.0
 
@@ -462,7 +463,7 @@ All decisions were made on 5 November 2026 (U1 to U3 directly, the rest interact
 
 Order: R0 and R1 first. R2 and R3 belong together (one database per tenant). R4 builds on them, and R11 and R14 build
 on R4. The other steps can be done in a different order if that works better; every step is a release of its own
-(0.10, 0.11, ...). Then the web version: [roadmap-web.md](roadmap-web.md).
+(0.10, 0.11, ...). Then the web version: [roadmap-web.md](roadmap-web.md), and Google Workspace (chapter 15).
 
 ## 14. Risks
 
@@ -481,3 +482,57 @@ on R4. The other steps can be done in a different order if that works better; ev
 | Outside contributions | Pull requests with tests and review, a CLA, the rules of chapter 1 in the contributing guide |
 | The name suggests a Microsoft product | The "not affiliated with Microsoft" notice in the README and the app; no Microsoft logos |
 | Too much at once for one maintainer | Every step a small release with tests; the order of R5 to R15 is free, so what helps most goes first |
+
+## 15. After 1.0: Google Workspace (MossSpace)
+
+Many organisations, schools above all, use **Google Workspace** instead of (or next to) Microsoft 365. Moss365 can
+manage it with the same approach: the same screens and rules, with Google as a system of a tenant. The working name for
+this part is **MossSpace**.
+
+### What stays the same
+
+- Every change is a plan: preview, confirmation, change log, undo where possible.
+- Every read is a snapshot; the organisation on any date, the trends, the timeline per user.
+- The roles of the app, one database per tenant, encryption, the set-up wizard, maintenance and updates.
+- Since 0.19 a tenant chooses its systems (AD, Microsoft 365); Google Workspace becomes a third choice. Whatever a tenant
+  does not have, the app leaves out of the menu and the screens.
+
+### What maps to what
+
+| Microsoft | Google Workspace | In Moss365 |
+| --- | --- | --- |
+| Users (Entra ID) | Users (Admin SDK Directory API) | Users, with attributes, status and last sign-in |
+| OUs (AD) | Organisational units | OUs, also for new users and offboarding |
+| Security and Microsoft 365 groups | Google Groups (with the Groups Settings API) | Groups: members, owners and managers, settings |
+| Shared mailboxes | Delegated mailboxes and collaborative inboxes | Shared mailboxes: who has access |
+| Rooms (Exchange) | Calendar resources | Rooms: buildings, features, booking |
+| Out of office, forwarding | Gmail settings (vacation, forwarding, delegation) | Helpdesk (R10) |
+| Licences | Licence assignments (Licensing API) | Licences and costs (R12) |
+| MFA, admin roles | 2-Step Verification, admin roles | Security (R11) |
+| Conditional Access | Context-aware access (read first) | Security |
+| Sign-in and audit logs | Reports API, Alert Center | Security and the timeline |
+| Devices (Intune) | Endpoint management (mobile, ChromeOS) | Devices (R13) |
+| SharePoint, OneDrive | Shared drives | Sharing and storage (R13) |
+
+### Signing in
+
+- With the administrator's own Google account, through OAuth with the link in the app (as for Microsoft): delegated
+  access, no secrets on disk. A service account with domain-wide delegation needs a private key, so it is not the
+  default.
+- The set-up wizard checks the OAuth client, the API scopes and the admin role, as it does for the Moss365 app
+  registration.
+- Mixed environments: AD synchronised to Google (Google Cloud Directory Sync) is detected, so that the app writes in AD
+  where AD is the source, as it does for Entra Connect today. A tenant with Microsoft 365 and Google Workspace side by
+  side shows both.
+
+### Steps
+
+| Step | Contents | Done when |
+| --- | --- | --- |
+| **G1 Read** | Connection (OAuth, scopes), users, OUs, groups, resources, licences; inventory and snapshots; the screens show Google like Entra | A test Workspace domain is read and shown on the existing screens and in Statistics |
+| **G2 Write** | Plans for users (create, attributes, suspend, OU), groups (members, owners, settings), delegation, resources, licences; offboarding | Each change is a plan, in the change log, with the right role and undo where possible |
+| **G3 Security** | 2-Step Verification, admin roles, login audit, alerts, context-aware access (read) | Every check says "OK", "attention", "problem" or "unknown" |
+| **G4 Mixed** | AD with Google Cloud Directory Sync; Microsoft 365 and Google Workspace in one tenant | Writing goes to the source of truth; nothing is written twice |
+
+Decision U13 (open): Google Workspace in the same app (proposal) or as a separate edition.
+

@@ -27,4 +27,19 @@ public static class Access
             _ => Permission.View,
         };
     }
+
+    /// <summary>
+    /// The page fits the systems of the tenant: pages about Microsoft 365 only for a tenant with Microsoft 365, the
+    /// comparison of AD and Entra only for a tenant with both.
+    /// </summary>
+    public static bool FitsTenant(string path, bool hasAd, bool hasMicrosoft365)
+    {
+        var first = path.Split('?', '#')[0].Split('/')[0];
+        return first switch
+        {
+            "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "beveiliging" or "conditional-access" or "inrichten" => hasMicrosoft365,
+            "vergelijk" => hasAd && hasMicrosoft365,
+            _ => true,
+        };
+    }
 }

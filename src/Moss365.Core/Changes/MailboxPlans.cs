@@ -373,6 +373,61 @@ public static class MailboxPlans
         }
     }
 
+    /// <summary>
+    /// Gives one person access to a shared mailbox (from the page of the user): via its access group, as the mailbox
+    /// model wants it. Without an access group: an error (make one on the page of the mailbox first).
+    /// </summary>
+    public static PlanOutcome GiveAccess(InventoryData data, Mailbox p, Person person)
+    {
+        var who = data.Index.Ref(person);
+        if (data.Index.MailboxPermissionsOf(person).Any(r => r.Mailbox == p))
+        {
+            return PlanOutcome.Error($"{person.Name} heeft al toegang tot {p.DisplayName}.");
+        }
+
+        return data.Index.AccessGroupOf(p) is { } g
+            ? GroupPlans.AddMember(data, g, who)
+            : PlanOutcome.Error($"{p.DisplayName} heeft nog geen toegangsgroep ({ObjectIndex.ExpectedAccessGroup(p)}); maak die eerst aan op de pagina van het postvak.");
+    }
+
+    /// <summary>
+    /// Takes the access of one person to a shared mailbox away: out of the access group, and direct permissions
+    /// removed. Access through another group is named, not changed (that group may give more).
+    /// </summary>
+    public static PlanOutcome RemoveAccess(InventoryData data, Mailbox p, Person person)
+    {
+        var index = data.Index;
+        var who = index.Ref(person);
+        var rules = index.MailboxPermissionsOf(person).Where(r => r.Mailbox == p).ToList();
+        if (rules.Count == 0)
+        {
+            return PlanOutcome.Error($"{person.Name} heeft geen toegang tot {p.DisplayName}.");
+        }
+
+        var plan = new List<Change>();
+        var errors = new List<string>();
+        foreach (var r in rules.Where(r => r.ViaGroup is null))
+        {
+            plan.Add(PermissionRoute(p, r, null, $"Rechtstreeks {r.Permission} van {person.Name} op {p.DisplayName} weghalen", selected: true));
+        }
+
+        foreach (var via in rules.Where(r => r.ViaGroup is not null).Select(r => r.ViaGroup!).DistinctBy(v => v.Key))
+        {
+            if (index.Group(via.Key) is { } g && index.MembersOf(g).Any(m => m.Object.IsSame(who)))
+            {
+                var outcome = GroupPlans.RemoveMember(data, g, who);
+                plan.AddRange(outcome.Plan);
+                errors.AddRange(outcome.Errors);
+            }
+            else
+            {
+                errors.Add($"De toegang loopt via {via.Name}, waar {person.Name} via een andere groep in zit; haal hem daar weg.");
+            }
+        }
+
+        return PlanOutcome.Of(plan, errors);
+    }
+
     private static Change PermissionRoute(Mailbox p, PermissionRule r, Guid? after, string description, bool selected) => new()
     {
         TargetSystem = TargetSystem.Exchange,

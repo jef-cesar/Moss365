@@ -133,11 +133,11 @@ public sealed partial class ManagementState
 
         if (kind is LoadKind.AdAndEntra or LoadKind.Everything)
         {
-            if (Settings.AdFilled)
+            if (EffectiveSettings.AdFilled)
             {
                 steps.Add(new("AD lezen", "AD", async (p, ct) =>
                 {
-                    var ad = _factory.Ad(Settings, AdPassword) ?? throw new InvalidOperationException("AD is hier niet beschikbaar.");
+                    var ad = _factory.Ad(EffectiveSettings, AdPassword) ?? throw new InvalidOperationException("AD is hier niet beschikbaar.");
                     var read = await ad.ReadAsync(AdBaseForQuick(), p, ct);
                     UpdateData(d => LiveLoader.Merge(d, read, null));
                     RememberSnapshot(read);
@@ -146,7 +146,7 @@ public sealed partial class ManagementState
                 }));
             }
 
-            if (Settings.GraphFilled)
+            if (EffectiveSettings.GraphFilled)
             {
                 steps.Add(new("Entra lezen", "Entra", async (p, ct) =>
                 {
@@ -202,12 +202,12 @@ public sealed partial class ManagementState
             }
         }
 
-        if (kind == LoadKind.Everything)
+        if (kind == LoadKind.Everything && HasMicrosoft365)
         {
             // Rooms and mailboxes in one Exchange session: sign in once and load the module once
             steps.Add(new("Rooms, postvakken en groepen lezen (Exchange)", "Exchange", async (p, ct) =>
             {
-                var exchange = _factory.Exchange(Settings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
+                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
                 var reading = await exchange.ReadAllAsync(p, ct);
                 if (reading.Rooms is { } rooms)
                 {
@@ -232,11 +232,11 @@ public sealed partial class ManagementState
             }));
         }
 
-        if (kind == LoadKind.Rooms)
+        if (kind == LoadKind.Rooms && HasMicrosoft365)
         {
             steps.Add(new("Rooms lezen (Exchange)", "Exchange", async (p, ct) =>
             {
-                var exchange = _factory.Exchange(Settings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
+                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
                 var rooms = await exchange.ReadRoomsAsync(p, ct);
                 UpdateData(d => LiveLoader.WithRooms(d, rooms));
                 Live("Rooms", ObjectKind.Room);
@@ -244,11 +244,11 @@ public sealed partial class ManagementState
             }));
         }
 
-        if (kind == LoadKind.Mailboxes)
+        if (kind == LoadKind.Mailboxes && HasMicrosoft365)
         {
             steps.Add(new("Postvakken en groepen lezen (Exchange)", "Exchange", async (p, ct) =>
             {
-                var exchange = _factory.Exchange(Settings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
+                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
                 var data = await exchange.ReadMailboxesAsync(p, ct);
                 UpdateData(d => LiveLoader.WithExchange(d, data));
                 Live("Postvakken", ObjectKind.Mailbox, ObjectKind.Group);
@@ -299,7 +299,7 @@ public sealed partial class ManagementState
         {
             steps.Add(new($"AD ({targets.AdUsers.Count + targets.AdGroups.Count})", "AD", async (p, ct) =>
             {
-                var ad = _factory.Ad(Settings, AdPassword) ?? throw new InvalidOperationException("AD is niet ingesteld (scherm Verbindingen).");
+                var ad = _factory.Ad(EffectiveSettings, AdPassword) ?? throw new InvalidOperationException("AD is niet ingesteld (scherm Verbindingen).");
                 foreach (var sam in targets.AdUsers)
                 {
                     p.Report($"gebruiker {sam}");
@@ -350,11 +350,11 @@ public sealed partial class ManagementState
             }));
         }
 
-        if (targets.ExchangeAddresses.Count > 0)
+        if (targets.ExchangeAddresses.Count > 0 && HasMicrosoft365)
         {
             steps.Add(new($"Exchange ({targets.ExchangeAddresses.Count})", "Exchange", async (p, ct) =>
             {
-                var exchange = _factory.Exchange(Settings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
+                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
                 p.Report(string.Join(", ", targets.ExchangeAddresses));
                 var objects = await exchange.ReadObjectsAsync(targets.ExchangeAddresses.ToList(), ct);
                 UpdateData(d => ObjectRefresher.WithExchange(d, objects));
