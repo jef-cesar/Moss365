@@ -154,40 +154,7 @@
 
 @if (State.Data.Persons.Count > 0)
 {
-    var suggestions = State.Suggestions();
-    <section class="kb-kaart">
-        <h2>7. Voorstellen voor de organisatie en noodaccounts</h2>
-        @if (suggestions.Count == 0)
-        {
-            <p class="kb-ok">Niets voor te stellen: wat in de gegevens staat, staat ook bij <a href="organisatie">Organisatie</a>.</p>
-        }
-        else
-        {
-            <p class="kb-zacht">Gevonden in de geladen gegevens, nog niet bij Organisatie. Vink aan wat je wil overnemen; je kan alles nadien aanpassen.</p>
-            <table class="kb-tabel">
-                <thead><tr><th></th><th>Soort</th><th>Waarde</th><th>Aantal</th><th>Uitleg</th></tr></thead>
-                <tbody>
-                    @foreach (var s in suggestions)
-                    {
-                        var key = Key(s);
-                        <tr>
-                            <td><input type="checkbox" aria-label="@s.Value" checked="@chosen.Contains(key)" @onchange="e => Toggle(key, e.Value is true)" /></td>
-                            <td>@KindText(s.Kind)</td>
-                            <td>@s.Value</td>
-                            <td>@s.Count</td>
-                            <td>@s.Explanation</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-            <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0)" @onclick="() => TakeOver(suggestions)">Overnemen (@suggestions.Count(s => chosen.Contains(Key(s))))</button>
-        }
-        @if (State.Data.Security is null)
-        {
-            <p class="kb-zacht">Noodaccounts stelt de wizard voor zodra de beheerrollen geladen zijn (Alles live laden).</p>
-        }
-        @if (takenOver is not null) { <p class="kb-ok">@takenOver</p> }
-    </section>
+    <SuggestionsPanel Title="7. Voorstellen voor de organisatie en noodaccounts" />
 }
 
 @code {
@@ -196,9 +163,7 @@
     private string? progress;
     private string? findError;
     private string? readError;
-    private string? takenOver;
     private int planKey;
-    private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
 
     protected override void OnInitialized()
     {
@@ -231,31 +196,6 @@
     private void AfterPlan(IReadOnlyList<Moss365.Core.Changes.ChangeResult> results) => planKey++;
 
     private void Load() => State.StartLoading(LoadKind.Everything);
-
-    private static string Key(Suggestion s) => $"{s.Kind}|{s.Value}";
-
-    private void Toggle(string key, bool on)
-    {
-        if (on) { chosen.Add(key); } else { chosen.Remove(key); }
-    }
-
-    private void TakeOver(IReadOnlyList<Suggestion> suggestions)
-    {
-        var list = suggestions.Where(s => chosen.Contains(Key(s))).ToList();
-        State.TakeOver(list);
-        chosen.Clear();
-        takenOver = $"{list.Count} voorstel(len) overgenomen bij Organisatie.";
-    }
-
-    private static string KindText(SuggestionKind k) => k switch
-    {
-        SuggestionKind.AdDomain => "AD-domein",
-        SuggestionKind.SynchronisedOu => "Gesynchroniseerde OU",
-        SuggestionKind.Department => "Dienst",
-        SuggestionKind.Office => "Kantoor",
-        SuggestionKind.GroupPrefix => "Groepsvoorvoegsel",
-        _ => "Noodaccount",
-    };
 
     private static string Css(SetupStatus s) => s switch
     {

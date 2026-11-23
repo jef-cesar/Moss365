@@ -289,7 +289,7 @@ public static class PlanBuilder
         }
 
         // Derive the names and make them unique
-        var local = NameRules.LocalPart(request.GivenName, request.Surname);
+        var local = NamingSettings.Local(request.GivenName, request.Surname, config.Naming.LocalPart);
         var domain = population?.UpnDomain ?? string.Empty;
         var sam = NameRules.Sam(local);
         var upn = $"{local}@{domain}";
@@ -318,7 +318,7 @@ public static class PlanBuilder
             warnings.Add($"sAMAccountName is beperkt tot {NameRules.MaxSam} tekens: {sam} (UPN blijft {upn}).");
         }
 
-        var view = NameRules.ViewName(request.GivenName, request.Surname);
+        var view = NamingSettings.Display(request.GivenName, request.Surname, config.Naming.DisplayName);
         var ouDn = population is null ? string.Empty : config.OuDn(population.Ou, domainDn);
         var cn = view;
         if (data.AdUsers.Any(a => string.Equals(a.DistinguishedName, $"CN={cn},{ouDn}", StringComparison.OrdinalIgnoreCase)))

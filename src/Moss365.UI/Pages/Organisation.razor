@@ -34,12 +34,60 @@
     <div class="kb-melding kb-fout">@f</div>
 }
 
+<SuggestionsPanel TakenOver="Recompute" />
+
 <section class="kb-kaart">
     <h2>Bedrijf</h2>
     <div class="kb-rij">
         <label>Company</label>
         <input class="kb-invoer" value="@State.Config.Company" @onchange="e => Set(() => State.Config.Company = e.Value?.ToString() ?? string.Empty)" />
     </div>
+</section>
+
+<section class="kb-kaart">
+    <h2>Naamgeving van nieuwe accounts</h2>
+    <div class="kb-raster">
+        <label>Accountnaam (voor de @@)
+            <select class="kb-invoer" aria-label="Accountnaam" @onchange="e => Set(() => State.Config.Naming.LocalPart = Enum.Parse<LocalPartPattern>(e.Value?.ToString() ?? nameof(LocalPartPattern.GivenDotSurname)))">
+                @foreach (var p in Enum.GetValues<LocalPartPattern>())
+                {
+                    <option value="@p" selected="@(State.Config.Naming.LocalPart == p)">@NamingSettings.Example(p)</option>
+                }
+            </select>
+        </label>
+        <label>Weergavenaam
+            <select class="kb-invoer" aria-label="Weergavenaam" @onchange="e => Set(() => State.Config.Naming.DisplayName = Enum.Parse<DisplayNamePattern>(e.Value?.ToString() ?? nameof(DisplayNamePattern.GivenSurname)))">
+                @foreach (var p in Enum.GetValues<DisplayNamePattern>())
+                {
+                    <option value="@p" selected="@(State.Config.Naming.DisplayName == p)">@NamingSettings.Example(p)</option>
+                }
+            </select>
+        </label>
+    </div>
+    <p class="kb-zacht">Voorbeeld voor An Peeters. Accentjes en spaties gaan eruit; bestaat de naam al, dan komt er een cijfer achter.</p>
+</section>
+
+<section class="kb-kaart">
+    <h2>Sjabloon, exporteren en importeren</h2>
+    <div class="kb-rij">
+        <label>Sjabloon
+            <select class="kb-invoer" @bind="templateKey" aria-label="Sjabloon">
+                <option value="">(kies)</option>
+                @foreach (var t in OrganisationTemplates.All) { <option value="@t.Key">@t.Name: @t.Description</option> }
+            </select>
+        </label>
+        <button class="kb-knop" disabled="@(templateKey.Length == 0)" @onclick="ApplyTemplate">Toepassen</button>
+    </div>
+    <p class="kb-zacht">Een sjabloon vult enkel aan wat ontbreekt (afdelingen, soorten gebruikers, voorvoegsels); wat al ingevuld is, blijft.</p>
+    <div class="kb-rij">
+        <button class="kb-knop" @onclick="Export">Exporteren</button>
+        <label class="kb-knop kb-bestandknop">Importeren (.json)<InputFile OnChange="Import" accept=".json" /></label>
+    </div>
+    <p class="kb-zacht">
+        Exporteren schrijft de instellingen naar een bestand, om ze in een andere tenant te importeren. Importeren vervangt de
+        instellingen, behalve het AD-domein en de noodaccounts (die horen bij deze tenant); daarna eerst nakijken en bewaren.
+    </p>
+    @if (exchangeMessage is not null) { <div class="kb-melding @(exchangeError ? "kb-fout" : null)">@exchangeMessage</div> }
 </section>
 
 <section class="kb-kaart">
@@ -181,7 +229,7 @@
     <h2>Profielen</h2>
     <p class="kb-zacht">
         Wie wat mag in Moss365 volgt uit de app-rollen in Entra (Lezer, Helpdesk, Beheerder, Auditor, Appbeheer), toegekend via
-        de groepen <code>GG-Moss365-...</code> (zie <code>docs/voorbereiding-0.8.md</code>). Zolang dit uit staat, mag wie zich
+        de groepen <code>GG-Moss365-...</code> (die maakt <a href="inrichten">Tenant inrichten</a>). Zolang dit uit staat, mag wie zich
         aanmeldt zonder rol alles, zoals vroeger.
     </p>
     <label><input type="checkbox" checked="@State.Config.ProfilesRequired" @onchange="e => Set(() => State.Config.ProfilesRequired = e.Value is true)" />
@@ -245,6 +293,63 @@
         counts = OrganisationAnalysis.CountPerDepartment(State.Data, State.Config);
         departmentsInData = OrganisationAnalysis.DepartmentsInData(State.Data, State.Config);
         officesInData = OrganisationAnalysis.OfficesInData(State.Data, State.Config);
+    }
+
+    private string templateKey = string.Empty;
+    private string? exchangeMessage;
+    private bool exchangeError;
+
+    private void ApplyTemplate()
+    {
+        if (OrganisationTemplates.All.FirstOrDefault(t => t.Key == templateKey) is not { } template)
+        {
+            return;
+        }
+
+        IReadOnlyList<string> added = Array.Empty<string>();
+        Set(() => added = OrganisationTemplates.Apply(State.Config, template));
+        (exchangeMessage, exchangeError) = (added.Count == 0
+            ? $"Het sjabloon {template.Name} voegt niets toe: alles staat er al."
+            : $"Uit het sjabloon {template.Name}: {string.Join(", ", added)}. Kijk na en bewaar.", false);
+    }
+
+    private void Export()
+    {
+        try
+        {
+            var path = Path.Combine(State.ExportFolder, $"Organisatie-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+            Directory.CreateDirectory(State.ExportFolder);
+            File.WriteAllText(path, ConfigStorage.To(State.Config), new System.Text.UTF8Encoding(false));
+            State.Access("Organisatie geëxporteerd", Path.GetFileName(path));
+            (exchangeMessage, exchangeError) = ($"Geëxporteerd: {path}", false);
+            State.AppEnvironment.ShowFile(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            (exchangeMessage, exchangeError) = ("Exporteren mislukt: " + ex.Message, true);
+        }
+    }
+
+    private async Task Import(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(1024 * 1024));
+            var imported = ConfigStorage.Parse(await reader.ReadToEndAsync());
+            var keepDomain = State.Config.AdDomain;
+            var keepEmergency = State.Config.EmergencyAccounts.ToList();
+            Set(() =>
+            {
+                ConfigStorage.CopyInto(imported, State.Config);
+                State.Config.AdDomain = keepDomain;
+                State.Config.EmergencyAccounts = keepEmergency;
+            });
+            (exchangeMessage, exchangeError) = ($"Geïmporteerd uit {e.File.Name}. Kijk na en bewaar.", false);
+        }
+        catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or InvalidOperationException)
+        {
+            (exchangeMessage, exchangeError) = ("Dit is geen bestand met instellingen van Moss365: " + ex.Message, true);
+        }
     }
 
     private void Set(Action change)

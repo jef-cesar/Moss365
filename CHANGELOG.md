@@ -2,6 +2,24 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.20.0
+
+The settings of an organisation, suggested from its own data (first part of step R9 of the
+[roadmap](docs/roadmap-1.0.md); job profiles and logon scripts follow).
+
+- **Naming of new accounts** per tenant (Organisatie): the part before the @ (an.peeters, anpeeters, a.peeters,
+  apeeters, peeters.an, peetersa) and the display name (An Peeters, Peeters An, PEETERS An, Peeters, An). The app
+  suggests the pattern most accounts follow; Nieuwe gebruiker uses it.
+- **More suggestions from the data**, on the Organisatie page (also for a tenant with only AD) and in the wizard: the
+  company, the OU for new users (with its UPN domain), the OU for offboarding, the OU for new groups, the naming, and
+  readable names for the licences, next to departments, offices, group prefixes, synchronised OUs and emergency
+  accounts. Nothing is taken over by itself.
+- **Templates**: local government, school, small business. Applying one only adds what is missing (divisions, kinds of
+  users, group prefixes).
+- **Export and import** of the settings, to start a tenant from another one. Importing keeps the AD domain and the
+  emergency accounts of the tenant; you check and save.
+- Two texts no longer point to internal documents.
+
 ## 0.19.0
 
 Improvements asked for after 0.18.

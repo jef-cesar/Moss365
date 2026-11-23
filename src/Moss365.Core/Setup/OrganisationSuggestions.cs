@@ -12,6 +12,13 @@ public enum SuggestionKind
     Office,
     GroupPrefix,
     EmergencyAccount,
+    Company,
+    NewUsersOu,
+    OffboardingOu,
+    GroupsOu,
+    LocalPart,
+    DisplayName,
+    LicenceName,
 }
 
 /// <summary>A value the wizard found in the data; Count = how many accounts or groups use it.</summary>
@@ -79,6 +86,7 @@ public static class OrganisationSuggestions
             }
         }
 
+        output.AddRange(MoreFor(d, c, staff));
         output.AddRange(EmergencyCandidates(d, c));
         return output;
     }
@@ -125,6 +133,62 @@ public static class OrganisationSuggestions
         }
     }
 
+    /// <summary>R9: the company, the OUs, the naming and the names of the licences.</summary>
+    private static IEnumerable<Suggestion> MoreFor(InventoryData d, OrganisationConfig c, IReadOnlyList<Person> staff)
+    {
+        var company = staff.Select(p => (p.Ad?.Company is { Length: > 0 } a ? a : p.Entra?.CompanyName ?? string.Empty).Trim()).Where(x => x.Length > 0)
+            .GroupBy(x => x, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault();
+        if (company is not null && !string.Equals(company.Key, c.Company, StringComparison.OrdinalIgnoreCase))
+        {
+            yield return new(SuggestionKind.Company, company.Key, company.Count(), $"Staat bij de meeste accounts; nu ingevuld: {c.Company}.");
+        }
+
+        // The OU with the most enabled accounts (new users), with the most disabled accounts (offboarding), with the most groups
+        var enabledOu = d.AdUsers.Where(u => u.Enabled && u.OuPath.Length > 0).GroupBy(u => u.OuPath, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault();
+        if (enabledOu is not null && !c.Populations.Any(p => string.Equals(p.Ou, enabledOu.Key, StringComparison.OrdinalIgnoreCase)))
+        {
+            var domain = enabledOu.Select(u => u.UserPrincipalName.Contains('@') ? u.UserPrincipalName[(u.UserPrincipalName.IndexOf('@') + 1)..] : string.Empty)
+                .Where(x => x.Length > 0).GroupBy(x => x, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key ?? string.Empty;
+            yield return new(SuggestionKind.NewUsersOu, enabledOu.Key, enabledOu.Count(),
+                $"De OU met de meeste actieve accounts{(domain.Length > 0 ? $" (UPN op {domain})" : string.Empty)}: een soort gebruiker voor nieuwe accounts.");
+        }
+
+        var disabledOu = d.AdUsers.Where(u => !u.Enabled && u.OuPath.Length > 0).GroupBy(u => u.OuPath, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault();
+        if (disabledOu is not null && disabledOu.Count() >= 2 && string.IsNullOrWhiteSpace(c.Offboarding?.Ou))
+        {
+            yield return new(SuggestionKind.OffboardingOu, disabledOu.Key, disabledOu.Count(), "De OU met de meeste uitgeschakelde accounts: hierheen bij uitstroom.");
+        }
+
+        var groupsOu = d.AdGroupsByDn.Values.Where(g => g.OuPath.Length > 0 && !g.OuPath.Equals("Builtin", StringComparison.OrdinalIgnoreCase) && !g.OuPath.Equals("Users", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(g => g.OuPath, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault();
+        if (groupsOu is not null && string.IsNullOrWhiteSpace(c.GroupsOu))
+        {
+            yield return new(SuggestionKind.GroupsOu, groupsOu.Key, groupsOu.Count(), "De OU met de meeste groepen: hier komen nieuwe AD-groepen.");
+        }
+
+        // The naming most accounts follow (only when a clear majority does)
+        if (NamingSettings.Detect(d) is { } n)
+        {
+            if (n.Local != c.Naming.LocalPart && n.LocalCount * 10 >= n.Accounts * 6)
+            {
+                yield return new(SuggestionKind.LocalPart, n.Local.ToString(), n.LocalCount,
+                    $"Accountnamen zoals {NamingSettings.Example(n.Local)}@... ({n.LocalCount} van {n.Accounts} accounts); nu: {NamingSettings.Example(c.Naming.LocalPart)}.");
+            }
+
+            if (n.Display != c.Naming.DisplayName && n.DisplayCount * 10 >= n.Accounts * 6)
+            {
+                yield return new(SuggestionKind.DisplayName, n.Display.ToString(), n.DisplayCount,
+                    $"Weergavenamen zoals \"{NamingSettings.Example(n.Display)}\" ({n.DisplayCount} van {n.Accounts} accounts); nu: \"{NamingSettings.Example(c.Naming.DisplayName)}\".");
+            }
+        }
+
+        // Readable names for the subscriptions that have none yet
+        foreach (var l in d.Licences.Where(l => l.SkuPartNumber.Length > 0 && !c.Licences.Any(x => string.Equals(x.Sku, l.SkuPartNumber, StringComparison.OrdinalIgnoreCase))))
+        {
+            yield return new(SuggestionKind.LicenceName, l.SkuPartNumber, l.Assigned, $"Leesbare naam: {LicenceNames.For(l.SkuPartNumber)}.");
+        }
+    }
+
     /// <summary>Takes the chosen suggestions over in the settings (the caller saves them).</summary>
     public static void Apply(OrganisationConfig c, IEnumerable<Suggestion> chosen)
     {
@@ -150,6 +214,28 @@ public static class OrganisationSuggestions
                 case SuggestionKind.EmergencyAccount when !c.EmergencyAccounts.Contains(s.Value, StringComparer.OrdinalIgnoreCase):
                     c.EmergencyAccounts.Add(s.Value);
                     break;
+                case SuggestionKind.Company:
+                    c.Company = s.Value;
+                    break;
+                case SuggestionKind.NewUsersOu when !c.Populations.Any(p => string.Equals(p.Ou, s.Value, StringComparison.OrdinalIgnoreCase)):
+                    c.Populations.Add(new Population { Name = s.Value.Split('/')[0] is { Length: > 0 } first ? first : "Medewerkers", Ou = s.Value, UpnDomain = UpnDomainOf(s.Explanation) });
+                    break;
+                case SuggestionKind.OffboardingOu:
+                    c.Offboarding ??= new OffboardingRule();
+                    c.Offboarding.Ou = s.Value;
+                    break;
+                case SuggestionKind.GroupsOu:
+                    c.GroupsOu = s.Value;
+                    break;
+                case SuggestionKind.LocalPart when Enum.TryParse<LocalPartPattern>(s.Value, out var local):
+                    c.Naming.LocalPart = local;
+                    break;
+                case SuggestionKind.DisplayName when Enum.TryParse<DisplayNamePattern>(s.Value, out var display):
+                    c.Naming.DisplayName = display;
+                    break;
+                case SuggestionKind.LicenceName when !c.Licences.Any(x => string.Equals(x.Sku, s.Value, StringComparison.OrdinalIgnoreCase)):
+                    c.Licences.Add(new LicenceChoice { Sku = s.Value, Name = LicenceNames.For(s.Value) });
+                    break;
             }
         }
     }
@@ -166,4 +252,52 @@ public static class OrganisationSuggestions
     }
 
     private static string MostUsed(IEnumerable<string> spellings) => spellings.GroupBy(x => x, StringComparer.Ordinal).OrderByDescending(g => g.Count()).First().Key;
+
+    private static string UpnDomainOf(string explanation)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(explanation, @"UPN op ([^\s)]+)");
+        return m.Success ? m.Groups[1].Value : string.Empty;
+    }
+}
+
+/// <summary>Readable names of the usual Microsoft 365 subscriptions (the SKU part number otherwise).</summary>
+public static class LicenceNames
+{
+    private static readonly Dictionary<string, string> Known = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["SPB"] = "Microsoft 365 Business Premium",
+        ["O365_BUSINESS_PREMIUM"] = "Microsoft 365 Business Standard",
+        ["O365_BUSINESS_ESSENTIALS"] = "Microsoft 365 Business Basic",
+        ["O365_BUSINESS"] = "Microsoft 365 Apps for business",
+        ["OFFICESUBSCRIPTION"] = "Microsoft 365 Apps for enterprise",
+        ["ENTERPRISEPACK"] = "Office 365 E3",
+        ["ENTERPRISEPREMIUM"] = "Office 365 E5",
+        ["STANDARDPACK"] = "Office 365 E1",
+        ["SPE_E3"] = "Microsoft 365 E3",
+        ["SPE_E5"] = "Microsoft 365 E5",
+        ["SPE_F1"] = "Microsoft 365 F3",
+        ["DESKLESSPACK"] = "Office 365 F3",
+        ["EXCHANGESTANDARD"] = "Exchange Online (Plan 1)",
+        ["EXCHANGEENTERPRISE"] = "Exchange Online (Plan 2)",
+        ["EXCHANGEDESKLESS"] = "Exchange Online Kiosk",
+        ["AAD_PREMIUM"] = "Microsoft Entra ID P1",
+        ["AAD_PREMIUM_P2"] = "Microsoft Entra ID P2",
+        ["EMS"] = "Enterprise Mobility + Security E3",
+        ["EMSPREMIUM"] = "Enterprise Mobility + Security E5",
+        ["INTUNE_A"] = "Microsoft Intune Plan 1",
+        ["POWER_BI_STANDARD"] = "Power BI (free)",
+        ["POWER_BI_PRO"] = "Power BI Pro",
+        ["PROJECTPROFESSIONAL"] = "Project Plan 3",
+        ["VISIOCLIENT"] = "Visio Plan 2",
+        ["TEAMS_EXPLORATORY"] = "Microsoft Teams Exploratory",
+        ["FLOW_FREE"] = "Power Automate (free)",
+        ["STANDARDWOFFPACK_FACULTY"] = "Office 365 A1 for faculty",
+        ["STANDARDWOFFPACK_STUDENT"] = "Office 365 A1 for students",
+        ["M365EDU_A3_FACULTY"] = "Microsoft 365 A3 for faculty",
+        ["M365EDU_A3_STUDENT"] = "Microsoft 365 A3 for students",
+        ["M365EDU_A5_FACULTY"] = "Microsoft 365 A5 for faculty",
+    };
+
+    public static string For(string skuPartNumber)
+        => Known.TryGetValue(skuPartNumber, out var name) ? name : skuPartNumber.Replace('_', ' ');
 }

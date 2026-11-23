@@ -1,0 +1,96 @@
+@using Moss365.Core.Setup
+@* Suggestions for the organisation from the loaded data (R5, R9): only what is not in the settings yet. Nothing is
+   taken over by itself: tick what you want, then Overnemen (saved in the database of the tenant). *@
+@inject ManagementState State
+
+<section class="kb-kaart" id="voorstellen">
+    <h2>@Title</h2>
+    @if (State.Data.Persons.Count == 0)
+    {
+        <p class="kb-zacht">Laad eerst gegevens (Verbindingen): de voorstellen komen uit de accounts, groepen en licenties.</p>
+    }
+    else if (suggestions.Count == 0)
+    {
+        <p class="kb-ok">Niets voor te stellen: wat in de gegevens staat, staat ook bij Organisatie.</p>
+    }
+    else
+    {
+        <p class="kb-zacht">Gevonden in de geladen gegevens, nog niet bij Organisatie. Vink aan wat je wil overnemen; je kan alles nadien aanpassen.</p>
+        <table class="kb-tabel">
+            <thead><tr><th></th><th>Soort</th><th>Waarde</th><th>Aantal</th><th>Uitleg</th></tr></thead>
+            <tbody>
+                @foreach (var s in suggestions)
+                {
+                    var key = Key(s);
+                    <tr>
+                        <td><input type="checkbox" aria-label="@s.Value" checked="@chosen.Contains(key)" @onchange="e => Toggle(key, e.Value is true)" /></td>
+                        <td>@KindText(s.Kind)</td>
+                        <td>@ValueText(s)</td>
+                        <td>@s.Count</td>
+                        <td>@s.Explanation</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0 || State.IsHistoric)" @onclick="TakeOver">Overnemen (@suggestions.Count(s => chosen.Contains(Key(s))))</button>
+    }
+    @if (State.HasMicrosoft365 && State.Data.Security is null && State.Data.Persons.Count > 0)
+    {
+        <p class="kb-zacht">Noodaccounts stelt de app voor zodra de beheerrollen geladen zijn (Alles live laden).</p>
+    }
+    @if (takenOver is not null) { <p class="kb-ok">@takenOver</p> }
+</section>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Voorstellen uit de gegevens";
+
+    /// <summary>After taking over (the organisation page reloads its form).</summary>
+    [Parameter] public EventCallback TakenOver { get; set; }
+
+    private IReadOnlyList<Suggestion> suggestions = Array.Empty<Suggestion>();
+    private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
+    private string? takenOver;
+
+    protected override void OnParametersSet() => suggestions = State.Data.Persons.Count == 0 ? Array.Empty<Suggestion>() : State.Suggestions();
+
+    private static string Key(Suggestion s) => $"{s.Kind}|{s.Value}";
+
+    private void Toggle(string key, bool on)
+    {
+        if (on) { chosen.Add(key); } else { chosen.Remove(key); }
+    }
+
+    private async Task TakeOver()
+    {
+        var list = suggestions.Where(s => chosen.Contains(Key(s))).ToList();
+        State.TakeOver(list);
+        chosen.Clear();
+        takenOver = $"{list.Count} voorstel(len) overgenomen bij Organisatie.";
+        suggestions = State.Suggestions();
+        await TakenOver.InvokeAsync();
+    }
+
+    private static string ValueText(Suggestion s) => s.Kind switch
+    {
+        SuggestionKind.LocalPart when Enum.TryParse<Moss365.Core.Configuration.LocalPartPattern>(s.Value, out var l) => Moss365.Core.Configuration.NamingSettings.Example(l) + "@...",
+        SuggestionKind.DisplayName when Enum.TryParse<Moss365.Core.Configuration.DisplayNamePattern>(s.Value, out var d) => Moss365.Core.Configuration.NamingSettings.Example(d),
+        _ => s.Value,
+    };
+
+    private static string KindText(SuggestionKind k) => k switch
+    {
+        SuggestionKind.AdDomain => "AD-domein",
+        SuggestionKind.SynchronisedOu => "Gesynchroniseerde OU",
+        SuggestionKind.Department => "Dienst",
+        SuggestionKind.Office => "Kantoor",
+        SuggestionKind.GroupPrefix => "Groepsvoorvoegsel",
+        SuggestionKind.EmergencyAccount => "Noodaccount",
+        SuggestionKind.Company => "Bedrijf",
+        SuggestionKind.NewUsersOu => "OU nieuwe gebruikers",
+        SuggestionKind.OffboardingOu => "OU bij uitstroom",
+        SuggestionKind.GroupsOu => "OU nieuwe groepen",
+        SuggestionKind.LocalPart => "Accountnaam",
+        SuggestionKind.DisplayName => "Weergavenaam",
+        _ => "Licentienaam",
+    };
+}

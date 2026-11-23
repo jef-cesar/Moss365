@@ -48,6 +48,9 @@ public sealed class OrganisationConfig
     /// <summary>How long the other parts of the database are kept (R6, screen Databank).</summary>
     public Storage.RetentionSettings Retention { get; set; } = new();
 
+    /// <summary>How new accounts are named (R9): the part before the @ and the display name.</summary>
+    public NamingSettings Naming { get; set; } = new();
+
     /// <summary>OU for new AD groups, as a path (e.g. GEMEENTEBESTUUR/GROEPEN).</summary>
     public string? GroupsOu { get; set; }
 
@@ -297,4 +300,17 @@ public static class ConfigStorage
     public static void Save(OrganisationConfig config, Storage.ITextStorage users) => users.Save(To(config));
 
     public static string To(OrganisationConfig config) => JsonSerializer.Serialize(config, Options);
+
+    /// <summary>Copies every setting of one configuration into another (the same object stays in use).</summary>
+    public static void CopyInto(OrganisationConfig from, OrganisationConfig to)
+    {
+        foreach (var p in typeof(OrganisationConfig).GetProperties().Where(p => p.CanRead && p.CanWrite))
+        {
+            p.SetValue(to, p.GetValue(from));
+        }
+    }
+
+    /// <summary>The settings in an exported file (R9: from one tenant to another). Throws when it is not one.</summary>
+    public static OrganisationConfig Parse(string json)
+        => JsonSerializer.Deserialize<OrganisationConfig>(json.TrimStart('\uFEFF'), Options) ?? throw new JsonException("Geen organisatie in dit bestand.");
 }
