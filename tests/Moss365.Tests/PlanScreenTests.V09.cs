@@ -13,7 +13,8 @@ public sealed partial class PlanScreenTests
     {
         LoadWithCa();
         var cut = RenderComponent<CaOverview>();
-        cut.FindAll("button").First(b => b.TextContent == "Beheren").Click();
+        cut.InvokeAsync(() => cut.FindAll("button").First(b => b.TextContent == "Beheren").Click());
+        Settle(cut); // the manage view may render again once its data is in; wait for that before clicking further
         return cut;
     }
 
@@ -60,7 +61,7 @@ public sealed partial class PlanScreenTests
     {
         State.Config.EmergencyAccounts.Add("info@test.onmicrosoft.com");
         var cut = Manage();
-        cut.FindAll("button").First(b => b.TextContent == "Uitzonderingen").Click();
+        cut.InvokeAsync(() => cut.FindAll("button").First(b => b.TextContent == "Uitzonderingen").Click());
         cut.FindAll("select").First(s => s.QuerySelectorAll("option").Any(o => o.GetAttribute("value") == "ca-mfa")).Change("ca-mfa");
         Assert.Contains("Rechtstreeks uitgezonderd van \"MFA voor iedereen\" (1)", cut.Markup);
         Assert.Contains("noodaccount", cut.Find(".kb-lijst-plat").TextContent);
