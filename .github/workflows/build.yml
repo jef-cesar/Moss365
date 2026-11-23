@@ -80,7 +80,7 @@ jobs:
         with:
           name: Moss365-win-x64
           path: publish
-          retention-days: 90
+          retention-days: 7
 
       - name: Release (once per version)
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

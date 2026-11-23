@@ -1,0 +1,61 @@
+name: Cleanup Actions
+
+# Removes old workflow runs, old artifacts and caches, so that Actions storage stays small.
+# Runs once when this file is pushed on the cleanup branch, and on demand (Run workflow).
+on:
+  push:
+    branches: [claude/fervent-brown-76judl]
+    paths: ['.github/workflows/cleanup.yml']
+  workflow_dispatch:
+    inputs:
+      keep_runs:
+        description: 'Newest runs to keep per workflow'
+        default: '5'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      KEEP_RUNS: ${{ inputs.keep_runs || '5' }}
+    steps:
+      - name: Storage before
+        run: |
+          gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired | not) | .size_in_bytes' \
+            | awk '{s+=$1; n++} END {printf "Artifacts: %d, %.1f MB\n", n, s/1048576}'
+
+      - name: Artifacts (keep only the newest of each name)
+        run: |
+          gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | [.id, .name, .created_at] | @tsv' \
+            | sort -t$'\t' -k3,3r | awk -F'\t' 'seen[$2]++' \
+            | while IFS=$'\t' read -r id name created; do
+                gh api -X DELETE "repos/$REPO/actions/artifacts/$id" && echo "Artifact deleted: $name ($created)"
+              done
+
+      - name: Workflow runs (keep the newest per workflow)
+        run: |
+          for wf in $(gh api --paginate "repos/$REPO/actions/workflows?per_page=100" --jq '.workflows[].id'); do
+            gh api --paginate "repos/$REPO/actions/workflows/$wf/runs?per_page=100" \
+              --jq '.workflow_runs[] | select(.status == "completed") | [.id, .created_at, .name] | @tsv' \
+              | sort -t$'\t' -k2,2r | tail -n +$((KEEP_RUNS + 1)) \
+              | while IFS=$'\t' read -r id created name; do
+                  [ "$id" = "$GITHUB_RUN_ID" ] && continue
+                  gh api -X DELETE "repos/$REPO/actions/runs/$id" && echo "Run deleted: $name ($created)"
+                done
+          done
+
+      - name: Caches
+        run: gh cache delete --all -R "$REPO" || echo "No caches."
+
+      - name: Storage after
+        run: |
+          gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired | not) | .size_in_bytes' \
+            | awk '{s+=$1; n++} END {printf "Artifacts: %d, %.1f MB\n", n, s/1048576}'
