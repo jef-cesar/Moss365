@@ -22,6 +22,19 @@ public enum Role
     Everything = Reader | Helpdesk | Administrator | Auditor | AppAdmin,
 }
 
+/// <summary>How a tenant works with the roles of Moss365 (0.30), chosen per tenant.</summary>
+public enum RolesMode
+{
+    /// <summary>The roles in the sign-in count; without a role everything (as before 0.8).</summary>
+    Transition,
+
+    /// <summary>The roles in the sign-in count; without a role only reading.</summary>
+    Required,
+
+    /// <summary>No roles: everyone who uses the app here may do everything (a small team, one administrator).</summary>
+    Off,
+}
+
 /// <summary>What someone may do in the app (the permission table from chapter 2 of the roadmap).</summary>
 public enum Permission
 {
@@ -134,7 +147,18 @@ public static class PermissionTable
     /// everything (as before 0.8, with a message); when they are required, read only (also before signing in).
     /// </summary>
     public static Role Determine(IEnumerable<string>? claims, bool requiredValue)
+        => Determine(claims, requiredValue ? RolesMode.Required : RolesMode.Transition);
+
+    /// <summary>The roles the app works with in this mode: without roles (<see cref="RolesMode.Off"/>) everything,
+    /// whatever the sign-in says.</summary>
+    public static Role Determine(IEnumerable<string>? claims, RolesMode mode)
     {
+        if (mode == RolesMode.Off)
+        {
+            return Role.Everything;
+        }
+
+        var requiredValue = mode == RolesMode.Required;
         var fromToken = claims is null ? Role.No : FromClaims(claims);
         if (fromToken != Role.No)
         {

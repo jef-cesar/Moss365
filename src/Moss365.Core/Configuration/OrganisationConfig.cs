@@ -41,6 +41,20 @@ public sealed class OrganisationConfig
     /// </summary>
     public bool ProfilesRequired { get; set; }
 
+    /// <summary>How this tenant works with the roles of Moss365 (0.30); null in data saved before: then
+    /// <see cref="ProfilesRequired"/> decides. Kept when importing settings from another tenant.</summary>
+    public Permissions.RolesMode? Roles { get; set; }
+
+    [JsonIgnore]
+    public Permissions.RolesMode RolesModeEffective => Roles ?? (ProfilesRequired ? Permissions.RolesMode.Required : Permissions.RolesMode.Transition);
+
+    /// <summary>Sets the mode; <see cref="ProfilesRequired"/> follows, for older versions of the app.</summary>
+    public void SetRoles(Permissions.RolesMode mode)
+    {
+        Roles = mode;
+        ProfilesRequired = mode == Permissions.RolesMode.Required;
+    }
+
     /// <summary>How long the change log stays in the database (decision U9: 5 years by default; to agree with the
     /// DPO); archive after that.</summary>
     public int ChangeLogSaveYears { get; set; } = 5;

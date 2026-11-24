@@ -353,7 +353,7 @@ data (recovery keys, passwords, message traces) is written to the access log and
 | **Group Policy (GPO)**: which policies are linked where, disabled and empty policies (read only) | An overview the standard tools make hard |
 | **Microsoft Secure Score** with its trend and the actions that gain the most | One number for management |
 | **Admin roles and PIM**: who has what permanently, who is eligible | Least privilege |
-| **Conditional Access editor**: change every condition of an existing policy (users and groups, apps, platforms, locations, client apps, device filters, grant and session controls), with the same checks as today (emergency accounts excluded, never lock yourself out, a preview with the difference, never delete) | Since 0.9 the app switches policies on and off, manages exclusions, named locations, templates and backups; the rest still needs the Entra portal |
+| **Conditional Access editor**: change every condition of an existing policy (users and groups, apps, platforms, locations, client apps, device filters, grant and session controls), with the same checks as today (emergency accounts excluded, never lock yourself out, a preview with the difference, never delete) | Since 0.9 the app switches policies on and off, manages exclusions, named locations, templates and backups. **Done in 0.30** (ahead of R11): every condition, a free new policy, a copy, the impact on who falls under it, and the JSON |
 | **Weak MFA methods** (SMS, phone) and who has no stronger one yet | Becoming phishing resistant |
 | **Risky users and sign-ins** (requires Entra ID P2) | React quickly |
 

@@ -99,6 +99,9 @@ public static class CaReader
 
     public static string AppName(string id) => AppNames.TryGetValue(id, out var n) ? n : "app " + id;
 
+    /// <summary>The apps the app knows by name (for the editor).</summary>
+    public static IReadOnlyCollection<string> KnownApps => AppNames.Keys;
+
     public static string ActionName(string action) => action.ToLowerInvariant() switch
     {
         ActionSecurityData => "beveiligingsgegevens registreren (MFA instellen)",

@@ -10,7 +10,16 @@ else
 {
     var name = CaReader.Names(State.Data);
     var u = CaReader.Explanation(b, ca, name);
-    <h1>@b.Name</h1>
+    <div class="kb-titelbalk">
+        <h1>@b.Name</h1>
+        @if (State.Can(Permission.Manage) && !State.IsHistoric)
+        {
+            <span class="kb-filters">
+                <a class="kb-knop kb-primair" href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}/bewerken")">Bewerken</a>
+                <a class="kb-knop" href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}/kopie")">Kopie maken</a>
+            </span>
+        }
+    </div>
     <p class="kb-zacht">
         <CaLabel Status="b.Status" />
         @if (b.Created is { } a) { <span>aangemaakt @a.LocalDateTime.ToString("dd/MM/yyyy")</span> }
@@ -63,6 +72,14 @@ else
         <KbTable Id="ca-eronder" ExportName="@($"CA-{b.Name}")" Items="Under" Columns="columns" DefaultSorting="naam" />
     </section>
 
+    @if (b.Json.Length > 0)
+    {
+        <details class="kb-kaart">
+            <summary>JSON zoals Entra het beleid geeft</summary>
+            <pre class="kb-json">@PrettyJson(b.Json)</pre>
+        </details>
+    }
+
     <section class="kb-kaart">
         <h2>Effect</h2>
         <div class="kb-filters">
@@ -105,6 +122,18 @@ else
 
     private IReadOnlyList<(Person Person, CaAnswer Answer)> Under
         => State.Data.ConditionalAccess?.Policies.FirstOrDefault(b => b.Id == Id) is { } b ? CaReader.WhoFallsUnder(b, State.Data) : Array.Empty<(Person, CaAnswer)>();
+
+    private static string PrettyJson(string json)
+    {
+        try
+        {
+            return System.Text.Json.Nodes.JsonNode.Parse(json)!.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return json;
+        }
+    }
 
     private static bool Real(string id) => id is not ("All" or "None" or "GuestsOrExternalUsers");
 

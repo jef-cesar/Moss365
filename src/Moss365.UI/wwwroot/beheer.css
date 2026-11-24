@@ -547,6 +547,8 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 .kb-statusbalk a { color: var(--kb-accent); }
 .kb-online { color: var(--kb-ok); }
 .kb-offline { color: var(--kb-rood); font-weight: 600; }
+.kb-statusbalk a.kb-online { color: var(--kb-ok); text-decoration: none; }
+.kb-statusbalk a.kb-offline { color: var(--kb-rood); text-decoration: none; }
 
 /* 0.21: the menu by subject, favourites, search, and the settings screen */
 .kb-nav-zoek { display: flex; align-items: center; gap: 0.45rem; margin: 0 1rem 0.6rem; padding: 0.4rem 0.7rem; border-radius: 6px;
@@ -580,3 +582,17 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 .kb-zoek-lijst a { display: block; padding: 0.4rem 0.6rem; border-radius: 6px; color: var(--kb-tekst); text-decoration: none; }
 .kb-zoek-lijst li.kb-zoek-gekozen a, .kb-zoek-lijst a:hover { background: var(--kb-achtergrond); }
 .kb-zoek-hulp { margin: 0.6rem 0 0; font-size: 0.8em; }
+
+/* 0.30: the Conditional Access editor */
+.kb-veldgroep { border: 1px solid var(--kb-lijn); border-radius: 8px; padding: 0.5rem 0.8rem; margin: 0; min-width: 0; }
+.kb-veldgroep legend { font-weight: 600; padding: 0 0.3rem; }
+.kb-veldgroep .kb-keuzelijst { margin: 0.2rem 0 0.4rem; display: flex; flex-direction: column; gap: 0.15rem; }
+.kb-veldgroep label, .kb-veldgroep .kb-keuzelijst label { display: flex; flex-direction: row; align-items: center; gap: 0.4rem; font-weight: normal; }
+.kb-veldgroep label input { margin: 0; }
+.kb-veldgroep > select, .kb-veldgroep > input { width: 100%; margin-top: 0.3rem; }
+.kb-json { white-space: pre-wrap; word-break: break-all; font-size: 0.85em; background: var(--kb-achtergrond); border: 1px solid var(--kb-lijn); border-radius: 6px; padding: 0.6rem; max-height: 24rem; overflow: auto; }
+.kb-ca-voorbeeld { border-color: var(--kb-paars); }
+.kb-ca-erbij { color: var(--kb-rood, #b42318); font-weight: 600; }
+.kb-ca-eraf { color: var(--kb-groen, #2f6b3a); font-weight: 600; }
+.kb-ca-verschil li { margin: 0.15rem 0; }
+.kb-status-tenant { cursor: default; }

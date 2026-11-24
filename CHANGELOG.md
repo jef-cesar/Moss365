@@ -2,6 +2,32 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.30.0
+
+A big step: the full Conditional Access editor (brought forward from step R11 of the [roadmap](docs/roadmap-1.0.md)),
+a choice per tenant for roles, and a status bar that tells whether the data of the tenant is live.
+
+- **Conditional Access editor**: open a policy and choose **Bewerken** to change every part: who (all users, chosen
+  users, groups, roles and guests, and who is excluded), apps (all, Office 365, admin portals, chosen apps or a user
+  action), client apps, platforms, locations, sign-in and user risk, device code flow and authentication transfer, a
+  device filter, the grant (block, or MFA, compliant or hybrid device, approved app, password change, an authentication
+  strength, one or all) and the session (sign-in frequency, staying signed in). Fields the editor does not know (an
+  authentication context, an app filter, other session settings) stay as they are.
+- **Preview before the plan**: what changes in plain language, the safety check (emergency accounts excluded, not
+  locking yourself out; a button adds missing emergency accounts), who falls under the policy after the change with
+  **who comes in and who drops out**, and the exact JSON for Graph. Only the changed parts go to Graph, with the old
+  values in the change log, so it can be undone. The engine checks every change again; a policy is never deleted.
+- **New policy without a template** and **Kopie maken** of an existing policy: always in report-only (or off).
+- The policy page shows the **JSON** as Entra gives it; Beheren links to the editor; comparing backups now also names
+  platforms, risk, transfer, session settings, guests and the device filter.
+- **Roles per tenant** (Organisatie > Rollen in Moss365): *Zonder rollen* (everyone who uses the app may do
+  everything), *Rollen als ze er zijn* (the transition, as before) or *Rollen verplicht* (without a role only reading).
+  Requiring roles is refused when you have no role with Instellingen yourself, so you cannot lock yourself out.
+  Verbindingen shows the choice; importing settings keeps it.
+- **The status bar is about the open tenant**: *online* when its data is live for every system it has (with the time
+  per system), *deels online* when only AD or Entra is live, *offline* with the reason (inventory, the past, no
+  network). Click it to go to Verbindingen.
+
 ## 0.22.0
 
 Job profiles: what someone in a job gets (step R9 of the [roadmap](docs/roadmap-1.0.md); new users in the cloud and

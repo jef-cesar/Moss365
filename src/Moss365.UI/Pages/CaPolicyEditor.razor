@@ -1,0 +1,517 @@
+@page "/conditional-access/nieuw-beleid"
+@page "/conditional-access/{Id}/bewerken"
+@page "/conditional-access/{Id}/kopie"
+@inherits RefreshingPage
+@inject NavigationManager Nav
+@* The Conditional Access editor (0.30): every condition of a policy, a new policy or a copy. The preview shows the
+   differences, the safety check (emergency accounts, not locking yourself out) and who comes under the policy or no
+   longer; the plan goes through CaSafety again in the engine. A new policy never starts switched on; nothing is deleted. *@
+
+@if (State.Data.ConditionalAccess is not { Message: null } ca)
+{
+    <h1>Conditional Access</h1>
+    <div class="kb-melding">Conditional Access is niet geladen. Laad eerst live via <a href="verbindingen">Verbindingen</a>.</div>
+}
+else if (!State.Can(Permission.Manage) || State.IsHistoric)
+{
+    <h1>Conditional Access</h1>
+    <div class="kb-melding">@(State.IsHistoric ? "Je bekijkt het verleden: daar wijzigt de app niets." : "Een beleid bewerken kan enkel wie mag beheren.")</div>
+}
+else if (edit is null)
+{
+    <h1>Beleid niet gevonden</h1>
+    <p><a href="conditional-access">Terug naar Conditional Access</a></p>
+}
+else
+{
+    <div class="kb-titelbalk">
+        <h1>@Title</h1>
+        @if (current is not null) { <a class="kb-knop" href="@($"conditional-access/{Uri.EscapeDataString(current.Id)}")">Terug naar het beleid</a> }
+    </div>
+    <p class="kb-zacht">
+        Pas aan wat nodig is en kijk onderaan het voorbeeld na: wat er verandert, de controle (noodaccounts uitgesloten, jezelf niet
+        buitensluiten) en wie er onder het beleid komt of niet meer. Pas na <strong>Plan maken</strong> en je bevestiging gaat de wijziging
+        naar Entra; ze komt in het logboek en is ongedaan te maken. Een beleid verwijderen doet de app nooit: zet het uit.
+    </p>
+
+    <section class="kb-kaart">
+        <h2>Naam en status</h2>
+        <div class="kb-raster">
+            <label>Naam <input class="kb-invoer" value="@edit.Name" @onchange="e => Set(() => edit.Name = e.Value?.ToString() ?? string.Empty)" aria-label="Naam" /></label>
+        </div>
+        <div class="kb-keuzes">
+            @foreach (var (s, text, explanation) in Statuses)
+            {
+                var disabled = s == CaStatus.On && current is null;
+                <label class="kb-keuze @(edit.Status == s ? "kb-actief" : null)">
+                    <input type="radio" name="status" checked="@(edit.Status == s)" disabled="@disabled" @onchange="() => Set(() => edit.Status = s)" aria-label="@text" />
+                    <strong>@text</strong>
+                    <span class="kb-zacht">@(disabled ? "Een nieuw beleid begint in alleen rapport of uit." : explanation)</span>
+                </label>
+            }
+        </div>
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Wie</h2>
+        <div class="kb-filters">
+            @foreach (var (m, text) in new[] { (CaUsersMode.All, "Alle gebruikers"), (CaUsersMode.Selected, "Gekozen gebruikers, groepen of rollen"), (CaUsersMode.None, "Niemand") })
+            {
+                <label><input type="radio" name="wie" checked="@(edit.UsersMode == m)" @onchange="() => Set(() => edit.UsersMode = m)" aria-label="@text" /> @text</label>
+            }
+        </div>
+        @if (edit.UsersMode == CaUsersMode.Selected)
+        {
+            <h3>Opgenomen</h3>
+            @(Chips(edit.UsersIn, Name, "Gebruiker"))
+            @(Chips(edit.GroupsIn, Name, "Groep"))
+            @(Chips(edit.RolesIn, RoleName, "Rol"))
+            <label><input type="checkbox" checked="@edit.GuestsIn" @onchange="e => Set(() => edit.GuestsIn = e.Value is true)" /> Gasten en externe gebruikers</label>
+            <div class="kb-kolommen">
+                <ObjectPicker Label="Gebruiker opnemen" Kinds="UserKinds" Selected="r => AddUser(edit.UsersIn, r)" />
+                <ObjectPicker Label="Groep opnemen" Kinds="GroupKinds" Selected="r => AddGroup(edit.GroupsIn, r)" />
+            </div>
+            @(RolePicker(edit.RolesIn, "Rol opnemen"))
+        }
+        <h3>Uitgezonderd</h3>
+        @if (MissingEmergency > 0)
+        {
+            <div class="kb-melding">
+                @MissingEmergency noodaccount(s) staan niet uitgezonderd.
+                <button class="kb-knop kb-klein kb-primair" @onclick="() => Set(() => CaEditor.ExcludeEmergencyAccounts(edit, State.Data, State.Config))">Noodaccounts uitsluiten</button>
+            </div>
+        }
+        @(Chips(edit.UsersOff, Name, "Gebruiker"))
+        @(Chips(edit.GroupsOff, Name, "Groep"))
+        @(Chips(edit.RolesOff, RoleName, "Rol"))
+        <label><input type="checkbox" checked="@edit.GuestsOff" @onchange="e => Set(() => edit.GuestsOff = e.Value is true)" /> Gasten en externe gebruikers uitzonderen</label>
+        <div class="kb-kolommen">
+            <ObjectPicker Label="Gebruiker uitzonderen" Kinds="UserKinds" Selected="r => AddUser(edit.UsersOff, r)" />
+            <ObjectPicker Label="Groep uitzonderen" Kinds="GroupKinds" Selected="r => AddGroup(edit.GroupsOff, r)" />
+        </div>
+        @(RolePicker(edit.RolesOff, "Rol uitzonderen"))
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Apps</h2>
+        @if (edit.AppsMode == CaAppsMode.Other)
+        {
+            <p class="kb-zacht">Dit beleid gebruikt een verificatiecontext of een app-filter. Dat deel laat de app zoals het is; wijzig het in Entra.</p>
+        }
+        else
+        {
+            <div class="kb-filters">
+                @foreach (var (m, text) in AppModes)
+                {
+                    <label><input type="radio" name="apps" checked="@(edit.AppsMode == m)" @onchange="() => Set(() => edit.AppsMode = m)" aria-label="@text" /> @text</label>
+                }
+            </div>
+            @if (edit.AppsMode == CaAppsMode.Selected)
+            {
+                @(Chips(edit.AppsIn, CaReader.AppName, "App"))
+                @(AppPicker(edit.AppsIn, "App opnemen"))
+            }
+            @if (edit.AppsMode == CaAppsMode.UserAction)
+            {
+                <div class="kb-filters">
+                    <label><input type="radio" name="actie" checked="@(edit.UserAction == CaEditor.RegisterSecurityInfo)" @onchange="() => Set(() => edit.UserAction = CaEditor.RegisterSecurityInfo)" /> Beveiligingsgegevens (MFA) registreren</label>
+                    <label><input type="radio" name="actie" checked="@(edit.UserAction == CaEditor.RegisterDevice)" @onchange="() => Set(() => edit.UserAction = CaEditor.RegisterDevice)" /> Toestellen registreren of koppelen</label>
+                </div>
+            }
+            else
+            {
+                <h3>Uitgezonderde apps</h3>
+                @(Chips(edit.AppsOff, CaReader.AppName, "App"))
+                @(AppPicker(edit.AppsOff, "App uitzonderen"))
+            }
+        }
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Voorwaarden</h2>
+        <div class="kb-raster">
+            <fieldset class="kb-veldgroep">
+                <legend>Programma's (niets aangevinkt: alle)</legend>
+                @(Checks(edit.ClientApps, CaEditor.ClientAppChoices, CaReader.ClientName))
+            </fieldset>
+            <fieldset class="kb-veldgroep">
+                <legend>Platformen (niets aangevinkt: niet ingesteld)</legend>
+                <label><input type="checkbox" checked="@AllPlatforms" @onchange="SetAllPlatforms" /> Alle platformen</label>
+                @(Checks(edit.PlatformsIn, CaEditor.PlatformChoices, CaReader.PlatformName))
+                <span class="kb-zacht">Uitgezonderd:</span>
+                @(Checks(edit.PlatformsOff, CaEditor.PlatformChoices, CaReader.PlatformName))
+            </fieldset>
+            <fieldset class="kb-veldgroep">
+                <legend>Locaties (niets gekozen: niet ingesteld)</legend>
+                @(Checks(edit.LocationsIn, LocationIds(ca), id => CaReader.LocationName(id, ca)))
+                <span class="kb-zacht">Uitgezonderd:</span>
+                @(Checks(edit.LocationsOff, LocationIds(ca).Where(l => l != "All").ToList(), id => CaReader.LocationName(id, ca)))
+            </fieldset>
+            <fieldset class="kb-veldgroep">
+                <legend>Risico (Entra ID P2)</legend>
+                <span class="kb-zacht">Aanmeldrisico:</span>
+                @(Checks(edit.SignInRisk, CaEditor.RiskChoices, CaReader.RiskName))
+                <span class="kb-zacht">Gebruikersrisico:</span>
+                @(Checks(edit.UserRisk, CaEditor.RiskChoices, CaReader.RiskName))
+            </fieldset>
+            <fieldset class="kb-veldgroep">
+                <legend>Overdracht van de aanmelding</legend>
+                @(Checks(edit.Transfer, CaEditor.TransferChoices, t => t == "deviceCodeFlow" ? "Aanmelden met een toestelcode" : "Verificatie-overdracht"))
+            </fieldset>
+            <fieldset class="kb-veldgroep">
+                <legend>Toestelfilter</legend>
+                <select class="kb-invoer" aria-label="Toestelfilter opnemen of uitsluiten" @onchange="SetDeviceMode">
+                    <option value="exclude" selected="@(edit.DeviceFilterMode == "exclude")">Toestellen die voldoen uitsluiten</option>
+                    <option value="include" selected="@(edit.DeviceFilterMode == "include")">Enkel toestellen die voldoen</option>
+                </select>
+                <input class="kb-invoer" placeholder='bv. device.trustType -eq "ServerAD"' value="@edit.DeviceFilterRule" aria-label="Regel van het toestelfilter"
+                       @onchange="e => Set(() => edit.DeviceFilterRule = e.Value?.ToString() ?? string.Empty)" />
+            </fieldset>
+        </div>
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Gevolg</h2>
+        <div class="kb-filters">
+            <label><input type="radio" name="gevolg" checked="@edit.Block" @onchange="() => Set(() => edit.Block = true)" aria-label="Toegang blokkeren" /> Toegang blokkeren</label>
+            <label><input type="radio" name="gevolg" checked="@(!edit.Block)" @onchange="() => Set(() => edit.Block = false)" aria-label="Toegang toestaan als" /> Toegang toestaan als ...</label>
+        </div>
+        @if (!edit.Block)
+        {
+            @(Checks(edit.Checks, CaEditor.CheckChoices, CaReader.CheckName))
+            <div class="kb-rij">
+                <label>Authenticatiesterkte
+                    <select class="kb-invoer" aria-label="Authenticatiesterkte" @onchange="e => Set(() => edit.StrengthId = Opt(e.Value))">
+                        <option value="" selected="@(edit.StrengthId is null)">(geen)</option>
+                        @foreach (var s in ca.Strengths)
+                        {
+                            <option value="@s.Id" selected="@(edit.StrengthId == s.Id)">@s.Name</option>
+                        }
+                    </select>
+                </label>
+                <label>Bij meer dan één vereiste
+                    <select class="kb-invoer" aria-label="Operator" @onchange="SetOperator">
+                        <option value="OR" selected="@(edit.Operator != "AND")">één ervan volstaat</option>
+                        <option value="AND" selected="@(edit.Operator == "AND")">alle samen</option>
+                    </select>
+                </label>
+            </div>
+        }
+        <h3>Sessie</h3>
+        <div class="kb-rij">
+            <label>Aanmeldfrequentie
+                <select class="kb-invoer" aria-label="Aanmeldfrequentie" @onchange="e => Set(() => edit.FrequencyType = Opt(e.Value))">
+                    <option value="" selected="@(edit.FrequencyType is null)">(niet ingesteld)</option>
+                    <option value="hours" selected="@(edit.FrequencyType == "hours")">om de zoveel uur</option>
+                    <option value="days" selected="@(edit.FrequencyType == "days")">om de zoveel dagen</option>
+                    <option value="everyTime" selected="@(edit.FrequencyType == "everyTime")">elke keer</option>
+                </select>
+            </label>
+            @if (edit.FrequencyType is "hours" or "days")
+            {
+                <label>Aantal <input class="kb-invoer" type="number" min="1" max="365" value="@edit.FrequencyValue" aria-label="Aantal"
+                                     @onchange="e => Set(() => edit.FrequencyValue = int.TryParse(e.Value?.ToString(), out var n) ? n : edit.FrequencyValue)" /></label>
+            }
+            <label>Aangemeld blijven in de browser
+                <select class="kb-invoer" aria-label="Aangemeld blijven" @onchange="e => Set(() => edit.Browser = Opt(e.Value))">
+                    <option value="" selected="@(edit.Browser is null)">(niet ingesteld)</option>
+                    <option value="always" selected="@(edit.Browser == "always")">altijd</option>
+                    <option value="never" selected="@(edit.Browser == "never")">nooit</option>
+                </select>
+            </label>
+        </div>
+    </section>
+
+    <section class="kb-kaart kb-ca-voorbeeld">
+        <h2>Voorbeeld</h2>
+        @foreach (var f in Errors)
+        {
+            <div class="kb-melding kb-fout">@f</div>
+        }
+        @foreach (var w in Warnings)
+        {
+            <div class="kb-melding">@w</div>
+        }
+        @if (Preview is { } after)
+        {
+            var u = CaReader.Explanation(after, ca, CaReader.Names(State.Data));
+            <dl class="kb-uitleg">
+                <dt>Wie</dt><dd><ul>@foreach (var x in u.Who) { <li>@x</li> }</ul></dd>
+                <dt>Apps</dt><dd><ul>@foreach (var x in u.Apps) { <li>@x</li> }</ul></dd>
+                <dt>Voorwaarden</dt><dd><ul>@foreach (var x in u.Conditions) { <li>@x</li> }</ul></dd>
+                <dt>Gevolg</dt><dd><strong>@u.Consequence</strong></dd>
+                @if (u.Session.Count > 0) { <dt>Sessie</dt><dd><ul>@foreach (var x in u.Session) { <li>@x</li> }</ul></dd> }
+            </dl>
+            @if (current is not null)
+            {
+                <h3>Wat verandert</h3>
+                @if (Differences.Count == 0) { <p class="kb-zacht">Nog niets.</p> }
+                else { <ul class="kb-ca-verschil">@foreach (var v in Differences) { <li>@v</li> }</ul> }
+            }
+            <h3>Wie valt eronder</h3>
+            <p>
+                Na de wijziging <strong>@impact.After</strong> personen
+                @if (current is not null) { <text>(<span class="kb-ca-erbij">+@impact.Added.Count</span>, <span class="kb-ca-eraf">−@impact.Removed.Count</span>)</text> }.
+            </p>
+            @if (impact.Added.Count > 0) { <p class="kb-zacht">Komen erbij: @string.Join(", ", impact.Added.Take(15).Select(p => p.Name))@(impact.Added.Count > 15 ? " ..." : null)</p> }
+            @if (impact.Removed.Count > 0) { <p class="kb-zacht">Vallen weg: @string.Join(", ", impact.Removed.Take(15).Select(p => p.Name))@(impact.Removed.Count > 15 ? " ..." : null)</p> }
+            <details>
+                <summary>JSON voor Graph</summary>
+                <pre class="kb-json">@(current is null ? CaEditor.ToJson(edit) : CaEditor.Patch(current, edit) is { Length: > 0 } patch ? patch : "(geen wijziging)")</pre>
+            </details>
+        }
+        <div class="kb-filters">
+            <button class="kb-knop kb-primair" disabled="@(Errors.Count > 0)" @onclick="MakePlan">Plan maken</button>
+            <button class="kb-knop" @onclick="Reset">Opnieuw beginnen</button>
+        </div>
+    </section>
+
+    @if (outcome is not null)
+    {
+        @foreach (var f in outcome.Errors)
+        {
+            <div class="kb-melding kb-fout">@f</div>
+        }
+        @if (outcome.Plan.Count > 0)
+        {
+            <PlanView Plan="outcome.Plan" Context="@($"Conditional Access: {(current is null ? "nieuw beleid" : "beleid wijzigen")} {edit.Name.Trim()}")" Title="Wijziging aan Conditional Access" Executed="AfterExecute" />
+        }
+    }
+    @if (done is not null) { <div class="kb-melding kb-goed">@done</div> }
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    private static readonly ObjectKind[] UserKinds = { ObjectKind.User };
+    private static readonly ObjectKind[] GroupKinds = { ObjectKind.Group };
+
+    private static readonly (CaStatus, string, string)[] Statuses =
+    {
+        (CaStatus.Report, "Alleen rapport", "Entra meet wat het beleid zou doen, maar dwingt niets af."),
+        (CaStatus.On, "Aan", "Het beleid wordt afgedwongen."),
+        (CaStatus.Off, "Uit", "Het beleid doet niets."),
+    };
+
+    private static readonly (CaAppsMode, string)[] AppModes =
+    {
+        (CaAppsMode.All, "Alle cloud-apps"), (CaAppsMode.Office365, "Office 365"), (CaAppsMode.AdminPortals, "Microsoft-beheerportalen"),
+        (CaAppsMode.Selected, "Gekozen apps"), (CaAppsMode.UserAction, "Een gebruikersactie"),
+    };
+
+    private CaPolicy? current;
+    private CaEdit? edit;
+    private string? loadedKey;
+    private PlanOutcome? outcome;
+    private string? done;
+    private string appId = string.Empty;
+    private IReadOnlyList<string> Errors = Array.Empty<string>();
+    private IReadOnlyList<string> Warnings = Array.Empty<string>();
+    private IReadOnlyList<string> Differences = Array.Empty<string>();
+    private CaPolicy? Preview;
+    private (IReadOnlyList<Person> Added, IReadOnlyList<Person> Removed, int After) impact = (Array.Empty<Person>(), Array.Empty<Person>(), 0);
+
+    private bool IsCopy => Nav.Uri.Split('?')[0].EndsWith("/kopie", StringComparison.OrdinalIgnoreCase);
+
+    private string Title => current is null ? (IsCopy ? "Kopie van een beleid" : "Nieuw beleid") : $"{current.Name} bewerken";
+
+    protected override void OnParametersSet()
+    {
+        var ca = State.Data.ConditionalAccess;
+        var source = Id is null ? null : ca?.Policies.FirstOrDefault(b => b.Id == Id);
+        var key = $"{Id}|{IsCopy}";
+        if (key != loadedKey && ca is not null)
+        {
+            loadedKey = key;
+            outcome = null;
+            done = null;
+            edit = Id is null ? CaEditor.New(State.Data, State.Config) : source is null ? null : IsCopy ? CaEditor.Duplicate(source) : CaEdit.Of(source);
+        }
+
+        current = IsCopy ? null : source;
+        Compute();
+    }
+
+    private void Set(Action change)
+    {
+        change();
+        outcome = null;
+        done = null;
+        Compute();
+    }
+
+    private void Set(Func<int> change) => Set(() => { change(); });
+
+    private void Compute()
+    {
+        if (edit is null || State.Data.ConditionalAccess is not { } ca)
+        {
+            return;
+        }
+
+        var errors = CaEditor.Validate(edit, ca, current?.Id).ToList();
+        var warnings = new List<string>();
+        Preview = null;
+        Differences = Array.Empty<string>();
+        try
+        {
+            Preview = current is null ? CaEditor.Preview(edit, null) : CaJson.AfterPatch(current, CaEditor.Patch(current, edit) is { Length: > 0 } p ? p : "{}");
+            var check = CaSafety.Check(Preview, State.Data, State.Config, State.OwnUpn);
+            errors.AddRange(check.Errors);
+            warnings.AddRange(check.Warnings);
+            if (current is not null)
+            {
+                Differences = CaEditor.Differences(current, Preview, State.Data);
+            }
+
+            impact = CaEditor.Impact(current, Preview, State.Data);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            errors.Add("De instellingen geven geen geldige JSON: " + ex.Message);
+        }
+
+        Errors = errors.Distinct().ToList();
+        Warnings = warnings.Distinct().ToList();
+    }
+
+    private int MissingEmergency => edit is null ? 0
+        : CaSafety.EmergencyAccounts(State.Data, State.Config).Accounts.Count(p => !edit.UsersOff.Contains(p.Entra!.Id, StringComparer.OrdinalIgnoreCase));
+
+    private string Name(string id) => CaReader.Names(State.Data)(id);
+
+    private string RoleName(string id) => State.Data.ConditionalAccess?.Roles.ContainsKey(id) == true
+        ? State.Data.ConditionalAccess.RoleName(id)
+        : CaTemplates.CriticalRoles.TryGetValue(id, out var n) ? n : id;
+
+    private IEnumerable<(string Id, string Name)> Roles
+        => CaTemplates.CriticalRoles.Select(r => (r.Key, r.Value))
+            .Concat(State.Data.ConditionalAccess?.Roles.Select(r => (r.Key, r.Value)) ?? Enumerable.Empty<(string, string)>())
+            .DistinctBy(r => r.Item1).OrderBy(r => r.Item2, StringComparer.CurrentCultureIgnoreCase);
+
+    private static IReadOnlyList<string> LocationIds(CaData ca) => new[] { "All", "AllTrusted" }.Concat(ca.Locations.Select(l => l.Id)).ToList();
+
+    private bool AllPlatforms => edit?.PlatformsIn.Contains("all") == true;
+
+    private void SetAllPlatforms(ChangeEventArgs e) => Set(() => Toggle(edit!.PlatformsIn, "all", e.Value is true));
+
+    private void SetDeviceMode(ChangeEventArgs e) => Set(() => edit!.DeviceFilterMode = e.Value?.ToString() == "include" ? "include" : "exclude");
+
+    private void SetOperator(ChangeEventArgs e) => Set(() => edit!.Operator = e.Value?.ToString() == "AND" ? "AND" : "OR");
+
+    private static string? Opt(object? value) => string.IsNullOrWhiteSpace(value?.ToString()) ? null : value.ToString();
+
+    private static void Toggle(List<string> list, string value, bool on)
+    {
+        list.RemoveAll(x => string.Equals(x, value, StringComparison.OrdinalIgnoreCase));
+        if (on)
+        {
+            list.Add(value);
+        }
+    }
+
+    private void AddUser(List<string> list, ObjectRef r)
+    {
+        if (State.Data.SearchPerson(r.Key)?.Entra?.Id is { } id)
+        {
+            Set(() => { if (!list.Contains(id, StringComparer.OrdinalIgnoreCase)) list.Add(id); });
+        }
+        else
+        {
+            outcome = PlanOutcome.Error($"{r.Name} heeft geen Entra-account; Conditional Access geldt enkel in Entra.");
+        }
+    }
+
+    private void AddGroup(List<string> list, ObjectRef r)
+    {
+        if (State.Data.Index.Group(r.Key)?.Cloud?.Id is { } id)
+        {
+            Set(() => { if (!list.Contains(id, StringComparer.OrdinalIgnoreCase)) list.Add(id); });
+        }
+        else
+        {
+            outcome = PlanOutcome.Error($"{r.Name} bestaat niet in Entra (een AD-groep die niet gesynchroniseerd wordt, of een mailgroep).");
+        }
+    }
+
+    private RenderFragment Chips(List<string> list, Func<string, string> name, string kind) => __builder =>
+    {
+        if (list.Count == 0 || (kind != "App" && list.All(id => string.IsNullOrEmpty(id))))
+        {
+            return;
+        }
+
+        <ul class="kb-lijst">
+            @foreach (var id in list.ToList())
+            {
+                <li><span class="kb-soort">@kind</span> @name(id) <button class="kb-knop kb-klein" aria-label="@($"{name(id)} weghalen")" @onclick="() => Set(() => list.Remove(id))">&times;</button></li>
+            }
+        </ul>
+    };
+
+    private RenderFragment Checks(List<string> list, IReadOnlyList<string> choices, Func<string, string> name) => __builder =>
+    {
+        <div class="kb-keuzelijst">
+            @foreach (var c in choices)
+            {
+                <label><input type="checkbox" checked="@list.Contains(c, StringComparer.OrdinalIgnoreCase)" aria-label="@name(c)" @onchange="e => Set(() => Toggle(list, c, e.Value is true))" /> @name(c)</label>
+            }
+        </div>
+    };
+
+    private RenderFragment RolePicker(List<string> list, string label) => __builder =>
+    {
+        <div class="kb-rij">
+            <select class="kb-invoer" aria-label="@label" @onchange="e => { if (Opt(e.Value) is string id) Set(() => Toggle(list, id, true)); }">
+                <option value="">(@label.ToLowerInvariant())</option>
+                @foreach (var (id, name) in Roles.Where(r => !list.Contains(r.Id)))
+                {
+                    <option value="@id">@name</option>
+                }
+            </select>
+        </div>
+    };
+
+    private RenderFragment AppPicker(List<string> list, string label) => __builder =>
+    {
+        <div class="kb-rij">
+            <select class="kb-invoer" aria-label="@label" @onchange="e => { if (Opt(e.Value) is string id) Set(() => Toggle(list, id, true)); }">
+                <option value="">(@label.ToLowerInvariant())</option>
+                @foreach (var id in CaReader.KnownApps.Where(a => a is not ("All" or "None") && !list.Contains(a)))
+                {
+                    <option value="@id">@CaReader.AppName(id)</option>
+                }
+            </select>
+            <input class="kb-invoer" placeholder="of de app-id (GUID)" @bind="appId" aria-label="App-id" />
+            <button class="kb-knop kb-klein" disabled="@(!Guid.TryParse(appId.Trim(), out _))" @onclick="() => Set(() => { Toggle(list, appId.Trim(), true); appId = string.Empty; })">Toevoegen</button>
+        </div>
+    };
+
+    private void MakePlan()
+    {
+        if (edit is null)
+        {
+            return;
+        }
+
+        outcome = current is null
+            ? CaEditor.Create(edit, State.Data, State.Config, State.OwnUpn)
+            : CaEditor.Update(current, edit, State.Data, State.Config, State.OwnUpn);
+    }
+
+    private void Reset()
+    {
+        loadedKey = null;
+        OnParametersSet();
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            done = current is null
+                ? "Het beleid is gemaakt. Na het opnieuw lezen staat het bij Conditional Access > Beleiden."
+                : "Het beleid is gewijzigd. Conditional Access wordt opnieuw gelezen.";
+        }
+    }
+}

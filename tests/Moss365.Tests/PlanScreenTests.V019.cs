@@ -124,6 +124,6 @@ public sealed partial class PlanScreenTests
         Assert.Contains("Moss365 " + ManagementState.AppVersion, bar.Markup, StringComparison.Ordinal);
         Assert.Contains("Inventaris van ", bar.Markup, StringComparison.Ordinal);
         Assert.Matches("online|offline", bar.Find(".kb-online, .kb-offline").TextContent);
-        Assert.Equal("https://github.com/jef-cesar/Moss365", bar.Find("a").GetAttribute("href"));
+        Assert.Equal("https://github.com/jef-cesar/Moss365", bar.FindAll("a").Last().GetAttribute("href"));
     }
 }

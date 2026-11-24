@@ -5,7 +5,7 @@ under the EUPL-1.2. Public repository: never add personal or organisation data (
 check in `.github/workflows/privacy.yml` refuses e-mail addresses outside the example domains, public IPs and a secret
 blocklist). The maintainer does not write code: changes must be tested, documented and built by GitHub Actions.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R8 are done, R9 in progress (0.22.0): code in English, one database
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R8 are done, R9 in progress (0.30.0; the CA editor of R11 is done early): code in English, one database
 per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. Open work is in the
 GitHub issues (label `roadmap` per step, `limitation`, `test`). The interface texts are still Dutch and move to dictionaries in R15; the inventory
 keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots). Script headers are English since 0.18 (`Name:`, `Version:`, ...); the
@@ -56,7 +56,8 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   and in the wizard), templates in `Configuration/OrganisationTemplates.cs` (only add what is missing). Job profiles
   (0.22): `OrganisationConfig.JobProfiles` (groups and mailboxes by name; `JobProfiles.BumpVersions` on save),
   `Changes/JobProfilePlans.cs` (compare, apply, from a person, holders); who got which version: document
-  `functieprofielen` (`ManagementState.ProfileAssignments`). "Profiles" in `ProfilesRequired` are the app roles.
+  `functieprofielen` (`ManagementState.ProfileAssignments`). "Profiles" in `ProfilesRequired` are the app roles; since 0.30
+  `OrganisationConfig.Roles` (`RolesMode`: Off, Transition, Required; `RolesModeEffective`) decides, per tenant.
 - Menu (0.21, `UI/Services/MenuModel.cs`): the main menu groups and the settings side bar; a new page is added there
   (and to `Access` for its role). Settings pages use `@layout SettingsLayout`; Ctrl+K searches `MenuModel.AllPages`.
 - `CHANGELOG.md`: a release is created when `Version` in `Directory.Build.props` has no release yet; the text comes
@@ -75,7 +76,8 @@ dotnet publish src/Moss365.Desktop -c Release -r win-x64 --self-contained true -
   `Change.Previous` and `Undo`.
 - Never store or log secrets. The technical log holds no names, parameters or secrets (a test checks this).
 - Roles are enforced on the page (`Access.ForPath`), the buttons (`State.Can`) and in the engine (`refuse`).
-- Conditional Access: `CaSafety` checks every write in the planner and in the engine; never delete a policy.
+- Conditional Access: `CaSafety` checks every write in the planner and in the engine; never delete a policy. The editor
+  (`Analysis/CaEditor.cs`, 0.30) builds on the JSON as read and sends only the changed parts (`Patch`), with `Previous`.
 - Scheduled actions never run by themselves. Offboarding never deletes accounts.
 - New `ChangeAction` values are appended at the end (stored as numbers in older data, as names in the change log).
 - Database schema changes: a migration appended to `Database.Migrations`; never change an existing one.

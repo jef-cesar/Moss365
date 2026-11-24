@@ -1,5 +1,5 @@
-@* The status bar at the bottom of every screen: the version, how fresh the data is, online or offline, and the
-   project on GitHub. *@
+@* The status bar at the bottom of every screen: the version, how fresh the data is, whether the data of the open tenant
+   is live (online) or not (offline, 0.30), and the project on GitHub. *@
 @using System.Net.NetworkInformation
 @implements IDisposable
 @inject ManagementState State
@@ -7,9 +7,10 @@
 <footer class="kb-statusbalk" role="contentinfo">
     <span title="De versie van Moss365">Moss365 @ManagementState.AppVersion</span>
     <span title="Hoe vers de gegevens op de schermen zijn">@DataText</span>
-    <span class="@(online ? "kb-online" : "kb-offline")" title="De netwerkverbinding van deze pc">
-        <span aria-hidden="true">●</span> @(online ? "online" : "offline")
-    </span>
+    @{ var (live, text, why) = Live; }
+    <a class="@(live ? "kb-online" : "kb-offline")" href="verbindingen" title="@why">
+        <span aria-hidden="true">●</span> @State.Tenant.Name: @text
+    </a>
     <a href="https://github.com/jef-cesar/Moss365" target="_blank" rel="noopener" title="De broncode, de releases en de issues op GitHub">GitHub</a>
 </footer>
 
@@ -26,6 +27,44 @@
         catch (Exception)
         {
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Online when the data of this tenant is live for every system it has (AD, Entra); otherwise offline, with the
+    /// reason: the past, no network, only partly live, or the inventory.
+    /// </summary>
+    private (bool Live, string Text, string Why) Live
+    {
+        get
+        {
+            if (State.IsHistoric)
+            {
+                return (false, "offline (verleden)", "Je bekijkt een stand uit het verleden; de gegevens zijn niet live.");
+            }
+
+            if (!online)
+            {
+                return (false, "offline (geen netwerk)", "Deze pc heeft geen netwerk: de app kan niet live lezen.");
+            }
+
+            var expected = new List<string>();
+            if (State.HasAd) expected.Add("AD");
+            if (State.HasMicrosoft365) expected.Add("Entra");
+            var live = expected.Where(State.LiveOn.ContainsKey).ToList();
+            var times = string.Join(", ", live.Select(p => $"{p} live om {State.LiveOn[p]:HH:mm}"));
+            if (live.Count > 0 && live.Count == expected.Count)
+            {
+                return (true, "online", $"De gegevens van {State.Tenant.Name} zijn live: {times}.");
+            }
+
+            if (live.Count > 0)
+            {
+                return (false, $"deels online ({string.Join(", ", live)})",
+                    $"Live: {times}. Niet live: {string.Join(", ", expected.Except(live))}. Laad live via Verbindingen.");
+            }
+
+            return (false, "offline", $"De gegevens van {State.Tenant.Name} komen uit de inventaris of een eerdere lezing, niet live. Laad live via Verbindingen.");
         }
     }
 

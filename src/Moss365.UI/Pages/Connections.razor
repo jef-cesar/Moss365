@@ -36,6 +36,10 @@
         Wat de tenant niet heeft, laat de app weg: uit het menu, de schermen, de verbindingen en de gegevens. Gegevens die al
         ingelezen zijn, blijven bewaard en komen terug als je het systeem weer aanzet.
     </p>
+    <p class="kb-zacht">
+        Rollen: <strong>@(State.Config.RolesModeEffective switch { RolesMode.Off => "zonder rollen (iedereen mag alles)", RolesMode.Required => "verplicht (zonder rol enkel lezen)", _ => "als ze er zijn" })</strong>.
+        Aanpassen bij <a href="organisatie/rollen">Organisatie &gt; Rollen in Moss365</a>.
+    </p>
 </section>
 
 @if (State.HasAd)

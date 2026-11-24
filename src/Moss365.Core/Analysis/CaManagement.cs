@@ -591,6 +591,12 @@ public static class CaComparison
                      ("locaties", o.LocationsIn, n.LocationsIn, Location),
                      ("uitgezonderde locaties", o.LocationsOff, n.LocationsOff, Location),
                      ("vereisten", o.Checks, n.Checks, CaReader.CheckName),
+                     ("gebruikersacties", o.UserActions, n.UserActions, CaReader.ActionName),
+                     ("platformen", o.PlatformsIn, n.PlatformsIn, CaReader.PlatformName),
+                     ("uitgezonderde platformen", o.PlatformsOff, n.PlatformsOff, CaReader.PlatformName),
+                     ("aanmeldrisico", o.SignInRisk, n.SignInRisk, CaReader.RiskName),
+                     ("gebruikersrisico", o.UsersRisk, n.UsersRisk, CaReader.RiskName),
+                     ("overdracht", o.Transfer, n.Transfer, t => t == "deviceCodeFlow" ? "toestelcode" : t == "authenticationTransfer" ? "verificatie-overdracht" : t),
                  })
         {
             var added = b.Except(a, StringComparer.OrdinalIgnoreCase).Select(names).ToList();
@@ -598,6 +604,22 @@ public static class CaComparison
             if (added.Count + removed.Count > 0)
             {
                 yield return $"{title}: " + string.Join("; ", added.Select(x => "+ " + x).Concat(removed.Select(x => "− " + x)));
+            }
+        }
+
+        foreach (var (title, a, b) in new (string, string?, string?)[]
+                 {
+                     ("gasten opgenomen", o.GuestsIn ? "ja" : "nee", n.GuestsIn ? "ja" : "nee"),
+                     ("gasten uitgezonderd", o.GuestsOff ? "ja" : "nee", n.GuestsOff ? "ja" : "nee"),
+                     ("bij meer vereisten", o.Operator == "AND" ? "alle samen" : "één ervan", n.Operator == "AND" ? "alle samen" : "één ervan"),
+                     ("aanmeldfrequentie", o.SignInFrequency ?? "(niet ingesteld)", n.SignInFrequency ?? "(niet ingesteld)"),
+                     ("aangemeld blijven", o.PersistentBrowser ?? "(niet ingesteld)", n.PersistentBrowser ?? "(niet ingesteld)"),
+                     ("toestelfilter", o.DeviceFilter ? "ja" : "nee", n.DeviceFilter ? "ja" : "nee"),
+                 })
+        {
+            if (a != b && !(title == "bij meer vereisten" && Math.Max(o.Checks.Count, n.Checks.Count) <= 1))
+            {
+                yield return $"{title}: {a} → {b}";
             }
         }
 

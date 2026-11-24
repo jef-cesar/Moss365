@@ -341,7 +341,7 @@ public sealed partial class ManagementState
 
     /// <summary>The profiles of whoever is signed in (app roles from Entra), or the transition rule while there are
     /// none.</summary>
-    public Role Roles => PermissionTable.Determine(Graph()?.AppRoles, Config.ProfilesRequired);
+    public Role Roles => PermissionTable.Determine(Graph()?.AppRoles, Config.RolesModeEffective);
 
     public bool Can(Permission permission)
         => PermissionTable.Can(Roles, permission) && !(IsHistoric && permission is Permission.Helpdesk or Permission.GroupMembers or Permission.InviteGuests
@@ -349,11 +349,22 @@ public sealed partial class ManagementState
 
     /// <summary>No roles in the sign-in: text for the bottom of the menu (transition or read only), otherwise
     /// null.</summary>
-    public string? ProfileMessage => Graph()?.AppRoles is { Count: > 0 } r && PermissionTable.FromClaims(r) != Role.No
-        ? null
-        : Config.ProfilesRequired
-            ? Graph()?.AppRoles is null ? "Nog niet aangemeld: enkel lezen tot je aanmeldt." : "Geen profiel in Moss365: enkel lezen."
-            : "Rollen nog niet verplicht: iedereen mag alles.";
+    public string? ProfileMessage => Config.RolesModeEffective switch
+    {
+        RolesMode.Off => null,
+        _ when Graph()?.AppRoles is { Count: > 0 } r && PermissionTable.FromClaims(r) != Role.No => null,
+        RolesMode.Required => Graph()?.AppRoles is null ? "Nog niet aangemeld: enkel lezen tot je aanmeldt." : "Geen rol in Moss365: enkel lezen.",
+        _ => "Rollen nog niet verplicht: iedereen mag alles.",
+    };
+
+    /// <summary>
+    /// Why this mode cannot be chosen now, or null: requiring roles while you have no role with Instellingen yourself
+    /// would lock you out of this setting.
+    /// </summary>
+    public string? RolesModeRefusal(RolesMode mode)
+        => mode == RolesMode.Required && !PermissionTable.Can(PermissionTable.Determine(Graph()?.AppRoles, RolesMode.Required), Permission.Settings)
+            ? "Rollen verplichten kan pas als jij zelf een rol met Instellingen hebt (Beheerder of Appbeheer), anders kan je dit niet meer terugzetten. Meld je aan met zo'n rol."
+            : null;
 
     /// <summary>The tenant has its own organisation (saved in its database), not (only) the bundled one.</summary>
     public bool ConfigIsModified => ConfigSource == OwnConfigName;
@@ -642,7 +653,7 @@ public sealed partial class ManagementState
         }
 
         // Sign in first, so that the profile is known; after that the engine checks every change against that profile
-        if (Config.ProfilesRequired && Graph() is { AppRoles: null } g)
+        if (Config.RolesModeEffective == RolesMode.Required && Graph() is { AppRoles: null } g)
         {
             try
             {

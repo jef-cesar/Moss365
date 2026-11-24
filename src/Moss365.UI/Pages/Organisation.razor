@@ -252,12 +252,23 @@
 <section class="kb-kaart">
     <h2>Rollen in Moss365</h2>
     <p class="kb-zacht">
-        Wie wat mag in Moss365 volgt uit de app-rollen in Entra (Lezer, Helpdesk, Beheerder, Auditor, Appbeheer), toegekend via
-        de groepen <code>GG-Moss365-...</code> (die maakt <a href="inrichten">Tenant inrichten</a>). Zolang dit uit staat, mag wie zich
-        aanmeldt zonder rol alles, zoals vroeger. (Wat iemand in zijn job krijgt, staat bij <a href="organisatie/functieprofielen">Functieprofielen</a>.)
+        Kies per tenant of je met rollen werkt. Met rollen volgt wie wat mag in Moss365 uit de app-rollen in Entra (Lezer, Helpdesk,
+        Beheerder, Auditor, Appbeheer), toegekend via de groepen <code>GG-Moss365-...</code> (die maakt <a href="inrichten">Tenant inrichten</a>).
+        Zonder rollen mag iedereen die de app hier gebruikt alles; de rechten in Entra en AD zelf blijven natuurlijk gelden.
+        (Wat iemand in zijn job krijgt, staat bij <a href="organisatie/functieprofielen">Functieprofielen</a>.)
     </p>
-    <label><input type="checkbox" checked="@State.Config.ProfilesRequired" @onchange="e => Set(() => State.Config.ProfilesRequired = e.Value is true)" />
-        Rollen verplicht: zonder rol enkel lezen</label>
+    <div class="kb-keuzes">
+        @foreach (var (mode, title, explanation) in RoleModes)
+        {
+            <label class="kb-keuze @(State.Config.RolesModeEffective == mode ? "kb-actief" : null)">
+                <input type="radio" name="rollen" checked="@(State.Config.RolesModeEffective == mode)" @onchange="() => ChooseRoles(mode)" aria-label="@title" />
+                <strong>@title</strong>
+                <span class="kb-zacht">@explanation</span>
+            </label>
+        }
+    </div>
+    @if (rolesError is not null) { <div class="kb-melding kb-fout">@rolesError</div> }
+    <p class="kb-zacht">Nu: @(State.ProfileMessage ?? (State.Config.RolesModeEffective == RolesMode.Off ? "zonder rollen, iedereen mag alles." : "volgens je rol: " + PermissionTable.Text(State.Roles, "en") + ".")) Vergeet niet te bewaren.</p>
 </section>
 }
 
@@ -284,6 +295,23 @@
 
 @code {
     private string newEmergencyAccount = string.Empty;
+    private string? rolesError;
+
+    private static readonly (RolesMode, string, string)[] RoleModes =
+    {
+        (RolesMode.Off, "Zonder rollen", "Iedereen die de app hier gebruikt, mag alles. Voor een klein team of één beheerder."),
+        (RolesMode.Transition, "Rollen als ze er zijn", "Wie een rol heeft, mag wat de rol zegt; wie geen rol heeft, mag nog alles (de overgang)."),
+        (RolesMode.Required, "Rollen verplicht", "Wie geen rol heeft, mag enkel lezen. Kan enkel als jij zelf een rol met Instellingen hebt."),
+    };
+
+    private void ChooseRoles(RolesMode mode)
+    {
+        rolesError = State.RolesModeRefusal(mode);
+        if (rolesError is null)
+        {
+            Set(() => State.Config.SetRoles(mode));
+        }
+    }
     private bool onlyUnlinked;
     private string? message;
     private string newDepartment = string.Empty;
@@ -373,11 +401,13 @@
             var imported = ConfigStorage.Parse(await reader.ReadToEndAsync());
             var keepDomain = State.Config.AdDomain;
             var keepEmergency = State.Config.EmergencyAccounts.ToList();
+            var keepRoles = State.Config.RolesModeEffective;
             Set(() =>
             {
                 ConfigStorage.CopyInto(imported, State.Config);
                 State.Config.AdDomain = keepDomain;
                 State.Config.EmergencyAccounts = keepEmergency;
+                State.Config.SetRoles(keepRoles);
             });
             (exchangeMessage, exchangeError) = ($"Geïmporteerd uit {e.File.Name}. Kijk na en bewaar.", false);
         }

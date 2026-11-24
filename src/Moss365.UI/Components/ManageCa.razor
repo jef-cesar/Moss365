@@ -44,7 +44,7 @@
                     @foreach (var b in Ca.Policies)
                     {
                         <tr>
-                            <td><a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Name</a></td>
+                            <td><a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Name</a> <a class="kb-knop kb-klein" href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}/bewerken")">Bewerken</a></td>
                             <td><CaLabel Status="b.Status" /></td>
                             <td class="kb-zacht">@(b.Blocks ? "blokkeert" : string.Join(", ", b.Checks.Select(CaReader.CheckName)))</td>
                             <td>
@@ -102,6 +102,8 @@
             <p class="kb-zacht">
                 Een nieuw beleid uit de aanbevelingen van Microsoft. Het komt altijd in <strong>alleen rapport</strong>, met de noodaccounts
                 uitgesloten. Met een pilotgroep geldt het eerst enkel voor die groep.
+                Liever helemaal zelf? <a href="conditional-access/nieuw-beleid">Maak een beleid in de editor</a>, of open een beleid en kies
+                <strong>Kopie maken</strong>.
             </p>
             <div class="kb-formulier">
                 <label>Sjabloon
