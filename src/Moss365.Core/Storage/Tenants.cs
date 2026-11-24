@@ -335,4 +335,7 @@ public static class Documents
     public const string Scheduled = "gepland";
     public const string View = "weergave";
     public const string Connection = "verbinding";
+
+    /// <summary>Who got which job profile, version and when (0.22).</summary>
+    public const string JobProfileAssignments = "functieprofielen";
 }

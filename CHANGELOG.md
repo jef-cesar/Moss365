@@ -2,6 +2,24 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.22.0
+
+Job profiles: what someone in a job gets (step R9 of the [roadmap](docs/roadmap-1.0.md); new users in the cloud and
+logon scripts follow).
+
+- **Functieprofielen** under Instellingen > Organisatie: groups (AD, cloud, Microsoft 365 and mail groups), shared
+  mailboxes, licences, and the job title, department, office and logon script. Start empty or **from a user** who already
+  has the job; dynamic and privileged groups are never part of a profile. Groups and mailboxes are kept by name, so a
+  profile also works in another tenant (export and import). A saved profile that changes gets a new version.
+- **Nieuwe gebruiker** with a job profile: the profile fills in what the form leaves empty, and its groups, mailbox access
+  (through the access group) and licences come along in the plan (AD groups now, the rest after the synchronisation).
+- **Mensen > Functieprofielen**: who holds a profile (got it in the app, or has its job title), how much is missing and
+  how much is more; per person the comparison and **Plan maken** to apply it. What is more than the profile is only
+  proposed, unticked; licences are never removed here. After running, the app remembers who got which version and when.
+- The **user page** names the job profile, with what is missing.
+- The app's access levels are now called **Rollen in Moss365** (Organisatie > Rollen), so they are not confused with job
+  profiles.
+
 ## 0.21.1
 
 A tenant with only Microsoft 365 now shows nothing of Active Directory, and the choice is easy to find.

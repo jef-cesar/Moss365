@@ -77,7 +77,7 @@ public sealed partial class PlanScreenTests
     public void WithoutProfilesEveryoneMayDoEverythingWithAMessage()
     {
         var layout = RenderWithLayout<Users>("gebruikers");
-        Assert.Contains("Profielen nog niet ingesteld", layout.Markup);
+        Assert.Contains("Rollen nog niet verplicht", layout.Markup);
         Assert.True(State.Can(Moss365.Core.Permissions.Permission.Manage));
     }
 

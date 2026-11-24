@@ -18,7 +18,7 @@ public static class Access
             "statistieken" or "gebruikers" or "gebruiker" or "gasten" or "groepen" or "groep" or "postvak" or "room" or "rooms" or "vergelijk" => Permission.View,
             "postvakken" => p == "postvakken/nieuw" ? Permission.Manage : Permission.View,
             "beveiliging" or "conditional-access" => Permission.Security,
-            "spiegel" => Permission.CompareMirror,
+            "spiegel" or "functieprofielen" => Permission.CompareMirror,
             "nieuw" or "uitstroom" or "gepland" or "opvolging" => Permission.Actions,
             "opkuis" => Permission.Manage,
             "scripts" => Permission.Scripts,

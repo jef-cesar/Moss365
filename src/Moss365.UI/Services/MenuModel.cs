@@ -20,7 +20,7 @@ public static class MenuModel
         new MenuGroup("Mensen", new MenuItem[]
         {
             new("gebruikers", "Gebruikers"), new("gasten", "Gastgebruikers"), new("nieuw", "Nieuwe gebruiker"), new("uitstroom", "Uitstroom"),
-            new("spiegel", "Spiegelgebruiker"),
+            new("functieprofielen", "Functieprofielen"), new("spiegel", "Spiegelgebruiker"),
         }),
         new MenuGroup("Groepen en toegang", new MenuItem[]
         {
@@ -55,7 +55,8 @@ public static class MenuModel
     public static IReadOnlyList<MenuItem> OrganisationParts { get; } = new MenuItem[]
     {
         new("organisatie", "Bedrijf en naamgeving"), new("organisatie/diensten", "Diensten en afdelingen"), new("organisatie/kantoren", "Kantoren"),
-        new("organisatie/groepen", "Nieuwe groepen"), new("organisatie/profielen", "Profielen"), new("organisatie/noodaccounts", "Noodaccounts"),
+        new("organisatie/groepen", "Nieuwe groepen"), new("organisatie/functieprofielen", "Functieprofielen"), new("organisatie/rollen", "Rollen in Moss365"),
+        new("organisatie/noodaccounts", "Noodaccounts"),
     };
 
     /// <summary>Every page of the menu and the settings, for searching with Ctrl+K.</summary>

@@ -1,0 +1,172 @@
+@page "/functieprofielen"
+@inject ManagementState State
+@inject NavigationManager Nav
+@* Job profiles (R9, 0.22): who holds a profile, who has more or less, and applying a profile to a user as a plan. *@
+
+<h1>Functieprofielen</h1>
+
+<p class="kb-zacht">
+    Kies een profiel: je ziet wie het heeft (gekregen via de app, of met dezelfde functie) en wie meer of minder heeft dan het
+    profiel. Toepassen is een plan zoals altijd: eerst een voorbeeld, dan bevestigen. Wat iemand meer heeft, stelt de app
+    enkel voor (niet aangevinkt). De profielen zelf maak je bij
+    <a href="organisatie/functieprofielen">Instellingen &gt; Organisatie &gt; Functieprofielen</a>.
+</p>
+
+@if (State.Config.JobProfiles.Count == 0)
+{
+    <div class="kb-melding">Er zijn nog geen functieprofielen. Maak er een bij <a href="organisatie/functieprofielen">Organisatie</a>, bv. van een gebruiker die de job al heeft.</div>
+}
+else
+{
+    <div class="kb-rij">
+        <label>Profiel
+            <select class="kb-invoer" aria-label="Profiel" @onchange="e => Go(e.Value?.ToString(), null)">
+                <option value="" selected="@(profile is null)">(kies)</option>
+                @foreach (var p in State.Config.JobProfiles.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
+                {
+                    <option value="@p.Id" selected="@(p.Id == profile?.Id)">@p.Name (versie @p.Version)</option>
+                }
+            </select>
+        </label>
+    </div>
+
+    @if (profile is not null)
+    {
+        <section class="kb-kaart">
+            <h2>Wie heeft @profile.Name (@holders.Count)</h2>
+            @if (holders.Count == 0)
+            {
+                <p class="kb-zacht">Nog niemand: niemand kreeg dit profiel via de app@(string.IsNullOrWhiteSpace(profile.JobTitle) ? null : $", en niemand heeft de functie \"{profile.JobTitle}\"").</p>
+            }
+            else
+            {
+                <table class="kb-tabel">
+                    <thead><tr><th>Naam</th><th>Functie</th><th>Gekregen</th><th class="kb-getal">Ontbreekt</th><th class="kb-getal">Meer</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var (p, items) in holders)
+                        {
+                            var a = assignments.GetValueOrDefault(p.Key);
+                            <tr class="@(p.Key == person?.Key ? "kb-actief" : null)">
+                                <td><a href="@Searcher.Link(p)">@p.Name</a></td>
+                                <td>@UserDesired.Of(p).JobTitle</td>
+                                <td>@(a is { } x && x.ProfileId == profile.Id ? $"versie {x.Version}, {x.Applied.LocalDateTime:dd/MM/yyyy}" + (x.Version < profile.Version ? " (oudere versie)" : null) : "functie")</td>
+                                <td class="kb-getal">@items.Count(i => i.Status == ProfileStatus.Missing)</td>
+                                <td class="kb-getal">@items.Count(i => i.Status == ProfileStatus.Extra)</td>
+                                <td><button class="kb-knop kb-klein" @onclick="() => Go(profile.Id, p.Key)">Bekijken</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <PersonPicker Label="Profiel toepassen op een gebruiker" Selected="person" SelectedChanged="p => Go(profile.Id, p?.Key)" />
+
+        @if (person is not null)
+        {
+            <section class="kb-kaart">
+                <h2>@person.Name tegenover @profile.Name</h2>
+                <div class="kb-tegels">
+                    @foreach (var g in comparison.GroupBy(i => i.StatusText))
+                    {
+                        <div class="kb-tegel"><div class="kb-tegel-getal">@g.Count()</div><div>@g.Key</div></div>
+                    }
+                </div>
+                <table class="kb-tabel">
+                    <thead><tr><th>Soort</th><th>Wat</th><th>Status</th><th>Opmerking</th></tr></thead>
+                    <tbody>
+                        @foreach (var i in comparison.OrderBy(i => i.Status == ProfileStatus.Has).ThenBy(i => i.Kind))
+                        {
+                            <tr class="kb-profiel-@i.Status.ToString().ToLowerInvariant()">
+                                <td>@i.KindText</td>
+                                <td>@i.Name</td>
+                                <td>@i.StatusText</td>
+                                <td class="kb-zacht">@i.Remark</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (State.Can(Permission.Actions))
+                {
+                    <div class="kb-filters">
+                        <label><input type="checkbox" @bind="removeExtras" @bind:after="() => outcome = null" /> Wat meer is ook voorstellen om weg te halen (niet aangevinkt)</label>
+                        <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
+                    </div>
+                }
+            </section>
+
+            @if (outcome is not null)
+            {
+                @foreach (var e in outcome.Errors)
+                {
+                    <div class="kb-melding">@e</div>
+                }
+                @if (outcome.Plan.Count > 0)
+                {
+                    <PlanView Plan="outcome.Plan" Context="@($"Functieprofiel {profile.Name} (versie {profile.Version}) voor {person.Name}")" Title="Profiel toepassen" Executed="AfterExecute" />
+                }
+            }
+        }
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "profiel")] public string? ProfileId { get; set; }
+    [SupplyParameterFromQuery(Name = "gebruiker")] public string? PersonKey { get; set; }
+
+    private JobProfile? profile;
+    private Person? person;
+    private List<(Person Person, IReadOnlyList<ProfileItem> Items)> holders = new();
+    private IReadOnlyList<ProfileItem> comparison = Array.Empty<ProfileItem>();
+    private Dictionary<string, ProfileAssignment> assignments = new();
+    private PlanOutcome? outcome;
+    private bool removeExtras;
+
+    protected override void OnParametersSet()
+    {
+        var newProfile = JobProfiles.Find(State.Config, ProfileId);
+        var newPerson = PersonKey is null ? null : State.Data.SearchPerson(PersonKey);
+        if (newProfile?.Id != profile?.Id || newPerson?.Key != person?.Key)
+        {
+            outcome = null;
+        }
+
+        (profile, person) = (newProfile, newPerson);
+        Compute();
+    }
+
+    private void Go(string? profileId, string? personKey)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrEmpty(profileId)) query.Add("profiel=" + Uri.EscapeDataString(profileId));
+        if (!string.IsNullOrEmpty(personKey)) query.Add("gebruiker=" + Uri.EscapeDataString(personKey));
+        Nav.NavigateTo("functieprofielen" + (query.Count > 0 ? "?" + string.Join('&', query) : string.Empty));
+    }
+
+    private void Compute()
+    {
+        assignments = State.ProfileAssignments();
+        holders = profile is null
+            ? new()
+            : JobProfilePlans.Holders(State.Data, profile, assignments).Select(p => (p, JobProfilePlans.Compare(State.Data, State.Config, profile, p))).ToList();
+        comparison = profile is null || person is null ? Array.Empty<ProfileItem>() : JobProfilePlans.Compare(State.Data, State.Config, profile, person);
+    }
+
+    private void MakePlan()
+    {
+        if (profile is not null && person is not null)
+        {
+            outcome = JobProfilePlans.Apply(State.Data, State.Config, profile, person, removeExtras);
+        }
+    }
+
+    /// <summary>When at least one step succeeded, the person holds this version of the profile.</summary>
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (profile is not null && person is not null && results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            State.SaveProfileAssignment(person, profile);
+            assignments = State.ProfileAssignments();
+        }
+    }
+}

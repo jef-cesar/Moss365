@@ -17,6 +17,13 @@ else
         &middot; <a href="@($"spiegel?doel={Uri.EscapeDataString(person.Key)}")">als doel gebruiken</a>
         @if (State.Can(Permission.Actions)) { <text> &middot; <a href="@($"uitstroom/{Uri.EscapeDataString(person.Key)}")">uitstroom</a></text> }
     </p>
+    @if (ProfileOf(person) is { } jp)
+    {
+        <p class="kb-zacht">
+            Functieprofiel <a href="@($"functieprofielen?profiel={Uri.EscapeDataString(jp.Profile.Id)}&gebruiker={Uri.EscapeDataString(person.Key)}")">@jp.Profile.Name</a>
+            (@jp.How)@(jp.Missing > 0 ? $": {jp.Missing} ontbreekt" : null)@(jp.Extra > 0 ? $", {jp.Extra} meer dan het profiel" : null).
+        </p>
+    }
 
     @if (State.Can(Permission.Helpdesk)) { <Helpdesk Person="person" /> }
     @if (State.Can(Permission.Security) && State.HasMicrosoft365)
@@ -188,6 +195,28 @@ else
 }
 
 @code {
+    /// <summary>The job profile of this person (0.22): the one it got in the app, otherwise the one with its job title.</summary>
+    private (JobProfile Profile, string How, int Missing, int Extra)? ProfileOf(Person p)
+    {
+        if (State.Config.JobProfiles.Count == 0)
+        {
+            return null;
+        }
+
+        var assigned = State.ProfileAssignments().GetValueOrDefault(p.Key);
+        var profile = JobProfiles.Find(State.Config, assigned?.ProfileId);
+        var how = assigned is { } a && profile is not null ? $"versie {a.Version} gekregen op {a.Applied.LocalDateTime:dd/MM/yyyy}" : "volgens de functie";
+        profile ??= State.Config.JobProfiles.FirstOrDefault(jp => !string.IsNullOrWhiteSpace(jp.JobTitle)
+            && string.Equals(jp.JobTitle.Trim(), UserDesired.Of(p).JobTitle?.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (profile is null)
+        {
+            return null;
+        }
+
+        var items = JobProfilePlans.Compare(State.Data, State.Config, profile, p);
+        return (profile, how, items.Count(i => i.Status == ProfileStatus.Missing), items.Count(i => i.Status == ProfileStatus.Extra));
+    }
+
     [Parameter] public string Key { get; set; } = string.Empty;
 
     private Person? person;

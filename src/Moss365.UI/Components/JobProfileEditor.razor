@@ -1,0 +1,230 @@
+@* Job profiles (R9, 0.22) on Organisatie: what someone in a job gets. Changes go into the organisation in memory;
+   the page saves them (and a saved profile that changed gets a new version). *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>Functieprofielen</h2>
+    <p class="kb-zacht">
+        Wat iemand in een job krijgt: groepen, gedeelde postvakken, licenties en gegevens zoals functie en dienst. Je kiest
+        een profiel bij <a href="nieuw">Nieuwe gebruiker</a>, en bij <a href="functieprofielen">Functieprofielen</a> pas je het
+        toe op bestaande gebruikers en zie je wie meer of minder heeft. Groepen en postvakken staan op naam, zodat een profiel
+        ook in een andere tenant werkt (exporteren en importeren bij Bedrijf en naamgeving). Een bewaard profiel dat verandert,
+        krijgt een nieuwe versie.
+    </p>
+
+    @if (State.Config.JobProfiles.Count == 0)
+    {
+        <p>Nog geen functieprofielen.</p>
+    }
+    else
+    {
+        <table class="kb-tabel">
+            <thead><tr><th>Profiel</th><th class="kb-getal">Versie</th><th class="kb-getal">Groepen</th><th class="kb-getal">Postvakken</th><th>Licenties</th><th>Functie</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var p in State.Config.JobProfiles.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
+                {
+                    <tr class="@(p.Id == editing ? "kb-actief" : null)">
+                        <td><strong>@p.Name</strong> <span class="kb-zacht">@p.Description</span></td>
+                        <td class="kb-getal">@p.Version</td>
+                        <td class="kb-getal">@p.Groups.Count</td>
+                        <td class="kb-getal">@p.Mailboxes.Count</td>
+                        <td>@string.Join(", ", p.Licences)</td>
+                        <td>@p.JobTitle</td>
+                        <td>
+                            <span class="kb-filters">
+                                <button class="kb-knop kb-klein" @onclick="() => editing = p.Id">Bewerken</button>
+                                <button class="kb-knop kb-klein kb-gevaar" @onclick="() => Remove(p)">Verwijderen</button>
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h3>Nieuw profiel</h3>
+    <div class="kb-rij">
+        <label>Naam <input class="kb-invoer" @bind="newName" @bind:event="oninput" placeholder="bv. Medewerker onthaal" aria-label="Naam van het nieuwe profiel" /></label>
+        <button class="kb-knop" disabled="@(!CanAdd)" @onclick="AddEmpty">Leeg profiel</button>
+    </div>
+    <PersonPicker Label="Of neem over van een gebruiker (groepen, postvakken, licenties en gegevens)" Selected="example" SelectedChanged="p => example = p" />
+    <div class="kb-rij">
+        <button class="kb-knop" disabled="@(!CanAdd || example is null)" @onclick="AddFromPerson">Profiel maken van @(example?.Name ?? "deze gebruiker")</button>
+    </div>
+    @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
+</section>
+
+@if (Editing is { } jp)
+{
+    <section class="kb-kaart" id="profiel-bewerken">
+        <h2>@jp.Name <span class="kb-zacht">versie @jp.Version</span></h2>
+        <div class="kb-raster">
+            <label>Naam <input class="kb-invoer" value="@jp.Name" @onchange="e => Change(() => jp.Name = Text(e.Value) ?? jp.Name)" aria-label="Naam" /></label>
+            <label>Omschrijving <input class="kb-invoer" value="@jp.Description" @onchange="e => Change(() => jp.Description = Text(e.Value) ?? string.Empty)" aria-label="Omschrijving" /></label>
+            <label>Functie <input class="kb-invoer" value="@jp.JobTitle" @onchange="e => Change(() => jp.JobTitle = Text(e.Value))" aria-label="Functie" /></label>
+            <label>Dienst
+                <select class="kb-invoer" aria-label="Dienst" @onchange="e => Change(() => jp.Department = Text(e.Value))">
+                    <option value="" selected="@(jp.Department is null)">(niet wijzigen)</option>
+                    @foreach (var d in State.Config.Departments.OrderBy(d => d.Department, StringComparer.CurrentCultureIgnoreCase))
+                    {
+                        <option value="@d.Department" selected="@(string.Equals(jp.Department, d.Department, StringComparison.OrdinalIgnoreCase))">@d.Department</option>
+                    }
+                </select>
+            </label>
+            <label>Kantoor
+                <select class="kb-invoer" aria-label="Kantoor" @onchange="e => Change(() => jp.Office = Text(e.Value))">
+                    <option value="" selected="@(jp.Office is null)">(niet wijzigen)</option>
+                    @foreach (var o in State.Config.Offices.Append(jp.Office).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase))
+                    {
+                        <option value="@o" selected="@(string.Equals(jp.Office, o, StringComparison.OrdinalIgnoreCase))">@o</option>
+                    }
+                </select>
+            </label>
+            @if (State.HasAd)
+            {
+                <label>Logonscript
+                    <select class="kb-invoer" aria-label="Logonscript" @onchange="e => Change(() => jp.LogonScript = Text(e.Value))">
+                        <option value="" selected="@(jp.LogonScript is null)">(niet wijzigen)</option>
+                        @foreach (var s in State.Config.LogonScripts.Append(jp.LogonScript).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase))
+                        {
+                            <option value="@s" selected="@(string.Equals(jp.LogonScript, s, StringComparison.OrdinalIgnoreCase))">@s</option>
+                        }
+                    </select>
+                </label>
+            }
+        </div>
+
+        <h3>Groepen (@jp.Groups.Count)</h3>
+        <ul class="kb-lijst">
+            @foreach (var name in jp.Groups.ToList())
+            {
+                var g = JobProfilePlans.FindGroup(State.Data, name);
+                <li>
+                    @if (g is null) { <span>@name</span> <span class="kb-label">niet gevonden</span> }
+                    else { <ObjectLink Object="g.Ref" /> <span class="kb-zacht">@g.KindText</span> }
+                    <button class="kb-knop kb-klein" aria-label="@name uit het profiel" @onclick="() => Change(() => jp.Groups.Remove(name))">&times;</button>
+                </li>
+            }
+        </ul>
+        <ObjectPicker Label="Groep toevoegen" Kinds="GroupKinds" Selected="AddGroup" />
+
+        @if (State.HasMicrosoft365)
+        {
+            <h3>Gedeelde postvakken (@jp.Mailboxes.Count)</h3>
+            <ul class="kb-lijst">
+                @foreach (var smtp in jp.Mailboxes.ToList())
+                {
+                    var mb = State.Data.Index.Mailbox(smtp);
+                    <li>
+                        @(mb?.DisplayName ?? smtp) <span class="kb-zacht">@smtp</span>
+                        @if (mb is null) { <span class="kb-label">niet gevonden</span> }
+                        else if (State.Data.Index.AccessGroupOf(mb) is null) { <span class="kb-label">geen toegangsgroep</span> }
+                        <button class="kb-knop kb-klein" aria-label="@smtp uit het profiel" @onclick="() => Change(() => jp.Mailboxes.Remove(smtp))">&times;</button>
+                    </li>
+                }
+            </ul>
+            <div class="kb-rij">
+                <select class="kb-invoer" aria-label="Postvak toevoegen" @onchange="e => AddMailbox(jp, Text(e.Value))">
+                    <option value="">(postvak toevoegen)</option>
+                    @foreach (var m in State.Data.Mailboxes.Where(m => !jp.Mailboxes.Contains(m.Smtp, StringComparer.OrdinalIgnoreCase)))
+                    {
+                        <option value="@m.Smtp">@m.DisplayName (@m.Smtp)</option>
+                    }
+                </select>
+            </div>
+
+            <h3>Licenties</h3>
+            <div class="kb-keuzelijst">
+                @foreach (var (sku, name) in LicenceChoices(jp))
+                {
+                    <label>
+                        <input type="checkbox" checked="@jp.Licences.Contains(sku, StringComparer.OrdinalIgnoreCase)" aria-label="Licentie @sku"
+                               @onchange="e => Change(() => { jp.Licences.RemoveAll(l => string.Equals(l, sku, StringComparison.OrdinalIgnoreCase)); if (e.Value is true) jp.Licences.Add(sku); })" />
+                        @name
+                    </label>
+                }
+            </div>
+        }
+        <p class="kb-zacht">Dynamische en bevoorrechte groepen geeft de app nooit via een profiel. Vergeet niet te bewaren (bovenaan).</p>
+    </section>
+}
+
+@code {
+    [Parameter] public EventCallback Changed { get; set; }
+
+    private static readonly ObjectKind[] GroupKinds = { ObjectKind.Group };
+    private string? editing;
+    private string newName = string.Empty;
+    private Person? example;
+    private string? error;
+
+    private JobProfile? Editing => JobProfiles.Find(State.Config, editing);
+
+    private bool CanAdd => newName.Trim().Length > 0;
+
+    private async Task Change(Action change)
+    {
+        change();
+        error = null;
+        await Changed.InvokeAsync();
+    }
+
+    private static string? Text(object? value) => value?.ToString()?.Trim() is { Length: > 0 } t ? t : null;
+
+    private async Task AddEmpty() => await Add(new JobProfile { Name = newName.Trim() });
+
+    private async Task AddFromPerson()
+    {
+        if (example is not null)
+        {
+            await Add(JobProfilePlans.FromPerson(State.Data, State.Config, example, newName));
+        }
+    }
+
+    private async Task Add(JobProfile profile)
+    {
+        if (State.Config.JobProfiles.Any(p => string.Equals(p.Name, profile.Name, StringComparison.CurrentCultureIgnoreCase)))
+        {
+            error = $"Er is al een profiel \"{profile.Name}\".";
+            return;
+        }
+
+        await Change(() => State.Config.JobProfiles.Add(profile));
+        editing = profile.Id;
+        newName = string.Empty;
+        example = null;
+    }
+
+    private async Task Remove(JobProfile profile)
+    {
+        await Change(() => State.Config.JobProfiles.Remove(profile));
+        if (editing == profile.Id)
+        {
+            editing = null;
+        }
+    }
+
+    private async Task AddGroup(ObjectRef r)
+    {
+        if (Editing is { } jp && !jp.Groups.Contains(r.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            await Change(() => jp.Groups.Add(r.Name));
+        }
+    }
+
+    private async Task AddMailbox(JobProfile jp, string? smtp)
+    {
+        if (smtp is not null && !jp.Mailboxes.Contains(smtp, StringComparer.OrdinalIgnoreCase))
+        {
+            await Change(() => jp.Mailboxes.Add(smtp));
+        }
+    }
+
+    /// <summary>The licences of the organisation and of the tenant, and those already in the profile.</summary>
+    private IEnumerable<(string Sku, string Name)> LicenceChoices(JobProfile jp)
+        => State.Config.Licences.Select(l => (l.Sku, $"{l.Name} ({l.Sku})"))
+            .Concat(State.Data.Licences.Select(l => (l.SkuPartNumber, l.SkuPartNumber)))
+            .Concat(jp.Licences.Select(l => (l, l)))
+            .Where(x => x.Item1.Length > 0)
+            .DistinctBy(x => x.Item1, StringComparer.OrdinalIgnoreCase);
+}

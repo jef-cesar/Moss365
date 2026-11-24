@@ -295,6 +295,10 @@ Use:
 - **Mirror user** stays, but a profile is better: it does not depend on one person.
 - Profiles have versions (snapshots), so you can see which version was applied when.
 
+Done in 0.22: profiles on Organisatie (also made from a user), New user with a profile, the Functieprofielen screen
+(who holds a profile, by assignment or job title; what is missing or more; apply as a plan, with what is more only
+proposed), the version and date per person, and the profile on the user page.
+
 ### New users in the cloud
 
 For a tenant with only Microsoft 365 (no AD), **New user** creates the account directly in Entra ID through Graph, with

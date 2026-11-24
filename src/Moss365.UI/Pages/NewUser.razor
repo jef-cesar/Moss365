@@ -26,6 +26,27 @@ else if (State.Config.Populations.Count == 0)
 
 <section class="kb-kaart">
     <h2>Gegevens</h2>
+    @if (State.Config.JobProfiles.Count > 0)
+    {
+        <div class="kb-rij">
+            <label>Functieprofiel
+                <select class="kb-invoer" @bind="request.JobProfile" @bind:after="ProfileSelected" aria-label="Functieprofiel">
+                    <option value="">(geen)</option>
+                    @foreach (var jp in State.Config.JobProfiles.OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase))
+                    {
+                        <option value="@jp.Id">@jp.Name</option>
+                    }
+                </select>
+            </label>
+            @if (JobProfiles.Find(State.Config, request.JobProfile) is { } chosen)
+            {
+                <span class="kb-zacht">
+                    @chosen.Groups.Count groepen, @chosen.Mailboxes.Count gedeelde postvakken@(chosen.Licences.Count > 0 ? ", licentie " + string.Join(", ", chosen.Licences) : null)
+                    komen mee (versie @chosen.Version).
+                </span>
+            }
+        </div>
+    }
     <div class="kb-raster">
         <label>Soort
             <select class="kb-invoer" @bind="request.Population" @bind:after="Clear">
@@ -231,6 +252,21 @@ else if (State.Config.Populations.Count == 0)
         if (State.Config.SearchDepartment(request.Department)?.LogonScript is { Length: > 0 } script)
         {
             request.LogonScript = script;
+        }
+
+        Clear();
+    }
+
+    /// <summary>A job profile fills in what is still empty; its groups, mailboxes and licences come along in the plan.</summary>
+    private void ProfileSelected()
+    {
+        if (request.JobProfile?.Length == 0) request.JobProfile = null;
+        if (JobProfiles.Find(State.Config, request.JobProfile) is { } jp)
+        {
+            if (string.IsNullOrWhiteSpace(request.Department) && jp.Department is { Length: > 0 } d) request.Department = State.Config.SearchDepartment(d)?.Department ?? d;
+            if (string.IsNullOrWhiteSpace(request.Office) && jp.Office is { Length: > 0 } o) request.Office = o;
+            if (string.IsNullOrWhiteSpace(request.JobTitle) && jp.JobTitle is { Length: > 0 } t) request.JobTitle = t;
+            if (string.IsNullOrWhiteSpace(request.LogonScript) && jp.LogonScript is { Length: > 0 } s) request.LogonScript = s;
         }
 
         Clear();

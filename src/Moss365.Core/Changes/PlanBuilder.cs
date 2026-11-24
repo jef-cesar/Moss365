@@ -17,6 +17,9 @@ public sealed class NewUserRequest
     public string? LicenceSku { get; set; }
     public Person? Mirror { get; set; }
     public bool DefaultAdGroups { get; set; } = true;
+
+    /// <summary>Id of a job profile (0.22): its groups, mailboxes, licences and attributes come along.</summary>
+    public string? JobProfile { get; set; }
 }
 
 /// <summary>What the app suggests for a new user: the derived names and two plans (now and after the
@@ -266,13 +269,25 @@ public static class PlanBuilder
             errors.Add("Voornaam en achternaam zijn verplicht.");
         }
 
-        var department = config.SearchDepartment(request.Department);
+        // A job profile fills in what the form leaves empty (0.22)
+        var profile = JobProfiles.Find(config, request.JobProfile);
+        if (request.JobProfile is { Length: > 0 } && profile is null)
+        {
+            errors.Add("Het gekozen functieprofiel bestaat niet meer.");
+        }
+
+        var departmentValue = string.IsNullOrWhiteSpace(request.Department) ? profile?.Department ?? string.Empty : request.Department;
+        var officeValue = string.IsNullOrWhiteSpace(request.Office) ? profile?.Office ?? string.Empty : request.Office;
+        var titleValue = string.IsNullOrWhiteSpace(request.JobTitle) ? profile?.JobTitle ?? string.Empty : request.JobTitle;
+        var scriptValue = request.LogonScript ?? profile?.LogonScript;
+
+        var department = config.SearchDepartment(departmentValue);
         if (population is not null && population.City is null && department is null)
         {
             errors.Add("Kies een dienst uit de lijst.");
         }
 
-        if (population is not null && population.City is null && string.IsNullOrWhiteSpace(request.Office))
+        if (population is not null && population.City is null && string.IsNullOrWhiteSpace(officeValue))
         {
             errors.Add("Kies een kantoor uit de lijst.");
         }
@@ -350,17 +365,17 @@ public static class PlanBuilder
                 attributes["department"] = department.Department;
             }
 
-            if (!string.IsNullOrWhiteSpace(request.Office))
+            if (!string.IsNullOrWhiteSpace(officeValue))
             {
-                attributes["physicalDeliveryOfficeName"] = request.Office.Trim();
+                attributes["physicalDeliveryOfficeName"] = officeValue.Trim();
             }
 
-            if (!string.IsNullOrWhiteSpace(request.JobTitle))
+            if (!string.IsNullOrWhiteSpace(titleValue))
             {
-                attributes["title"] = request.JobTitle.Trim();
+                attributes["title"] = titleValue.Trim();
             }
 
-            var script = request.LogonScript ?? department?.LogonScript;
+            var script = scriptValue ?? department?.LogonScript;
             if (!string.IsNullOrWhiteSpace(script))
             {
                 attributes["scriptPath"] = script.Trim();
@@ -426,45 +441,84 @@ public static class PlanBuilder
                 }
             }
 
+            if (profile is not null)
+            {
+                var accessGroups = profile.Mailboxes.Select(m => data.Index.Mailbox(m.Trim())).OfType<Mailbox>()
+                    .Select(m => (Mailbox: m, Group: data.Index.AccessGroupOf(m))).ToList();
+                foreach (var (m, g) in accessGroups.Where(x => x.Group is null))
+                {
+                    warnings.Add($"{m.DisplayName} heeft nog geen toegangsgroep; toegang uit het functieprofiel overgeslagen.");
+                }
+
+                var names = profile.Groups.Concat(accessGroups.Where(x => x.Group is not null).Select(x => x.Group!.Name));
+                foreach (var name in names.Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    var g = JobProfilePlans.FindGroup(data, name);
+                    if (g is null)
+                    {
+                        warnings.Add($"Groep {name} uit het functieprofiel niet gevonden; overgeslagen.");
+                    }
+                    else if (g.Dynamic || config.IsDynamicGroup(g.Name) || (g.Ad is { } privileged && MirrorUser.IsPrivileged(privileged)))
+                    {
+                        warnings.Add($"{g.Name} is dynamisch of bevoorrecht; niet uit het functieprofiel gegeven.");
+                    }
+                    else if (g.Ad is { } a)
+                    {
+                        adGroups[a.DistinguishedName] = a;
+                    }
+                    else if (g.Cloud is { } c)
+                    {
+                        cloudGroups[c.Id] = c;
+                    }
+                }
+            }
+
             foreach (var g in adGroups.Values.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase))
             {
                 now.Add(AdAddMember(dn, view, g.DistinguishedName, g.Name, create.Id));
             }
 
             // After the synchronisation to Entra: licence and cloud groups
-            if (!string.IsNullOrWhiteSpace(request.LicenceSku))
+            var licences = new[] { request.LicenceSku }.Concat(profile?.Licences ?? new List<string>())
+                .Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            Change? location = null;
+            foreach (var sku in licences)
             {
-                if (population.NoLicence)
+                if (population.NoLicence && sku == licences[0])
                 {
                     warnings.Add($"{population.Name} krijgt normaal geen licentie.");
                 }
 
-                var licence = data.Licences.FirstOrDefault(l => string.Equals(l.SkuPartNumber, request.LicenceSku, StringComparison.OrdinalIgnoreCase));
+                var licence = data.Licences.FirstOrDefault(l => string.Equals(l.SkuPartNumber, sku, StringComparison.OrdinalIgnoreCase));
                 if (licence is { Free: 0 })
                 {
-                    warnings.Add($"Er zijn geen vrije {request.LicenceSku}-licenties ({licence.Assigned}/{licence.Total}). De toekenning zal mislukken tot er een vrijkomt.");
+                    warnings.Add($"Er zijn geen vrije {sku}-licenties ({licence.Assigned}/{licence.Total}). De toekenning zal mislukken tot er een vrijkomt.");
                 }
 
-                var location = new Change
+                if (location is null)
                 {
-                    TargetSystem = TargetSystem.Graph,
-                    ChangeAction = ChangeAction.GraphSetAttributes,
-                    Target = upn,
-                    TargetName = view,
-                    Parameters = new(StringComparer.OrdinalIgnoreCase) { ["usageLocation"] = "BE" },
-                    Description = "Gebruikslocatie op BE zetten (nodig voor een licentie)",
-                    NewValue = "BE",
-                };
-                afterSync.Add(location);
+                    location = new Change
+                    {
+                        TargetSystem = TargetSystem.Graph,
+                        ChangeAction = ChangeAction.GraphSetAttributes,
+                        Target = upn,
+                        TargetName = view,
+                        Parameters = new(StringComparer.OrdinalIgnoreCase) { ["usageLocation"] = "BE" },
+                        Description = "Gebruikslocatie op BE zetten (nodig voor een licentie)",
+                        NewValue = "BE",
+                    };
+                    afterSync.Add(location);
+                }
+
                 afterSync.Add(new Change
                 {
                     TargetSystem = TargetSystem.Graph,
                     ChangeAction = ChangeAction.GraphAssignLicence,
                     Target = upn,
                     TargetName = view,
-                    Parameters = new(StringComparer.OrdinalIgnoreCase) { ["sku"] = request.LicenceSku!, ["skuId"] = licence?.SkuId ?? string.Empty },
-                    Description = $"Licentie {request.LicenceSku} toekennen",
-                    NewValue = request.LicenceSku,
+                    Parameters = new(StringComparer.OrdinalIgnoreCase) { ["sku"] = sku, ["skuId"] = licence?.SkuId ?? string.Empty },
+                    Description = $"Licentie {sku} toekennen",
+                    NewValue = sku,
                     DependentOf = location.Id,
                 });
             }

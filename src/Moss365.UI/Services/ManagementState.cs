@@ -353,7 +353,7 @@ public sealed partial class ManagementState
         ? null
         : Config.ProfilesRequired
             ? Graph()?.AppRoles is null ? "Nog niet aangemeld: enkel lezen tot je aanmeldt." : "Geen profiel in Moss365: enkel lezen."
-            : "Profielen nog niet ingesteld: iedereen mag alles.";
+            : "Rollen nog niet verplicht: iedereen mag alles.";
 
     /// <summary>The tenant has its own organisation (saved in its database), not (only) the bundled one.</summary>
     public bool ConfigIsModified => ConfigSource == OwnConfigName;

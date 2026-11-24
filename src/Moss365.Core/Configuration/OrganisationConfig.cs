@@ -58,6 +58,9 @@ public sealed class OrganisationConfig
     /// list.</summary>
     public List<string> GroupPrefixes { get; set; } = new();
 
+    /// <summary>Job profiles (R9, 0.22): what someone in a job gets.</summary>
+    public List<JobProfile> JobProfiles { get; set; } = new();
+
     /// <summary>DN of the domain, derived from AdDomain; empty when that is not filled in.</summary>
     [JsonIgnore]
     public string DomainDn => string.IsNullOrWhiteSpace(AdDomain)
@@ -297,7 +300,22 @@ public static class ConfigStorage
         File.Move(temporary, path, overwrite: true);
     }
 
-    public static void Save(OrganisationConfig config, Storage.ITextStorage users) => users.Save(To(config));
+    /// <summary>Saves the organisation in the tenant database; a job profile that changed gets a new version.</summary>
+    public static void Save(OrganisationConfig config, Storage.ITextStorage users)
+    {
+        OrganisationConfig? saved = null;
+        try
+        {
+            saved = users.Read() is { } json ? JsonSerializer.Deserialize<OrganisationConfig>(json, Options) : null;
+        }
+        catch (JsonException)
+        {
+            // An unreadable saved version: every profile keeps its version
+        }
+
+        JobProfiles.BumpVersions(saved, config);
+        users.Save(To(config));
+    }
 
     public static string To(OrganisationConfig config) => JsonSerializer.Serialize(config, Options);
 

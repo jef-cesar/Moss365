@@ -242,17 +242,22 @@
 </section>
 }
 
-@if (Is("profielen"))
+@if (Is("functieprofielen"))
+{
+<JobProfileEditor Changed="() => Set(() => { })" />
+}
+
+@if (Is("rollen") || Is("profielen"))
 {
 <section class="kb-kaart">
-    <h2>Profielen</h2>
+    <h2>Rollen in Moss365</h2>
     <p class="kb-zacht">
         Wie wat mag in Moss365 volgt uit de app-rollen in Entra (Lezer, Helpdesk, Beheerder, Auditor, Appbeheer), toegekend via
         de groepen <code>GG-Moss365-...</code> (die maakt <a href="inrichten">Tenant inrichten</a>). Zolang dit uit staat, mag wie zich
-        aanmeldt zonder rol alles, zoals vroeger.
+        aanmeldt zonder rol alles, zoals vroeger. (Wat iemand in zijn job krijgt, staat bij <a href="organisatie/functieprofielen">Functieprofielen</a>.)
     </p>
     <label><input type="checkbox" checked="@State.Config.ProfilesRequired" @onchange="e => Set(() => State.Config.ProfilesRequired = e.Value is true)" />
-        Profielen verplicht: zonder rol enkel lezen</label>
+        Rollen verplicht: zonder rol enkel lezen</label>
 </section>
 }
 
