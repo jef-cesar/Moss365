@@ -1,0 +1,146 @@
+@page "/aanvragen"
+@inherits RefreshingPage
+@using Moss365.Core.Reporting
+@inject NavigationManager Nav
+@* Requests (R14, 0.37): HR or a department head asks for a new colleague or announces a departure; the administrator
+   approves (the plan follows on Nieuwe gebruiker or Uitstroom) or rejects. Every decision goes to the change log. *@
+
+<h1>Aanvragen</h1>
+
+<p class="kb-zacht">
+    Een nieuwe collega of een vertrek aanvragen, zonder mails. De beheerder keurt goed of weigert; na goedkeuring volgt het plan uit het functieprofiel,
+    op de gekende schermen. Elke beslissing komt in het logboek.
+</p>
+
+@if (!State.IsHistoric)
+{
+    <section class="kb-kaart">
+        <h2>Nieuwe aanvraag</h2>
+        <div class="kb-filters">
+            <button class="kb-knop kb-klein @(kind == RequestKind.Onboarding ? "kb-primair" : null)" @onclick="() => kind = RequestKind.Onboarding">Nieuwe collega</button>
+            <button class="kb-knop kb-klein @(kind == RequestKind.Offboarding ? "kb-primair" : null)" @onclick="() => kind = RequestKind.Offboarding">Vertrek</button>
+        </div>
+        @if (kind == RequestKind.Onboarding)
+        {
+            <label>Voornaam <input class="kb-invoer" @bind="givenName" /></label>
+            <label>Familienaam <input class="kb-invoer" @bind="surname" /></label>
+            <label>Dienst
+                <select class="kb-invoer" @bind="department">
+                    <option value=""></option>
+                    @foreach (var d in State.Config.Departments.Select(x => x.Department).Distinct().OrderBy(x => x)) { <option value="@d">@d</option> }
+                </select>
+            </label>
+            <label>Functieprofiel
+                <select class="kb-invoer" @bind="profile">
+                    <option value=""></option>
+                    @foreach (var p in State.Config.JobProfiles.OrderBy(p => p.Name)) { <option value="@p.Id">@p.Name</option> }
+                </select>
+            </label>
+            <label>Functie <input class="kb-invoer" @bind="jobTitle" /></label>
+            <label>Startdatum <input class="kb-invoer kb-smal" type="date" @bind="date" aria-label="Datum" /></label>
+        }
+        else
+        {
+            <ObjectPicker Label="Wie vertrekt" Kinds="UserKinds" Selected="o => leaver = o" />
+            @if (leaver is not null) { <p>Vertrekt: <strong>@leaver.Name</strong></p> }
+            <label>Laatste werkdag <input class="kb-invoer kb-smal" type="date" @bind="date" aria-label="Datum" /></label>
+        }
+        <label>Opmerking <input class="kb-invoer" @bind="note" /></label>
+        <button class="kb-knop kb-primair" @onclick="Submit">Aanvraag indienen</button>
+        @foreach (var e in errors) { <div class="kb-melding">@e</div> }
+        @if (sent) { <p class="kb-zacht">De aanvraag is ingediend.</p> }
+    </section>
+}
+
+<section class="kb-kaart">
+    <h2>Open (@Open.Count)</h2>
+    <table class="kb-tabel">
+        <thead><tr><th>Aanvraag</th><th>Datum</th><th>Aangevraagd door</th><th>Opmerking</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var r in Open)
+            {
+                <tr>
+                    <td>@r.Title @if (r.Department.Length > 0) { <span class="kb-zacht">@r.Department</span> }</td>
+                    <td>@r.Date?.ToString("dd/MM/yyyy")</td><td>@r.RequestedBy <span class="kb-zacht">@r.Created.LocalDateTime.ToString("dd/MM/yyyy")</span></td>
+                    <td class="kb-zacht">@r.Note</td>
+                    <td>
+                        @if (State.Can(Permission.Actions))
+                        {
+                            <button class="kb-knop kb-klein kb-primair" @onclick="() => Approve(r)">Goedkeuren</button>
+                            <button class="kb-knop kb-klein" @onclick="() => State.DecideRequest(r.Id, false, reason)">Weigeren</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (State.Can(Permission.Actions) && Open.Count > 0)
+    {
+        <label>Reden bij weigeren <input class="kb-invoer" @bind="reason" /></label>
+    }
+</section>
+
+<section class="kb-kaart">
+    <h2>Beslist</h2>
+    <table class="kb-tabel">
+        <thead><tr><th>Aanvraag</th><th>Beslissing</th><th>Door</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var r in State.Requests().Where(r => r.Status != RequestStatus.Open).OrderByDescending(r => r.Decided).Take(50))
+            {
+                <tr>
+                    <td>@r.Title</td><td>@(r.Status == RequestStatus.Approved ? "goedgekeurd" : "geweigerd") @r.Reason</td>
+                    <td>@r.DecidedBy <span class="kb-zacht">@r.Decided?.LocalDateTime.ToString("dd/MM/yyyy")</span></td>
+                    <td>@if (r.Status == RequestStatus.Approved && State.Can(Permission.Actions)) { <button class="kb-knop kb-klein" @onclick="() => Open_(r)">Plan maken</button> }</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+@code {
+    private static readonly ObjectKind[] UserKinds = { ObjectKind.User };
+    private RequestKind kind = RequestKind.Onboarding;
+    private string givenName = string.Empty, surname = string.Empty, department = string.Empty, profile = string.Empty, jobTitle = string.Empty, note = string.Empty, reason = string.Empty;
+    private DateOnly? date;
+    private ObjectRef? leaver;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private bool sent;
+
+    private IReadOnlyList<StaffRequest> Open => State.Requests().Where(r => r.Status == RequestStatus.Open).ToList();
+
+    private void Submit()
+    {
+        var r = new StaffRequest
+        {
+            Kind = kind, GivenName = givenName, Surname = surname, Department = department, JobProfile = profile, JobTitle = jobTitle,
+            Date = date, PersonKey = leaver?.Key ?? string.Empty, PersonName = leaver?.Name ?? string.Empty, Note = note,
+        };
+        errors = StaffRequests.Validate(r, State.Config);
+        sent = errors.Count == 0;
+        if (sent)
+        {
+            State.AddRequest(r);
+            givenName = surname = department = profile = jobTitle = note = string.Empty;
+            date = null;
+            leaver = null;
+        }
+    }
+
+    private void Approve(StaffRequest r)
+    {
+        if (State.DecideRequest(r.Id, true) is { } decided) Open_(decided);
+    }
+
+    private void Open_(StaffRequest r)
+    {
+        if (r.Kind == RequestKind.Onboarding)
+        {
+            State.PrepareNewUser(r);
+            Nav.NavigateTo("nieuw");
+        }
+        else
+        {
+            Nav.NavigateTo("uitstroom/" + Uri.EscapeDataString(r.PersonKey));
+        }
+    }
+}

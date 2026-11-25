@@ -789,6 +789,12 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
         public Task<IReadOnlyList<Core.Helpdesk.BitLockerKey>> BitLockerKeysAsync(string? deviceId, string? keyId, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Helpdesk.BitLockerKey>>(new[] { new Core.Helpdesk.BitLockerKey("ccccdddd-1111", deviceId ?? "dev-1", "333333-444444", null, "OperatingSystemVolume") });
 
+        public Task<Core.Reporting.ServiceHealthReading?> ReadServiceHealthAsync(CancellationToken cancel)
+            => Task.FromResult<Core.Reporting.ServiceHealthReading?>(new Core.Reporting.ServiceHealthReading(
+                new[] { new Core.Reporting.ServiceStatus("Exchange Online", "serviceDegradation"), new Core.Reporting.ServiceStatus("Microsoft Teams", "serviceOperational") },
+                new[] { new Core.Reporting.ServiceIssue("EX123", "Vertraging bij het versturen van mail", "Exchange Online", "investigating", "incident", DateTimeOffset.Now.AddHours(-2), DateTimeOffset.Now) },
+                new[] { new Core.Reporting.ServiceMessage("MC1", "Oude verificatie stopt", "planForChange", "Exchange Online", DateTimeOffset.Now.AddDays(-3), DateTimeOffset.Now.AddDays(20)) }));
+
         public Task<IReadOnlyList<Core.Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Devices.IntuneDevice>?>(new[]
             {

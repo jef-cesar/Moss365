@@ -21,7 +21,7 @@ public static class MenuModel
         {
             new("gebruikers", "Gebruikers"), new("gasten", "Gastgebruikers"), new("nieuw", "Nieuwe gebruiker"), new("uitstroom", "Uitstroom"),
             new("functieprofielen", "Functieprofielen"), new("spiegel", "Spiegelgebruiker"), new("wachtwoorden", "Wachtwoord verloopt"),
-            new("sleutels", "BitLocker en LAPS"),
+            new("sleutels", "BitLocker en LAPS"), new("gastenverlenging", "Gasten verlengen"),
         }),
         new MenuGroup("Groepen en toegang", new MenuItem[]
         {
@@ -33,11 +33,11 @@ public static class MenuModel
         }),
         new MenuGroup("Inzicht", new MenuItem[]
         {
-            new("statistieken", "Statistieken"), new("licenties", "Licenties en kosten"), new("toestellen", "Toestellen"), new("geschiedenis", "Geschiedenis"), new("vergelijk", "AD tegenover Entra"), new("logboek", "Logboek"),
+            new("statistieken", "Statistieken"), new("licenties", "Licenties en kosten"), new("toestellen", "Toestellen"), new("rapporten", "Rapporten"), new("geschiedenis", "Geschiedenis"), new("vergelijk", "AD tegenover Entra"), new("logboek", "Logboek"),
         }),
         new MenuGroup("Werk", new MenuItem[]
         {
-            new("opkuis", "Opkuisronde"), new("scripts", "Scripts"), new("gepland", "Gepland"), new("opvolging", "Opvolging"),
+            new("opkuis", "Opkuisronde"), new("aanvragen", "Aanvragen"), new("scripts", "Scripts"), new("gepland", "Gepland"), new("opvolging", "Opvolging"),
         }),
     };
 
@@ -48,7 +48,7 @@ public static class MenuModel
         {
             new("organisatie", "Organisatie"), new("verbindingen", "Verbindingen"), new("inrichten", "Tenant inrichten"), new("databank", "Databank en versleuteling"),
         }),
-        new MenuGroup("Alle tenants", new MenuItem[] { new("tenants", "Tenants") }),
+        new MenuGroup("Alle tenants", new MenuItem[] { new("tenants", "Tenants"), new("tenantvergelijking", "Tenants vergelijken") }),
         new MenuGroup("Deze pc en de app", new MenuItem[] { new("controle", "Controle van deze pc"), new("updates", "Versie en updates") }),
     };
 

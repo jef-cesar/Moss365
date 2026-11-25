@@ -1,0 +1,154 @@
+@page "/rapporten"
+@inherits RefreshingPage
+@using Moss365.Core.Reporting
+@using CheckStatus = Moss365.Core.Security.CheckStatus
+@* Reports (R14, 0.37): the monthly or quarterly report from the stored history (also for a period in the past), data
+   quality per department and the checks mapped to standards. Saved as HTML (print as PDF) or CSV (Excel). *@
+
+<h1>Rapporten</h1>
+
+<p class="kb-zacht">
+    Een rapport per maand of kwartaal voor het management en de informatieveiligheid: de indicatoren met hun verloop, de wijzigingen uit het logboek,
+    de datakwaliteit en de controles bij de normen. Alles komt uit de bewaarde geschiedenis van deze tenant, dus ook voor een periode in het verleden.
+</p>
+
+<section class="kb-kaart">
+    <h2>Periode</h2>
+    <div class="kb-filters">
+        <button class="kb-knop kb-klein @(choice == "maand" ? "kb-primair" : null)" @onclick="@(() => Choose("maand"))">Vorige maand</button>
+        <button class="kb-knop kb-klein @(choice == "kwartaal" ? "kb-primair" : null)" @onclick="@(() => Choose("kwartaal"))">Vorig kwartaal</button>
+        <button class="kb-knop kb-klein @(choice == "zelf" ? "kb-primair" : null)" @onclick="@(() => Choose("zelf"))">Zelf kiezen</button>
+    </div>
+    @if (choice == "zelf")
+    {
+        <label>Van <input class="kb-invoer kb-smal" type="date" @bind="from" aria-label="Van" /></label>
+        <label>Tot <input class="kb-invoer kb-smal" type="date" @bind="to" aria-label="Tot" /></label>
+    }
+    <p>Periode: <strong>@Period.Name</strong> (@Period.From.ToString("dd/MM/yyyy") tot @Period.To.ToString("dd/MM/yyyy"))</p>
+    <button class="kb-knop kb-primair" @onclick="Make">Rapport maken</button>
+    @if (State.Can(Permission.Security) && State.SecurityCheckResults.Count < State.SecurityCheckList().Count)
+    {
+        <button class="kb-knop" disabled="@busy" @onclick="RunChecks">@(busy ? "Controles lopen..." : "Eerst alle beveiligingscontroles uitvoeren")</button>
+    }
+</section>
+
+@if (report is not null)
+{
+    <section class="kb-kaart">
+        <h2>Rapport @report.Period.Name</h2>
+        @foreach (var n in report.Notes) { <div class="kb-melding">@n</div> }
+        @if (State.Can(Permission.Export))
+        {
+            <button class="kb-knop" @onclick="() => Save(false)">Opslaan als HTML (afdrukken als PDF)</button>
+            <button class="kb-knop" @onclick="() => Save(true)">Opslaan als CSV (Excel)</button>
+        }
+        @if (saved is not null) { <p class="kb-zacht">Opgeslagen: @saved</p> }
+
+        <h3>Indicatoren</h3>
+        <table class="kb-tabel">
+            <thead><tr><th>Indicator</th><th class="kb-getal">Begin</th><th class="kb-getal">Einde</th><th class="kb-getal">Verschil</th></tr></thead>
+            <tbody>
+                @foreach (var k in report.Kpis)
+                {
+                    <tr><td>@k.Title</td><td class="kb-getal">@k.Start</td><td class="kb-getal">@k.End</td>
+                        <td class="kb-getal @(k.Attention && k.Difference > 0 ? "kb-fout" : null)">@(k.Difference?.ToString("+0;-0;0"))</td></tr>
+                }
+            </tbody>
+        </table>
+
+        <h3>Wijzigingen (@report.Changes.Sum(c => c.Succeeded) gelukt, @report.Changes.Sum(c => c.Failed) mislukt)</h3>
+        <table class="kb-tabel">
+            <thead><tr><th>Soort</th><th class="kb-getal">Gelukt</th><th class="kb-getal">Mislukt</th></tr></thead>
+            <tbody>@foreach (var c in report.Changes) { <tr><td>@c.Action</td><td class="kb-getal">@c.Succeeded</td><td class="kb-getal">@c.Failed</td></tr> }</tbody>
+        </table>
+
+        <h3>Normen</h3>
+        <table class="kb-tabel">
+            <thead><tr><th>Norm</th><th>Maatregel</th><th>Resultaat</th><th>Controles</th></tr></thead>
+            <tbody>
+                @foreach (var s in report.Standards)
+                {
+                    <tr><td>@s.Control.Standard @s.Control.Id</td><td>@s.Control.Title</td><td class="@Class(s.Status)">@PeriodReport.StatusText(s.Status)</td>
+                        <td class="kb-zacht">@string.Join(", ", s.Results.Select(r => $"{r.Check}: {PeriodReport.StatusText(r.Status)}"))</td></tr>
+                }
+            </tbody>
+        </table>
+        <p class="kb-zacht">De controles zijn bewijs bij de maatregelen; ze vervangen geen beleid of audit.</p>
+    </section>
+}
+
+<section class="kb-kaart">
+    <h2>Datakwaliteit</h2>
+    <p class="kb-zacht">Per dienst: hoeveel actieve medewerkers een functie, kantoor, manager en telefoon hebben. Goede gegevens maken dynamische groepen en het adresboek betrouwbaar.</p>
+    <table class="kb-tabel">
+        <thead><tr><th>Dienst</th><th class="kb-getal">Mensen</th><th class="kb-getal">Functie</th><th class="kb-getal">Kantoor</th><th class="kb-getal">Manager</th><th class="kb-getal">Telefoon</th><th class="kb-getal">Score</th></tr></thead>
+        <tbody>
+            @foreach (var q in DataQuality.PerDepartment(State.KpiSource))
+            {
+                <tr class="@(q.Department == "Totaal" ? "kb-vet" : null)">
+                    <td><button class="kb-link" @onclick="() => department = department == q.Department ? null : q.Department">@q.Department</button></td>
+                    <td class="kb-getal">@q.People</td><td class="kb-getal">@QualityRow.Percent(q.JobTitle, q.People)%</td><td class="kb-getal">@QualityRow.Percent(q.Office, q.People)%</td>
+                    <td class="kb-getal">@QualityRow.Percent(q.Manager, q.People)%</td><td class="kb-getal">@QualityRow.Percent(q.Phone, q.People)%</td><td class="kb-getal">@q.Score%</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (department is not null)
+    {
+        <h3>Wat ontbreekt bij @department</h3>
+        <ul>
+            @foreach (var p in State.KpiSource.Active.Where(p => department == "Totaal" || (p.Department.Length > 0 ? p.Department : DataQuality.NoDepartment).Equals(department, StringComparison.CurrentCultureIgnoreCase))
+                         .Select(p => (Person: p, Missing: DataQuality.Missing(p))).Where(x => x.Missing.Count > 0).Take(200))
+            {
+                <li><a href="@Searcher.Link(p.Person)">@p.Person.Name</a> <span class="kb-zacht">@string.Join(", ", p.Missing)</span></li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    private string choice = "kwartaal";
+    private DateOnly from = DateOnly.FromDateTime(DateTime.Today.AddMonths(-1));
+    private DateOnly to = DateOnly.FromDateTime(DateTime.Today);
+    private PeriodReport? report;
+    private string? saved;
+    private string? department;
+    private bool busy;
+
+    private ReportPeriod Period => choice switch
+    {
+        "maand" => ReportPeriod.LastMonth(DateOnly.FromDateTime(DateTime.Today)),
+        "zelf" => new ReportPeriod(from <= to ? from : to, from <= to ? to : from, $"{(from <= to ? from : to):dd-MM-yyyy} tot {(from <= to ? to : from):dd-MM-yyyy}"),
+        _ => ReportPeriod.LastQuarter(DateOnly.FromDateTime(DateTime.Today)),
+    };
+
+    private void Choose(string value)
+    {
+        choice = value;
+        report = null;
+        saved = null;
+    }
+
+    private void Make()
+    {
+        report = State.BuildReport(Period);
+        saved = null;
+    }
+
+    private async Task RunChecks()
+    {
+        busy = true;
+        try { await State.RunAllSecurityChecksAsync(); }
+        finally { busy = false; }
+        if (report is not null) Make();
+    }
+
+    private void Save(bool csv)
+    {
+        if (report is null) return;
+        saved = State.SaveReport(report, csv);
+        State.AppEnvironment.ShowFile(saved);
+    }
+
+    private static string? Class(CheckStatus s) => s switch { CheckStatus.Problem => "kb-fout", CheckStatus.Attention => "kb-let-op", _ => null };
+}

@@ -194,6 +194,9 @@ public interface IGraphConnection
     /// that is not possible.</summary>
     Task<Security.AppsReading?> ReadAppsAsync(CancellationToken cancel) => Task.FromResult<Security.AppsReading?>(null);
 
+    /// <summary>Microsoft service health and the message center (0.37); null where that cannot be read.</summary>
+    Task<Reporting.ServiceHealthReading?> ReadServiceHealthAsync(CancellationToken cancel) => Task.FromResult<Reporting.ServiceHealthReading?>(null);
+
     /// <summary>Devices in Intune (0.36); null where that cannot be read (licence, permission).</summary>
     Task<IReadOnlyList<Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Devices.IntuneDevice>?>(null);
 

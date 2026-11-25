@@ -1,0 +1,48 @@
+@using Moss365.Core.Reporting
+@* Microsoft service health on the start screen (R14, 0.37): "is it us or Microsoft?". Read on demand. *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>Status van Microsoft 365</h2>
+    @if (State.ServiceHealthStatus is { } h)
+    {
+        <p><strong>@ServiceHealth.Summary(h)</strong> <span class="kb-zacht">gelezen om @read?.ToString("HH:mm")</span></p>
+        @if (h.Issues.Count > 0)
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>Dienst</th><th>Wat</th><th>Soort</th><th>Status</th><th>Sinds</th></tr></thead>
+                <tbody>
+                    @foreach (var i in h.Issues.Take(15))
+                    {
+                        <tr><td>@i.Service</td><td>@i.Title <span class="kb-zacht">@i.Id</span></td><td>@ServiceHealth.ClassificationText(i.Classification)</td>
+                            <td>@ServiceHealth.StatusText(i.Status)</td><td>@i.Start?.LocalDateTime.ToString("dd/MM HH:mm")</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+        @if (ServiceHealth.ActionRequired(h, DateTimeOffset.Now) is { Count: > 0 } actions)
+        {
+            <h3>Berichtencentrum: actie nodig</h3>
+            <ul>@foreach (var m in actions.Take(10)) { <li>@m.Title <span class="kb-zacht">voor @m.ActionRequiredBy?.LocalDateTime.ToString("dd/MM/yyyy")</span></li> }</ul>
+        }
+        @if (h.Note is { } n) { <p class="kb-zacht">@n</p> }
+    }
+    @if (State.ServiceHealthNote is { } note) { <div class="kb-melding">@note</div> }
+    <button class="kb-knop" disabled="@busy" @onclick="Read">@(busy ? "Bezig..." : "Status lezen")</button>
+</section>
+
+@code {
+    private bool busy;
+    private DateTime? read;
+
+    private async Task Read()
+    {
+        busy = true;
+        try
+        {
+            await State.ReadServiceHealthAsync();
+            read = DateTime.Now;
+        }
+        finally { busy = false; }
+    }
+}

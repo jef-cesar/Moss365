@@ -1,0 +1,84 @@
+@page "/gastenverlenging"
+@inherits RefreshingPage
+@using Moss365.Core.Reporting
+@* Guest renewal (R14, 0.37): every guest has a sponsor who confirms each year that the guest is still needed. Asking
+   the sponsors is a plan of mails; a guest that is no longer needed is disabled (a plan; never deleted here). *@
+
+<h1>Gasten verlengen</h1>
+
+<p class="kb-zacht">
+    Elke gast heeft een sponsor die elk jaar bevestigt dat de gast nog nodig is. Anders blijven gasten voor altijd.
+    De sponsors vragen is een plan met mails; wie niet meer nodig is, schakel je uit (ook een plan, terug te draaien).
+</p>
+
+<section class="kb-kaart">
+    <h2>Te bevestigen (@Due.Count)</h2>
+    <label>Elke <input class="kb-invoer kb-smal" type="number" min="1" max="36" @bind="months" aria-label="Maanden" /> maanden bevestigen</label>
+    <table class="kb-tabel">
+        <thead><tr><th></th><th>Gast</th><th>Sponsor (e-mailadres)</th><th>Waarom</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var g in Due)
+            {
+                var id = g.Guest.Entra!.Id;
+                <tr>
+                    <td><input type="checkbox" checked="@chosen.Contains(id)" aria-label="@g.Guest.Name" @onchange="e => Toggle(id, e.Value is true)" /></td>
+                    <td><a href="@Searcher.Link(g.Guest)">@g.Guest.Name</a> <span class="kb-zacht">@g.Guest.Upn</span></td>
+                    <td><input class="kb-invoer" value="@g.Sponsor" aria-label="@($"Sponsor {g.Guest.Name}")" disabled="@(!CanEdit)" @onchange="e => SetSponsor(id, e.Value?.ToString())" /></td>
+                    <td class="kb-zacht">@g.Reason</td>
+                    <td>@if (CanEdit) { <button class="kb-knop kb-klein" @onclick="() => Confirm(id)">Bevestigd</button> }</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (CanEdit)
+    {
+        <button class="kb-knop" disabled="@(chosen.Count == 0 || !State.Can(Permission.Helpdesk))" @onclick="Ask">Sponsors mailen (@chosen.Count)</button>
+    }
+    @if (State.Can(Permission.Manage) && !State.IsHistoric)
+    {
+        <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="Disable">Gasten uitschakelen (@chosen.Count)</button>
+    }
+</section>
+
+@if (outcome is not null)
+{
+    @foreach (var e in outcome.Errors) { <div class="kb-melding">@e</div> }
+    @if (outcome.Plan.Count > 0) { <PlanView Plan="outcome.Plan" Context="Gasten verlengen" Title="@title" /> }
+}
+
+@code {
+    private int months = 12;
+    private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
+    private Moss365.Core.Changes.PlanOutcome? outcome;
+    private string title = string.Empty;
+
+    private bool CanEdit => State.Can(Permission.InviteGuests) && !State.IsHistoric;
+
+    private IReadOnlyList<GuestDue> Due => GuestRenewal.Due(State.Data, State.GuestReviews(), DateTimeOffset.Now, Math.Clamp(months, 1, 36));
+
+    private void Toggle(string id, bool on)
+    {
+        if (on) { chosen.Add(id); } else { chosen.Remove(id); }
+        outcome = null;
+    }
+
+    private void SetSponsor(string id, string? sponsor) => State.SaveGuestReviews(GuestRenewal.SetSponsor(State.GuestReviews(), id, sponsor ?? string.Empty));
+
+    private void Confirm(string id)
+    {
+        State.SaveGuestReviews(GuestRenewal.Confirm(State.GuestReviews(), id, State.User, DateTimeOffset.Now));
+        chosen.Remove(id);
+    }
+
+    private void Ask()
+    {
+        title = "Sponsors mailen";
+        outcome = GuestRenewal.AskSponsors(Due.Where(g => chosen.Contains(g.Guest.Entra!.Id)), GuestRenewal.DefaultQuestion);
+    }
+
+    private void Disable()
+    {
+        title = "Gasten uitschakelen";
+        outcome = GuestRenewal.Disable(Due.Where(g => chosen.Contains(g.Guest.Entra!.Id)).Select(g => g.Guest));
+    }
+}

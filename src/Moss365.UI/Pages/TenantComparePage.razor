@@ -1,0 +1,80 @@
+@page "/tenantvergelijking"
+@layout SettingsLayout
+@using Moss365.Core.Reporting
+@using Moss365.Core.Storage
+@inject IServiceProvider Services
+@* Compare tenants (R14, 0.37): the Conditional Access baseline and the settings of Moss365 of this tenant against
+   another one, only the differences. Nothing is stored or mixed: each tenant keeps its own database. *@
+@inject ManagementState State
+
+<h1>Tenants vergelijken</h1>
+
+<p class="kb-zacht">
+    Dezelfde Conditional Access-basis en instellingen in elke tenant? Hier zie je de verschillen tussen @State.Tenant.Name en een andere tenant:
+    beleiden op naam (status en de belangrijkste instellingen, zonder gebruikers of groepen) en de instellingen van Moss365. Er wordt niets bewaard.
+</p>
+
+@if (Hub is null || Others.Count == 0)
+{
+    <div class="kb-melding">Er is geen andere tenant om mee te vergelijken. Voeg er een toe bij <a href="tenants">Tenants</a>.</div>
+}
+else
+{
+    <label>Vergelijk met
+        <select class="kb-invoer" @onchange="e => Compare(e.Value?.ToString())">
+            <option value=""></option>
+            @foreach (var t in Others) { <option value="@t.Id">@t.Name</option> }
+        </select>
+    </label>
+    @if (message is not null) { <div class="kb-melding">@message</div> }
+    @if (differences is not null)
+    {
+        @if (differences.Count == 0)
+        {
+            <p>Geen verschillen.</p>
+        }
+        else
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>Onderdeel</th><th>Wat</th><th>@State.Tenant.Name</th><th>@other</th></tr></thead>
+                <tbody>
+                    @foreach (var d in differences)
+                    {
+                        <tr><td>@d.Area</td><td>@d.Item</td><td>@d.This</td><td>@d.Other</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+
+@code {
+    private IReadOnlyList<TenantDifference>? differences;
+    private string? message;
+    private string? other;
+
+    private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
+
+    private IReadOnlyList<TenantInfo> Others => Hub?.Tenants.Where(t => t.Id != State.Tenant.Id).ToList() ?? new List<TenantInfo>();
+
+    private void Compare(string? id)
+    {
+        differences = null;
+        message = null;
+        if (Hub is null || Others.FirstOrDefault(t => t.Id == id) is not { } tenant)
+        {
+            return;
+        }
+
+        try
+        {
+            var state = Hub.Open(tenant);
+            other = tenant.Name;
+            differences = TenantComparison.Compare(State.Data, State.Config, state.Data, state.Config);
+        }
+        catch (TenantLockedException)
+        {
+            message = $"{tenant.Name} is versleuteld en nog niet ontgrendeld: open die tenant eerst.";
+        }
+    }
+}

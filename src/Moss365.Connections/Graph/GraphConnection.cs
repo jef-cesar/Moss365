@@ -388,6 +388,48 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
     }
 
+    // ------------------------------------------------------------------ service health (0.37)
+
+    public async Task<Core.Reporting.ServiceHealthReading?> ReadServiceHealthAsync(CancellationToken cancel)
+    {
+        List<Core.Reporting.ServiceStatus> services;
+        List<Core.Reporting.ServiceIssue> issues;
+        try
+        {
+            services = (await _client.GetAllAsync("/admin/serviceAnnouncement/healthOverviews?$select=service,status", cancel))
+                .Select(s => new Core.Reporting.ServiceStatus(S(s, "service"), S(s, "status"))).OrderBy(s => s.Service, StringComparer.OrdinalIgnoreCase).ToList();
+            issues = (await _client.GetAllAsync("/admin/serviceAnnouncement/issues?$filter=isResolved eq false", cancel))
+                .Select(i => new Core.Reporting.ServiceIssue(S(i, "id"), S(i, "title"), S(i, "service"), S(i, "status"), S(i, "classification"), Date(i, "startDateTime"), Date(i, "lastModifiedDateTime")))
+                .OrderByDescending(i => i.LastUpdate).ToList();
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
+        {
+            return null;
+        }
+
+        var messages = new List<Core.Reporting.ServiceMessage>();
+        string? note = null;
+        try
+        {
+            var page = await _client.GetAsync("/admin/serviceAnnouncement/messages?$top=30&$orderby=lastModifiedDateTime desc", cancel);
+            if (page.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var m in v.EnumerateArray())
+                {
+                    var services2 = m.TryGetProperty("services", out var s2) && s2.ValueKind == JsonValueKind.Array
+                        ? string.Join(", ", s2.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString())) : string.Empty;
+                    messages.Add(new Core.Reporting.ServiceMessage(S(m, "id"), S(m, "title"), S(m, "category"), services2, Date(m, "startDateTime"), Date(m, "actionRequiredByDateTime")));
+                }
+            }
+        }
+        catch (GraphError)
+        {
+            note = "Het berichtencentrum is niet leesbaar (recht ServiceMessage.Read.All; voer Tenant inrichten opnieuw uit).";
+        }
+
+        return new Core.Reporting.ServiceHealthReading(services, issues, messages, note);
+    }
+
     // ------------------------------------------------------------------ devices, Teams and SharePoint (0.36)
 
     public async Task<IReadOnlyList<Core.Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel)

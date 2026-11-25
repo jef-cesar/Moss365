@@ -16,6 +16,11 @@
 
 <p>Huidige gegevens: <strong>@State.Data.Origin</strong>@if (State.LoadedOn is { } t) { <text>, geladen om @t.ToString("HH:mm")</text> }</p>
 
+@if (State.HasMicrosoft365)
+{
+    <ServiceHealthCard />
+}
+
 <section class="kb-kaart">
     <h2>Inventaris</h2>
     @if (State.Folders.Count == 0 && State.PreferenceFolder is null)

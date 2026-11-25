@@ -2,6 +2,30 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.37.0
+
+Reporting and working as a team: step R14 of the [roadmap](docs/roadmap-1.0.md).
+
+- **Status van Microsoft 365** on the start screen: which services have a problem, the open incidents and advisories,
+  and the messages of the message center that ask for an action before a date. "Is it us or Microsoft?"
+- **Rapporten** (Inzicht): a report for the last month, the last quarter or dates you choose, built from the stored
+  history of the tenant, so also for a period in the past: the indicators at the start and the end, the changes from
+  the change log (succeeded and failed), data quality and the standards. **Saved as HTML** (prints well as PDF) or
+  **CSV** for Excel; saving goes to the access log.
+- **Datakwaliteit**: per department, how many active employees have a job title, office, manager and phone, with a
+  score; click a department to see who misses what.
+- **Normen**: the security checks mapped to the measures of **NIS2 (article 21)** and the **CIS Controls v8**, with the
+  evidence Moss365 keeps (change log, snapshots). Evidence, not a certificate.
+- **Gasten verlengen** (Mensen): every guest gets a sponsor who confirms each year that the guest is still needed.
+  **Sponsors mailen** (one mail per sponsor) and **Gasten uitschakelen** are plans; nothing is deleted.
+- **Aanvragen** (Werk): HR or a department head asks for a new colleague (with job profile and start date) or announces
+  a departure. The administrator approves or rejects (in the change log); after approval **Plan maken** opens Nieuwe
+  gebruiker filled in, or Uitstroom for the person who leaves.
+- **Tenants vergelijken** (Instellingen, Alle tenants): the Conditional Access policies by name (state and the main
+  settings, without users or groups) and the settings of Moss365 of this tenant against another one, only the
+  differences. Nothing is stored or mixed.
+- New read permissions: ServiceHealth.Read.All and ServiceMessage.Read.All; run **Tenant inrichten** again.
+
 ## 0.36.0
 
 Devices, Teams and SharePoint: step R13 of the [roadmap](docs/roadmap-1.0.md).

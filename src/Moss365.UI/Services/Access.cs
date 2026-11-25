@@ -21,11 +21,12 @@ public static class Access
             "spiegel" or "functieprofielen" => Permission.CompareMirror,
             "nieuw" or "uitstroom" or "gepland" or "opvolging" => Permission.Actions,
             "opkuis" => Permission.Manage,
-            "logonscripts" or "toestellen" or "samenwerking" => Permission.View,
+            "logonscripts" or "toestellen" or "samenwerking" or "rapporten" or "aanvragen" => Permission.View,
+            "gastenverlenging" => Permission.InviteGuests,
             "sleutels" or "wachtwoorden" => Permission.Helpdesk,
             "scripts" => Permission.Scripts,
             "logboek" => Permission.ChangeLogOwn,
-            "organisatie" or "tenants" or "inrichten" or "databank" => Permission.Settings,
+            "organisatie" or "tenants" or "tenantvergelijking" or "inrichten" or "databank" => Permission.Settings,
             _ => Permission.View,
         };
     }
@@ -42,7 +43,7 @@ public static class Access
             "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "beveiliging" or "conditional-access" or "inrichten" => hasMicrosoft365,
             "vergelijk" => hasAd && hasMicrosoft365,
             "logonscripts" or "wachtwoorden" => hasAd,
-            "licenties" or "samenwerking" => hasMicrosoft365,
+            "licenties" or "samenwerking" or "gastenverlenging" => hasMicrosoft365,
             "nieuw" => hasAd || hasMicrosoft365, // in AD, or in the cloud (0.31)
             _ => true,
         };

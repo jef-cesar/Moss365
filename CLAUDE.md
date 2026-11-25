@@ -5,7 +5,7 @@ under the EUPL-1.2. Public repository: never add personal or organisation data (
 check in `.github/workflows/privacy.yml` refuses e-mail addresses outside the example domains, public IPs and a secret
 blocklist). The maintainer does not write code: changes must be tested, documented and built by GitHub Actions.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R13 are done (0.36.0), R14 next: code in English, one database
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R14 are done (0.37.0), R15 next: code in English, one database
 per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. Open work is in the
 GitHub issues (label `roadmap` per step, `limitation`, `test`). The interface texts are still Dutch and move to dictionaries in R15; the inventory
 keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots). Script headers are English since 0.18 (`Name:`, `Version:`, ...); the
@@ -71,6 +71,10 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   Devices, Teams and SharePoint (0.36): `Devices/DeviceAnalysis.cs` (stale computers, systems, Intune, groups without
   owner/with guests/unused, sites); reads `IAdConnection.ReadComputersAsync`, `IGraphConnection.ReadIntuneDevicesAsync`/
   `ReadCollaborationAsync` (usage reports from the beta endpoint, JSON); disabling computers is `AdDisableAccount`.
+  Reporting (0.37, `Reporting/`): `PeriodReport` (from `ReadKpiSnapshot` and the change log; `ToHtml`/`ToCsv`, CSV never
+  starts a cell with a formula), `DataQuality`, `Standards` (checks mapped to NIS2/CIS), `GuestRenewal` (document
+  `gastenverlenging`), `StaffRequests` (document `aanvragen`; decisions are change log lines with action `Request`),
+  `ServiceHealth` (`IGraphConnection.ReadServiceHealthAsync`), `TenantComparison` (only differences, nothing stored).
 - Menu (0.21, `UI/Services/MenuModel.cs`): the main menu groups and the settings side bar; a new page is added there
   (and to `Access` for its role). Settings pages use `@layout SettingsLayout`; Ctrl+K searches `MenuModel.AllPages`.
 - `CHANGELOG.md`: a release is created when `Version` in `Directory.Build.props` has no release yet; the text comes

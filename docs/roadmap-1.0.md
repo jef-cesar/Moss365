@@ -399,6 +399,13 @@ DeviceManagementManagedDevices.Read.All, Reports.Read.All, SharePointTenantSetti
 | **Onboarding and offboarding as a request**: a form for HR or the department head, the admin approves and the plan follows from the job profile | Fewer e-mails, everything in the change log |
 | **Compare tenants**: the same Conditional Access baseline and settings in every tenant, with the deviations | For those managing several organisations |
 
+Done in 0.37 (R14): service health on the start screen, the Rapporten screen (report per month, quarter or chosen
+dates from the stored history, as HTML or CSV, with data quality and the checks mapped to NIS2 article 21 and the CIS
+Controls v8), Gasten verlengen (sponsor per guest, yearly confirmation, mails and disabling as plans), Aanvragen
+(onboarding and offboarding requests, approval in the change log, the plan on Nieuwe gebruiker or Uitstroom) and
+Tenants vergelijken (CA policies by name without ids, settings; nothing stored). New read permissions:
+ServiceHealth.Read.All and ServiceMessage.Read.All.
+
 ### Languages (R15)
 
 | Proposal | Why |
