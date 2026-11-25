@@ -3,18 +3,18 @@
 @* The version of Moss365 and its updates (0.21: its own page in the settings). *@
 @inject ManagementState State
 
-<h1>Versie en updates</h1>
+<h1>@T["menu.updates"]</h1>
 
 <section class="kb-kaart" id="over">
-    <h2>Over Moss365</h2>
-    <p>Versie <strong>@ManagementState.AppVersion</strong>.
+    <h2>@T["about-and-updates.about-moss365"]</h2>
+    <p>@T["update-panel.version"] <strong>@ManagementState.AppVersion</strong>.
         @if (State.UpdateAvailable)
         {
             <span class="kb-label kb-label-let">versie @State.Update!.NewestVersion beschikbaar</span>
         }
         else if (State.Update is { NewestVersion: not null })
         {
-            <span class="kb-zacht">Dit is de nieuwste versie.</span>
+            <span class="kb-zacht">@T["about-and-updates.this-is-the-newest-version"]</span>
         }
         else if (State.Update?.Message is { } message)
         {
@@ -22,17 +22,16 @@
         }
     </p>
     <p class="kb-zacht">
-        Elke versie staat als release op GitHub: <code>Moss365.Desktop-stable-Setup.exe</code> (installeert voor jouw account
-        en werkt zichzelf bij) en een zip. Je gegevens staan apart in <code>%LOCALAPPDATA%\Moss365</code> en blijven bewaard.
+        @Html("about.releases")
     </p>
     <div class="kb-filters">
         <CopyField Value="@(State.Update?.Link ?? State.ReleasesLink)" Label="Link naar de releases" />
-        <button class="kb-knop" disabled="@searches" @onclick="SearchUpdate">Nu zoeken</button>
+        <button class="kb-knop" disabled="@searches" @onclick="SearchUpdate">@T["update-panel.search-now"]</button>
     </div>
-    <label><input type="checkbox" checked="@State.Settings.SearchUpdates" @onchange="SetUpdateSearch" /> Bij het starten zoeken naar een nieuwe versie</label>
+    <label><input type="checkbox" checked="@State.Settings.SearchUpdates" @onchange="SetUpdateSearch" /> @T["about-and-updates.search-for-a-new-version"]</label>
     <p>
-        Organisatie: <code>@(State.ConfigSource ?? "niet gevonden")</code>
-        (@State.Config.Populations.Count soorten, @State.Config.Departments.Count diensten, @State.Config.Offices.Count kantoren)
+        @T["about.organisation"] <code>@(State.ConfigSource ?? T["start.notfound"])</code>
+        @T.Format("about.counts", State.Config.Populations.Count, State.Config.Departments.Count, State.Config.Offices.Count)
         @if (State.ConfigWarning is { } w) { <span class="kb-label kb-rood">@w</span> }
     </p>
 </section>

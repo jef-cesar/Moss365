@@ -3,17 +3,16 @@
 @inject ManagementState State
 @inject NavigationManager Nav
 
-<h1>Uitstroom</h1>
+<h1>@T["menu.uitstroom"]</h1>
 
 <p class="kb-zacht">
     @if (State.HasAd)
     {
-        <text>Het account wordt uitgeschakeld en naar <code>@(State.Config.Offboarding?.Ou ?? "(geen OU ingesteld)")</code> verplaatst,
-        nooit verwijderd.</text>
+        @Html("offboarding.moved", State.Config.Offboarding?.Ou ?? T["offboarding.noou"])
     }
     else
     {
-        <text>Het account wordt uitgeschakeld (aanmelden geblokkeerd), nooit verwijderd.</text>
+        <text>@T["offboarding.the-account-is-disabled-sign"]</text>
     } Bevoorrechte groepen worden altijd verwijderd. Kies hieronder wat er verder moet gebeuren; in het plan
     kan je elke stap nog aan- of uitvinken.
 </p>
@@ -24,35 +23,34 @@
 {
     @if (!person.Enabled)
     {
-        <div class="kb-melding">Dit account is al uitgeschakeld.</div>
+        <div class="kb-melding">@T["offboarding.this-account-is-already-disabled"]</div>
     }
 
     <section class="kb-kaart">
-        <h2>Opties</h2>
+        <h2>@T["variables-editor.options"]</h2>
         <div class="kb-raster">
-            <label>Datum uit dienst <input class="kb-invoer" type="date" @bind="options.Date" @bind:after="Clear" /></label>
+            <label>@T["offboarding.leaving-date"] <input class="kb-invoer" type="date" @bind="options.Date" @bind:after="Clear" /></label>
         </div>
         <div class="kb-keuzelijst">
-            <label><input type="checkbox" @bind="options.Disable" @bind:after="Clear" /> Account uitschakelen</label>
+            <label><input type="checkbox" @bind="options.Disable" @bind:after="Clear" /> @T["offboarding.disable-account"]</label>
             @if (State.HasAd)
             {
-                <label><input type="checkbox" @bind="options.CompleteDescription" @bind:after="Clear" /> Datum in de omschrijving zetten</label>
-                <label><input type="checkbox" @bind="options.Move" @bind:after="Clear" /> Verplaatsen naar de uitstroom-OU</label>
+                <label><input type="checkbox" @bind="options.CompleteDescription" @bind:after="Clear" /> @T["offboarding.put-the-date-in-the"]</label>
+                <label><input type="checkbox" @bind="options.Move" @bind:after="Clear" /> @T["offboarding.move-to-the-offboarding-ou"]</label>
             }
-            <label><input type="checkbox" @bind="options.RevokeSessions" @bind:after="Clear" /> Aanmeldsessies intrekken</label>
-            @if (State.HasAd) { <label><input type="checkbox" @bind="options.AdRemoveGroups" @bind:after="Clear" /> Uit alle AD-groepen halen</label> }
-            <label><input type="checkbox" @bind="options.RemoveCloudGroups" @bind:after="Clear" /> Uit alle cloudgroepen halen</label>
-            <label><input type="checkbox" @bind="options.ToSharedMailbox" @bind:after="Clear" /> Postvak omzetten naar een gedeeld postvak</label>
-            <label><input type="checkbox" @bind="options.RemoveLicences" @bind:after="Clear" /> Licenties verwijderen</label>
+            <label><input type="checkbox" @bind="options.RevokeSessions" @bind:after="Clear" /> @T["offboarding.revoke-sign-in-sessions"]</label>
+            @if (State.HasAd) { <label><input type="checkbox" @bind="options.AdRemoveGroups" @bind:after="Clear" /> @T["offboarding.remove-from-all-ad-groups"]</label> }
+            <label><input type="checkbox" @bind="options.RemoveCloudGroups" @bind:after="Clear" /> @T["offboarding.remove-from-all-cloud-groups"]</label>
+            <label><input type="checkbox" @bind="options.ToSharedMailbox" @bind:after="Clear" /> @T["offboarding.convert-mailbox-to-a-shared"]</label>
+            <label><input type="checkbox" @bind="options.RemoveLicences" @bind:after="Clear" /> @T["offboarding.remove-licences"]</label>
         </div>
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
+            <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
         </div>
         <details class="kb-later">
-            <summary>Later uitvoeren (bv. op de laatste werkdag)</summary>
+            <summary>@T["offboarding.run-later-e-g-on"]</summary>
             <p class="kb-zacht">
-                Op het gekozen moment staat de uitstroom bij <a href="gepland">Gepland</a> klaar. De app berekent het plan dan
-                opnieuw uit de gegevens van dat moment (laad eerst live) en voert niets uit zonder jouw bevestiging.
+                @Html("offboarding.scheduled")
             </p>
             <Schedule Default="options.Date" Selected="PlanIn" />
             @if (scheduled is not null) { <div class="kb-melding kb-goed">Ingepland op @scheduled.Value.ToString("dd/MM/yyyy HH:mm").</div> }

@@ -3,8 +3,8 @@
 
 @if (script is null)
 {
-    <h1>Script niet gevonden</h1>
-    <p><a href="scripts">Terug naar de scripts</a></p>
+    <h1>@T["start-script.script-not-found"]</h1>
+    <p><a href="scripts">@T["script-run-detail.back-to-the-scripts"]</a></p>
 }
 else
 {
@@ -24,23 +24,22 @@ else
     <ScriptRunPanel @key="script.FilePath" Script="script" Scheduled="Scheduled" BeginValues="State.ScriptPrefill" ValuesChanged="w => current = w" />
 
     <section class="kb-kaart">
-        <h2>Inplannen</h2>
+        <h2>@T["schedule.schedule"]</h2>
         <p class="kb-zacht">
-            Op het moment zelf verschijnt een melding (menu Acties &gt; Gepland) en start jij de run; de app voert nooit iets vanzelf uit.
-            De waarden komen uit het formulier hierboven; een relatieve datum (bv. begin werkjaar) wordt bij elke run opnieuw berekend.
+            @T["start-script.at-the-moment-itself-a"]
         </p>
         <div class="kb-filters">
-            <label>Wanneer <input class="kb-invoer" type="datetime-local" @bind="whenValue" /></label>
+            <label>@T["message-trace-card.when"] <input class="kb-invoer" type="datetime-local" @bind="whenValue" /></label>
             <label>
-                Herhalen
+                @T["start-script.repeat"]
                 <select class="kb-invoer" @bind="recurrence">
-                    <option value="@Recurrence.Once">niet</option>
-                    <option value="@Recurrence.Daily">elke dag</option>
-                    <option value="@Recurrence.Weekly">elke week</option>
-                    <option value="@Recurrence.Monthly">elke maand</option>
+                    <option value="@Recurrence.Once">@T["start-script.not"]</option>
+                    <option value="@Recurrence.Daily">@T["start-script.every-day"]</option>
+                    <option value="@Recurrence.Weekly">@T["start-script.every-week"]</option>
+                    <option value="@Recurrence.Monthly">@T["start-script.every-month"]</option>
                 </select>
             </label>
-            <button class="kb-knop" @onclick="Plan">Inplannen</button>
+            <button class="kb-knop" @onclick="Plan">@T["schedule.schedule"]</button>
         </div>
         @if (planMessage is not null)
         {
@@ -57,7 +56,7 @@ else
         else
         {
             <table class="kb-tabel">
-                <thead><tr><th>Wanneer</th><th>Wie</th><th>Resultaat</th><th>Waarden</th></tr></thead>
+                <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["script-result.who"]</th><th>@T["plan.result"]</th><th>@T["script-result.values"]</th></tr></thead>
                 <tbody>
                     @foreach (var r in runs)
                     {

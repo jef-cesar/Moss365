@@ -1,19 +1,18 @@
 @page "/postvakken/nieuw"
 @inject ManagementState State
 
-<h1>Nieuw gedeeld postvak</h1>
+<h1>@T["new-mailbox.new-shared-mailbox"]</h1>
 
 <p class="kb-zacht">
-    Het plan maakt het postvak aan (zonder licentie), dan de toegangsgroep <code>SG-SM-&lt;adres&gt;-Full</code>, geeft die groep
-    FullAccess en SendAs en maakt de gekozen mensen lid. Lukt een stap niet, dan worden de stappen die erop wachten overgeslagen.
+    @Html("new-mailbox.intro")
 </p>
 
 <section class="kb-kaart">
-    <h2>Gegevens</h2>
+    <h2>@T["new-mailbox.details"]</h2>
     <div class="kb-raster">
-        <label>Weergavenaam <input class="kb-invoer" placeholder="bv. Jeugddienst" @bind="request.DisplayName" @bind:after="Clear" /></label>
-        <label>Adres (voor de @@) <input class="kb-invoer" placeholder="bv. jeugddienst" @bind="request.LocalPart" @bind:after="Clear" /></label>
-        <label>Domein
+        <label>@T["edit-user.display-name"] <input class="kb-invoer" placeholder="@T["new-mailbox.e-g-youth-service"]" @bind="request.DisplayName" @bind:after="Clear" /></label>
+        <label>Adres (voor de @@) <input class="kb-invoer" placeholder="@T["new-mailbox.e-g-youthservice"]" @bind="request.LocalPart" @bind:after="Clear" /></label>
+        <label>@T["new-mailbox.domain"]
             <select class="kb-invoer" @bind="request.Domain" @bind:after="Clear">
                 @foreach (var d in Domains)
                 {
@@ -24,7 +23,7 @@
     </div>
     @if (request.LocalPart.Trim().Length > 0)
     {
-        <p class="kb-zacht">Adres <strong>@($"{request.LocalPart.Trim().ToLowerInvariant()}@{request.Domain}")</strong>, toegangsgroep <strong>@($"SG-SM-{request.LocalPart.Trim().ToLowerInvariant()}-Full")</strong>.</p>
+        <p class="kb-zacht">@Html("new-mailbox.preview", $"{request.LocalPart.Trim().ToLowerInvariant()}@{request.Domain}", $"SG-SM-{request.LocalPart.Trim().ToLowerInvariant()}-Full")</p>
     }
 
     <ObjectPicker Label="Wie krijgt toegang?" Kinds="Persons" Selected="Add" />
@@ -39,7 +38,7 @@
     }
 
     <div class="kb-filters">
-        <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
+        <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
     </div>
 </section>
 

@@ -2,12 +2,10 @@
 @inject ManagementState State
 @inject NavigationManager Nav
 
-<h1>Spiegelgebruiker</h1>
+<h1>@T["menu.spiegel"]</h1>
 
 <p class="kb-zacht">
-    Kies een referentiegebruiker (de spiegel) en een doelgebruiker. De app toont per groep@(State.HasAd && State.HasMicrosoft365 ? ", in AD en in de cloud," : null) wat er zou
-    moeten gebeuren en via welke weg. Met <strong>Plan maken</strong> zie je eerst de wijzigingen; er gebeurt pas iets na
-    bevestiging. Bevoorrechte en dynamische groepen worden nooit gekopieerd.
+    @Html("mirror.intro", State.HasAd && State.HasMicrosoft365 ? T["mirror.both"] : string.Empty)
 </p>
 
 <div class="kb-kolommen">
@@ -19,7 +17,7 @@
 {
     @if (reference.Key == target.Key)
     {
-        <div class="kb-melding">Referentie en doel zijn dezelfde gebruiker.</div>
+        <div class="kb-melding">@T["mirror.reference-and-target-are-the"]</div>
     }
     else
     {
@@ -31,10 +29,10 @@
         </div>
 
         <div class="kb-filters">
-            <label><input type="checkbox" @bind="hideAlreadyMember" /> Verberg "Reeds lid"</label>
+            <label><input type="checkbox" @bind="hideAlreadyMember" /> @T["mirror.hide-already-member"]</label>
             @if (State.Can(Permission.Actions))
             {
-                <button class="kb-knop kb-primair" disabled="@(!rules.Any(r => r.Status == MirrorStatus.Add))" @onclick="MakePlan">Plan maken</button>
+                <button class="kb-knop kb-primair" disabled="@(!rules.Any(r => r.Status == MirrorStatus.Add))" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
             }
         </div>
 
@@ -43,7 +41,7 @@
             <section class="kb-kaart">
                 <h2>@(layer == "AD" ? "On-prem AD" : "Cloud (Entra en Exchange)")</h2>
                 <table class="kb-tabel">
-                    <thead><tr><th>Groep</th><th>Soort</th><th>Status</th><th>Via</th><th>Opmerking</th></tr></thead>
+                    <thead><tr><th>@T["nested-groups.group"]</th><th>@T["nested-groups.kind"]</th><th>@T["service-health-card.status"]</th><th>@T["mirror.via"]</th><th>@T["mirror.note"]</th></tr></thead>
                     <tbody>
                         @foreach (var r in rules.Where(r => r.Layer == layer && (!hideAlreadyMember || r.Status != MirrorStatus.AlreadyMember)))
                         {

@@ -4,18 +4,17 @@
 @* Guest renewal (R14, 0.37): every guest has a sponsor who confirms each year that the guest is still needed. Asking
    the sponsors is a plan of mails; a guest that is no longer needed is disabled (a plan; never deleted here). *@
 
-<h1>Gasten verlengen</h1>
+<h1>@T["menu.gastenverlenging"]</h1>
 
 <p class="kb-zacht">
-    Elke gast heeft een sponsor die elk jaar bevestigt dat de gast nog nodig is. Anders blijven gasten voor altijd.
-    De sponsors vragen is een plan met mails; wie niet meer nodig is, schakel je uit (ook een plan, terug te draaien).
+    @T["guest-renewal.every-guest-has-a-sponsor"]
 </p>
 
 <section class="kb-kaart">
     <h2>Te bevestigen (@Due.Count)</h2>
-    <label>Elke <input class="kb-invoer kb-smal" type="number" min="1" max="36" @bind="months" aria-label="Maanden" /> maanden bevestigen</label>
+    <label>@T["guest-renewal.months"] <input class="kb-invoer kb-smal" type="number" min="1" max="36" @bind="months" aria-label="@T["guest-renewal.months"]" /></label>
     <table class="kb-tabel">
-        <thead><tr><th></th><th>Gast</th><th>Sponsor (e-mailadres)</th><th>Waarom</th><th></th></tr></thead>
+        <thead><tr><th></th><th>@T["guest-renewal.guest"]</th><th>@T["guest-renewal.sponsor-e-mail-address"]</th><th>@T["nested-groups.why"]</th><th></th></tr></thead>
         <tbody>
             @foreach (var g in Due)
             {
@@ -25,7 +24,7 @@
                     <td><a href="@Searcher.Link(g.Guest)">@g.Guest.Name</a> <span class="kb-zacht">@g.Guest.Upn</span></td>
                     <td><input class="kb-invoer" value="@g.Sponsor" aria-label="@($"Sponsor {g.Guest.Name}")" disabled="@(!CanEdit)" @onchange="e => SetSponsor(id, e.Value?.ToString())" /></td>
                     <td class="kb-zacht">@g.Reason</td>
-                    <td>@if (CanEdit) { <button class="kb-knop kb-klein" @onclick="() => Confirm(id)">Bevestigd</button> }</td>
+                    <td>@if (CanEdit) { <button class="kb-knop kb-klein" @onclick="() => Confirm(id)">@T["guest-renewal.confirmed"]</button> }</td>
                 </tr>
             }
         </tbody>

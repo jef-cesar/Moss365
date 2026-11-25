@@ -2,7 +2,7 @@
 @inherits RefreshingPage
 @inject NavigationManager Nav
 
-<h1>Scripts</h1>
+<h1>@T["menu.scripts"]</h1>
 
 <p class="kb-zacht">
     PowerShell-scripts met de aanmelding van de app: je meldt niet opnieuw aan. Ingebouwde scripts komen met de app mee;
@@ -12,19 +12,19 @@
 
 @if (!State.ScriptsAvailable)
 {
-    <div class="kb-melding">Scripts draaien enkel in de Windows-app (met PowerShell). Hier kan je ze wel bekijken.</div>
+    <div class="kb-melding">@T["scripts-overview.scripts-only-run-in-the"]</div>
 }
 
 @if (State.ScriptRun is { Done: false } busy)
 {
-    <div class="kb-melding">Er draait een script: <strong>@busy.Run.Name</strong>. <a href="@RunLink(busy.Run)">Bekijken</a></div>
+    <div class="kb-melding">@Html("scripts.running", busy.Run.Name) <a href="@RunLink(busy.Run)">@T["script-run-panel.view"]</a></div>
 }
 
 <div class="kb-filters">
-    <a class="kb-knop kb-primair" href="scripts/bewerken">+ Nieuw script</a>
-    <a class="kb-knop" href="scripts/bewerken?eenmalig=1">Eenmalig script</a>
+    <a class="kb-knop kb-primair" href="scripts/bewerken">@T["scripts-overview.new-script"]</a>
+    <a class="kb-knop" href="scripts/bewerken?eenmalig=1">@T["scripts-overview.one-off-script"]</a>
     <label class="kb-knop kb-bestandknop">
-        Importeren (.ps1)
+        @T["scripts-overview.import-ps1"]
         <InputFile OnChange="Import" accept=".ps1" />
     </label>
 </div>
@@ -39,21 +39,21 @@
 <LibraryPanel />
 
 <section class="kb-kaart">
-    <h2>Laatste runs</h2>
+    <h2>@T["scripts-overview.last-runs"]</h2>
     @if (runs.Count == 0)
     {
-        <p class="kb-zacht">Nog geen runs.</p>
+        <p class="kb-zacht">@T["scripts-overview.no-runs-yet"]</p>
     }
     else
     {
         <table class="kb-tabel">
-            <thead><tr><th>Wanneer</th><th>Script</th><th>Wie</th><th>Resultaat</th></tr></thead>
+            <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["code-editor.script"]</th><th>@T["script-result.who"]</th><th>@T["plan.result"]</th></tr></thead>
             <tbody>
                 @foreach (var r in runs.Take(15))
                 {
                     <tr>
                         <td><a href="@RunLink(r)">@r.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</a></td>
-                        <td>@r.Name @if (r.Once) { <span class="kb-label">eenmalig</span> }</td>
+                        <td>@r.Name @if (r.Once) { <span class="kb-label">@T["script-result.one-off"]</span> }</td>
                         <td>@r.Who</td>
                         <td><RunLabel Run="r" /></td>
                     </tr>

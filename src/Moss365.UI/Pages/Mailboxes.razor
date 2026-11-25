@@ -3,13 +3,12 @@
 @inject NavigationManager Nav
 
 <div class="kb-titelbalk">
-    <h1>Gedeelde postvakken</h1>
-    @if (State.Can(Permission.Manage)) { <a class="kb-knop kb-primair" href="postvakken/nieuw">+ Nieuw gedeeld postvak</a> }
+    <h1>@T["menu.postvakken"]</h1>
+    @if (State.Can(Permission.Manage)) { <a class="kb-knop kb-primair" href="postvakken/nieuw">@T["mailboxes.new-shared-mailbox"]</a> }
 </div>
 
 <p class="kb-zacht">
-    Toegang hoort via de groep <code>SG-SM-&lt;adres&gt;-Full</code> te lopen (FullAccess en SendAs); rechtstreekse rechten op personen ruim
-    je op vanaf de pagina van het postvak. Actuele waarden, ook doorsturen en automatisch antwoord: <a href="verbindingen">Postvakken laden uit Exchange</a>.
+    @Html("mailboxes.intro")
 </p>
 
 
@@ -23,16 +22,16 @@
     }
     @{ var kunnen = All.Count(p => CanSignInText(p) == "ja"); }
     <button class="kb-tegel @(kunnen > 0 ? "kb-tegel-let" : null) @(z.SigninOnly ? "kb-actief" : null)" @onclick="() => { z.Kpi = null; z.SigninOnly = !z.SigninOnly; }">
-        <div class="kb-tegel-getal">@kunnen</div><div>kunnen aanmelden</div>
-        @if (kunnen > 0) { <div class="kb-status-let">⚠ nakijken</div> }
+        <div class="kb-tegel-getal">@kunnen</div><div>@T["mailboxes.can-sign-in"]</div>
+        @if (kunnen > 0) { <div class="kb-status-let">@T["mailboxes.check"]</div> }
     </button>
 </div>
 
 <KpiFilter Kpi="ActiveKpi" Count="KpiRows.Count" Shown="Items.Count" Cleared="() => z.Kpi = null" />
 
 <div class="kb-filters kb-plak">
-    <input class="kb-invoer kb-breed" placeholder="Zoek op naam of adres" @bind="z.Find" @bind:event="oninput" aria-label="Zoeken" />
-    <label><input type="checkbox" @bind="z.AlsoPlanning" /> Ook planningspostvakken</label>
+    <input class="kb-invoer kb-breed" placeholder="@T["mailboxes.search-by-name-or-address"]" @bind="z.Find" @bind:event="oninput" aria-label="@T["nav.search"]" />
+    <label><input type="checkbox" @bind="z.AlsoPlanning" /> @T["mailboxes.also-scheduling-mailboxes"]</label>
 </div>
 
 <KbTable Id="postvakken" Items="Items" Columns="columns" Selectable KeyOf="p => p.Smtp" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@($"{Items.Count} postvakken")"

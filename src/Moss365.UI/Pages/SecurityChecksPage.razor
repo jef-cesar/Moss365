@@ -4,34 +4,33 @@
 @* The security checks of R11 (0.34): each says OK, attention or problem, and "unknown" when the data is not enough.
    Everything reads only; changing is done in the screens for that (plans as always). *@
 
-<h1>Beveiligingscontroles</h1>
+<h1>@T["menu.controles"]</h1>
 
 <p class="kb-zacht">
-    Wat een aanvaller eerst zoekt, en wat er veranderde, ook buiten Moss365. Elke controle leest enkel; wat je wil aanpassen, doe je
-    in het scherm ervoor (als plan). Een controle zegt OK, aandacht of probleem, en "onbekend" als de gegevens niet volstaan.
+    @T["security-checks.what-an-attacker-looks-for"]
 </p>
 
 <div class="kb-filters">
-    <button class="kb-knop kb-primair" disabled="@busy" @onclick="All">Alles nakijken</button>
-    <label>Meldingen van de laatste
-        <select class="kb-invoer" @bind="days" aria-label="Dagen"><option value="1">dag</option><option value="7">7 dagen</option><option value="30">30 dagen</option></select>
+    <button class="kb-knop kb-primair" disabled="@busy" @onclick="All">@T["security-checks.check-everything"]</button>
+    <label>@T["security-checks.alerts"]
+        <select class="kb-invoer" @bind="days" aria-label="@T["security-checks.alerts"]"><option value="1">@T["security-checks.day"]</option><option value="7">@T["days.7"]</option><option value="30">@T["days.30"]</option></select>
     </label>
-    @if (State.HasMicrosoft365) { <label><input type="checkbox" @bind="rules" /> Ook inboxregels nakijken (traag)</label> }
+    @if (State.HasMicrosoft365) { <label><input type="checkbox" @bind="rules" /> @T["security-checks.also-check-inbox-rules-slow"]</label> }
     @if (busy) { <span class="kb-zacht">bezig: @running</span> }
 </div>
 
 <table class="kb-tabel">
-    <thead><tr><th>Controle</th><th>Status</th><th>Samenvatting</th><th></th></tr></thead>
+    <thead><tr><th>@T["security-checks.check"]</th><th>@T["service-health-card.status"]</th><th>@T["security-checks.summary"]</th><th></th></tr></thead>
     <tbody>
         @foreach (var (key, title) in State.SecurityCheckList())
         {
             var c = State.SecurityCheckResults.GetValueOrDefault(key);
             <tr>
                 <td><strong>@title</strong></td>
-                <td>@if (c is not null) { <span class="kb-label kb-controle-@c.Status.ToString().ToLowerInvariant()">@c.StatusText</span> } else { <span class="kb-zacht">nog niet</span> }</td>
+                <td>@if (c is not null) { <span class="kb-label kb-controle-@c.Status.ToString().ToLowerInvariant()">@c.StatusText</span> } else { <span class="kb-zacht">@T["security-checks.not-yet"]</span> }</td>
                 <td class="kb-zacht">@c?.Summary</td>
                 <td><span class="kb-filters">
-                    <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => Run(key)">Nakijken</button>
+                    <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => Run(key)">@T["library-panel.check"]</button>
                     @if (c is { Rows.Count: > 0 }) { <button class="kb-knop kb-klein" @onclick="() => open = open == key ? null : key">@(open == key ? "Verbergen" : $"Details ({c.Rows.Count})")</button> }
                 </span></td>
             </tr>
@@ -43,7 +42,7 @@
                             @foreach (var r in c.Rows.OrderByDescending(r => r.Status == Moss365.Core.Security.CheckStatus.Problem).ThenByDescending(r => r.Status == Moss365.Core.Security.CheckStatus.Attention))
                             {
                                 <tr>
-                                    <td><span class="kb-label kb-controle-@r.Status.ToString().ToLowerInvariant()">@(new SecurityCheck("", "", r.Status, "", Array.Empty<CheckRow>()).StatusText)</span></td>
+                                    <td><span class="kb-label kb-controle-@r.Status.ToString().ToLowerInvariant()">@StatusText(r.Status)</span></td>
                                     <td>@r.Object</td>
                                     <td>@if (r.Href is { Length: > 0 } href) { <a href="@href" target="_blank" rel="noopener">@r.Detail</a> } else { @r.Detail }</td>
                                 </tr>
@@ -58,7 +57,7 @@
 
 @if (State.HasAd && HealthScript is { } health)
 {
-    <p class="kb-zacht">AD-gezondheid (domeincontrollers, replicatie, FSMO-rollen, tijd): <a href="@($"scripts/starten/{Uri.EscapeDataString(health)}")">start het script AD-gezondheid</a>.</p>
+    <p class="kb-zacht">@Html("security-checks.health", $"scripts/starten/{Uri.EscapeDataString(health)}")</p>
 }
 
 @code {
@@ -91,4 +90,6 @@
             await Run(key);
         }
     }
+
+    private static string StatusText(Moss365.Core.Security.CheckStatus status) => new SecurityCheck("", "", status, "", Array.Empty<CheckRow>()).StatusText;
 }

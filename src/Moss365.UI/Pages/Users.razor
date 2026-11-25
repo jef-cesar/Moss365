@@ -3,12 +3,12 @@
 @inject NavigationManager Nav
 
 <div class="kb-titelbalk">
-    <h1>Gebruikers</h1>
-    @if (State.Can(Permission.Actions)) { <a class="kb-knop kb-primair" href="nieuw">+ Nieuwe gebruiker</a> }
+    <h1>@T["menu.gebruikers"]</h1>
+    @if (State.Can(Permission.Actions)) { <a class="kb-knop kb-primair" href="nieuw">@T["users.new-user"]</a> }
 </div>
 
 <KpiFilter Kpi="ActiveKpi" Count="KpiRows.Count" Shown="Filtered.Count" Cleared="() => z.Kpi = null">
-    @if (Cleanup is { } link) { <a class="kb-knop" href="@link">Opkuisronde voor deze accounts</a> }
+    @if (Cleanup is { } link) { <a class="kb-knop" href="@link">@T["users.clean-up-round-for-these"]</a> }
     @if (LicenceDifference is { } difference) { <span class="kb-zacht">@difference</span> }
 </KpiFilter>
 
@@ -16,16 +16,16 @@
     <input class="kb-invoer kb-breed" placeholder="@(State.HasAd ? "Zoek op naam, UPN, sAMAccountName, e-mail of dienst" : "Zoek op naam, UPN, e-mail of dienst")" @bind="z.Find" @bind:event="oninput" />
     @if (ActiveKpi is null)
     {
-        @if (State.HasMicrosoft365) { <label><input type="checkbox" @bind="z.WithGuests" /> Gasten tonen</label> }
-        <label><input type="checkbox" @bind="z.OnlyEnabled" /> Actieve gebruikers</label>
+        @if (State.HasMicrosoft365) { <label><input type="checkbox" @bind="z.WithGuests" /> @T["users.show-guests"]</label> }
+        <label><input type="checkbox" @bind="z.OnlyEnabled" /> @T["users.active-users"]</label>
         @if (State.HasAd && State.HasMicrosoft365)
         {
         <select class="kb-invoer" @bind="z.Source">
-            <option value="">Alle bronnen</option>
-            <option>AD + Entra</option>
-            <option>Alleen AD</option>
-            <option>Alleen Entra</option>
-            <option>Gast</option>
+            <option value="">@T["users.all-sources"]</option>
+            <option>@T["users.ad-entra"]</option>
+            <option>@T["users.only-ad"]</option>
+            <option>@T["users.only-entra"]</option>
+            <option>@T["guest-renewal.guest"]</option>
         </select>
         }
     }

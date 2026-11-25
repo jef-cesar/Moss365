@@ -2,30 +2,29 @@
 @inherits RefreshingPage
 
 <div class="kb-titelbalk">
-    <h1>Gastgebruikers</h1>
-    @if (State.Can(Permission.InviteGuests)) { <a class="kb-knop kb-primair" href="gasten#uitnodigen">+ Gast uitnodigen</a> }
+    <h1>@T["menu.gasten"]</h1>
+    @if (State.Can(Permission.InviteGuests)) { <a class="kb-knop kb-primair" href="gasten#uitnodigen">@T["guests.invite-guest"]</a> }
 </div>
 
 <p class="kb-zacht">
-    Externe gebruikers (B2B-gasten) in Entra. Uitnodigen en verwijderen gaan, zoals elke wijziging, via een plan met
-    bevestiging. Een verwijderde gast staat nog 30 dagen bij de verwijderde gebruikers in Entra en kan daar teruggezet worden.
+    @T["guests.external-users-b2b-guests-in"]
 </p>
 
 <div class="kb-tegels">
-    <div class="kb-tegel"><div class="kb-tegel-getal">@All.Count</div><div>gasten</div></div>
-    <div class="kb-tegel"><div class="kb-tegel-getal">@All.Count(p => !p.Enabled)</div><div>geblokkeerd</div></div>
-    <a class="kb-tegel" href="opkuis?soort=gasten&amp;dagen=180"><div class="kb-tegel-getal">@All.Count(p => Inactive(p))</div><div>niet aangemeld in 180 dagen</div></a>
+    <div class="kb-tegel"><div class="kb-tegel-getal">@All.Count</div><div>@T["guests.guests"]</div></div>
+    <div class="kb-tegel"><div class="kb-tegel-getal">@All.Count(p => !p.Enabled)</div><div>@T["guests.blocked"]</div></div>
+    <a class="kb-tegel" href="opkuis?soort=gasten&amp;dagen=180"><div class="kb-tegel-getal">@All.Count(p => Inactive(p))</div><div>@T["guests.not-signed-in-for-180"]</div></a>
 </div>
 
 @if (State.Can(Permission.InviteGuests))
 {
 <section class="kb-kaart" id="uitnodigen">
-    <h2>Gast uitnodigen</h2>
+    <h2>@T["guests.invite-guest-2"]</h2>
     <div class="kb-raster">
-        <label>E-mailadres <input class="kb-invoer" type="email" placeholder="naam@example.com" @bind="input.Address" /></label>
-        <label>Naam <input class="kb-invoer" placeholder="Voornaam Achternaam (Bedrijf)" @bind="input.Name" /></label>
+        <label>@T["guests.e-mail-address"] <input class="kb-invoer" type="email" placeholder="naam@example.com" @bind="input.Address" /></label>
+        <label>@T["variables-editor.name"] <input class="kb-invoer" placeholder="@T["guests.first-name-last-name-company"]" @bind="input.Name" /></label>
     </div>
-    <label><input type="checkbox" @bind="input.Message" /> Uitnodiging per e-mail sturen</label>
+    <label><input type="checkbox" @bind="input.Message" /> @T["guests.send-invitation-by-e-mail"]</label>
     <ObjectPicker Label="Meteen in groepen plaatsen (optioneel)" Kinds="GroupKinds" Selected="r => { if (!input.Groups.Contains(r.Key)) input.Groups.Add(r.Key); }" />
     @if (input.Groups.Count > 0)
     {
@@ -37,13 +36,13 @@
         </p>
     }
     <div class="kb-filters">
-        <button class="kb-knop kb-primair" @onclick="Invite">Plan maken</button>
+        <button class="kb-knop kb-primair" @onclick="Invite">@T["bulk-tasks.make-plan"]</button>
     </div>
 </section>
 }
 
 <div class="kb-filters kb-plak">
-    <input class="kb-invoer kb-breed" placeholder="Zoek op naam of adres" @bind="input.Find" @bind:event="oninput" aria-label="Zoeken" />
+    <input class="kb-invoer kb-breed" placeholder="@T["mailboxes.search-by-name-or-address"]" @bind="input.Find" @bind:event="oninput" aria-label="@T["nav.search"]" />
     <button class="kb-knop" hidden="@(!State.Can(Permission.Manage))" disabled="@(selected.Count == 0)" @onclick="Delete">Gekozen gasten verwijderen (@selected.Count)</button>
 </div>
 @if (selected.Count > 0 && State.Can(Permission.GroupMembers))

@@ -1,27 +1,24 @@
 @page "/opkuis"
 @inherits RefreshingPage
 
-<h1>Opkuisronde</h1>
+<h1>@T["menu.opkuis"]</h1>
 
 <p class="kb-zacht">
-    Accounts die lang niet aangemeld zijn, om na te kijken. Vink aan wat weg mag: medewerkers worden <strong>uitgeschakeld</strong>
-    (met de reden in de omschrijving, nooit verwijderd; voor een volledige uitstroom gebruik je Uitstroom), gasten worden
-    <strong>verwijderd</strong>. Na het uitvoeren bewaart de app een rapport met elk nagekeken account en de beslissing, als
-    bewijs van de controle. Laatste aanmelding: @(State.HasAd && State.HasMicrosoft365 ? "de recentste uit AD en Entra" : State.HasAd ? "uit AD" : "uit Entra").
+    @Html("cleanup.intro", State.HasAd && State.HasMicrosoft365 ? T["cleanup.last.both"] : State.HasAd ? T["cleanup.last.ad"] : T["cleanup.last.entra"])
 </p>
 
 @if (!State.IsLive)
 {
-    <div class="kb-melding">De gegevens zijn niet live. <a href="verbindingen">Laad eerst live</a>, zodat de laatste aanmeldingen kloppen.</div>
+    <div class="kb-melding">@Html("cleanup.notlive")</div>
 }
 
 <div class="kb-filters">
-    <span class="kb-segment" role="group" aria-label="Soort">
-        <button class="kb-knop @(choice.Kind == CleanupKind.Staff ? "kb-primair" : null)" @onclick="() => Set(CleanupKind.Staff, choice.Days)">Medewerkers</button>
-        <button class="kb-knop @(choice.Kind == CleanupKind.Guests ? "kb-primair" : null)" @onclick="() => Set(CleanupKind.Guests, choice.Days)">Gasten</button>
+    <span class="kb-segment" role="group" aria-label="@T["nested-groups.kind"]">
+        <button class="kb-knop @(choice.Kind == CleanupKind.Staff ? "kb-primair" : null)" @onclick="() => Set(CleanupKind.Staff, choice.Days)">@T["cleanup.employees"]</button>
+        <button class="kb-knop @(choice.Kind == CleanupKind.Guests ? "kb-primair" : null)" @onclick="() => Set(CleanupKind.Guests, choice.Days)">@T["collaboration.guests"]</button>
     </span>
     <label>
-        Niet aangemeld in
+        @T["cleanup.not-signed-in-for"]
         <select class="kb-invoer" value="@choice.Days" @onchange="@(e => Set(choice.Kind, int.Parse(e.Value?.ToString() ?? "180")))">
             @foreach (var d in new[] { 90, 180, 365, choice.Days }.Distinct().Order())
             {
@@ -29,8 +26,8 @@
             }
         </select>
     </label>
-    <button class="kb-knop" @onclick="ChooseAll">Alles aanvinken</button>
-    <button class="kb-knop" disabled="@(choice.Selected.Count == 0)" @onclick="() => { choice.Selected.Clear(); plan = null; }">Niets</button>
+    <button class="kb-knop" @onclick="ChooseAll">@T["cleanup.tick-all"]</button>
+    <button class="kb-knop" disabled="@(choice.Selected.Count == 0)" @onclick="() => { choice.Selected.Clear(); plan = null; }">@T["cleanup.nothing"]</button>
     <button class="kb-knop kb-primair" disabled="@(choice.Selected.Count == 0)" @onclick="MakePlan">
         @(choice.Kind == CleanupKind.Guests ? "Plan: verwijderen" : "Plan: uitschakelen") (@choice.Selected.Count)
     </button>
@@ -53,8 +50,8 @@
 @if (report is not null)
 {
     <div class="kb-melding kb-goed kb-export">
-        <span>Rapport bewaard: <code>@report</code></span>
-        <button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(report)">Tonen in Verkenner</button>
+        <span>@T["cleanup.report"] <code>@report</code></span>
+        <button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(report)">@T["kb-table.show-in-explorer"]</button>
     </div>
 }
 

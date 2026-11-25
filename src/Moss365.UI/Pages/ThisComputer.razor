@@ -3,21 +3,17 @@
 @inject ManagementState State
 @inject IServiceProvider Services
 
-<h1>Controle van deze pc</h1>
+<h1>@T["menu.controle"]</h1>
 
 <p class="kb-zacht">
-    Kijkt na of alles aanwezig is wat de app en de scripts nodig hebben: PowerShell, de modules (in Windows PowerShell en
-    PowerShell 7 apart, want elk heeft zijn eigen modules), de klok, de verbinding met de domeincontroller en met Microsoft
-    365. Ontbreekt iets, dan kan je het hier installeren, enkel uit officiële bronnen (PowerShell Gallery, winget,
-    Windows) en altijd na bevestiging; elke installatie komt in het logboek. Modules installeren voor jouw account vraagt
-    geen beheerdersrechten; PowerShell 7 en de AD-module (RSAT) wel: Windows vraagt dan om bevestiging.
+    @T["this-computer.checks-whether-everything-the-app"]
 </p>
 
-<p class="kb-zacht">De versie van Moss365 en de updates staan bij <a href="updates">Versie en updates</a>.</p>
+<p class="kb-zacht">@Html("this-computer.versions")</p>
 
 @if (State.Check is null)
 {
-    <div class="kb-melding">Deze controle werkt enkel in de Windows-app.</div>
+    <div class="kb-melding">@T["this-computer.this-check-only-works-in"]</div>
 }
 else
 {
@@ -29,8 +25,8 @@ else
             @if (confirmAll)
             {
                 <span>@Installable.Count onderdeel(en) installeren: @string.Join(", ", Installable.Select(r => r.Section))?</span>
-                <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="InstallAll">Ja, alles installeren</button>
-                <button class="kb-knop" @onclick="() => confirmAll = false">Annuleren</button>
+                <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="InstallAll">@T["this-computer.yes-install-everything"]</button>
+                <button class="kb-knop" @onclick="() => confirmAll = false">@T["action.cancel"]</button>
             }
             else
             {
@@ -38,7 +34,7 @@ else
             }
         }
     </div>
-    <label><input type="checkbox" checked="@askAtOnce" @onchange="SetAskAtOnce" /> Ontbrekende onderdelen meteen voorstellen na het nakijken (de app vraagt één keer)</label>
+    <label><input type="checkbox" checked="@askAtOnce" @onchange="SetAskAtOnce" /> @T["this-computer.suggest-missing-parts-right-after"]</label>
 
     @if (rules is not null)
     {
@@ -54,7 +50,7 @@ else
             <section class="kb-kaart">
                 <h2>@groupValue.Key</h2>
                 <table class="kb-tabel">
-                    <thead><tr><th></th><th>Onderdeel</th><th>Gevonden</th><th>Uitleg</th><th></th></tr></thead>
+                    <thead><tr><th></th><th>@T["tenant-compare.area"]</th><th>@T["this-computer.found"]</th><th>@T["suggestions-panel.explanation"]</th><th></th></tr></thead>
                     <tbody>
                         @foreach (var r in groupValue)
                         {
@@ -72,13 +68,13 @@ else
                                     {
                                         @if (confirm == Key(r))
                                         {
-                                            <button class="kb-knop kb-klein kb-gevaar" disabled="@busy" @onclick="() => Install(r)">Ja, installeren</button>
-                                            <button class="kb-knop kb-klein" @onclick="() => confirm = null">Annuleren</button>
+                                            <button class="kb-knop kb-klein kb-gevaar" disabled="@busy" @onclick="() => Install(r)">@T["this-computer.yes-install"]</button>
+                                            <button class="kb-knop kb-klein" @onclick="() => confirm = null">@T["action.cancel"]</button>
                                         }
                                         else
                                         {
                                             <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => confirm = Key(r)"
-                                                    title="@InstallText(r)">Installeren</button>
+                                                    title="@InstallText(r)">@T["this-computer.install"]</button>
                                         }
                                     }
                                 </td>

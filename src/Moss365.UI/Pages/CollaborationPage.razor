@@ -4,11 +4,10 @@
 @* Teams and SharePoint (R13, 0.36): Microsoft 365 groups and Teams without an owner, with guests or unused, and
    SharePoint sites with their storage and activity, plus the sharing setting of the tenant. Read only. *@
 
-<h1>Teams en SharePoint</h1>
+<h1>@T["menu.samenwerking"]</h1>
 
 <p class="kb-zacht">
-    Microsoft 365-groepen en Teams zonder eigenaar, met gasten of die niet meer gebruikt worden, en SharePoint-sites met hun opslag.
-    De activiteit komt uit de gebruiksrapporten van Microsoft 365 (tot 180 dagen terug).
+    @T["collaboration.microsoft-365-groups-and-teams"]
 </p>
 
 <button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? "Bezig met lezen..." : "Teams en SharePoint lezen")</button>
@@ -27,12 +26,12 @@
         }
     </div>
     <table class="kb-tabel">
-        <thead><tr><th>Naam</th><th class="kb-getal">Eigenaars</th><th class="kb-getal">Leden</th><th class="kb-getal">Gasten</th><th>Laatste activiteit</th><th>Aandacht</th></tr></thead>
+        <thead><tr><th>@T["variables-editor.name"]</th><th class="kb-getal">@T["collaboration.owners"]</th><th class="kb-getal">@T["collaboration.members"]</th><th class="kb-getal">@T["collaboration.guests"]</th><th>@T["collaboration.last-activity"]</th><th>@T["collaboration.attention"]</th></tr></thead>
         <tbody>
             @foreach (var g in groups.Where(g => filter is null || Fits(g, filter)))
             {
                 <tr>
-                    <td><a href="@($"groep/{Uri.EscapeDataString("cloud:" + g.Id.ToLowerInvariant())}")">@g.Name</a> @if (g.IsTeam) { <span class="kb-label">Team</span> }</td>
+                    <td><a href="@($"groep/{Uri.EscapeDataString("cloud:" + g.Id.ToLowerInvariant())}")">@g.Name</a> @if (g.IsTeam) { <span class="kb-label">@T["collaboration.team"]</span> }</td>
                     <td class="kb-getal">@(g.Owners < 0 ? "?" : g.Owners.ToString())</td><td class="kb-getal">@g.Members</td><td class="kb-getal">@g.Guests</td>
                     <td>@(g.LastActivity?.LocalDateTime.ToString("dd/MM/yyyy") ?? "")</td>
                     <td class="kb-zacht">@string.Join(", ", g.Points)</td>
@@ -42,7 +41,7 @@
     </table>
     @if (State.Collaboration is null)
     {
-        <p class="kb-zacht">Eigenaars en activiteit komen er bij na "Teams en SharePoint lezen".</p>
+        <p class="kb-zacht">@T["collaboration.owners-and-activity-are-added"]</p>
     }
 </section>
 
@@ -50,13 +49,13 @@
 {
     var sharing = DeviceAnalysis.Sharing(reading.Sharing);
     <section class="kb-kaart">
-        <h2>SharePoint</h2>
-        <p>Delen met mensen buiten de organisatie: <strong>@sharing.Text</strong>
-            @if (sharing.Attention) { <span class="kb-label kb-fout">let op</span> }</p>
-        <p>Opslag in totaal: <strong>@DeviceAnalysis.Size(reading.Sites.Sum(s => s.StorageBytes))</strong> in @reading.Sites.Count sites.</p>
+        <h2>@T["collaboration.sharepoint"]</h2>
+        <p>@T["collaboration.sharing"] <strong>@sharing.Text</strong>
+            @if (sharing.Attention) { <span class="kb-label kb-fout">@T["collaboration.attention-2"]</span> }</p>
+        <p>@Html("collaboration.storage", DeviceAnalysis.Size(reading.Sites.Sum(s => s.StorageBytes)), reading.Sites.Count)</p>
         <h3>Sites zonder activiteit in 90 dagen (@DeviceAnalysis.UnusedSites(reading, DateTimeOffset.Now).Count)</h3>
         @SiteTable(DeviceAnalysis.UnusedSites(reading, DateTimeOffset.Now))
-        <h3>Grootste sites</h3>
+        <h3>@T["collaboration.largest-sites"]</h3>
         @SiteTable(reading.Sites.OrderByDescending(s => s.StorageBytes).Take(20).ToList())
     </section>
 }

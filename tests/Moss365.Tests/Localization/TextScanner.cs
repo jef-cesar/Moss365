@@ -30,7 +30,7 @@ public static class TextScanner
             .Replace("=>", "  ", StringComparison.Ordinal).Replace(">=", "  ", StringComparison.Ordinal).Replace("<=", "  ", StringComparison.Ordinal)
             .Replace(" > ", "   ", StringComparison.Ordinal).Replace(" < ", "   ", StringComparison.Ordinal);
         return Node.Matches(s).Select(m => m.Groups[1].Value).Concat(Attribute.Matches(s).Select(m => m.Groups[1].Value))
-            .Select(t => Regex.Replace(t.Replace("&rarr;", string.Empty).Replace("&larr;", string.Empty), @"\s+", " ").Trim())
+            .Select(t => Regex.Replace(System.Net.WebUtility.HtmlDecode(t), @"\s+", " ").Trim())
             .Where(t => t.Length > 1 && t.Any(char.IsLetter) && !Allowed.Contains(t) && !CSharp.IsMatch(t))
             .ToList();
     }

@@ -1,15 +1,14 @@
 @page "/groepen/nieuw"
 @inject ManagementState State
 
-<h1>Nieuwe groep</h1>
+<h1>@T["new-group.new-group"]</h1>
 
 <p class="kb-zacht">
-    Kies eerst de soort: die bepaalt waar de groep komt. Het plan maakt de groep aan en daarna de beheerder of eigenaar en de
-    eerste leden. Lukt het aanmaken niet, dan worden die stappen overgeslagen.
+    @T["new-group.choose-the-kind-first-it"]
 </p>
 
 <section class="kb-kaart">
-    <h2>Soort</h2>
+    <h2>@T["nested-groups.kind"]</h2>
     <div class="kb-keuzes">
         @foreach (var (kind, title, explanation) in Kinds.Where(k => Fits(k.Item1)))
         {
@@ -23,28 +22,28 @@
 </section>
 
 <section class="kb-kaart">
-    <h2>Gegevens</h2>
+    <h2>@T["new-mailbox.details"]</h2>
     <div class="kb-raster">
-        <label>Naam <input class="kb-invoer" placeholder="@($"bv. {NewGroupPlans.Prefix(request.Kind)}...")" @bind="request.Name" @bind:after="Clear" /></label>
-        <label>Omschrijving <input class="kb-invoer" @bind="request.Description" @bind:after="Clear" /></label>
+        <label>@T["variables-editor.name"] <input class="kb-invoer" placeholder="@($"bv. {NewGroupPlans.Prefix(request.Kind)}...")" @bind="request.Name" @bind:after="Clear" /></label>
+        <label>@T["edit-user.description"] <input class="kb-invoer" @bind="request.Description" @bind:after="Clear" /></label>
         @if (NewGroupPlans.WithMail(request.Kind))
         {
-            <label>E-mailadres <input class="kb-invoer" type="email" placeholder="naam@contoso.com" @bind="request.Mail" @bind:after="Clear" /></label>
+            <label>@T["guests.e-mail-address"] <input class="kb-invoer" type="email" placeholder="naam@contoso.com" @bind="request.Mail" @bind:after="Clear" /></label>
         }
         @if (request.Kind == NewGroupKind.AdSecurity)
         {
             <label>
-                Bereik
+                @T["new-group.scope"]
                 <select class="kb-invoer" @bind="request.Scope" @bind:after="Clear">
-                    <option value="Global">Global (standaard)</option>
-                    <option value="Universal">Universal</option>
+                    <option value="Global">@T["new-group.global-default"]</option>
+                    <option value="Universal">@T["new-group.universal"]</option>
                 </select>
             </label>
         }
     </div>
     @if (request.Kind == NewGroupKind.AdSecurity)
     {
-        <p class="kb-zacht">In de OU <strong>@(string.IsNullOrWhiteSpace(State.Config.GroupsOu) ? "(nog niet ingesteld bij Organisatie)" : State.Config.GroupsOu)</strong>.</p>
+        <p class="kb-zacht">@T["new-group.in-the-ou"] <strong>@(string.IsNullOrWhiteSpace(State.Config.GroupsOu) ? "(nog niet ingesteld bij Organisatie)" : State.Config.GroupsOu)</strong>.</p>
     }
 
     <PersonPicker Label="@(request.Kind is NewGroupKind.CloudSecurity or NewGroupKind.Microsoft365 ? "Eigenaar" : "Beheerder")"
@@ -56,14 +55,14 @@
         <ul class="kb-lijst">
             @foreach (var l in request.Members.ToList())
             {
-                <li>@(State.Data.SearchPerson(l)?.Name ?? l) <button class="kb-knop kb-klein" @onclick="() => { request.Members.Remove(l); Clear(); }" aria-label="Weghalen">&times;</button></li>
+                <li>@(State.Data.SearchPerson(l)?.Name ?? l) <button class="kb-knop kb-klein" @onclick="() => { request.Members.Remove(l); Clear(); }" aria-label="@T["manage-ca.remove"]">&times;</button></li>
             }
         </ul>
     }
 
     <div class="kb-filters">
-        <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
-        <button class="kb-knop" @onclick="Empty">Leegmaken</button>
+        <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+        <button class="kb-knop" @onclick="Empty">@T["rooms.clear"]</button>
     </div>
     @foreach (var f in errors)
     {

@@ -7,7 +7,7 @@
    another one, only the differences. Nothing is stored or mixed: each tenant keeps its own database. *@
 @inject ManagementState State
 
-<h1>Tenants vergelijken</h1>
+<h1>@T["menu.tenantvergelijking"]</h1>
 
 <p class="kb-zacht">
     Dezelfde Conditional Access-basis en instellingen in elke tenant? Hier zie je de verschillen tussen @State.Tenant.Name en een andere tenant:
@@ -16,11 +16,11 @@
 
 @if (Hub is null || Others.Count == 0)
 {
-    <div class="kb-melding">Er is geen andere tenant om mee te vergelijken. Voeg er een toe bij <a href="tenants">Tenants</a>.</div>
+    <div class="kb-melding">@Html("tenant-compare.none")</div>
 }
 else
 {
-    <label>Vergelijk met
+    <label>@T["tenant-compare.compare-with"]
         <select class="kb-invoer" @onchange="e => Compare(e.Value?.ToString())">
             <option value=""></option>
             @foreach (var t in Others) { <option value="@t.Id">@t.Name</option> }
@@ -31,12 +31,12 @@ else
     {
         @if (differences.Count == 0)
         {
-            <p>Geen verschillen.</p>
+            <p>@T["tenant-compare.no-differences"]</p>
         }
         else
         {
             <table class="kb-tabel">
-                <thead><tr><th>Onderdeel</th><th>Wat</th><th>@State.Tenant.Name</th><th>@other</th></tr></thead>
+                <thead><tr><th>@T["tenant-compare.area"]</th><th>@T["service-health-card.what"]</th><th>@State.Tenant.Name</th><th>@other</th></tr></thead>
                 <tbody>
                     @foreach (var d in differences)
                     {

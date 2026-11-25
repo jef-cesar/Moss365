@@ -1,12 +1,10 @@
 @page "/opvolging"
 @inject ManagementState State
 
-<h1>Opvolging</h1>
+<h1>@T["menu.opvolging"]</h1>
 
 <p class="kb-zacht">
-    Stappen die wachten tot een nieuwe gebruiker in Entra bestaat (licentie, cloudgroepen). Entra Connect synchroniseert
-    standaard om de 30 minuten. <strong>Afwerken</strong> controleert eerst of de gebruiker er al is en voert dan de
-    resterende stappen uit; die stonden al in het voorbeeld bij het aanmaken.
+    @Html("follow-up.intro")
 </p>
 
 @if (done is not null)
@@ -16,7 +14,7 @@
 
 @if (tasks.Count == 0)
 {
-    <div class="kb-melding">Er staat niets open.</div>
+    <div class="kb-melding">@T["follow-up.nothing-is-open"]</div>
 }
 
 @foreach (var t in tasks)
@@ -32,7 +30,7 @@
             <div class="kb-melding">@t.LastMessage</div>
         }
         <table class="kb-tabel">
-            <thead><tr><th>Systeem</th><th>Wijziging</th><th>Wordt</th></tr></thead>
+            <thead><tr><th>@T["plan.system"]</th><th>@T["plan.change"]</th><th>@T["plan.becomes"]</th></tr></thead>
             <tbody>
                 @foreach (var w in t.Changes)
                 {
@@ -43,20 +41,20 @@
         <div class="kb-filters">
             @if (confirm == t.Id)
             {
-                <span><strong>@t.Changes.Count wijziging(en)</strong> uitvoeren als de gebruiker in Entra bestaat?</span>
-                <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="() => Finish(t.Id)">Ja, afwerken</button>
-                <button class="kb-knop" disabled="@busy" @onclick="() => confirm = null">Annuleren</button>
+                <span>@Html("follow-up.confirm", t.Changes.Count)</span>
+                <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="() => Finish(t.Id)">@T["follow-up.yes-finish"]</button>
+                <button class="kb-knop" disabled="@busy" @onclick="() => confirm = null">@T["action.cancel"]</button>
             }
             else if (remove == t.Id)
             {
-                <span>Taak verwijderen zonder uit te voeren?</span>
-                <button class="kb-knop kb-gevaar" @onclick="() => Remove(t.Id)">Ja, verwijderen</button>
-                <button class="kb-knop" @onclick="() => remove = null">Annuleren</button>
+                <span>@T["follow-up.delete-task-without-running-it"]</span>
+                <button class="kb-knop kb-gevaar" @onclick="() => Remove(t.Id)">@T["follow-up.yes-delete"]</button>
+                <button class="kb-knop" @onclick="() => remove = null">@T["action.cancel"]</button>
             }
             else
             {
-                <button class="kb-knop kb-primair" disabled="@(busy || !State.CanConnect)" @onclick="() => { confirm = t.Id; remove = null; }">Afwerken</button>
-                <button class="kb-knop" disabled="@busy" @onclick="() => { remove = t.Id; confirm = null; }">Verwijderen</button>
+                <button class="kb-knop kb-primair" disabled="@(busy || !State.CanConnect)" @onclick="() => { confirm = t.Id; remove = null; }">@T["follow-up.finish"]</button>
+                <button class="kb-knop" disabled="@busy" @onclick="() => { remove = t.Id; confirm = null; }">@T["variables-editor.remove"]</button>
             }
             @if (busy && active == t.Id && progress is not null) { <span class="kb-zacht">@progress</span> }
         </div>

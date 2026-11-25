@@ -3,22 +3,22 @@
 @inject NavigationManager Nav
 
 <div class="kb-titelbalk">
-    <h1>Groepen</h1>
-    @if (State.Can(Permission.Manage)) { <a class="kb-knop kb-primair" href="groepen/nieuw">+ Nieuwe groep</a> }
+    <h1>@T["menu.groepen"]</h1>
+    @if (State.Can(Permission.Manage)) { <a class="kb-knop kb-primair" href="groepen/nieuw">@T["groups.new-group"]</a> }
 </div>
 
 <p class="kb-zacht">
     @if (State.HasAd && State.HasMicrosoft365)
     {
-        <text>Alle groepen uit AD, Entra en Exchange. Een uit AD gesynchroniseerde groep staat er één keer, met zijn AD- en cloudkant samen.</text>
+        <text>@T["groups.all-groups-from-ad-entra"]</text>
     }
     else if (State.HasAd)
     {
-        <text>Alle groepen uit Active Directory.</text>
+        <text>@T["groups.all-groups-from-active-directory"]</text>
     }
     else
     {
-        <text>Alle groepen uit Entra en Exchange.</text>
+        <text>@T["groups.all-groups-from-entra-and"]</text>
     }
 </p>
 
@@ -34,7 +34,7 @@
 <KpiFilter Kpi="ActiveKpi" Count="KpiRows.Count" Shown="Items.Count" Cleared="() => z.Kpi = null" />
 
 <div class="kb-filters kb-plak">
-    <input class="kb-invoer kb-breed" placeholder="@(State.HasAd ? "Zoek op naam, adres of sAMAccountName" : "Zoek op naam of adres")" @bind="z.Find" @bind:event="oninput" aria-label="Zoeken" />
+    <input class="kb-invoer kb-breed" placeholder="@(State.HasAd ? "Zoek op naam, adres of sAMAccountName" : "Zoek op naam of adres")" @bind="z.Find" @bind:event="oninput" aria-label="@T["nav.search"]" />
 </div>
 
 <KbTable Id="groepen" Items="Items" Columns="columns" Selectable KeyOf="g => g.Key" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@($"{Items.Count} groepen")" />

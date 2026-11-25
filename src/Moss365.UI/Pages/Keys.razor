@@ -4,19 +4,18 @@
 @* BitLocker recovery keys and LAPS passwords (R10, 0.33): from Entra and AD, each lookup in the access log. Nothing is
    stored; the values disappear when you leave the page. *@
 
-<h1>BitLocker en LAPS</h1>
+<h1>@T["menu.sleutels"]</h1>
 
 <p class="kb-zacht">
-    Zoek een toestel (de naam, of een deel ervan) of geef de sleutel-ID die BitLocker toont. Elke keer dat je een sleutel of een
-    wachtwoord bekijkt, komt in het toegangslogboek (wie, wanneer, welk toestel). De app bewaart niets.
+    @T["keys.search-for-a-device-the"]
 </p>
 
 <div class="kb-rij">
-    <input class="kb-invoer" placeholder="naam van het toestel, bv. PC-0123" @bind="name" aria-label="Naam van het toestel" />
-    <button class="kb-knop kb-primair" disabled="@(busy || name.Trim().Length < 2)" @onclick="Search">Zoeken</button>
-    <span class="kb-zacht">of</span>
-    <input class="kb-invoer" placeholder="sleutel-ID (de eerste 8 tekens volstaan)" @bind="keyId" aria-label="Sleutel-ID" />
-    <button class="kb-knop" disabled="@(busy || keyId.Trim().Length < 8)" @onclick="() => ShowBitLocker(null)">BitLocker-sleutel tonen</button>
+    <input class="kb-invoer" placeholder="@T["keys.name-of-the-device-e"]" @bind="name" aria-label="@T["keys.name-of-the-device"]" />
+    <button class="kb-knop kb-primair" disabled="@(busy || name.Trim().Length < 2)" @onclick="Search">@T["nav.search"]</button>
+    <span class="kb-zacht">@T["keys.or"]</span>
+    <input class="kb-invoer" placeholder="@T["keys.key-id-the-first-8"]" @bind="keyId" aria-label="@T["keys.key-id"]" />
+    <button class="kb-knop" disabled="@(busy || keyId.Trim().Length < 8)" @onclick="() => ShowBitLocker(null)">@T["keys.show-bitlocker-key"]</button>
 </div>
 
 @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
@@ -27,15 +26,15 @@
         <h2>Toestellen in Entra (@devices.Count)</h2>
         @if (devices.Count == 0) { <p class="kb-zacht">Geen toestel gevonden in Entra@(State.HasAd ? "; de knoppen hieronder zoeken ook in AD" : null).</p> }
         <table class="kb-tabel">
-            <thead><tr><th>Toestel</th><th>Systeem</th><th>Soort</th><th>Laatst gezien</th><th></th></tr></thead>
+            <thead><tr><th>@T["keys.device"]</th><th>@T["plan.system"]</th><th>@T["nested-groups.kind"]</th><th>@T["keys.last-seen"]</th><th></th></tr></thead>
             <tbody>
                 @foreach (var d in devices)
                 {
                     <tr>
                         <td>@d.Name</td><td>@d.OperatingSystem</td><td>@d.TrustType</td><td>@d.LastSignIn?.LocalDateTime.ToString("dd/MM/yyyy")</td>
                         <td><span class="kb-filters">
-                            <button class="kb-knop kb-klein" @onclick="() => ShowBitLocker(d)">BitLocker</button>
-                            <button class="kb-knop kb-klein" @onclick="() => ShowLaps(d)">LAPS</button>
+                            <button class="kb-knop kb-klein" @onclick="() => ShowBitLocker(d)">@T["keys.bitlocker"]</button>
+                            <button class="kb-knop kb-klein" @onclick="() => ShowLaps(d)">@T["keys.laps"]</button>
                         </span></td>
                     </tr>
                 }
@@ -55,7 +54,7 @@
 {
     <section class="kb-kaart kb-geheim">
         <h2>BitLocker-herstelsleutels @shownFor</h2>
-        @if (keys.Count == 0) { <p>Geen sleutel gevonden.</p> }
+        @if (keys.Count == 0) { <p>@T["keys.no-key-found"]</p> }
         @foreach (var k in keys)
         {
             <div class="kb-rij">
@@ -76,7 +75,7 @@
             <p class="kb-zacht">Account @l.Account &middot; @l.Source @(l.Backup is { } b ? "· bewaard " + b.LocalDateTime.ToString("dd/MM/yyyy HH:mm") : null)</p>
             <CopyField Value="@(l.Password ?? "(niet leesbaar)")" Label="LAPS-wachtwoord" Secret="true" />
         }
-        else { <p>Geen LAPS-wachtwoord gevonden.</p> }
+        else { <p>@T["keys.no-laps-password-found"]</p> }
         @if (note is not null) { <p class="kb-zacht">@note</p> }
     </section>
 }

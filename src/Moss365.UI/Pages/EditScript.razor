@@ -6,12 +6,12 @@
 
 @if (builtInSource is not null)
 {
-    <div class="kb-melding">Een ingebouwd script pas je niet aan: dit is een kopie van <strong>@builtInSource</strong>. Bij Opslaan wordt het een eigen script.</div>
+    <div class="kb-melding">@Html("edit-script.builtin", builtInSource)</div>
 }
 
 @if (changedOutsideApp)
 {
-    <div class="kb-melding kb-fout">Dit script werd buiten de app gewijzigd sinds het laatst opgeslagen werd. Kijk het na; Opslaan keurt deze versie goed.</div>
+    <div class="kb-melding kb-fout">@T["edit-script.this-script-was-changed-outside"]</div>
 }
 
 <div class="kb-script-bewerken">
@@ -20,11 +20,11 @@
     </div>
     <div class="kb-script-paneel">
         <section class="kb-kaart">
-            <h2>Eigenschappen</h2>
-            <label class="kb-veld"><span>Naam</span><input class="kb-invoer" value="@header.Name" @onchange="e => SetHeader(header with { Name = e.Value?.ToString() ?? string.Empty })" /></label>
-            <label class="kb-veld"><span>Wat het doet</span><textarea class="kb-invoer" rows="2" @onchange="e => SetHeader(header with { Description = e.Value?.ToString() ?? string.Empty })">@header.Description</textarea></label>
+            <h2>@T["edit-script.properties"]</h2>
+            <label class="kb-veld"><span>@T["variables-editor.name"]</span><input class="kb-invoer" value="@header.Name" @onchange="e => SetHeader(header with { Name = e.Value?.ToString() ?? string.Empty })" /></label>
+            <label class="kb-veld"><span>@T["edit-script.what-it-does"]</span><textarea class="kb-invoer" rows="2" @onchange="e => SetHeader(header with { Description = e.Value?.ToString() ?? string.Empty })">@header.Description</textarea></label>
             <div class="kb-veld">
-                <span>Verbinding</span>
+                <span>@T["edit-script.connection"]</span>
                 <span class="kb-filters">
                     @foreach (var v in new[] { ScriptConnection.Exchange, ScriptConnection.Graph, ScriptConnection.Ad, ScriptConnection.Local })
                     {
@@ -33,25 +33,25 @@
                     }
                 </span>
             </div>
-            <label class="kb-veld"><span><input type="checkbox" checked="@header.Writes" @onchange="e => SetHeader(header with { Writes = e.Value is true })" /> Dit script wijzigt iets (dan eerst een voorbeeld met -WhatIf)</span></label>
+            <label class="kb-veld"><span><input type="checkbox" checked="@header.Writes" @onchange="e => SetHeader(header with { Writes = e.Value is true })" /> @T["edit-script.this-script-changes-something-then"]</span></label>
             <div class="kb-rij">
                 <label class="kb-veld">
-                    <span>PowerShell</span>
+                    <span>@T["edit-script.powershell"]</span>
                     <select class="kb-invoer" value="@header.PowerShell" @onchange="e => SetHeader(header with { PowerShell = e.Value?.ToString() ?? string.Empty })">
-                        <option value="">7 als die er is</option>
+                        <option value="">@T["edit-script.7-if-available"]</option>
                         <option value="7">7</option>
-                        <option value="5.1">Windows PowerShell 5.1</option>
+                        <option value="5.1">@T["edit-script.windows-powershell-5-1"]</option>
                     </select>
                 </label>
-                <label class="kb-veld"><span>Maximale duur (minuten)</span><input class="kb-invoer" type="number" min="1" value="@header.DurationMinutes" @onchange="SetDuration" /></label>
+                <label class="kb-veld"><span>@T["edit-script.maximum-duration-minutes"]</span><input class="kb-invoer" type="number" min="1" value="@header.DurationMinutes" @onchange="SetDuration" /></label>
             </div>
         </section>
     </div>
 </div>
 
 <section class="kb-kaart">
-    <h2>Variabelen</h2>
-    <p class="kb-zacht">Wat het formulier vraagt bij het starten; de app geeft ze als parameters aan het script en onthoudt de laatst gebruikte waarden.</p>
+    <h2>@T["edit-script.variables"]</h2>
+    <p class="kb-zacht">@T["edit-script.what-the-form-asks-at"]</p>
     <VariablesEditor Variables="header.Variables" VariablesChanged="v => SetHeader(header with { Variables = v })" />
 </section>
 
@@ -63,7 +63,7 @@
 @if (syntaxErrors.Count > 0)
 {
     <div class="kb-melding kb-fout">
-        Syntaxfouten:
+        @T["edit-script.syntax-errors"]
         <ul>@foreach (var f in syntaxErrors) { <li>regel @f.Rule: @f.Text</li> }</ul>
     </div>
 }
@@ -74,14 +74,14 @@
 }
 
 <div class="kb-filters">
-    <button class="kb-knop" disabled="@busy" @onclick="Check">Controleren</button>
+    <button class="kb-knop" disabled="@busy" @onclick="Check">@T["edit-script.check"]</button>
     @if (!once)
     {
-        <button class="kb-knop kb-primair" disabled="@busy" @onclick="() => Store(false)">Opslaan</button>
-        <button class="kb-knop" disabled="@busy" @onclick="() => Store(true)">Opslaan en starten</button>
+        <button class="kb-knop kb-primair" disabled="@busy" @onclick="() => Store(false)">@T["edit-script.save"]</button>
+        <button class="kb-knop" disabled="@busy" @onclick="() => Store(true)">@T["edit-script.save-and-start"]</button>
     }
-    <button class="kb-knop" disabled="@busy" @onclick="Once">Eenmalig uitvoeren (niet opslaan)</button>
-    <a class="kb-knop" href="scripts">Terug naar de scripts</a>
+    <button class="kb-knop" disabled="@busy" @onclick="Once">@T["edit-script.run-once-do-not-save"]</button>
+    <a class="kb-knop" href="scripts">@T["script-run-detail.back-to-the-scripts"]</a>
 </div>
 
 @if (onceScript is not null)

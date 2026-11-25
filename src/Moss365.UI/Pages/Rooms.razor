@@ -2,17 +2,15 @@
 @inherits RefreshingPage
 @inject NavigationManager Nav
 
-<h1>Rooms</h1>
+<h1>@T["nav.part.Rooms"]</h1>
 
 <p class="kb-zacht">
-    @State.Data.Rooms.Count vergaderruimtes uit
-    @(State.Data.Sources.FirstOrDefault(b => b.File.Contains("rooms", StringComparison.OrdinalIgnoreCase))?.Folder is { } m ? System.IO.Path.GetFileName(m) : "geen bron").
-    Voor actuele waarden: <a href="verbindingen">Rooms laden uit Exchange</a>. Gemarkeerd = wijkt af van de standaard in de organisatie.
+    @Html("rooms.intro", State.Data.Rooms.Count, State.Data.Sources.FirstOrDefault(b => b.File.Contains("rooms", StringComparison.OrdinalIgnoreCase))?.Folder is { } m ? System.IO.Path.GetFileName(m) : T["rooms.nosource"])
 </p>
 
 @if (State.Data.Rooms.Count == 0)
 {
-    <div class="kb-melding">Geen rooms geladen. Laad ze uit Exchange of uit een inventaris met <code>exo-rooms-overzicht.csv</code>.</div>
+    <div class="kb-melding">@Html("rooms.none")</div>
 }
 else
 {
@@ -25,14 +23,14 @@ else
     {
     <section class="kb-kaart">
         <h2>Wijzigen (@selected.Count geselecteerd)</h2>
-        <p class="kb-zacht">Leeg laten = niet wijzigen. Alleen wat verschilt met de huidige waarde komt in het plan.</p>
+        <p class="kb-zacht">@T["rooms.leave-empty-do-not-change"]</p>
         <div class="kb-filters">
-            <button class="kb-knop" @onclick="DefaultFill">Standaard invullen</button>
-            <button class="kb-knop" @onclick="Empty">Leegmaken</button>
+            <button class="kb-knop" @onclick="DefaultFill">@T["rooms.fill-in-the-standard"]</button>
+            <button class="kb-knop" @onclick="Empty">@T["rooms.clear"]</button>
         </div>
         <RoomForm Desired="desired" />
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" disabled="@(selected.Count == 0)" @onclick="MakePlan">Plan maken</button>
+            <button class="kb-knop kb-primair" disabled="@(selected.Count == 0)" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
         </div>
     </section>
     }

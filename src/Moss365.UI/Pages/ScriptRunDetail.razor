@@ -4,8 +4,8 @@
 
 @if (run is null)
 {
-    <h1>Run niet gevonden</h1>
-    <p class="kb-zacht">Runs worden @ScriptRuns.SaveDays dagen bewaard. <a href="scripts">Terug naar de scripts</a></p>
+    <h1>@T["script-run-detail.run-not-found"]</h1>
+    <p class="kb-zacht">Runs worden @ScriptRuns.SaveDays dagen bewaard. <a href="scripts">@T["script-run-detail.back-to-the-scripts"]</a></p>
 }
 else
 {
@@ -14,14 +14,14 @@ else
         <RunLabel Run="run" /> <span class="kb-zacht">@run.Message</span>
         @if (!run.Once && State.SearchScript(run.Key) is not null)
         {
-            <button class="kb-knop kb-klein" @onclick="Again">Opnieuw starten met dezelfde waarden</button>
+            <button class="kb-knop kb-klein" @onclick="Again">@T["script-run-detail.start-again-with-the-same"]</button>
         }
     </p>
 
     @if (Live is { } s)
     {
         <ScriptOutputList Events="s.Events" Progress="s.Voortgang" Percent="s.Percent" Follow="true" EmptyText="Starten..." />
-        <div class="kb-filters"><button class="kb-knop" @onclick="State.CancelScript">Annuleren</button></div>
+        <div class="kb-filters"><button class="kb-knop" @onclick="State.CancelScript">@T["action.cancel"]</button></div>
     }
     else
     {
@@ -31,7 +31,7 @@ else
     @if (run.Once && State.Files.ReadText(run.Folder + "/script.ps1") is { } oneTime)
     {
         <details class="kb-kaart">
-            <summary>Het script van deze eenmalige run</summary>
+            <summary>@T["script-run-detail.the-script-of-this-one"]</summary>
             <pre class="kb-uitvoer">@oneTime</pre>
         </details>
     }

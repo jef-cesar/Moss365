@@ -1,11 +1,11 @@
 @page "/vergelijk"
 @inject ManagementState State
 
-<h1>AD tegenover Entra</h1>
+<h1>@T["menu.vergelijk"]</h1>
 
 @if (!State.Data.HasAd || !State.Data.HasEntra)
 {
-    <div class="kb-melding">Voor deze vergelijking zijn zowel <code>ad-gebruikers.csv</code> als <code>entra-gebruikers.csv</code> nodig.</div>
+    <div class="kb-melding">@Html("compare.needs")</div>
 }
 else
 {
@@ -24,7 +24,7 @@ else
     </div>
 
     <div class="kb-filters">
-        <input class="kb-invoer kb-breed" placeholder="Filter op naam of kenmerk" @bind="z.Find" @bind:event="oninput" />
+        <input class="kb-invoer kb-breed" placeholder="@T["compare.filter-on-name-or-attribute"]" @bind="z.Find" @bind:event="oninput" />
     </div>
 
     <KbTable Id="vergelijk" Items="Filtered" Columns="columns" DefaultSorting="gebruiker" />
