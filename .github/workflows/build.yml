@@ -141,6 +141,9 @@ jobs:
           $out | Set-Content $notes -Encoding UTF8
 
           $assets = @($zip, $sums) + @($velopack | ForEach-Object { $_.FullName })
-          gh release create $tag @assets --target $env:GITHUB_SHA --title "Moss365 $version" --notes-file $notes --prerelease
+          # A stable version becomes the latest release (the download link on the front page points to it); a preview
+          # stays a prerelease
+          $kind = if ($channel -eq 'preview') { '--prerelease' } else { '--latest' }
+          gh release create $tag @assets --target $env:GITHUB_SHA --title "Moss365 $version" --notes-file $notes $kind
           if ($LASTEXITCODE -ne 0) { throw "Creating the release failed ($LASTEXITCODE)." }
           exit 0

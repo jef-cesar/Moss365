@@ -2,6 +2,13 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.30.1
+
+- **Download link on the front page** of the repository: always the newest version (setup, portable zip and
+  SHA256SUMS.txt), with a badge that shows the newest version.
+- A stable version is now published as the **latest release** instead of a prerelease, so that GitHub's link to the
+  newest release works (also the link in Versie en updates). Previews (a version with a suffix) stay prereleases.
+
 ## 0.30.0
 
 A big step: the full Conditional Access editor (brought forward from step R11 of the [roadmap](docs/roadmap-1.0.md)),

@@ -26,7 +26,7 @@ public sealed class GitHubUpdates : IUpdateCheck
     {
         try
         {
-            // Not releases/latest: GitHub leaves prereleases out of that, and every 0.x release is one
+            // Not releases/latest: GitHub leaves prereleases out of that (the preview channel, and every release before 0.30.1)
             using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{_repo}/releases?per_page=30");
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("Moss365", "1.0"));
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));

@@ -4,14 +4,29 @@
 that manage one or more organisations (tenants). Users, groups, shared mailboxes, rooms, guests, licences, security and
 Conditional Access on one screen, with the history of the organisation over time.
 
-> **Status**: on the way to 1.0. Every step of the [roadmap](docs/roadmap-1.0.md) is a prerelease (0.x) on the
-> [Releases](https://github.com/jef-cesar/Moss365/releases) page. The interface is still in Dutch until the language
-> step (R15).
+[![Latest release](https://img.shields.io/github/v/release/jef-cesar/Moss365?label=latest%20release)](https://github.com/jef-cesar/Moss365/releases/latest)
+[![Build](https://github.com/jef-cesar/Moss365/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/jef-cesar/Moss365/actions/workflows/build.yml)
+
+## Download
+
+**[⬇ Download Moss365 for Windows (newest version)](https://github.com/jef-cesar/Moss365/releases/latest/download/Moss365.Desktop-stable-Setup.exe)**:
+installs per user, no administrator rights, and updates itself.
+
+- Without installing: [portable zip](https://github.com/jef-cesar/Moss365/releases/latest/download/Moss365.Desktop-stable-Portable.zip)
+  (does not update itself).
+- Check the download: [SHA256SUMS.txt](https://github.com/jef-cesar/Moss365/releases/latest/download/SHA256SUMS.txt)
+  (until 1.0 the app is not signed, so Windows SmartScreen may warn).
+- What is new: [release notes of the newest version](https://github.com/jef-cesar/Moss365/releases/latest), and every
+  version in the [changelog](CHANGELOG.md).
+
+> **Status**: on the way to 1.0. Every step of the [roadmap](docs/roadmap-1.0.md) is a release (0.x) on the
+> [Releases](https://github.com/jef-cesar/Moss365/releases) page; previews (a version with a suffix) are prereleases.
+> The interface is still in Dutch until the language step (R15).
 
 ## Getting started
 
-1. Download `Moss365.Desktop-stable-Setup.exe` from the newest release and check it against `SHA256SUMS.txt` (until 1.0
-   the app is not signed).
+1. [Download the setup](https://github.com/jef-cesar/Moss365/releases/latest/download/Moss365.Desktop-stable-Setup.exe)
+   and check it against `SHA256SUMS.txt` (until 1.0 the app is not signed).
 2. Run it (Windows 10 or 11, no administrator rights needed). The app updates itself from then on (Settings > Controle
    van deze pc > Updates). The zip in the release still works without installing, but does not update itself.
 3. **Instellingen > Tenant inrichten**: type a domain of your organisation, sign in once as an Application or Global
