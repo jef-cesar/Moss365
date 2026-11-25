@@ -2,17 +2,17 @@
 
 @if (SignIns.Count == 0)
 {
-    <p class="kb-zacht">Geen aanmeldingen in deze periode.</p>
+    <p class="kb-zacht">@T["sign-in-list.no-sign-ins-in-this"]</p>
 }
 else
 {
     <table class="kb-tabel">
         <thead>
             <tr>
-                <th>Tijd</th>
-                @if (WithUser) { <th>Gebruiker</th> }
-                <th>App</th><th>Plaats</th><th>IP</th><th>Resultaat</th>
-                @if (WithCa) { <th>Conditional Access</th> }
+                <th>@T["sign-in-list.time"]</th>
+                @if (WithUser) { <th>@T["sign-in-list.user"]</th> }
+                <th>@T["sign-in-list.app"]</th><th>@T["sign-in-list.location"]</th><th>@T["sign-in-list.ip"]</th><th>@T["plan.result"]</th>
+                @if (WithCa) { <th>@T["menu.conditional-access"]</th> }
             </tr>
         </thead>
         <tbody>

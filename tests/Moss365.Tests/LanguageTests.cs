@@ -48,7 +48,7 @@ public sealed class LanguageTests
     [Fact]
     public void EveryKeyUsedInTheScreensExists()
     {
-        var used = new Regex(@"\bT(?:\.Format|\.Text)?\(?\[?""([a-z][a-z0-9\.\-]+)""");
+        var used = new Regex(@"\bTx?(?:\.Format|\.Text)?\(?\[?""([a-z][a-z0-9\.\-]+)""");
         var english = Translator.Dictionaries["en"];
         var missing = Directory.GetFiles(Ui, "*.*", SearchOption.AllDirectories)
             .Where(f => (f.EndsWith(".razor", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal)) && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))

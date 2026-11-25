@@ -12,21 +12,21 @@
     @if (session.CountActive > 0)
     {
         <span class="kb-label kb-label-let">@session.CountActive @(session.CountActive == 1 ? "filter" : "filters"): @filtered.Count van @all.Count</span>
-        <button class="kb-knop kb-klein" @onclick="ClearFilters">Filters wissen</button>
+        <button class="kb-knop kb-klein" @onclick="ClearFilters">@Tx["kb-table.clear-filters"]</button>
     }
     @if (Selectable && SelectedSet.Count > 0)
     {
         <span class="kb-label">@SelectedSet.Count gekozen</span>
-        <button class="kb-knop kb-klein" @onclick="ClearSelection">Selectie wissen</button>
+        <button class="kb-knop kb-klein" @onclick="ClearSelection">@Tx["kb-table.clear-selection"]</button>
     }
     <span class="kb-tabel-knoppen">
-        <button class="kb-knop kb-klein @(session.ShowFilters ? "kb-primair" : null)" @onclick="() => session.ShowFilters = !session.ShowFilters" aria-expanded="@session.ShowFilters">Filteren</button>
+        <button class="kb-knop kb-klein @(session.ShowFilters ? "kb-primair" : null)" @onclick="() => session.ShowFilters = !session.ShowFilters" aria-expanded="@session.ShowFilters">@Tx["kb-table.filter"]</button>
         @if (Selectable && SelectedSet.Count > 0 && State.Can(Permission.Export))
         {
-            <button class="kb-knop kb-klein" @onclick="() => Export(true)" title="Enkel de gekozen rijen">Exporteren (gekozen)</button>
+            <button class="kb-knop kb-klein" @onclick="() => Export(true)" title="@Tx["kb-table.only-the-chosen-rows"]">@Tx["kb-table.export-chosen"]</button>
         }
-        <button class="kb-knop kb-klein" hidden="@(!State.Can(Permission.Export))" @onclick="() => Export(false)" title="Alle (gefilterde) rijen, met de zichtbare kolommen, in deze volgorde en sortering, als CSV voor Excel">Exporteren</button>
-        <button class="kb-knop kb-klein" @onclick="() => panel = !panel" aria-expanded="@panel">Kolommen</button>
+        <button class="kb-knop kb-klein" hidden="@(!State.Can(Permission.Export))" @onclick="() => Export(false)" title="@Tx["kb-table.all-filtered-rows-with-the"]">@Tx["kb-table.export"]</button>
+        <button class="kb-knop kb-klein" @onclick="() => panel = !panel" aria-expanded="@panel">@Tx["kb-table.columns"]</button>
     </span>
 </div>
 @if (export is not null)
@@ -35,19 +35,19 @@
         @if (export.Error is null)
         {
             <span>@export.Count rijen geëxporteerd naar <code>@export.FilePath</code></span>
-            <button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(export.FilePath)">Tonen in Verkenner</button>
+            <button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(export.FilePath)">@Tx["kb-table.show-in-explorer"]</button>
         }
         else
         {
             <span>Exporteren mislukt: @export.Error</span>
         }
-        <button class="kb-knop kb-klein" @onclick="() => export = null" aria-label="Melding sluiten">&times;</button>
+        <button class="kb-knop kb-klein" @onclick="() => export = null" aria-label="@Tx["kb-table.close-message"]">&times;</button>
     </div>
 }
 
 @if (panel)
 {
-    <div class="kb-kolompaneel" role="group" aria-label="Kolommen">
+    <div class="kb-kolompaneel" role="group" aria-label="@Tx["kb-table.columns"]">
         <ul>
             @foreach (var (k, i) in Ordered.Select((k, i) => (k, i)))
             {
@@ -59,8 +59,8 @@
             }
         </ul>
         <div class="kb-filters">
-            <button class="kb-knop kb-klein" @onclick="Restore">Standaard</button>
-            <span class="kb-zacht">Je kan kolommen ook verslepen in de kop van de tabel.</span>
+            <button class="kb-knop kb-klein" @onclick="Restore">@Tx["kb-table.default"]</button>
+            <span class="kb-zacht">@Tx["kb-table.you-can-also-drag-columns"]</span>
         </div>
     </div>
 }
@@ -78,7 +78,7 @@
         <tr>
             @if (Selectable)
             {
-                <th class="kb-kies"><input type="checkbox" checked="@AllOnPageSelected" @onchange="ChoosePage" aria-label="Alle rijen op deze pagina kiezen" title="Alle rijen op deze pagina" /></th>
+                <th class="kb-kies"><input type="checkbox" checked="@AllOnPageSelected" @onchange="ChoosePage" aria-label="@Tx["kb-table.choose-all-rows-on-this"]" title="@Tx["kb-table.all-rows-on-this-page"]" /></th>
             }
             @if (ForHeader is not null)
             {
@@ -97,7 +97,7 @@
                     aria-sort="@(active ? (view.Descending ? "descending" : "ascending") : "none")"
                     title="@(k.SortBy is null ? "Sleep om te verplaatsen" : "Klik om te sorteren, sleep om te verplaatsen")">
                     @k.Title@if (active) { <span class="kb-pijl">@(view.Descending ? " ▼" : " ▲")</span> }
-                    @if (session.Filters.TryGetValue(k.Key, out var f) && f.Active) { <span class="kb-filter-aan" title="Er staat een filter op deze kolom"> ⏷</span> }
+                    @if (session.Filters.TryGetValue(k.Key, out var f) && f.Active) { <span class="kb-filter-aan" title="@Tx["kb-table.this-column-has-a-filter"]"> ⏷</span> }
                 </th>
             }
         </tr>
@@ -114,7 +114,7 @@
                         @switch (KindOf(k))
                         {
                             case FilterKind.Text:
-                                <input class="kb-invoer kb-klein" placeholder="bevat..." value="@f.Text" @oninput="e => SetText(column, e)" aria-label="@($"Filter op {k.Title}")" />
+                                <input class="kb-invoer kb-klein" placeholder="@Tx["kb-table.contains"]" value="@f.Text" @oninput="e => SetText(column, e)" aria-label="@($"Filter op {k.Title}")" />
                                 break;
                             case FilterKind.Choice:
                                 <details class="kb-keuzefilter">
@@ -131,8 +131,8 @@
                             case FilterKind.Scope:
                                 var date = IsDate(k);
                                 <span class="kb-bereik">
-                                    <input class="kb-invoer kb-klein" type="@(date ? "date" : "number")" value="@f.Of" @onchange="e => SetScope(column, e, true)" aria-label="@($"{k.Title} vanaf")" title="vanaf" />
-                                    <input class="kb-invoer kb-klein" type="@(date ? "date" : "number")" value="@f.Until" @onchange="e => SetScope(column, e, false)" aria-label="@($"{k.Title} tot en met")" title="tot en met" />
+                                    <input class="kb-invoer kb-klein" type="@(date ? "date" : "number")" value="@f.Of" @onchange="e => SetScope(column, e, true)" aria-label="@($"{k.Title} vanaf")" title="@Tx["kb-table.from"]" />
+                                    <input class="kb-invoer kb-klein" type="@(date ? "date" : "number")" value="@f.Until" @onchange="e => SetScope(column, e, false)" aria-label="@($"{k.Title} tot en met")" title="@Tx["kb-table.up-to-and-including"]" />
                                 </span>
                                 break;
                         }
@@ -150,7 +150,7 @@
             <tr class="@RowClass?.Invoke(item) @(key is not null && SelectedSet.Contains(key) ? "kb-rij-gekozen" : null)">
                 @if (Selectable)
                 {
-                    <td class="kb-kies"><input type="checkbox" checked="@SelectedSet.Contains(key!)" @onclick="e => Choose(index, e)" aria-label="Kiezen"
+                    <td class="kb-kies"><input type="checkbox" checked="@SelectedSet.Contains(key!)" @onclick="e => Choose(index, e)" aria-label="@Tx["kb-table.choose"]"
                                                disabled="@(!CanSelect(item))" title="@(CanSelect(item) ? null : WhyNot?.Invoke(item))" /></td>
                 }
                 @if (For is not null)
@@ -167,24 +167,24 @@
 </table>
 @if (filtered.Count == 0 && all.Count > 0)
 {
-    <p class="kb-zacht">Geen rijen voor deze filters. <button class="kb-link" @onclick="ClearFilters">Filters wissen</button></p>
+    <p class="kb-zacht">@Tx["kb-table.no-rows-for-these-filters"] <button class="kb-link" @onclick="ClearFilters">@Tx["kb-table.clear-filters"]</button></p>
 }
 
 <div class="kb-pagineren">
     @if (PerPage > 0 && filtered.Count > PerPage)
     {
-        <button class="kb-knop kb-klein" disabled="@(session.Page == 0)" @onclick="() => ToPage(session.Page - 1)">&larr; Vorige</button>
+        <button class="kb-knop kb-klein" disabled="@(session.Page == 0)" @onclick="() => ToPage(session.Page - 1)">@Tx["kb-table.previous"]</button>
         <span>@(session.Page * PerPage + 1)–@Math.Min(filtered.Count, (session.Page + 1) * PerPage) van @filtered.Count.ToString("N0")</span>
-        <button class="kb-knop kb-klein" disabled="@((session.Page + 1) * PerPage >= filtered.Count)" @onclick="() => ToPage(session.Page + 1)">Volgende &rarr;</button>
+        <button class="kb-knop kb-klein" disabled="@((session.Page + 1) * PerPage >= filtered.Count)" @onclick="() => ToPage(session.Page + 1)">@Tx["kb-table.next"]</button>
     }
     @if (filtered.Count > 250 || view.PerPage is not null)
     {
         <label class="kb-zacht">
-            Per pagina
-            <select class="kb-invoer kb-klein" value="@PerPage" @onchange="SetPerPage" aria-label="Rijen per pagina">
+            @Tx["kb-table.per-page"]
+            <select class="kb-invoer kb-klein" value="@PerPage" @onchange="SetPerPage" aria-label="@Tx["kb-table.rows-per-page"]">
                 <option value="250">250</option>
                 <option value="500">500</option>
-                <option value="0">alles</option>
+                <option value="0">@Tx["kb-table.all"]</option>
             </select>
         </label>
     }

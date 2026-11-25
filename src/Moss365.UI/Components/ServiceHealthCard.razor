@@ -3,14 +3,14 @@
 @inject ManagementState State
 
 <section class="kb-kaart">
-    <h2>Status van Microsoft 365</h2>
+    <h2>@T["service-health-card.microsoft-365-status"]</h2>
     @if (State.ServiceHealthStatus is { } h)
     {
         <p><strong>@ServiceHealth.Summary(h)</strong> <span class="kb-zacht">gelezen om @read?.ToString("HH:mm")</span></p>
         @if (h.Issues.Count > 0)
         {
             <table class="kb-tabel">
-                <thead><tr><th>Dienst</th><th>Wat</th><th>Soort</th><th>Status</th><th>Sinds</th></tr></thead>
+                <thead><tr><th>@T["service-health-card.service"]</th><th>@T["service-health-card.what"]</th><th>@T["nested-groups.kind"]</th><th>@T["service-health-card.status"]</th><th>@T["service-health-card.since"]</th></tr></thead>
                 <tbody>
                     @foreach (var i in h.Issues.Take(15))
                     {
@@ -22,7 +22,7 @@
         }
         @if (ServiceHealth.ActionRequired(h, DateTimeOffset.Now) is { Count: > 0 } actions)
         {
-            <h3>Berichtencentrum: actie nodig</h3>
+            <h3>@T["service-health-card.message-center-action-needed"]</h3>
             <ul>@foreach (var m in actions.Take(10)) { <li>@m.Title <span class="kb-zacht">voor @m.ActionRequiredBy?.LocalDateTime.ToString("dd/MM/yyyy")</span></li> }</ul>
         }
         @if (h.Note is { } n) { <p class="kb-zacht">@n</p> }

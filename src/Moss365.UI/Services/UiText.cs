@@ -19,6 +19,9 @@ public static class UiText
 
     public static Translator T => Local.Value ?? _global;
 
+    /// <summary>The same as <see cref="T"/>, for generic components whose type parameter is called T.</summary>
+    public static Translator Tx => T;
+
     /// <summary>Another language for this flow only (tests), without touching the rest of the app.</summary>
     public static IDisposable Scope(string language)
     {
@@ -59,6 +62,13 @@ public static class UiText
         Chosen = string.IsNullOrWhiteSpace(language) ? null : language;
         Use(Translator.Resolve(Chosen, system));
     }
+
+    /// <summary>
+    /// A text with markup (bold, a link) from the dictionary, with the values HTML-encoded: for sentences that hold
+    /// markup, so that a translation can put the words in its own order. Only the dictionaries hold markup.
+    /// </summary>
+    public static Microsoft.AspNetCore.Components.MarkupString Html(string key, params object?[] values)
+        => new(values.Length == 0 ? T[key] : T.Format(key, values.Select(v => (object?)System.Net.WebUtility.HtmlEncode(Convert.ToString(v, T.Culture) ?? string.Empty)).ToArray()));
 
     /// <summary>The text of a menu item, by its address.</summary>
     public static string Menu(MenuItem item) => T.Text("menu." + (item.Href.Length == 0 ? "start" : item.Href.Replace('/', '.')), item.Text);

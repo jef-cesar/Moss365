@@ -4,7 +4,7 @@
 
 @if (withoutEditor)
 {
-    <textarea class="kb-invoer kb-code" spellcheck="false" rows="28" readonly="@ReadOnly" value="@Text" @oninput="TextBoxChanged" aria-label="Script"></textarea>
+    <textarea class="kb-invoer kb-code" spellcheck="false" rows="28" readonly="@ReadOnly" value="@Text" @oninput="TextBoxChanged" aria-label="@T["code-editor.script"]"></textarea>
 }
 else
 {

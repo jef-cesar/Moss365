@@ -19,15 +19,15 @@
                     @if (State.Can(Permission.Manage))
                     {
                         <div class="kb-rij">
-                            <label>Kenmerk
+                            <label>@T["bulk-tasks.attribute"]
                                 <select class="kb-invoer" @bind="attribute">
-                                    <option value="Office">Kantoor</option>
-                                    <option value="Department">Dienst</option>
-                                    <option value="City">Stad</option>
-                                    <option value="JobTitle">Functie</option>
+                                    <option value="Office">@T["bulk-tasks.office"]</option>
+                                    <option value="Department">@T["service-health-card.service"]</option>
+                                    <option value="City">@T["bulk-tasks.city"]</option>
+                                    <option value="JobTitle">@T["bulk-tasks.job-title"]</option>
                                 </select>
                             </label>
-                            <label>Wordt
+                            <label>@T["plan.becomes"]
                                 <input class="kb-invoer" list="kb-bulk-waarden" @bind="value" />
                                 <datalist id="kb-bulk-waarden">
                                     @foreach (var w in Values())
@@ -36,7 +36,7 @@
                                     }
                                 </datalist>
                             </label>
-                            <button class="kb-knop" disabled="@(value.Trim().Length == 0)" @onclick="Attribute">Plan maken</button>
+                            <button class="kb-knop" disabled="@(value.Trim().Length == 0)" @onclick="Attribute">@T["bulk-tasks.make-plan"]</button>
                         </div>
                     }
                     @if (State.Can(Permission.Actions))
@@ -44,8 +44,7 @@
                         <details class="kb-later">
                             <summary>Uitstroom inplannen voor de @Count gekozen gebruikers</summary>
                             <p class="kb-zacht">
-                                Eén geplande uitstroom per persoon, met de standaardopties. Op het moment zelf staat elk plan klaar bij
-                                <a href="gepland">Gepland</a>; er gebeurt niets zonder bevestiging. Gastgebruikers worden overgeslagen.
+                                @Html("bulk.offboarding")
                             </p>
                             <Schedule Selected="PlanOffboardingIn" />
                             @if (scheduled is not null) { <div class="kb-melding kb-goed">@scheduled</div> }
@@ -74,9 +73,9 @@
                     @if (State.Can(Permission.Manage))
                     {
                         <div class="kb-filters">
-                            <button class="kb-knop" @onclick="() => Hide(true)">Verbergen in de adreslijst</button>
-                            <button class="kb-knop" @onclick="() => Hide(false)">Tonen in de adreslijst</button>
-                            <button class="kb-knop" @onclick="Block">Aanmelden met het account blokkeren</button>
+                            <button class="kb-knop" @onclick="() => Hide(true)">@T["bulk-tasks.hide-in-the-address-list"]</button>
+                            <button class="kb-knop" @onclick="() => Hide(false)">@T["bulk-tasks.show-in-the-address-list"]</button>
+                            <button class="kb-knop" @onclick="Block">@T["bulk-tasks.block-sign-in-with-the"]</button>
                         </div>
                     }
                 </div>

@@ -3,24 +3,24 @@
 @inject ManagementState State
 
 <section class="kb-kaart">
-    <h2>Berichtspoor</h2>
-    <p class="kb-zacht">Kwam de mail aan, en zo niet, waarom? Exchange Online toont de laatste 10 dagen. Elke opvraging komt in het toegangslogboek.</p>
+    <h2>@T["message-trace-card.message-trace"]</h2>
+    <p class="kb-zacht">@T["message-trace-card.did-the-mail-arrive-and"]</p>
     <div class="kb-filters">
-        <label><input type="checkbox" @bind="received" /> Ontvangen</label>
-        <label><input type="checkbox" @bind="sent" /> Verzonden</label>
-        <label>Dagen
-            <select class="kb-invoer" @bind="days" aria-label="Dagen"><option value="1">1</option><option value="2">2</option><option value="7">7</option><option value="10">10</option></select>
+        <label><input type="checkbox" @bind="received" /> @T["message-trace-card.received"]</label>
+        <label><input type="checkbox" @bind="sent" /> @T["message-trace-card.sent"]</label>
+        <label>@T["message-trace-card.days"]
+            <select class="kb-invoer" @bind="days" aria-label="@T["message-trace-card.days"]"><option value="1">1</option><option value="2">2</option><option value="7">7</option><option value="10">10</option></select>
         </label>
-        <input class="kb-invoer" placeholder="enkel met dit adres (optioneel)" @bind="other" aria-label="Ander adres" />
-        <button class="kb-knop" disabled="@(busy || (!received && !sent))" @onclick="Load">Opzoeken</button>
-        @if (busy) { <span class="kb-zacht">bezig...</span> }
+        <input class="kb-invoer" placeholder="@T["message-trace-card.only-with-this-address-optional"]" @bind="other" aria-label="@T["message-trace-card.other-address"]" />
+        <button class="kb-knop" disabled="@(busy || (!received && !sent))" @onclick="Load">@T["message-trace-card.look-up"]</button>
+        @if (busy) { <span class="kb-zacht">@T["message-trace-card.busy"]</span> }
     </div>
     @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
     @if (rows is not null)
     {
         <p>@Shown.Count bericht(en)@(Shown.Count(r => !Delivered(r)) is var n && n > 0 ? $", waarvan {n} niet afgeleverd" : null).</p>
         <table class="kb-tabel">
-            <thead><tr><th>Wanneer</th><th>Van</th><th>Aan</th><th>Onderwerp</th><th>Status</th></tr></thead>
+            <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["absence-card.from"]</th><th>@T["message-trace-card.to"]</th><th>@T["message-trace-card.subject"]</th><th>@T["service-health-card.status"]</th></tr></thead>
             <tbody>
                 @foreach (var r in Shown.Take(200))
                 {

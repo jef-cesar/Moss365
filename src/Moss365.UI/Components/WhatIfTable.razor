@@ -1,7 +1,7 @@
 @* The policies of a "what if", with whether they apply and why *@
 
 <table class="kb-tabel">
-    <thead><tr><th>Beleid</th><th>Geldt</th><th>Waarom</th><th>Gevolg</th></tr></thead>
+    <thead><tr><th>@T["what-if-table.policy"]</th><th>@T["what-if-table.applies"]</th><th>@T["nested-groups.why"]</th><th>@T["what-if-table.effect"]</th></tr></thead>
     <tbody>
         @foreach (var r in Rules.OrderBy(r => r.Answer.Applies).ThenBy(r => r.Policy.Name))
         {

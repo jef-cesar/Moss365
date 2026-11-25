@@ -4,27 +4,26 @@
 @inject NavigationManager Nav
 
 <section class="kb-kaart">
-    <h2>Helpdesk</h2>
+    <h2>@T["helpdesk.helpdesk"]</h2>
     @if (Person.Ad is not { } ad)
     {
         <p class="kb-zacht">
-            Geen AD-account. Het wachtwoord van een cloudaccount stel je in via het Entra-portaal (Gebruikers &gt; Wachtwoord
-            opnieuw instellen).
+            @T["helpdesk.no-ad-account-you-set"]
         </p>
     }
     else
     {
         <p>
-            @if (ad.LockedOut) { <span class="kb-label kb-rood">vergrendeld</span> }
-            @if (!ad.Enabled) { <span class="kb-label">uitgeschakeld</span> }
+            @if (ad.LockedOut) { <span class="kb-label kb-rood">@T["helpdesk.locked"]</span> }
+            @if (!ad.Enabled) { <span class="kb-label">@T["helpdesk.disabled"]</span> }
             <span class="kb-zacht">Wachtwoord laatst ingesteld: @(string.IsNullOrEmpty(ad.PasswordLastSet) ? "onbekend" : ad.PasswordLastSet)</span>
         </p>
         <div class="kb-filters">
-            <button class="kb-knop" @onclick="NewPassword">Wachtwoord opnieuw instellen</button>
-            <button class="kb-knop" @onclick="() => Show(HelpdeskPlans.Unlock(Person))">Ontgrendelen</button>
+            <button class="kb-knop" @onclick="NewPassword">@T["helpdesk.reset-password"]</button>
+            <button class="kb-knop" @onclick="() => Show(HelpdeskPlans.Unlock(Person))">@T["helpdesk.unlock"]</button>
             @if (!ad.Enabled)
             {
-                <button class="kb-knop" @onclick="() => Show(HelpdeskPlans.Enable(Person))">Inschakelen</button>
+                <button class="kb-knop" @onclick="() => Show(HelpdeskPlans.Enable(Person))">@T["helpdesk.enable"]</button>
             }
         </div>
 
@@ -32,7 +31,7 @@
         {
             <div class="kb-raster kb-helpdesk-velden">
                 <div class="kb-veld">
-                    <span>Voorgesteld wachtwoord</span>
+                    <span>@T["helpdesk.suggested-password"]</span>
                     <CopyField Value="@password" Label="Voorgesteld wachtwoord" Secret="true" />
                 </div>
                 <label class="kb-veld">
@@ -40,16 +39,14 @@
                     <input class="kb-invoer" type="password" autocomplete="new-password" @bind="own" @bind:event="oninput" />
                 </label>
             </div>
-            <label><input type="checkbox" @bind="change" /> De gebruiker moet het wijzigen bij de volgende aanmelding</label>
-            <label><input type="checkbox" @bind="unlock" /> Account ook ontgrendelen</label>
+            <label><input type="checkbox" @bind="change" /> @T["helpdesk.the-user-must-change-it"]</label>
+            <label><input type="checkbox" @bind="unlock" /> @T["helpdesk.also-unlock-the-account"]</label>
             <div class="kb-filters">
-                <button class="kb-knop" @onclick="() => { password = NameRules.InitialPassword(); plan = null; }">Ander wachtwoord</button>
-                <button class="kb-knop kb-primair" @onclick="MakePasswordPlan">Plan maken</button>
+                <button class="kb-knop" @onclick="() => { password = NameRules.InitialPassword(); plan = null; }">@T["helpdesk.another-password"]</button>
+                <button class="kb-knop kb-primair" @onclick="MakePasswordPlan">@T["bulk-tasks.make-plan"]</button>
             </div>
             <p class="kb-zacht">
-                Geef het wachtwoord mondeling of via een apart kanaal door, nooit in dezelfde mail als de gebruikersnaam. De app
-                bewaart het nergens; na het verlaten van deze pagina is het weg. Met Entra Connect is het binnen enkele minuten
-                ook in Microsoft 365 actief.
+                @T["helpdesk.pass-the-password-on-by"]
             </p>
         }
 
@@ -57,25 +54,25 @@
 
     @if (Person.Entra is not null && !Person.IsGuest && State.HasMicrosoft365)
     {
-        <h3>Temporary Access Pass</h3>
-        <p class="kb-zacht">Voor wie zijn telefoon kwijt is of MFA nog moet registreren: een tijdelijke code om zich aan te melden (en MFA opnieuw in te stellen).</p>
+        <h3>@T["helpdesk.temporary-access-pass"]</h3>
+        <p class="kb-zacht">@T["helpdesk.for-someone-who-lost-their"]</p>
         <div class="kb-filters">
-            <label>Geldig
-                <select class="kb-invoer" @bind="tapMinutes" aria-label="Geldigheid">
-                    <option value="60">1 uur</option>
-                    <option value="480">8 uur</option>
-                    <option value="1440">1 dag</option>
-                    <option value="10080">7 dagen</option>
+            <label>@T["helpdesk.valid"]
+                <select class="kb-invoer" @bind="tapMinutes" aria-label="@T["helpdesk.validity"]">
+                    <option value="60">@T["helpdesk.1-hour"]</option>
+                    <option value="480">@T["helpdesk.8-hours"]</option>
+                    <option value="1440">@T["helpdesk.1-day"]</option>
+                    <option value="10080">@T["helpdesk.7-days"]</option>
                 </select>
             </label>
-            <label><input type="checkbox" @bind="tapOnce" /> Eenmalig</label>
-            <button class="kb-knop" @onclick="() => Show(Moss365.Core.Helpdesk.HelpdeskTools.TemporaryAccessPass(Person, tapMinutes, tapOnce))">Pass maken (plan)</button>
+            <label><input type="checkbox" @bind="tapOnce" /> @T["helpdesk.single-use"]</label>
+            <button class="kb-knop" @onclick="() => Show(Moss365.Core.Helpdesk.HelpdeskTools.TemporaryAccessPass(Person, tapMinutes, tapOnce))">@T["helpdesk.make-pass-plan"]</button>
         </div>
     }
 
     @if (Person.Ad is { LockedOut: true } && State.Can(Permission.Scripts) && LockoutScript is { } lockout)
     {
-        <p><button class="kb-knop kb-klein" @onclick="() => FindLockout(lockout)">Waar komt de vergrendeling vandaan?</button> <span class="kb-zacht">(script; leest de gebeurtenissen van de domeincontrollers)</span></p>
+        <p><button class="kb-knop kb-klein" @onclick="() => FindLockout(lockout)">@T["helpdesk.where-does-the-lockout-come"]</button> <span class="kb-zacht">@T["helpdesk.script-reads-the-events-of"]</span></p>
     }
 
     @foreach (var f in errors)

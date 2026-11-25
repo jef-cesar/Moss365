@@ -9,14 +9,14 @@
 @if (open)
 {
     <div class="kb-zoek-achtergrond" @onclick="Close"></div>
-    <div class="kb-zoek" role="dialog" aria-label="Zoeken">
-        <input class="kb-invoer kb-zoek-veld" placeholder="Zoek een pagina, gebruiker, groep, postvak of room" aria-label="Zoeken"
+    <div class="kb-zoek" role="dialog" aria-label="@T["nav.search"]">
+        <input class="kb-invoer kb-zoek-veld" placeholder="@T["search.placeholder"]" aria-label="@T["nav.search"]"
                @bind="text" @bind:event="oninput" @onkeydown="Key" @ref="field" />
         @if (text.Trim().Length > 0)
         {
             @if (results.Count == 0)
             {
-                <p class="kb-zacht">Niets gevonden.</p>
+                <p class="kb-zacht">@T["search.none"]</p>
             }
             <ul class="kb-zoek-lijst">
                 @for (var n = 0; n < results.Count; n++)
@@ -28,7 +28,7 @@
                 }
             </ul>
         }
-        <p class="kb-zacht kb-zoek-hulp">Enter opent het gekozen resultaat, pijltjes kiezen, Escape sluit.</p>
+        <p class="kb-zacht kb-zoek-hulp">@T["search.help"]</p>
     </div>
 }
 
@@ -127,7 +127,7 @@
 
         foreach (var p in MenuModel.AllPages.Select(p => p with { Text = Shown(p) }).Where(p => Hit(p.Text) && Allowed(p.Href)))
         {
-            yield return new("pagina", p.Text, string.Empty, p.Href);
+            yield return new(T["search.kind.page"], p.Text, string.Empty, p.Href);
         }
 
         if (q.Length < 2 || !Allowed("gebruikers"))
@@ -138,12 +138,12 @@
         var d = State.Data;
         foreach (var p in d.Persons.Where(p => Hit(p.Name, p.Upn, p.Ad?.SamAccountName)).OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase).Take(8))
         {
-            yield return new(p.IsGuest ? "gast" : "gebruiker", p.Name, p.Upn, d.Index.Ref(p).Route!);
+            yield return new(p.IsGuest ? T["search.kind.guest"] : T["search.kind.user"], p.Name, p.Upn, d.Index.Ref(p).Route!);
         }
 
         foreach (var g in d.Index.Groups.Where(g => Hit(g.Name, g.Mail)).OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).Take(8))
         {
-            yield return new("groep", g.Name, g.Layers, g.Ref.Route!);
+            yield return new(T["search.kind.group"], g.Name, g.Layers, g.Ref.Route!);
         }
 
         // Scripts (0.33): open the start form
@@ -161,7 +161,7 @@
 
             foreach (var s in scripts.Where(s => Hit(s.Header.Name, s.Header.Description, s.Key)).Take(6))
             {
-                yield return new("script", s.Header.Name, s.Header.Description, "scripts/starten/" + Uri.EscapeDataString(s.Key));
+                yield return new(T["search.kind.script"], s.Header.Name, s.Header.Description, "scripts/starten/" + Uri.EscapeDataString(s.Key));
             }
         }
 
@@ -172,12 +172,12 @@
 
         foreach (var m in d.Mailboxes.Where(m => Hit(m.DisplayName, m.Smtp)).OrderBy(m => m.DisplayName, StringComparer.CurrentCultureIgnoreCase).Take(8))
         {
-            yield return new("postvak", m.DisplayName, m.Smtp, "postvak/" + Uri.EscapeDataString(m.Smtp));
+            yield return new(T["search.kind.mailbox"], m.DisplayName, m.Smtp, "postvak/" + Uri.EscapeDataString(m.Smtp));
         }
 
         foreach (var r in d.Rooms.Where(r => Hit(r.DisplayName, r.Smtp)).OrderBy(r => r.DisplayName, StringComparer.CurrentCultureIgnoreCase).Take(8))
         {
-            yield return new("room", r.DisplayName, r.Smtp, "room/" + Uri.EscapeDataString(r.Smtp));
+            yield return new(T["search.kind.room"], r.DisplayName, r.Smtp, "room/" + Uri.EscapeDataString(r.Smtp));
         }
     }
 

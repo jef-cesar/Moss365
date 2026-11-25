@@ -5,16 +5,13 @@
     <img src="_content/Moss365.UI/moss365-logo.webp" alt="Moss365 - Have you tried turning the user off and on again?" />
 </div>
 
-<h1>Overzicht</h1>
+<h1>@T["menu.start"]</h1>
 
 <p class="kb-zacht">
-    Moss365 (The Moss Directory) beheert gebruikers, groepen en rooms in @Systems.
-    De app start met de inventaris van <code>Export-Inventaris.ps1</code> (per bestand de nieuwste map). Via
-    <a href="verbindingen">Verbindingen</a> laad je live gegevens uit @Systems. Wijzigingen gebeuren altijd als
-    plan: eerst een voorbeeld, dan bevestigen, dan uitvoeren, en alles komt in het <a href="logboek">logboek</a>.
+    @Html("start.intro", Systems)
 </p>
 
-<p>Huidige gegevens: <strong>@State.Data.Origin</strong>@if (State.LoadedOn is { } t) { <text>, geladen om @t.ToString("HH:mm")</text> }</p>
+<p>@T["start.current"] <strong>@State.Data.Origin</strong>@if (State.LoadedOn is { } t) { @T.Format("start.loadedat", t) }</p>
 
 @if (State.HasMicrosoft365)
 {
@@ -22,30 +19,29 @@
 }
 
 <section class="kb-kaart">
-    <h2>Inventaris</h2>
+    <h2>@T["start.inventory"]</h2>
     @if (State.Folders.Count == 0 && State.PreferenceFolder is null)
     {
         <div class="kb-melding">
-            Nog geen inventaris in deze tenant. Laad live via <a href="verbindingen">Verbindingen</a>, of lees hieronder de map
-            in die <code>Export-Inventaris.ps1</code> maakte.
+            @Html("start.noinventory")
         </div>
     }
 
     <div class="kb-rij">
-        <label>Map met voorrang</label>
+        <label>@T["start.priority"]</label>
         <select class="kb-invoer" @onchange="ChooseFolder">
-            <option value="" selected="@(State.PreferenceFolder is null)">Automatisch (per bestand de nieuwste)</option>
+            <option value="" selected="@(State.PreferenceFolder is null)">@T["start.automatic"]</option>
             @foreach (var m in State.Folders)
             {
                 <option value="@m" selected="@(m == State.PreferenceFolder)">@m[(m.LastIndexOf('/') + 1)..]</option>
             }
         </select>
-        <button class="kb-knop" @onclick="State.LoadInventory">Opnieuw laden</button>
+        <button class="kb-knop" @onclick="State.LoadInventory">@T["action.reload"]</button>
     </div>
     <div class="kb-rij">
-        <label>Map inlezen</label>
-        <input class="kb-invoer" placeholder="Volledig pad naar een map van Export-Inventaris.ps1" @bind="otherFolder" />
-        <button class="kb-knop" @onclick="Import">Inlezen in @State.Tenant.Name</button>
+        <label>@T["start.readfolder"]</label>
+        <input class="kb-invoer" placeholder="@T["start.folder.placeholder"]" @bind="otherFolder" />
+        <button class="kb-knop" @onclick="Import">@T.Format("start.readinto", State.Tenant.Name)</button>
     </div>
     @if (importMessage is not null)
     {
@@ -53,13 +49,13 @@
     }
 
     <table class="kb-tabel">
-        <thead><tr><th>Bestand</th><th>Uit map</th><th class="kb-getal">Rijen</th></tr></thead>
+        <thead><tr><th>@T["start.file"]</th><th>@T["start.fromfolder"]</th><th class="kb-getal">@T["start.rows"]</th></tr></thead>
         <tbody>
             @foreach (var b in State.Data.Sources)
             {
                 <tr class="@(b.Folder is null ? "kb-ontbreekt" : null)">
                     <td><code>@b.File</code></td>
-                    <td>@(b.Folder is null ? "niet gevonden" : b.Folder[(b.Folder.LastIndexOf('/') + 1)..])</td>
+                    <td>@(b.Folder is null ? T["start.notfound"] : b.Folder[(b.Folder.LastIndexOf('/') + 1)..])</td>
                     <td class="kb-getal">@b.Rows</td>
                 </tr>
             }
@@ -68,7 +64,7 @@
 </section>
 
 <section class="kb-kaart">
-    <h2>Accounts</h2>
+    <h2>@T["start.accounts"]</h2>
     <div class="kb-tegels">
         @foreach (var g in State.Data.Persons.GroupBy(p => p.Source).OrderByDescending(g => g.Count()))
         {
@@ -78,25 +74,23 @@
     @if (State.HasAd && State.HasMicrosoft365)
     {
     <p class="kb-zacht">
-        "AD + Entra" zijn gesynchroniseerde accounts. "Alleen Entra" zijn vooral de accounts achter gedeelde, room- en
-        planningspostvakken. "Alleen AD" zijn uitgeschakelde, technische en niet-gesynchroniseerde accounts.
+        @T["start.accounts.help"]
     </p>
     }
 </section>
 
 <section class="kb-kaart">
-    <h2>Organisatie</h2>
+    <h2>@T["menu.organisatie"]</h2>
     <p>
-        Bron: <code>@(State.ConfigSource ?? "geen organisatie.json gevonden")</code>
+        @T["start.source"] <code>@(State.ConfigSource ?? T["start.noconfig"])</code>
         @if (State.ConfigIsModified)
         {
-            <span class="kb-label">eigen wijzigingen</span>
+            <span class="kb-label">@T["start.ownchanges"]</span>
         }
     </p>
     <p>
-        @State.Config.Departments.Count diensten, waarvan
-        <strong>@State.Config.Departments.Count(d => string.IsNullOrWhiteSpace(d.Division))</strong> nog zonder afdeling.
-        <a href="organisatie">Koppelen</a>
+        @Html("start.departments", State.Config.Departments.Count, State.Config.Departments.Count(d => string.IsNullOrWhiteSpace(d.Division)))
+        <a href="organisatie">@T["start.link"]</a>
     </p>
 </section>
 
@@ -104,9 +98,9 @@
     /// <summary>The systems of this tenant, in words (0.21.1).</summary>
     private string Systems => (State.HasAd, State.HasMicrosoft365) switch
     {
-        (true, true) => "on-prem AD, Entra ID en Exchange Online",
-        (true, false) => "on-prem Active Directory",
-        _ => "Entra ID en Exchange Online (Microsoft 365)",
+        (true, true) => T["start.systems.both"],
+        (true, false) => T["start.systems.ad"],
+        _ => T["start.systems.cloud"],
     };
 
     private string otherFolder = string.Empty;

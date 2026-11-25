@@ -10,24 +10,23 @@
     <h2>@Title</h2>
     @if (Plan.Count == 0)
     {
-        <p class="kb-zacht">Er is niets te wijzigen.</p>
+        <p class="kb-zacht">@T["plan.nothing"]</p>
     }
     else
     {
         @if (results is null)
         {
             <p class="kb-zacht">
-                Vink aan wat er moet gebeuren. Er wordt pas iets gewijzigd na <strong>Uitvoeren</strong> en een bevestiging.
-                Alles komt in het logboek.
+                @Html("plan.intro")
                 @if (Plan.Any(w => w.TargetSystem == TargetSystem.Exchange && w.Selected))
                 {
-                    <br />@("Exchange gebruikt dezelfde aanmelding; verschijnt bovenaan een aanmeldlink, kopieer die naar je browser.")
+                    <br />@T["plan.exchange"]
                 }
             </p>
             @if (Run is null && State.MissingConnections(Plan) is { Count: > 0 } ontbreekt)
             {
                 <div class="kb-melding kb-fout">
-                    Geen verbinding ingesteld voor: @string.Join(", ", ontbreekt.Select(SystemName)). <a href="verbindingen">Verbindingen instellen</a>
+                    @T.Format("plan.noconnection", string.Join(", ", ontbreekt.Select(SystemName))) <a href="verbindingen">@T["plan.setconnections"]</a>
                 </div>
             }
         }
@@ -35,9 +34,9 @@
         <table class="kb-tabel">
             <thead>
                 <tr>
-                    <th>@if (results is null) { <input type="checkbox" title="Alles" checked="@Plan.All(w => w.Selected)" @onchange="AllOnOff" /> }</th>
-                    <th>Systeem</th><th>Wijziging</th><th>Object</th><th>Nu</th><th>Wordt</th>
-                    @if (results is not null) { <th>Resultaat</th> }
+                    <th>@if (results is null) { <input type="checkbox" title="@T["plan.all"]" checked="@Plan.All(w => w.Selected)" @onchange="AllOnOff" /> }</th>
+                    <th>@T["plan.system"]</th><th>@T["plan.change"]</th><th>@T["plan.object"]</th><th>@T["plan.now"]</th><th>@T["plan.becomes"]</th>
+                    @if (results is not null) { <th>@T["plan.result"]</th> }
                 </tr>
             </thead>
             <tbody>
@@ -55,14 +54,14 @@
                         <td>
                             @w.Description
                             @if (w.Warning is not null) { <div class="kb-waarschuwing">@w.Warning</div> }
-                            @if (results is null && Refused(w) is { } reason) { <div class="kb-waarschuwing kb-geweigerd">Niet voor jouw profiel: @reason</div> }
+                            @if (results is null && Refused(w) is { } reason) { <div class="kb-waarschuwing kb-geweigerd">@T.Format("plan.refused", reason)</div> }
                         </td>
                         <td><ObjectLink Id="@w.Target" Text="@(w.TargetName.Length > 0 ? w.TargetName : null)" /></td>
                         <td class="kb-zacht">@w.CurrentValue</td>
                         <td>@w.NewValue</td>
                         @if (results is not null)
                         {
-                            <td>@(r is null ? "niet uitgevoerd" : r.Status switch { ResultStatus.Succeeded => "gelukt", ResultStatus.Failed => "mislukt", _ => "overgeslagen" }) <span class="kb-zacht">@r?.Message</span></td>
+                            <td>@(r is null ? T["plan.notrun"] : r.Status switch { ResultStatus.Succeeded => T["plan.succeeded"], ResultStatus.Failed => T["plan.failed"], _ => T["plan.skipped"] }) <span class="kb-zacht">@r?.Message</span></td>
                         }
                     </tr>
                 }
@@ -74,18 +73,17 @@
             <div class="kb-filters">
                 @if (!confirm)
                 {
-                    <button class="kb-knop kb-primair" disabled="@(Selected == 0 || busy)" @onclick="() => confirm = true">Uitvoeren (@Selected)</button>
+                    <button class="kb-knop kb-primair" disabled="@(Selected == 0 || busy)" @onclick="() => confirm = true">@T.Format("plan.run", Selected)</button>
                 }
                 else
                 {
-                    <span><strong>@Selected wijziging(en)</strong> in @string.Join(", ", Plan.Where(w => w.Selected).Select(w => w.SystemText).Distinct()) van
-                        <strong class="kb-tenant-label" style="--kb-tenant: @State.Tenant.Colour">@State.Tenant.Name</strong> uitvoeren?</span>
+                    <span style="--kb-tenant: @State.Tenant.Colour">@Html("plan.confirm", Selected, string.Join(", ", Plan.Where(w => w.Selected).Select(w => w.SystemText).Distinct()), State.Tenant.Name)</span>
                     @if (Selected > BulkPlans.LargePlan)
                     {
-                        <label class="kb-groot-plan"><input type="checkbox" @bind="largeConfirmed" /> Ja, ik heb nagekeken dat deze <strong>@Selected</strong> wijzigingen kloppen</label>
+                        <label class="kb-groot-plan"><input type="checkbox" @bind="largeConfirmed" /> @Html("plan.large", Selected)</label>
                     }
-                    <button class="kb-knop kb-gevaar" disabled="@(busy || (Selected > BulkPlans.LargePlan && !largeConfirmed))" @onclick="Execute">Ja, uitvoeren in @State.Tenant.Name</button>
-                    <button class="kb-knop" disabled="@busy" @onclick="() => confirm = false">Annuleren</button>
+                    <button class="kb-knop kb-gevaar" disabled="@(busy || (Selected > BulkPlans.LargePlan && !largeConfirmed))" @onclick="Execute">@T.Format("plan.yes", State.Tenant.Name)</button>
+                    <button class="kb-knop" disabled="@busy" @onclick="() => confirm = false">@T["action.cancel"]</button>
                 }
                 @if (progress is not null) { <span class="kb-zacht">@progress</span> }
             </div>
@@ -94,16 +92,14 @@
         else
         {
             <div class="kb-melding @(results.All(r => r.Status == ResultStatus.Succeeded) ? "kb-goed" : "kb-fout")">
-                @results.Count(r => r.Status == ResultStatus.Succeeded) gelukt,
-                @results.Count(r => r.Status == ResultStatus.Failed) mislukt,
-                @results.Count(r => r.Status == ResultStatus.Skipped) overgeslagen.
+                @T.Format("plan.summary", results.Count(r => r.Status == ResultStatus.Succeeded), results.Count(r => r.Status == ResultStatus.Failed), results.Count(r => r.Status == ResultStatus.Skipped))
                 @if (State.TaskBusy)
                 {
-                    <text>De betrokken objecten worden nu opnieuw gelezen (zie onderaan het menu); de pagina werkt zichzelf bij.</text>
+                    @T["plan.rereading"]
                 }
                 else
                 {
-                    <text>De betrokken objecten zijn opnieuw gelezen, of staan gemarkeerd als "gewijzigd, nog niet vernieuwd".</text>
+                    @T["plan.reread"]
                 }
             </div>
         }
@@ -113,7 +109,7 @@
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<Change> Plan { get; set; } = Array.Empty<Change>();
-    [Parameter] public string Title { get; set; } = "Voorbeeld van de wijzigingen";
+    [Parameter] public string Title { get; set; } = T["plan.title"];
     [Parameter, EditorRequired] public string Context { get; set; } = string.Empty;
     [Parameter] public EventCallback<IReadOnlyList<ChangeResult>> Executed { get; set; }
 
@@ -174,7 +170,7 @@
             return;
         }
 
-        State.Pending.Set(new OpenItem(path, OpenKind.Plan, $"Plan klaar, nog niet uitgevoerd: {Selected} {(Selected == 1 ? "wijziging" : "wijzigingen")}")
+        State.Pending.Set(new OpenItem(path, OpenKind.Plan, T.Format("plan.pending", Selected, Selected == 1 ? T["plan.change.one"] : T["plan.change.more"]))
         {
             Count = Selected,
             Screen = Title,

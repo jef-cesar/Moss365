@@ -5,27 +5,25 @@
 @inject IServiceProvider Services
 
 <section class="kb-kaart" id="bibliotheek">
-    <h2>Bibliotheek bijwerken</h2>
+    <h2>@T["library-panel.update-the-library"]</h2>
     <p class="kb-zacht">
-        Nieuwe en gewijzigde scripts uit de bibliotheek van Moss365 (<code>scripts/</code> in de repository), zonder de app bij te
-        werken. Elk script wordt nagekeken tegen zijn vingerafdruk in de index; een script dat niet klopt, wordt geweigerd. Een
-        gedownload script draait nooit vanzelf. Een vastgezet script blijft in <strong>@State.Tenant.Name</strong> op zijn versie.
+        @Html("library.intro", State.Tenant.Name)
     </p>
     <div class="kb-rij">
-        <button class="kb-knop kb-primair" disabled="@busy" @onclick="Check">Nakijken</button>
-        @if (State.LibraryWhere is { } where) { <span class="kb-zacht">Bron: @where</span> }
+        <button class="kb-knop kb-primair" disabled="@busy" @onclick="Check">@T["library-panel.check"]</button>
+        @if (State.LibraryWhere is { } where) { <span class="kb-zacht">@T.Format("library.source", where)</span> }
     </div>
 
     @if (changes is not null)
     {
         @if (changes.Count == 0)
         {
-            <p class="kb-ok">De bibliotheek is bij: niets nieuws of gewijzigd.</p>
+            <p class="kb-ok">@T["library-panel.the-library-is-up-to"]</p>
         }
         else
         {
             <table class="kb-tabel">
-                <thead><tr><th></th><th>Script</th><th>Nu</th><th>Nieuw</th><th>Wat</th><th></th></tr></thead>
+                <thead><tr><th></th><th>@T["code-editor.script"]</th><th>@T["plan.now"]</th><th>@T["library-panel.new"]</th><th>@T["service-health-card.what"]</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var c in changes)
                     {
@@ -33,9 +31,9 @@
                             <td>@if (c.CanTake) { <input type="checkbox" aria-label="@c.Entry.Path" checked="@chosen.Contains(c.Entry.Path)" @onchange="e => Toggle(c, e.Value is true)" /> }</td>
                             <td>@c.Entry.Name <div class="kb-zacht"><code>@c.Entry.Path</code></div></td>
                             <td>@(c.CurrentVersion ?? "-")</td>
-                            <td>@c.Entry.Version @if (c.Entry.Writes) { <span class="kb-label">wijzigt</span> }</td>
+                            <td>@c.Entry.Version @if (c.Entry.Writes) { <span class="kb-label">@T["library-panel.writes"]</span> }</td>
                             <td>@KindText(c)</td>
-                            <td>@if (c.Kind == LibraryChangeKind.Changed) { <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => ShowDiff(c)">Verschil</button> }</td>
+                            <td>@if (c.Kind == LibraryChangeKind.Changed) { <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => ShowDiff(c)">@T["library-panel.difference"]</button> }</td>
                         </tr>
                         @if (diffFor == c.Entry.Path && diff is not null)
                         {
@@ -48,8 +46,8 @@
             {
                 <div class="kb-rij">
                     <span>@chosen.Count script(s) downloaden in <strong>@State.Tenant.Name</strong>?</span>
-                    <button class="kb-knop kb-primair" disabled="@busy" @onclick="Take">Ja, downloaden</button>
-                    <button class="kb-knop" @onclick="() => confirm = false">Annuleren</button>
+                    <button class="kb-knop kb-primair" disabled="@busy" @onclick="Take">@T["library-panel.yes-download"]</button>
+                    <button class="kb-knop" @onclick="() => confirm = false">@T["action.cancel"]</button>
                 </div>
             }
             else
@@ -64,7 +62,7 @@
 
     @if (Library.Count > 0)
     {
-        <h3>Vastzetten in deze tenant</h3>
+        <h3>@T["library-panel.pin-in-this-tenant"]</h3>
         <ul class="kb-lijst-plat">
             @foreach (var s in Library)
             {

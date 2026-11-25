@@ -3,26 +3,26 @@
 @inject ManagementState State
 
 <section class="kb-kaart">
-    <h2>Gegevens bewerken</h2>
+    <h2>@T["edit-user.edit-details"]</h2>
     @if (!open)
     {
         <p class="kb-zacht">
             @(AttributePlans.ViaAd(Person) ? "Dit account komt uit AD: de app wijzigt het in AD, Entra volgt na de synchronisatie." : "Cloudaccount: de app wijzigt het via Microsoft Graph.")
             UPN en e-mailadres pas je hier niet aan.
         </p>
-        <button class="kb-knop" @onclick="Open">Bewerken</button>
+        <button class="kb-knop" @onclick="Open">@T["edit-user.edit"]</button>
     }
     else
     {
         <div class="kb-raster">
-            <label>Weergavenaam <input class="kb-invoer" @bind="desired.DisplayName" /></label>
-            <label>Voornaam <input class="kb-invoer" @bind="desired.GivenName" /></label>
-            <label>Achternaam <input class="kb-invoer" @bind="desired.Surname" /></label>
-            <label>Functie <input class="kb-invoer" @bind="desired.JobTitle" /></label>
+            <label>@T["edit-user.display-name"] <input class="kb-invoer" @bind="desired.DisplayName" /></label>
+            <label>@T["edit-user.first-name"] <input class="kb-invoer" @bind="desired.GivenName" /></label>
+            <label>@T["edit-user.last-name"] <input class="kb-invoer" @bind="desired.Surname" /></label>
+            <label>@T["bulk-tasks.job-title"] <input class="kb-invoer" @bind="desired.JobTitle" /></label>
             <label>
-                Dienst
+                @T["service-health-card.service"]
                 <select class="kb-invoer" @bind="desired.Department">
-                    <option value="">(leeg)</option>
+                    <option value="">@T["edit-user.empty"]</option>
                     @foreach (var d in Choices(State.Config.Departments.Select(d => d.Department), desired.Department))
                     {
                         <option value="@d">@d</option>
@@ -31,25 +31,25 @@
                 @if (State.Config.DivisionFor(desired.Department) is { } a) { <span class="kb-zacht">afdeling @a.Name</span> }
             </label>
             <label>
-                Kantoor
+                @T["bulk-tasks.office"]
                 <select class="kb-invoer" @bind="desired.Office">
-                    <option value="">(leeg)</option>
+                    <option value="">@T["edit-user.empty"]</option>
                     @foreach (var k in Choices(State.Config.Offices, desired.Office))
                     {
                         <option value="@k">@k</option>
                     }
                 </select>
             </label>
-            <label>Stad <input class="kb-invoer" @bind="desired.City" /></label>
-            <label>Telefoon <input class="kb-invoer" type="tel" @bind="desired.Phone" /></label>
-            <label>Gsm <input class="kb-invoer" type="tel" @bind="desired.Mobile" /></label>
+            <label>@T["bulk-tasks.city"] <input class="kb-invoer" @bind="desired.City" /></label>
+            <label>@T["edit-user.phone"] <input class="kb-invoer" type="tel" @bind="desired.Phone" /></label>
+            <label>@T["edit-user.mobile"] <input class="kb-invoer" type="tel" @bind="desired.Mobile" /></label>
             @if (AttributePlans.ViaAd(Person))
             {
-                <label>Omschrijving <input class="kb-invoer" @bind="desired.Description" /></label>
+                <label>@T["edit-user.description"] <input class="kb-invoer" @bind="desired.Description" /></label>
                 <label>
-                    Logonscript
+                    @T["edit-user.logon-script"]
                     <select class="kb-invoer" @bind="desired.LogonScript">
-                        <option value="">(geen)</option>
+                        <option value="">@T["edit-user.none"]</option>
                         @foreach (var s in Choices(State.Config.LogonScripts, desired.LogonScript))
                         {
                             <option value="@s">@s</option>
@@ -61,12 +61,12 @@
         <PersonPicker Label="Manager" Selected="@(string.IsNullOrEmpty(desired.Manager) ? null : State.Data.SearchPerson(desired.Manager))" SelectedChanged="ChooseManager" />
         @if (!string.IsNullOrEmpty(desired.Manager))
         {
-            <button class="kb-knop kb-klein" @onclick="() => desired.Manager = string.Empty">Geen manager</button>
+            <button class="kb-knop kb-klein" @onclick="() => desired.Manager = string.Empty">@T["edit-user.no-manager"]</button>
         }
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
-            <button class="kb-knop" @onclick="Empty">Herstellen</button>
-            <button class="kb-knop" @onclick="() => open = false">Sluiten</button>
+            <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+            <button class="kb-knop" @onclick="Empty">@T["edit-user.reset"]</button>
+            <button class="kb-knop" @onclick="() => open = false">@T["edit-user.close"]</button>
         </div>
         @foreach (var f in errors)
         {

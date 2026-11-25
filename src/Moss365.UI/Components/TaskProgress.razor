@@ -13,7 +13,7 @@
             </span>
             @if (task.Busy)
             {
-                <button class="kb-knop kb-klein" @onclick="State.CancelTask">Annuleren</button>
+                <button class="kb-knop kb-klein" @onclick="State.CancelTask">@T["action.cancel"]</button>
             }
         </div>
         <div class="kb-balk" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@((int)(task.Progress * 100))">

@@ -4,32 +4,32 @@
 @inject ManagementState State
 
 <section class="kb-kaart">
-    <h2>Afwezig en doorsturen</h2>
-    <label><input type="checkbox" @bind="a.AutoReply" @bind:after="Clear" /> Automatisch antwoord</label>
+    <h2>@T["absence-card.away-and-forwarding"]</h2>
+    <label><input type="checkbox" @bind="a.AutoReply" @bind:after="Clear" /> @T["absence-card.automatic-reply"]</label>
     @if (a.AutoReply)
     {
         <div class="kb-raster">
-            <label>Van <input class="kb-invoer" type="datetime-local" @bind="start" @bind:after="Clear" aria-label="Van" /></label>
-            <label>Tot (leeg = tot je het uitzet) <input class="kb-invoer" type="datetime-local" @bind="end" @bind:after="Clear" aria-label="Tot" /></label>
+            <label>@T["absence-card.from"] <input class="kb-invoer" type="datetime-local" @bind="start" @bind:after="Clear" aria-label="@T["absence-card.from"]" /></label>
+            <label>@T["absence-card.until-empty-until-you-turn"] <input class="kb-invoer" type="datetime-local" @bind="end" @bind:after="Clear" aria-label="@T["absence-card.until"]" /></label>
         </div>
-        <label>Bericht voor collega's <textarea class="kb-invoer kb-breed" rows="3" @bind="a.Internal" @bind:after="Clear" aria-label="Bericht voor collega's"></textarea></label>
-        <label>Bericht voor buiten (leeg = hetzelfde) <textarea class="kb-invoer kb-breed" rows="3" @bind="a.External" @bind:after="Clear" aria-label="Bericht voor buiten"></textarea></label>
+        <label>@T["absence-card.message-for-colleagues"] <textarea class="kb-invoer kb-breed" rows="3" @bind="a.Internal" @bind:after="Clear" aria-label="@T["absence-card.message-for-colleagues"]"></textarea></label>
+        <label>@T["absence-card.message-for-outside-empty-the"] <textarea class="kb-invoer kb-breed" rows="3" @bind="a.External" @bind:after="Clear" aria-label="@T["absence-card.message-for-outside"]"></textarea></label>
     }
     <div class="kb-raster">
-        <label>Doorsturen naar (optioneel) <input class="kb-invoer" type="email" @bind="forward" @bind:after="Clear" placeholder="collega@contoso.com" aria-label="Doorsturen naar" /></label>
-        <label>Doorsturen tot <input class="kb-invoer" type="date" @bind="until" @bind:after="Clear" aria-label="Doorsturen tot" /></label>
+        <label>@T["absence-card.forward-to-optional"] <input class="kb-invoer" type="email" @bind="forward" @bind:after="Clear" placeholder="collega@contoso.com" aria-label="@T["absence-card.forward-to"]" /></label>
+        <label>@T["absence-card.forward-until"] <input class="kb-invoer" type="date" @bind="until" @bind:after="Clear" aria-label="@T["absence-card.forward-until"]" /></label>
     </div>
-    <label><input type="checkbox" @bind="a.KeepCopy" @bind:after="Clear" /> Een kopie in het postvak houden</label>
+    <label><input type="checkbox" @bind="a.KeepCopy" @bind:after="Clear" /> @T["absence-card.keep-a-copy-in-the"]</label>
     <div class="kb-filters">
-        <button class="kb-knop kb-primair" @onclick="MakePlan">Afwezigheid plannen</button>
-        <button class="kb-knop" @onclick="() => outcome = HelpdeskTools.AutoReplyOff(Person)">Automatisch antwoord uitzetten</button>
+        <button class="kb-knop kb-primair" @onclick="MakePlan">@T["absence-card.schedule-absence"]</button>
+        <button class="kb-knop" @onclick="() => outcome = HelpdeskTools.AutoReplyOff(Person)">@T["absence-card.turn-off-automatic-reply"]</button>
     </div>
     @if (outcome is not null)
     {
         @foreach (var e in outcome.Errors) { <div class="kb-melding kb-fout">@e</div> }
         @if (outcome.Plan.Count > 0) { <PlanView Plan="outcome.Plan" Context="@($"Afwezigheid {Person.Name}")" Title="Afwezig en doorsturen" Executed="AfterExecute" /> }
     }
-    @if (scheduled is not null) { <div class="kb-melding kb-goed">Het einde van het doorsturen staat klaar bij <a href="gepland">Gepland</a> op @scheduled.Value.ToString("dd/MM/yyyy").</div> }
+    @if (scheduled is not null) { <div class="kb-melding kb-goed">@Html("absence.forwardend", scheduled.Value.ToString("dd/MM/yyyy"))</div> }
 </section>
 
 @code {

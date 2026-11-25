@@ -7,17 +7,17 @@
     <h2>@Title</h2>
     @if (State.Data.Persons.Count == 0)
     {
-        <p class="kb-zacht">Laad eerst gegevens (Verbindingen): de voorstellen komen uit de accounts, groepen en licenties.</p>
+        <p class="kb-zacht">@T["suggestions-panel.load-data-first-connections-the"]</p>
     }
     else if (suggestions.Count == 0)
     {
-        <p class="kb-ok">Niets voor te stellen: wat in de gegevens staat, staat ook bij Organisatie.</p>
+        <p class="kb-ok">@T["suggestions-panel.nothing-to-suggest-what-is"]</p>
     }
     else
     {
-        <p class="kb-zacht">Gevonden in de geladen gegevens, nog niet bij Organisatie. Vink aan wat je wil overnemen; je kan alles nadien aanpassen.</p>
+        <p class="kb-zacht">@T["suggestions-panel.found-in-the-loaded-data"]</p>
         <table class="kb-tabel">
-            <thead><tr><th></th><th>Soort</th><th>Waarde</th><th>Aantal</th><th>Uitleg</th></tr></thead>
+            <thead><tr><th></th><th>@T["nested-groups.kind"]</th><th>@T["suggestions-panel.value"]</th><th>@T["suggestions-panel.number"]</th><th>@T["suggestions-panel.explanation"]</th></tr></thead>
             <tbody>
                 @foreach (var s in suggestions)
                 {
@@ -36,7 +36,7 @@
     }
     @if (State.HasMicrosoft365 && State.Data.Security is null && State.Data.Persons.Count > 0)
     {
-        <p class="kb-zacht">Noodaccounts stelt de app voor zodra de beheerrollen geladen zijn (Alles live laden).</p>
+        <p class="kb-zacht">@T["suggestions-panel.the-app-suggests-emergency-accounts"]</p>
     }
     @if (takenOver is not null) { <p class="kb-ok">@takenOver</p> }
 </section>

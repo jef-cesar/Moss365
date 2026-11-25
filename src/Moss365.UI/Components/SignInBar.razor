@@ -7,14 +7,14 @@
 {
     <div class="kb-aanmelden" role="alert">
         <div class="kb-aanmelden-tekst">
-            <strong><span aria-hidden="true">🔑</span> Aanmelden bij Microsoft: actie nodig</strong>
-            <span>Kopieer de link en open hem in de browser van je keuze, op deze pc. Na het aanmelden gaat de app vanzelf verder.</span>
+            <strong><span aria-hidden="true">🔑</span> @T["signin.action"]</strong>
+            <span>@T["signin.how"]</span>
         </div>
         <div class="kb-filters">
-            <input class="kb-invoer kb-breed kb-link-veld" readonly value="@link.AbsoluteUri" @onfocus="Select" aria-label="Aanmeldlink" @ref="field" />
-            <button class="kb-knop kb-primair" @onclick="() => Copy(link)">@(copied ? "Gekopieerd" : "Kopiëren")</button>
-            <button class="kb-knop" @onclick="() => Open(link)" title="Opent de standaardbrowser van Windows">Standaardbrowser</button>
-            <button class="kb-knop" @onclick="State.SignInEvent.Cancel">Annuleren</button>
+            <input class="kb-invoer kb-breed kb-link-veld" readonly value="@link.AbsoluteUri" @onfocus="Select" aria-label="@T["signin.link"]" @ref="field" />
+            <button class="kb-knop kb-primair" @onclick="() => Copy(link)">@(copied ? T["action.copied"] : T["action.copy"])</button>
+            <button class="kb-knop" @onclick="() => Open(link)" title="@T["signin.browser.title"]">@T["signin.browser"]</button>
+            <button class="kb-knop" @onclick="State.SignInEvent.Cancel">@T["action.cancel"]</button>
         </div>
     </div>
 }
