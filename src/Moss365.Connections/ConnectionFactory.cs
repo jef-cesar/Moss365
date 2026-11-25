@@ -27,7 +27,10 @@ public sealed class ConnectionFactory : IConnectionFactory
     public IUpdateCheck? Updates => _updates ??= new Updates.GitHubUpdates(_http);
 
     public IAdConnection? Ad(ConnectionSettings settings, string? password)
-        => OperatingSystem.IsWindows() && settings.AdFilled ? new AdLdap(settings.AdServer, settings.AdUser, password) : null;
+        => OperatingSystem.IsWindows() && settings.AdFilled ? new AdLdap(settings.AdServer, settings.AdUser, password, new NetlogonShare(settings.AdServer, settings.NetlogonPath)) : null;
+
+    public Core.LogonScripts.ILogonScriptShare? LogonScripts(ConnectionSettings settings)
+        => OperatingSystem.IsWindows() && settings.AdFilled ? new NetlogonShare(settings.AdServer, settings.NetlogonPath) : null;
 
     public IGraphConnection? Graph(ConnectionSettings settings)
     {

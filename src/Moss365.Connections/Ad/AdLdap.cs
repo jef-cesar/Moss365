@@ -22,8 +22,11 @@ public sealed class AdLdap : IAdConnection, IExecutor
     private readonly string? _user;
     private readonly string? _password;
 
-    public AdLdap(string server, string? user, string? password)
+    private readonly NetlogonShare? _netlogon;
+
+    public AdLdap(string server, string? user, string? password, NetlogonShare? netlogon = null)
     {
+        _netlogon = netlogon;
         _server = server;
         _user = string.IsNullOrWhiteSpace(user) ? null : user.Trim();
         _password = _user is null ? null : password;
@@ -241,6 +244,17 @@ public sealed class AdLdap : IAdConnection, IExecutor
 
                 case ChangeAction.AdSetPassword:
                     return ConfigurePassword(w);
+
+                case ChangeAction.AdWriteLogonScript:
+                {
+                    if (_netlogon is null)
+                    {
+                        return ChangeResult.Error(w, "NETLOGON is niet bereikbaar.");
+                    }
+
+                    _netlogon.Write(w.Target, w.P("inhoud"));
+                    return ChangeResult.Ok(w, $"Bewaard in {_netlogon.Location}");
+                }
 
                 case ChangeAction.AdMove:
                 {

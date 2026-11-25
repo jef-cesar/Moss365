@@ -2,6 +2,23 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.32.0
+
+Logon scripts: with this, step R9 of the [roadmap](docs/roadmap-1.0.md) is done.
+
+- **Logonscripts** (Groepen en toegang, for a tenant with AD): the scripts in NETLOGON (by default
+  \\domain controller\NETLOGON, with your Windows account; another path on Verbindingen), with per script how many users
+  have it and **what it does in plain language**: the drives it maps (also only for members of a group), printers,
+  other scripts and programs it starts.
+- **Na te kijken**: users whose logon script does not exist, and scripts nobody uses.
+- **Edit a script** in the editor; saving is a plan with the difference (lines added and removed). The version from
+  before goes into the change log: undo puts it back, and on the script page every earlier version can be put back in
+  the editor.
+- **The logon script of users**: choose users (those with the script, and others) and another script or none, as a
+  plan (scriptPath in AD).
+- **Via groepsbeleid**: the logon and logoff scripts that Group Policies assign (scripts.ini in SYSVOL) are shown, not
+  changed.
+
 ## 0.31.1
 
 The script library is filled: 14 scripts join the one there was, made general (no names, addresses or servers of an

@@ -29,6 +29,9 @@ public sealed class ConnectionSettings
     /// sign-in link.</summary>
     public bool RefreshAuto { get; set; }
 
+    /// <summary>The NETLOGON share when it is not \\domain\NETLOGON (0.32); empty = that default.</summary>
+    public string NetlogonPath { get; set; } = string.Empty;
+
     public bool AdFilled => AdServer.Trim().Length > 0;
     public bool GraphFilled => TenantId.Trim().Length > 0 && ClientId.Trim().Length > 0;
 }
@@ -212,6 +215,9 @@ public interface IConnectionFactory
 
     /// <summary>Why Exchange could not use the same sign-in as Graph, or null.</summary>
     string? ExchangeMessage => null;
+
+    /// <summary>The NETLOGON share of the domain (logon scripts, 0.32); null where that is not possible.</summary>
+    LogonScripts.ILogonScriptShare? LogonScripts(ConnectionSettings settings) => null;
 
     /// <summary>Runs scripts from the library with the sign-in of the app; null where that is not possible.</summary>
     Core.Scripts.IScriptExecutor? Scripts(ConnectionSettings settings, string? adPassword) => null;

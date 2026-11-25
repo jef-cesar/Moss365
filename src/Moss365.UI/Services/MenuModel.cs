@@ -24,7 +24,7 @@ public static class MenuModel
         }),
         new MenuGroup("Groepen en toegang", new MenuItem[]
         {
-            new("groepen", "Groepen"), new("postvakken", "Gedeelde postvakken"), new("rooms", "Rooms"),
+            new("groepen", "Groepen"), new("postvakken", "Gedeelde postvakken"), new("rooms", "Rooms"), new("logonscripts", "Logonscripts"),
         }),
         new MenuGroup("Beveiliging", new MenuItem[]
         {

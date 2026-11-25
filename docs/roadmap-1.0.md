@@ -321,6 +321,8 @@ A **Logon scripts** screen per tenant:
 - change the logon script of users (one or a selection), as a plan;
 - logon scripts assigned through Group Policy (GPO) are shown, but not changed.
 
+Done in 0.32 (R9 is complete): the Logonscripts screen with all of the above; versions are kept in the change log.
+
 ## 10. Proposals: what AD and Microsoft 365 administrators want
 
 What administrators often miss in practice. All of them are in the steps to 1.0 (chapter 13); each heading names its

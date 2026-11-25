@@ -632,6 +632,11 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
     private sealed partial class FakeFactory : IConnectionFactory
     {
         public List<Change> Executed { get; } = new();
+
+        /// <summary>The NETLOGON share in tests (0.32).</summary>
+        public Moss365.Core.LogonScripts.ILogonScriptShare? Share { get; set; }
+
+        public Moss365.Core.LogonScripts.ILogonScriptShare? LogonScripts(ConnectionSettings settings) => Share;
         public string? GraphId { get; set; }
 
         /// <summary>What an AD user looks like when read again (e.g. disabled after offboarding).</summary>

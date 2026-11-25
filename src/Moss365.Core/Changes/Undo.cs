@@ -62,6 +62,11 @@ public static class Undo
             return null;
         }
 
+        if (action == ChangeAction.AdWriteLogonScript)
+        {
+            return r.Previous?.ContainsKey("inhoud") == true ? null : "een nieuw script verwijdert de app niet";
+        }
+
         if (Attributes.Contains(action))
         {
             return r.Previous is { Count: > 0 } ? null : "de vorige waarden staan niet in het logboek (wijziging van voor versie 0.5)";
@@ -158,6 +163,11 @@ public static class Undo
 
                 w = New(r, action, target, reversed, "Beheerder terugzetten: " + string.Join(", ",
                     reversed.Where(p => p.Key is "Toevoegen" or "Verwijderen").Select(p => $"{p.Key.ToLowerInvariant()} {p.Value}")));
+            }
+            else if (action == ChangeAction.AdWriteLogonScript && r.Previous?.GetValueOrDefault("inhoud") is { } before)
+            {
+                w = New(r, action, target, new() { ["inhoud"] = before }, $"Logonscript {target} terugzetten naar de vorige versie",
+                    previousValues: new(StringComparer.OrdinalIgnoreCase) { ["inhoud"] = r.Parameters.GetValueOrDefault("inhoud") ?? string.Empty });
             }
             else if (Attributes.Contains(action))
             {

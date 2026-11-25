@@ -80,6 +80,9 @@ public enum ChangeAction
 
     // New in 0.31: a user in the cloud (tenant without AD)
     GraphCreateUser,              // Target = UPN; displayName, mailNickname, givenName, surname, jobTitle, department, officeLocation, companyName, city, usageLocation; the password is in Secret
+
+    // New in 0.32: logon scripts in NETLOGON
+    AdWriteLogonScript,           // Target = path within NETLOGON; inhoud = the new content; Previous inhoud = the content before
 }
 
 /// <summary>

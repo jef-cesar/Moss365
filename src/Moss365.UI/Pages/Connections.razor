@@ -59,6 +59,11 @@
         <input class="kb-invoer" type="password" autocomplete="off" @bind="State.AdPassword" />
         <span class="kb-zacht">alleen voor deze sessie</span>
     </div>
+    <div class="kb-rij">
+        <label>NETLOGON</label>
+        <input class="kb-invoer kb-breed" placeholder="leeg = \\domeincontroller\NETLOGON" @bind="State.Settings.NetlogonPath" aria-label="NETLOGON" />
+        <span class="kb-zacht">voor de logonscripts; met je Windows-account</span>
+    </div>
     <p class="kb-zacht">
         De app praat via LDAP (ondertekend en versleuteld) met de domeincontroller. Voor wijzigingen heeft het account rechten nodig
         op de OU's en groepen; om te lezen volstaan gewone leesrechten.

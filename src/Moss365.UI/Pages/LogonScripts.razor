@@ -1,0 +1,307 @@
+@page "/logonscripts"
+@inherits RefreshingPage
+@inject NavigationManager Nav
+@using Moss365.Core.LogonScripts
+@* Logon scripts (R9, 0.32): the scripts in NETLOGON, who has which one, references to scripts that do not exist and
+   scripts nobody uses, what a script does, editing as a plan (the previous version goes into the change log), the
+   logon script of users as a plan, and the scripts that Group Policies assign (shown, not changed). *@
+
+<h1>Logonscripts</h1>
+
+<p class="kb-zacht">
+    De scripts in NETLOGON en wie welk script heeft (het kenmerk scriptPath in AD). Een script bewaren en het logonscript van
+    gebruikers wijzigen zijn plannen zoals altijd; elke vorige versie staat in het logboek en is terug te zetten.
+    @if (share is not null) { <text>Locatie: <code>@share.Location</code>.</text> }
+</p>
+
+@if (error is not null)
+{
+    <div class="kb-melding">@error</div>
+}
+
+@if (selected is null)
+{
+    <section class="kb-kaart">
+        <h2>Scripts (@files.Count)</h2>
+        <table class="kb-tabel">
+            <thead><tr><th>Script</th><th class="kb-getal">Gebruikers</th><th>Wat het doet</th><th>Gewijzigd</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var u in uses.Where(u => u.File is not null))
+                {
+                    <tr>
+                        <td><code>@u.Name</code></td>
+                        <td class="kb-getal">@u.Users.Count</td>
+                        <td class="kb-zacht">@Summary(u.Name)</td>
+                        <td>@u.File!.Modified.LocalDateTime.ToString("dd/MM/yyyy")</td>
+                        <td><button class="kb-knop kb-klein" @onclick="() => Open(u.Name)">Openen</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (State.Can(Permission.Manage) && share is not null)
+        {
+            <div class="kb-rij">
+                <input class="kb-invoer" placeholder="nieuw-script.bat" @bind="newName" aria-label="Naam van een nieuw script" />
+                <button class="kb-knop" disabled="@(newName.Trim().Length == 0)" @onclick="NewScript">Nieuw script</button>
+            </div>
+        }
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Na te kijken</h2>
+        @if (Missing.Count == 0 && Unused.Count == 0)
+        {
+            <p class="kb-zacht">Elk logonscript bestaat, en elk script wordt gebruikt.</p>
+        }
+        @foreach (var u in Missing)
+        {
+            <div class="kb-melding">
+                <strong>@u.Name</strong> bestaat niet in NETLOGON, maar @u.Users.Count gebruiker(s) hebben het:
+                @string.Join(", ", u.Users.Take(10).Select(p => p.Name))@(u.Users.Count > 10 ? " ..." : null)
+                @if (State.Can(Permission.Manage)) { <button class="kb-knop kb-klein" @onclick="() => Open(u.Name)">Bekijken</button> }
+            </div>
+        }
+        @if (Unused.Count > 0)
+        {
+            <p>Niemand gebruikt (rechtstreeks): @foreach (var f in Unused) { <code class="kb-label">@f.Name</code> } <span class="kb-zacht">Ze kunnen nog door een ander script of een groepsbeleid gestart worden.</span></p>
+        }
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Via groepsbeleid (@gpo.Count)</h2>
+        <p class="kb-zacht">Scripts die een groepsbeleid (GPO) toekent. De app toont ze, maar wijzigt ze niet: dat gebeurt in Groepsbeleidsbeheer.</p>
+        @if (gpo.Count > 0)
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>Beleid</th><th>Soort</th><th>Script</th><th>Parameters</th></tr></thead>
+                <tbody>@foreach (var g in gpo) { <tr><td><code>@g.PolicyId</code></td><td>@g.Kind</td><td>@g.Script</td><td class="kb-zacht">@g.Parameters</td></tr> }</tbody>
+            </table>
+        }
+    </section>
+}
+else
+{
+    <div class="kb-titelbalk">
+        <h1><code>@selected</code></h1>
+        <button class="kb-knop" @onclick="Close">Terug naar de lijst</button>
+    </div>
+
+    <section class="kb-kaart">
+        <h2>Wat het doet</h2>
+        <ul>@foreach (var l in LogonScriptAnalysis.Explain(text).Lines) { <li>@l</li> }</ul>
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Script</h2>
+        <CodeEditor Text="@text" TextChanged="t => { text = t; outcome = null; }" ReadOnly="@(!State.Can(Permission.Manage) || State.IsHistoric)" />
+        @if (original is not null && Diff.Count > 0)
+        {
+            <details open>
+                <summary>Verschil met NETLOGON (@Diff.Count(l => l.StartsWith("+ ")) erbij, @Diff.Count(l => l.StartsWith("- ")) weg)</summary>
+                <pre class="kb-json">@foreach (var l in Diff.Where(l => !l.StartsWith("  "))) { <span class="@(l.StartsWith("+ ") ? "kb-ca-eraf" : "kb-ca-erbij")">@l</span>@("\n") }</pre>
+            </details>
+        }
+        @if (State.Can(Permission.Manage) && !State.IsHistoric)
+        {
+            <div class="kb-filters">
+                <button class="kb-knop kb-primair" @onclick="Save">Plan maken (bewaren)</button>
+            </div>
+        }
+    </section>
+
+    <section class="kb-kaart">
+        <h2>Gebruikers met dit script (@Users.Count)</h2>
+        @if (Users.Count > 0)
+        {
+            <ul class="kb-lijst-plat">
+                @foreach (var p in Users)
+                {
+                    <li><label><input type="checkbox" checked="@chosen.Contains(p.Key)" @onchange="e => Toggle(p.Key, e.Value is true)" aria-label="@p.Name" /> <a href="@Searcher.Link(p)">@p.Name</a></label></li>
+                }
+            </ul>
+        }
+        @if (State.Can(Permission.Manage) && !State.IsHistoric)
+        {
+            <PersonPicker Label="Gebruiker toevoegen aan de selectie" Selected="null" SelectedChanged="p => { if (p is not null) { extra.Add(p); chosen.Add(p.Key); } }" />
+            @if (extra.Count > 0) { <p>Ook: @string.Join(", ", extra.Select(p => p.Name))</p> }
+            <div class="kb-rij">
+                <label>Logonscript van de gekozen gebruikers (@chosen.Count)
+                    <select class="kb-invoer" @bind="assignTo" aria-label="Nieuw logonscript">
+                        <option value="@selected">@selected</option>
+                        @foreach (var f in files.Where(f => !string.Equals(f.Name, selected, StringComparison.OrdinalIgnoreCase))) { <option value="@f.Name">@f.Name</option> }
+                        <option value="">(geen logonscript)</option>
+                    </select>
+                </label>
+                <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="Assign">Plan maken</button>
+            </div>
+        }
+    </section>
+
+    @if (Versions.Count > 0)
+    {
+        <section class="kb-kaart">
+            <h2>Versies in deze app (@Versions.Count)</h2>
+            <table class="kb-tabel">
+                <thead><tr><th>Wanneer</th><th>Door</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var v in Versions)
+                    {
+                        <tr>
+                            <td>@v.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</td><td>@v.User</td>
+                            <td>
+                                @if (v.Previous?.GetValueOrDefault(LogonScriptPlans.Content) is { } before && State.Can(Permission.Manage))
+                                {
+                                    <button class="kb-knop kb-klein" @onclick="() => { text = before; outcome = null; }">Versie van daarvoor in de editor zetten</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    }
+}
+
+@if (outcome is not null)
+{
+    @foreach (var e in outcome.Errors) { <div class="kb-melding">@e</div> }
+    @if (outcome.Plan.Count > 0)
+    {
+        <PlanView Plan="outcome.Plan" Context="@($"Logonscripts: {selected}")" Title="Logonscripts" Executed="AfterExecute" />
+    }
+}
+
+@code {
+    private ILogonScriptShare? share;
+    private IReadOnlyList<LogonScriptFile> files = Array.Empty<LogonScriptFile>();
+    private IReadOnlyList<ScriptUse> uses = Array.Empty<ScriptUse>();
+    private IReadOnlyList<GpoScript> gpo = Array.Empty<GpoScript>();
+    private readonly Dictionary<string, string> contents = new(StringComparer.OrdinalIgnoreCase);
+    private string? error;
+    private string? selected;
+    private string? original;
+    private string text = string.Empty;
+    private string newName = string.Empty;
+    private string assignTo = string.Empty;
+    private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<Person> extra = new();
+    private PlanOutcome? outcome;
+    private bool loaded;
+
+    protected override void OnParametersSet()
+    {
+        if (!loaded)
+        {
+            loaded = true;
+            Load();
+        }
+        else
+        {
+            uses = LogonScriptAnalysis.Uses(files, State.Data);
+        }
+    }
+
+    private void Load()
+    {
+        share = State.LogonScriptShare();
+        (files, error) = State.ReadLogonScripts();
+        uses = LogonScriptAnalysis.Uses(files, State.Data);
+        contents.Clear();
+        try
+        {
+            gpo = share?.GpoScripts() ?? Array.Empty<GpoScript>();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            gpo = Array.Empty<GpoScript>();
+        }
+    }
+
+    private IReadOnlyList<ScriptUse> Missing => uses.Where(u => u.File is null).ToList();
+
+    private IReadOnlyList<LogonScriptFile> Unused => uses.Where(u => u.File is not null && u.Users.Count == 0).Select(u => u.File!).ToList();
+
+    private IReadOnlyList<Person> Users => uses.FirstOrDefault(u => string.Equals(LogonScriptAnalysis.Normalise(u.Name), LogonScriptAnalysis.Normalise(selected), StringComparison.OrdinalIgnoreCase))?.Users ?? Array.Empty<Person>();
+
+    private IReadOnlyList<string> Diff => original is null ? Array.Empty<string>() : LogonScriptAnalysis.Diff(original, text).Where(l => !l.StartsWith("  ")).ToList();
+
+    private IReadOnlyList<LogEntry> Versions => selected is null ? Array.Empty<LogEntry>() : State.LogonScriptVersions(selected);
+
+    private string? Content(string name)
+    {
+        if (contents.TryGetValue(name, out var c))
+        {
+            return c;
+        }
+
+        try
+        {
+            c = share?.Read(name);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            c = null;
+        }
+
+        if (c is not null)
+        {
+            contents[name] = c;
+        }
+
+        return c;
+    }
+
+    private string Summary(string name) => Content(name) is { } c
+        ? string.Join("; ", LogonScriptAnalysis.Explain(c).Lines.Take(3))
+        : "(niet leesbaar)";
+
+    private void Open(string name)
+    {
+        selected = name;
+        original = files.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)) ? Content(name) : null;
+        text = original ?? string.Empty;
+        assignTo = name;
+        chosen.Clear();
+        extra.Clear();
+        outcome = null;
+    }
+
+    private void NewScript()
+    {
+        Open(newName.Trim());
+        text = "@echo off\r\nrem " + newName.Trim() + "\r\n";
+        newName = string.Empty;
+    }
+
+    private void Close()
+    {
+        selected = null;
+        outcome = null;
+    }
+
+    private void Toggle(string key, bool on)
+    {
+        if (on) { chosen.Add(key); } else { chosen.Remove(key); }
+    }
+
+    private void Save() => outcome = LogonScriptPlans.Save(selected!, original, text);
+
+    private void Assign()
+    {
+        var persons = Users.Concat(extra).Where(p => chosen.Contains(p.Key)).DistinctBy(p => p.Key);
+        outcome = LogonScriptPlans.Assign(State.Data, State.Config, persons, assignTo);
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            var name = selected;
+            Load();
+            if (name is not null)
+            {
+                Open(name);
+            }
+        }
+    }
+}
