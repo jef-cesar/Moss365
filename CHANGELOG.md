@@ -2,6 +2,23 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.38.0
+
+Languages: the start of step R15 of the [roadmap](docs/roadmap-1.0.md).
+
+- The interface comes from **dictionaries in five languages**: English, Dutch, Brazilian Portuguese, French and German
+  (see [docs/translating.md](docs/translating.md)). A missing text falls back to English, never an empty button.
+- **System language by default**: Moss365 follows the display language of Windows (Dutch for nl-BE and nl-NL, ...);
+  a language it does not have gives English.
+- **Settings, Language**: choose the language yourself (per Windows user on this PC); it wins over the system
+  language and works at once. **Dates and numbers** follow the language.
+- Translated in this version: the **menu**, the **settings side bar**, the layout (search, favourites, not live,
+  no access, the past), the **status bar**, the **tenant bar** and the language screen. The other screens are still
+  Dutch for now and follow in the next versions; data from AD and Microsoft 365 and the content of scripts are never
+  translated.
+- Tests report missing translations and different holes ({0}) between languages, and refuse **new hard-coded text**
+  in the screens (the count of what is left may only go down).
+
 ## 0.37.0
 
 Reporting and working as a team: step R14 of the [roadmap](docs/roadmap-1.0.md).

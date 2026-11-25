@@ -23,7 +23,7 @@ Thank you for helping. Moss365 manages identities and access of real organisatio
 - Open an issue first for anything larger than a small fix, so we can agree on the approach.
 - Fork, create a branch, make your change with tests, and open a pull request.
 - Run `dotnet test` before you push.
-- Code, comments, tests and documentation are in English. Interface texts go into the dictionaries (one per language).
+- Code, comments, tests and documentation are in English. Interface texts go into the dictionaries (one per language, see [docs/translating.md](docs/translating.md)).
 
 ## Adding a script to the library
 

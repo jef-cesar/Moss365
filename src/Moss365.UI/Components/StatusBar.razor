@@ -5,13 +5,13 @@
 @inject ManagementState State
 
 <footer class="kb-statusbalk" role="contentinfo">
-    <span title="De versie van Moss365">Moss365 @ManagementState.AppVersion</span>
-    <span title="Hoe vers de gegevens op de schermen zijn">@DataText</span>
+    <span title="@T["status.version"]">Moss365 @ManagementState.AppVersion</span>
+    <span title="@T["status.fresh"]">@DataText</span>
     @{ var (live, text, why) = Live; }
     <a class="@(live ? "kb-online" : "kb-offline")" href="verbindingen" title="@why">
         <span aria-hidden="true">●</span> @State.Tenant.Name: @text
     </a>
-    <a href="https://github.com/jef-cesar/Moss365" target="_blank" rel="noopener" title="De broncode, de releases en de issues op GitHub">GitHub</a>
+    <a href="https://github.com/jef-cesar/Moss365" target="_blank" rel="noopener" title="@T["status.github"]">GitHub</a>
 </footer>
 
 @code {
@@ -40,12 +40,12 @@
         {
             if (State.IsHistoric)
             {
-                return (false, "offline (verleden)", "Je bekijkt een stand uit het verleden; de gegevens zijn niet live.");
+                return (false, T["status.past"], T["status.past.why"]);
             }
 
             if (!online)
             {
-                return (false, "offline (geen netwerk)", "Deze pc heeft geen netwerk: de app kan niet live lezen.");
+                return (false, T["status.nonetwork"], T["status.nonetwork.why"]);
             }
 
             var expected = new List<string>();
@@ -53,19 +53,19 @@
             if (State.HasMicrosoft365) expected.Add("Entra");
             var liveOn = State.LiveOn;
             var live = expected.Where(liveOn.ContainsKey).ToList();
-            var times = string.Join(", ", live.Select(p => $"{p} live om {liveOn[p]:HH:mm}"));
+            var times = string.Join(", ", live.Select(p => T.Format("status.liveat", p, liveOn[p])));
             if (live.Count > 0 && live.Count == expected.Count)
             {
-                return (true, "online", $"De gegevens van {State.Tenant.Name} zijn live: {times}.");
+                return (true, T["status.online"], T.Format("status.online.why", State.Tenant.Name, times));
             }
 
             if (live.Count > 0)
             {
-                return (false, $"deels online ({string.Join(", ", live)})",
-                    $"Live: {times}. Niet live: {string.Join(", ", expected.Except(live))}. Laad live via Verbindingen.");
+                return (false, T.Format("status.partly", string.Join(", ", live)),
+                    T.Format("status.partly.why", times, string.Join(", ", expected.Except(live))));
             }
 
-            return (false, "offline", $"De gegevens van {State.Tenant.Name} komen uit de inventaris of een eerdere lezing, niet live. Laad live via Verbindingen.");
+            return (false, T["status.offline"], T.Format("status.offline.why", State.Tenant.Name));
         }
     }
 
@@ -76,7 +76,7 @@
         {
             if (State.AsOf is { } asOf)
             {
-                return $"Stand van {asOf.Time.LocalDateTime:dd/MM/yyyy HH:mm} (alleen lezen)";
+                return T.Format("status.asof", asOf.Time.LocalDateTime);
             }
 
             if (State.LiveOn is { Count: > 0 } liveOn)
@@ -84,13 +84,13 @@
                 var newest = liveOn.Values.Max();
                 var oldest = liveOn.Values.Min();
                 return newest.Date == oldest.Date && (newest - oldest).TotalMinutes < 2
-                    ? $"Live gegevens van {newest:dd/MM/yyyy HH:mm}"
-                    : $"Live gegevens van {oldest:dd/MM HH:mm} tot {newest:dd/MM HH:mm}";
+                    ? T.Format("status.live.one", newest)
+                    : T.Format("status.live.range", oldest, newest);
             }
 
             return (State.InventoryDate(Moss365.Core.Inventory.InventoryLoader.AdUsers) ?? State.InventoryDate(Moss365.Core.Inventory.InventoryLoader.EntraUsers)) is { } d
-                ? $"Inventaris van {d:dd/MM/yyyy HH:mm} (niet live)"
-                : "Nog geen gegevens geladen";
+                ? T.Format("status.inventory", d)
+                : T["status.nodata"];
         }
     }
 

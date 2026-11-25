@@ -35,6 +35,9 @@
 @code {
     private sealed record Result(string Kind, string Text, string Detail, string Href);
 
+    /// <summary>The name of a page in the language of the interface.</summary>
+    private static string Shown(MenuItem p) => p.Text.StartsWith("Organisatie: ", StringComparison.Ordinal) ? $"{T["menu.organisatie"]}: {Part(p)}" : Menu(p);
+
     private bool open;
     private string text = string.Empty;
     private int selected;
@@ -122,7 +125,7 @@
 
         bool Hit(params string?[] values) => values.Any(v => v is not null && v.Contains(q, StringComparison.CurrentCultureIgnoreCase));
 
-        foreach (var p in MenuModel.AllPages.Where(p => Hit(p.Text) && Allowed(p.Href)))
+        foreach (var p in MenuModel.AllPages.Select(p => p with { Text = Shown(p) }).Where(p => Hit(p.Text) && Allowed(p.Href)))
         {
             yield return new("pagina", p.Text, string.Empty, p.Href);
         }

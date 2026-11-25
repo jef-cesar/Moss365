@@ -1,8 +1,8 @@
 @* Choice for a yes/no value that can also be "do not change" (null) *@
 <select class="kb-invoer" @onchange="Change">
-    <option value="" selected="@(Value is null)">(niet wijzigen)</option>
-    <option value="true" selected="@(Value == true)">ja</option>
-    <option value="false" selected="@(Value == false)">nee</option>
+    <option value="" selected="@(Value is null)">@T["yesno.nochange"]</option>
+    <option value="true" selected="@(Value == true)">@T["yesno.yes"]</option>
+    <option value="false" selected="@(Value == false)">@T["yesno.no"]</option>
 </select>
 
 @code {

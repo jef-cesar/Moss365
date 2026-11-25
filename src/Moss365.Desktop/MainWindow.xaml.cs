@@ -33,6 +33,10 @@ public partial class MainWindow : Window
             return;
         }
 
+        // The language of the interface (R15): the choice of this Windows user, else the Windows display language, else English
+        Moss365.UI.Pages.LanguagePage.System = System.Globalization.CultureInfo.CurrentUICulture;
+        UiText.Start(hub.App, Moss365.UI.Pages.LanguagePage.System);
+
         services.AddSingleton(hub);
         services.AddSingleton(new AppUpdates(new Moss365.Connections.Updates.VelopackUpdater(), hub));
         services.AddScoped(sp => sp.GetRequiredService<TenantHub>().Current);

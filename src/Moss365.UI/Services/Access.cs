@@ -13,7 +13,7 @@ public static class Access
         return first switch
         {
             // Connecting and the check of this PC: everyone (signing in happens per PC)
-            "" or "verbindingen" or "controle" => null,
+            "" or "verbindingen" or "controle" or "taal" => null,
             "groepen" when p == "groepen/nieuw" => Permission.Manage,
             "statistieken" or "gebruikers" or "gebruiker" or "gasten" or "groepen" or "groep" or "postvak" or "room" or "rooms" or "vergelijk" => Permission.View,
             "postvakken" => p == "postvakken/nieuw" ? Permission.Manage : Permission.View,

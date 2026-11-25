@@ -11,21 +11,21 @@
             <div><span class="kb-merk-naam">Moss<span>365</span></span><span class="kb-merk-sub">The Moss Directory</span></div>
         </div>
 
-        <button class="kb-nav-zoek" @onclick="() => search?.Open()" title="Zoek een pagina, gebruiker, groep of postvak (Ctrl+K)">
-            <span aria-hidden="true">⌕</span> Zoeken <kbd>Ctrl+K</kbd>
+        <button class="kb-nav-zoek" @onclick="() => search?.Open()" title="@T["nav.search.title"]">
+            <span aria-hidden="true">⌕</span> @T["nav.search"] <kbd>Ctrl+K</kbd>
         </button>
 
         @{ var favourites = State.View.Favourites.Select(f => AllItems.FirstOrDefault(i => i.Href == f)).OfType<MenuItem>().Where(Visible).ToList(); }
         @if (favourites.Count > 0)
         {
-            <div class="kb-nav-kop">★ Favorieten</div>
+            <div class="kb-nav-kop">★ @T["nav.favourites"]</div>
             @foreach (var item in favourites)
             {
                 @Item(item)
             }
         }
 
-        <NavLink href="" Match="NavLinkMatch.All">Overzicht</NavLink>
+        <NavLink href="" Match="NavLinkMatch.All">@T["menu.start"]</NavLink>
 
         @foreach (var groupValue in MenuModel.Main)
         {
@@ -39,8 +39,8 @@
             var active = MenuModel.GroupOf(Nav.ToBaseRelativePath(Nav.Uri)) == groupValue.Name;
             var closed = State.View.MenuGroupClosed(groupValue.Name) && !active;
             <button class="kb-nav-groep" aria-expanded="@(closed ? "false" : "true")" @onclick="() => State.View.SetMenuGroup(groupValue.Name, !closed)">
-                <span aria-hidden="true">@(closed ? "▸" : "▾")</span> @groupValue.Name
-                @if (closed && items.Any(i => State.Pending.UnderMenu(i.Href))) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }
+                <span aria-hidden="true">@(closed ? "▸" : "▾")</span> @Group(groupValue.Name)
+                @if (closed && items.Any(i => State.Pending.UnderMenu(i.Href))) { <span class="kb-nav-open" title="@T["nav.open"]"> ●</span> }
             </button>
             @if (!closed)
             {
@@ -52,14 +52,14 @@
         }
 
         <NavLink class="kb-nav-instellingen" href="@MenuModel.SettingsHref" Match="NavLinkMatch.Prefix" @onclick:preventDefault="false">
-            <span aria-hidden="true">⚙</span> <span>Instellingen</span>
-            @if (MenuModel.Settings.SelectMany(g => g.Items).Any(i => State.Pending.UnderMenu(i.Href))) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }
+            <span aria-hidden="true">⚙</span> <span>@T["nav.settings"]</span>
+            @if (MenuModel.Settings.SelectMany(g => g.Items).Any(i => State.Pending.UnderMenu(i.Href))) { <span class="kb-nav-open" title="@T["nav.open"]"> ●</span> }
         </NavLink>
 
         <div class="kb-nav-voet">
             @if (State.Job is { } task && (task.Busy || task.End > DateTime.Now.AddMinutes(-10)))
             {
-                <a class="kb-mini @(task.Busy ? "kb-mini-bezig" : task.WithErrors ? "kb-mini-fout" : "kb-mini-klaar")" href="verbindingen" title="Naar Verbindingen">
+                <a class="kb-mini @(task.Busy ? "kb-mini-bezig" : task.WithErrors ? "kb-mini-fout" : "kb-mini-klaar")" href="verbindingen" title="@T["nav.to.connections"]">
                     <span class="kb-mini-tekst">@(task.Busy ? "⟳ " : task.WithErrors ? "✗ " : "✓ ")@task.Summary</span>
                     @if (task.Busy)
                     {
@@ -71,8 +71,8 @@
             @if (!State.IsLive)
             {
                 <a class="kb-niet-live" href="verbindingen" role="status">
-                    <strong>⚠ Niet live</strong>
-                    <span>Gegevens uit de inventaris@(State.InventoryDate(Moss365.Core.Inventory.InventoryLoader.AdUsers) is { } d ? $" van {d:dd/MM HH:mm}" : string.Empty). Live laden &rarr;</span>
+                    <strong>⚠ @T["nav.notlive"]</strong>
+                    <span>@T.Format("nav.notlive.text", State.InventoryDate(Moss365.Core.Inventory.InventoryLoader.AdUsers) is { } d ? T.Format("nav.notlive.of", d) : string.Empty) &rarr;</span>
                 </a>
             }
             else
@@ -80,26 +80,26 @@
                 <div class="kb-live">
                     @foreach (var part in new[] { "AD", "Entra", "Rooms", "Postvakken" }.Where(x => x == "AD" ? State.HasAd : State.HasMicrosoft365))
                     {
-                        <div>@part: @(State.LiveOn.TryGetValue(part, out var t) ? $"live {t:HH:mm}" : "inventaris")</div>
+                        <div>@T["nav.part." + part]: @(State.LiveOn.TryGetValue(part, out var t) ? T.Format("nav.live.at", t) : T["nav.inventory"])</div>
                     }
                 </div>
             }
 
             @if (due > 0)
             {
-                <a class="kb-nav-gepland" href="gepland">@due geplande actie(s) klaar om uit te voeren</a>
+                <a class="kb-nav-gepland" href="gepland">@T.Format("nav.due", due)</a>
             }
 
             @if (State.UpdateAvailable)
             {
-                <a class="kb-nav-update" href="updates">Nieuwe versie @State.Update!.NewestVersion beschikbaar</a>
+                <a class="kb-nav-update" href="updates">@T.Format("nav.update", State.Update!.NewestVersion)</a>
             }
 
             @if (open.Count > 0)
             {
                 var screens = open.Select(i => i.FilePath).Distinct(StringComparer.OrdinalIgnoreCase).Count();
                 <details class="kb-nav-openstaand">
-                    <summary>● @screens @(screens == 1 ? "scherm" : "schermen") niet bewaard of uitgevoerd</summary>
+                    <summary>● @(screens == 1 ? T["nav.unsaved.one"] : T.Format("nav.unsaved.more", screens))</summary>
                     <ul>
                         @foreach (var i in open)
                         {
@@ -109,14 +109,14 @@
                 </details>
             }
 
-            <div class="kb-nav-profiel" title="Je profiel in Moss365">
-                Profiel: @PermissionTable.Text(State.Roles, "en")
+            <div class="kb-nav-profiel" title="@T["nav.profile.title"]">
+                @T["nav.profile"]: @PermissionTable.Text(State.Roles, "en")
                 @if (State.ProfileMessage is { } pm) { <div class="kb-zacht">@pm</div> }
             </div>
 
             @if (State.CountChanged > 0)
             {
-                <div class="kb-nav-gewijzigd">@State.CountChanged gewijzigd, nog niet vernieuwd</div>
+                <div class="kb-nav-gewijzigd">@T.Format("nav.changed", State.CountChanged)</div>
             }
 
             <div class="kb-slogan">Have you tried turning the user off and on again?</div>
@@ -134,9 +134,9 @@
                 {
                     <div class="kb-openbalk-item">
                         <span><span aria-hidden="true">@i.Icon</span> @i.Text</span>
-                        @if (i.Saving is not null) { <button class="kb-knop kb-klein kb-primair" @onclick="i.Saving">Bewaren</button> }
-                        @if (i.Anchor is not null) { <button class="kb-knop kb-klein" @onclick="() => ToPlan(i.Anchor)">Naar het plan</button> }
-                        @if (i.Discard is not null) { <button class="kb-knop kb-klein" @onclick="i.Discard">Verwerpen</button> }
+                        @if (i.Saving is not null) { <button class="kb-knop kb-klein kb-primair" @onclick="i.Saving">@T["action.save"]</button> }
+                        @if (i.Anchor is not null) { <button class="kb-knop kb-klein" @onclick="() => ToPlan(i.Anchor)">@T["action.toplan"]</button> }
+                        @if (i.Discard is not null) { <button class="kb-knop kb-klein" @onclick="i.Discard">@T["action.discard"]</button> }
                     </div>
                 }
             </div>
@@ -144,8 +144,8 @@
         @if (State.AsOf is { } asOf)
         {
             <div class="kb-melding kb-verleden" role="status">
-                Je bekijkt de stand van <strong>@asOf.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</strong>: alleen lezen, plannen kunnen niet.
-                <button class="kb-knop kb-klein kb-primair" @onclick="State.BackToNow">Terug naar nu</button>
+                @T.Format("past.text", asOf.Time.LocalDateTime)
+                <button class="kb-knop kb-klein kb-primair" @onclick="State.BackToNow">@T["past.back"]</button>
             </div>
         }
         <SignInBar />
@@ -155,14 +155,14 @@
         }
         @if (State.ConfigWarning is { } warning)
         {
-            <div class="kb-melding kb-fout" role="alert">@warning <a href="organisatie">Organisatie</a></div>
+            <div class="kb-melding kb-fout" role="alert">@warning <a href="organisatie">@T["menu.organisatie"]</a></div>
         }
         @if (Access.ForPath(Nav.ToBaseRelativePath(Nav.Uri)) is { } permission && !State.Can(permission))
         {
             <section class="kb-kaart kb-geen-toegang" role="alert">
-                <h1>Geen toegang</h1>
-                <p>Je profiel (@PermissionTable.Text(State.Roles, "en")) laat deze pagina niet toe; ze vraagt @PermissionTable.Text(PermissionTable.RolesFor(permission)).</p>
-                <p class="kb-zacht">Profielen worden toegekend via de groepen <code>GG-Moss365-...</code> in Entra. Vraag het aan wie Moss365 beheert.</p>
+                <h1>@T["access.none"]</h1>
+                <p>@T.Format("access.none.text", PermissionTable.Text(State.Roles, "en"), PermissionTable.Text(PermissionTable.RolesFor(permission)))</p>
+                <p class="kb-zacht">@T["access.none.how"]</p>
             </section>
         }
         else
@@ -184,19 +184,19 @@
     /// <summary>The text of an item, with what is waiting (a running script, actions that are due, follow-up tasks).</summary>
     private string Label(MenuItem i) => i.Href switch
     {
-        "scripts" when State.ScriptBusy => i.Text + " (bezig)",
-        "gepland" when due > 0 => $"{i.Text} ({due})",
-        "opvolging" when State.CountFollowUpTasks > 0 => $"{i.Text} ({State.CountFollowUpTasks})",
-        _ => i.Text,
+        "scripts" when State.ScriptBusy => Menu(i) + " " + T["nav.busy"],
+        "gepland" when due > 0 => $"{Menu(i)} ({due})",
+        "opvolging" when State.CountFollowUpTasks > 0 => $"{Menu(i)} ({State.CountFollowUpTasks})",
+        _ => Menu(i),
     };
 
     private RenderFragment Item(MenuItem item) => __builder =>
     {
         var favourite = State.View.IsFavourite(item.Href);
         <div class="kb-nav-item">
-            <NavLink href="@item.Href" Match="NavLinkMatch.Prefix">@Label(item)@if (State.Pending.UnderMenu(item.Href)) { <span class="kb-nav-open" title="Hier staat nog iets open"> ●</span> }</NavLink>
-            <button class="kb-nav-ster @(favourite ? "kb-nav-ster-aan" : null)" aria-pressed="@favourite" aria-label="@($"{item.Text} {(favourite ? "uit de favorieten" : "bij de favorieten")}")"
-                    title="@(favourite ? "Uit de favorieten" : "Bij de favorieten")" @onclick="() => State.View.SetFavourite(item.Href, !favourite)">★</button>
+            <NavLink href="@item.Href" Match="NavLinkMatch.Prefix">@Label(item)@if (State.Pending.UnderMenu(item.Href)) { <span class="kb-nav-open" title="@T["nav.open"]"> ●</span> }</NavLink>
+            <button class="kb-nav-ster @(favourite ? "kb-nav-ster-aan" : null)" aria-pressed="@favourite" aria-label="@T.Format(favourite ? "nav.favourite.remove.label" : "nav.favourite.add.label", Menu(item))"
+                    title="@(favourite ? T["nav.favourite.remove"] : T["nav.favourite.add"])" @onclick="() => State.View.SetFavourite(item.Href, !favourite)">★</button>
         </div>
     };
 

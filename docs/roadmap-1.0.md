@@ -419,6 +419,12 @@ ServiceHealth.Read.All and ServiceMessage.Read.All.
 | **What is not translated**: data from AD and Microsoft 365 (names of groups, departments, policies) and the content of scripts | That is the organisation's data, not app text |
 | **Documentation** in English (U10); translations when translators volunteer | Start small |
 
+Started in 0.38 (R15): the dictionaries in five languages (`Localization/Texts`, see [translating](translating.md)),
+the system language by default and a choice in Settings, dates and numbers per language, the fallback to English, a
+glossary, and tests that report missing translations and refuse new hard-coded text. Translated so far: the menu, the
+settings side bar, the layout, the status bar, the tenant bar and the language screen. The other screens follow per
+release (`tests/Moss365.Tests/Localization/untranslated.txt` counts down to zero; then 1.0).
+
 ## 11. Open source, with room for paid support
 
 Moss365 is **open source**: anyone can read, use, change and improve the code. Later it must be possible to ask for

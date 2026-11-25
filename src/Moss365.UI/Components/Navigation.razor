@@ -7,8 +7,8 @@
 @inject IJSRuntime JS
 
 <span class="kb-navigatie">
-    <button class="kb-knop kb-terug" disabled="@(!State.History.CanUndo)" @onclick="Back" title="Terug naar de vorige pagina (Alt+←)">&larr; Terug</button>
-    <button class="kb-knop kb-terug" disabled="@(!State.History.CanForward)" @onclick="Forward" title="Vooruit naar de volgende pagina (Alt+→)">Vooruit &rarr;</button>
+    <button class="kb-knop kb-terug" disabled="@(!State.History.CanUndo)" @onclick="Back" title="@T["nav.back.title"]">&larr; @T["nav.back"]</button>
+    <button class="kb-knop kb-terug" disabled="@(!State.History.CanForward)" @onclick="Forward" title="@T["nav.forward.title"]">@T["nav.forward"] &rarr;</button>
 </span>
 
 @code {

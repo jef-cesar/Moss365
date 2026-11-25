@@ -8,4 +8,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.11" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.10" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The dictionaries of the interface (R15): one per language, by key -->
+    <EmbeddedResource Include="Localization\Texts\*.json" LogicalName="Moss365.Texts.%(Filename).json" />
+  </ItemGroup>
 </Project>

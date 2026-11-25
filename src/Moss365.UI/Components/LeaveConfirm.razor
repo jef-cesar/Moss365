@@ -6,12 +6,12 @@
 {
     <div class="kb-dialoog-achter">
         <div class="kb-dialoog" role="alertdialog" aria-labelledby="kb-weggaan-titel">
-            <h2 id="kb-weggaan-titel">Niet bewaard</h2>
-            <p>@Text</p>
+            <h2 id="kb-weggaan-titel">@T["leave.title"]</h2>
+            <p>@(Text ?? T["leave.text"])</p>
             <div class="kb-filters">
-                <button class="kb-knop kb-primair" disabled="@(!CanSave)" @onclick="SaveAndGo">Bewaren</button>
-                <button class="kb-knop" @onclick="DiscardAndGo">Verwerpen</button>
-                <button class="kb-knop" @onclick="() => target = null">Blijven</button>
+                <button class="kb-knop kb-primair" disabled="@(!CanSave)" @onclick="SaveAndGo">@T["action.save"]</button>
+                <button class="kb-knop" @onclick="DiscardAndGo">@T["action.discard"]</button>
+                <button class="kb-knop" @onclick="() => target = null">@T["action.stay"]</button>
             </div>
         </div>
     </div>
@@ -21,7 +21,7 @@
     /// <summary>Something is not saved: leaving is asked first.</summary>
     [Parameter] public bool Active { get; set; }
     [Parameter] public bool CanSave { get; set; } = true;
-    [Parameter] public string Text { get; set; } = "Je hebt niet-bewaarde wijzigingen.";
+    [Parameter] public string? Text { get; set; }
     [Parameter] public EventCallback Saving { get; set; }
     [Parameter] public EventCallback Discard { get; set; }
 

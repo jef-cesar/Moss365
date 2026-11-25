@@ -1,0 +1,47 @@
+@page "/taal"
+@layout SettingsLayout
+@using System.Globalization
+@using Moss365.Core.Localization
+@* The language of the interface (R15, 0.38): the system language by default, a choice per Windows user here. *@
+@inject IServiceProvider Services
+@inject NavigationManager Nav
+
+<h1>@T["language.title"]</h1>
+
+<p class="kb-zacht">@T["language.intro"]</p>
+
+<fieldset class="kb-kaart">
+    <label><input type="radio" name="taal" checked="@(Chosen is null)" @onchange="() => Choose(null)" /> @T.Format("language.system", SystemName)</label>
+    @foreach (var l in Translator.Languages)
+    {
+        <label><input type="radio" name="taal" checked="@(string.Equals(Chosen, l.Code, StringComparison.OrdinalIgnoreCase))" @onchange="() => Choose(l.Code)" /> @l.Name</label>
+    }
+</fieldset>
+
+<p>@T.Format("language.now", T.Language.Name) · @T.Format("language.dates", $"{DateTime.Now.ToString("d", T.Culture)} {1234.5.ToString("N1", T.Culture)}")</p>
+<p class="kb-zacht">@T["language.notdata"]</p>
+<p class="kb-zacht">@T["language.partial"]</p>
+@if (Translator.Missing(T.Language.Code) is { Count: > 0 } missing)
+{
+    <p class="kb-zacht">@T.Format("language.missing", T.Language.Name, missing.Count)</p>
+}
+
+@code {
+    /// <summary>The language of Windows, read once at the start (before the app sets its own).</summary>
+    public static CultureInfo System { get; set; } = CultureInfo.InstalledUICulture;
+
+    private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
+
+    private static string SystemName => Translator.Languages.First(l => l.Code == Translator.Resolve(null, System)).Name;
+
+    private void Choose(string? code)
+    {
+        if (Hub is null)
+        {
+            return;
+        }
+
+        UiText.Choose(Hub.App, code, System);
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+}
