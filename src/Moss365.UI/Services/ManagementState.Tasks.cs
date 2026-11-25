@@ -33,9 +33,28 @@ public sealed partial class ManagementState
     public bool TaskBusy => Job?.Busy == true;
 
     /// <summary>Per part ("AD", "Entra", "Rooms", "Postvakken") when it was fully loaded live.</summary>
-    public IReadOnlyDictionary<string, DateTime> LiveOn => _liveOn;
+    /// <summary>A copy: background steps change the list while a screen reads it.</summary>
+    public IReadOnlyDictionary<string, DateTime> LiveOn
+    {
+        get
+        {
+            lock (_taskLock)
+            {
+                return new Dictionary<string, DateTime>(_liveOn, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+    }
 
-    public bool IsLive => _liveOn.Count > 0;
+    public bool IsLive
+    {
+        get
+        {
+            lock (_taskLock)
+            {
+                return _liveOn.Count > 0;
+            }
+        }
+    }
 
     /// <summary>Objects that were changed but not read again yet.</summary>
     public int CountChanged
@@ -78,7 +97,8 @@ public sealed partial class ManagementState
             ObjectKind.Room => (new[] { "Rooms" }, InventoryLoader.ExoRooms),
             _ => (new[] { "AD", "Entra" }, InventoryLoader.AdUsers),
         };
-        var live = share.Where(_liveOn.ContainsKey).Select(d => $"{d} live om {_liveOn[d]:HH:mm}").ToList();
+        var liveOn = LiveOn;
+        var live = share.Where(liveOn.ContainsKey).Select(d => $"{d} live om {liveOn[d]:HH:mm}").ToList();
         return live.Count > 0 ? string.Join(", ", live) : "uit de inventaris" + (InventoryDate(file) is { } dt ? $" van {dt:dd/MM HH:mm}" : string.Empty);
     }
 

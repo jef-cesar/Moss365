@@ -51,8 +51,9 @@
             var expected = new List<string>();
             if (State.HasAd) expected.Add("AD");
             if (State.HasMicrosoft365) expected.Add("Entra");
-            var live = expected.Where(State.LiveOn.ContainsKey).ToList();
-            var times = string.Join(", ", live.Select(p => $"{p} live om {State.LiveOn[p]:HH:mm}"));
+            var liveOn = State.LiveOn;
+            var live = expected.Where(liveOn.ContainsKey).ToList();
+            var times = string.Join(", ", live.Select(p => $"{p} live om {liveOn[p]:HH:mm}"));
             if (live.Count > 0 && live.Count == expected.Count)
             {
                 return (true, "online", $"De gegevens van {State.Tenant.Name} zijn live: {times}.");
@@ -78,10 +79,10 @@
                 return $"Stand van {asOf.Time.LocalDateTime:dd/MM/yyyy HH:mm} (alleen lezen)";
             }
 
-            if (State.LiveOn.Count > 0)
+            if (State.LiveOn is { Count: > 0 } liveOn)
             {
-                var newest = State.LiveOn.Values.Max();
-                var oldest = State.LiveOn.Values.Min();
+                var newest = liveOn.Values.Max();
+                var oldest = liveOn.Values.Min();
                 return newest.Date == oldest.Date && (newest - oldest).TotalMinutes < 2
                     ? $"Live gegevens van {newest:dd/MM/yyyy HH:mm}"
                     : $"Live gegevens van {oldest:dd/MM HH:mm} tot {newest:dd/MM HH:mm}";
