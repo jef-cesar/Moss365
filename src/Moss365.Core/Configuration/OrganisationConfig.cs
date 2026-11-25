@@ -72,6 +72,13 @@ public sealed class OrganisationConfig
     /// list.</summary>
     public List<string> GroupPrefixes { get; set; } = new();
 
+    /// <summary>After how many days a password in AD expires (0.33, the domain policy); 0 = it does not expire or is
+    /// not filled in.</summary>
+    public int PasswordMaxAgeDays { get; set; }
+
+    /// <summary>The reminder e-mail for a password that expires ({naam}, {datum}, {dagen}); empty = the default text.</summary>
+    public string? PasswordReminderText { get; set; }
+
     /// <summary>Job profiles (R9, 0.22): what someone in a job gets.</summary>
     public List<JobProfile> JobProfiles { get; set; } = new();
 

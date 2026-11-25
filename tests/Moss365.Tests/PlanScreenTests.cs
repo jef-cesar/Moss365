@@ -702,6 +702,12 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public Task<IReadOnlyList<ChangeResult>> Run(IReadOnlyList<Change> changes)
         {
+            // A Temporary Access Pass comes back in Secret, as from Graph (0.33)
+            foreach (var w in changes.Where(w => w.ChangeAction == ChangeAction.GraphCreateTemporaryAccessPass))
+            {
+                w.Secret = "Tap-Test-1234";
+            }
+
             Executed.AddRange(changes);
             return Task.FromResult<IReadOnlyList<ChangeResult>>(changes.Select(w => ChangeResult.Ok(w)).ToList());
         }
@@ -741,12 +747,29 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
             return Task.FromResult(TestData.AppEnvironment().AdGroupsByDn.Values.FirstOrDefault(g => g.SamAccountName == samAccountName));
         }
 
+        public Task<Core.Helpdesk.AdComputerSecrets?> ComputerSecretsAsync(string computerName, CancellationToken cancel)
+            => Task.FromResult<Core.Helpdesk.AdComputerSecrets?>(computerName.Equals("PC-AD", StringComparison.OrdinalIgnoreCase)
+                ? new Core.Helpdesk.AdComputerSecrets("PC-AD", new[] { new Core.Helpdesk.BitLockerKey("aaaabbbb-0000", "CN=PC-AD", "111111-222222", null, "AD") },
+                    new Core.Helpdesk.LapsPassword("Administrator", "Laps-AD-Secret", null, "Windows LAPS in AD"), null)
+                : null);
+
         public Task<IReadOnlyList<ChangeResult>> ExecuteAsync(IReadOnlyList<Change> changes, CancellationToken cancel) => f.Run(changes);
     }
 
     private sealed class FakeGraphConnection(FakeFactory f) : IGraphConnection, IExecutor
     {
         public TargetSystem TargetSystem => TargetSystem.Graph;
+
+        public Task<IReadOnlyList<Core.Helpdesk.DeviceInfo>> FindDevicesAsync(string name, CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Helpdesk.DeviceInfo>>(name.StartsWith("PC-1", StringComparison.OrdinalIgnoreCase)
+                ? new[] { new Core.Helpdesk.DeviceInfo("obj-1", "dev-1", "PC-100", "Windows", "AzureAd", DateTimeOffset.Now) }
+                : Array.Empty<Core.Helpdesk.DeviceInfo>());
+
+        public Task<IReadOnlyList<Core.Helpdesk.BitLockerKey>> BitLockerKeysAsync(string? deviceId, string? keyId, CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Helpdesk.BitLockerKey>>(new[] { new Core.Helpdesk.BitLockerKey("ccccdddd-1111", deviceId ?? "dev-1", "333333-444444", null, "OperatingSystemVolume") });
+
+        public Task<Core.Helpdesk.LapsPassword?> LapsAsync(string deviceId, CancellationToken cancel)
+            => Task.FromResult<Core.Helpdesk.LapsPassword?>(new Core.Helpdesk.LapsPassword("LocalAdmin", "Laps-Entra-Secret", DateTimeOffset.Now, "Windows LAPS in Entra"));
 
         public string? SignedInAs => "beheerder@test.be";
 
@@ -815,6 +838,13 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
     private sealed class FakeExchange(FakeFactory f) : IExchangeConnection, IExecutor
     {
         public TargetSystem TargetSystem => TargetSystem.Exchange;
+
+        public Task<IReadOnlyList<Core.Helpdesk.MessageTraceRow>> MessageTraceAsync(string? sender, string? recipient, int days, CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Helpdesk.MessageTraceRow>>(new[]
+            {
+                new Core.Helpdesk.MessageTraceRow(DateTimeOffset.Now.AddHours(-1), "extern@example.com", recipient ?? "x@test.be", "Offerte", "Delivered", 1000, "m1"),
+                new Core.Helpdesk.MessageTraceRow(DateTimeOffset.Now.AddHours(-2), "spam@example.com", recipient ?? "x@test.be", "Prijs!", "FilteredAsSpam", 900, "m2"),
+            });
 
         public async Task<IReadOnlyList<Room>> ReadRoomsAsync(IProgress<string>? progress, CancellationToken cancel)
         {

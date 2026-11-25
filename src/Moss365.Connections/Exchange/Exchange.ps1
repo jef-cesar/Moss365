@@ -54,7 +54,8 @@ $Toegestaan = @{
     'GroepInstellen'   = @('Identity', 'DisplayName', 'PrimarySmtpAddress')
     'Beheerder'        = @('Identity', 'Toevoegen', 'Verwijderen')
     'PostvakInstellen' = @('Identity', 'DisplayName', 'HiddenFromAddressListsEnabled', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward')
-    'AutoAntwoord'     = @('Identity', 'AutoReplyState', 'InternalMessage', 'ExternalMessage')
+    'AutoAntwoord'     = @('Identity', 'AutoReplyState', 'InternalMessage', 'ExternalMessage', 'StartTime', 'EndTime')
+    'Berichtspoor'     = @('SenderAddress', 'RecipientAddress', 'Dagen')
     'RechtToevoegen'   = @('Identity', 'Recht', 'Trustee')
     'RechtVerwijderen' = @('Identity', 'Recht', 'Trustee')
     'PostvakAanmaken'  = @('Name', 'DisplayName', 'Alias', 'PrimarySmtpAddress')
@@ -63,7 +64,7 @@ $Toegestaan = @{
 $Getallen = @('BookingWindowInDays', 'MaximumDurationInMinutes', 'Floor', 'Capacity')
 $JaNee = @('AllowConflicts', 'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward')
 $PostvakRechten = @('FullAccess', 'SendAs')
-$AutoAntwoordStanden = @('Enabled', 'Disabled')
+$AutoAntwoordStanden = @('Enabled', 'Disabled', 'Scheduled')
 $AgendaRechten = @('None', 'AvailabilityOnly', 'LimitedDetails', 'Reviewer', 'Author', 'Editor', 'PublishingEditor', 'Owner')
 
 function ConvertTo-OpdrachtParameters {
@@ -310,8 +311,25 @@ function Invoke-Opdracht {
         }
         'AutoAntwoord' {
             if ($AutoAntwoordStanden -notcontains $P.AutoReplyState) { throw "Unknown state '$($P.AutoReplyState)' for the automatic reply." }
+            foreach ($t in 'StartTime', 'EndTime') {
+                if ($P.ContainsKey($t)) { $P[$t] = [datetime]::Parse($P[$t], [Globalization.CultureInfo]::InvariantCulture) }
+            }
             Set-MailboxAutoReplyConfiguration @P -ErrorAction Stop
             return $null
+        }
+        'Berichtspoor' {
+            # Message trace (read only): the last days (at most 10), for a sender and/or a recipient
+            $dagen = [Math]::Max(1, [Math]::Min(10, [int]$P.Dagen))
+            $zoek = @{ StartDate = (Get-Date).AddDays(-$dagen); EndDate = (Get-Date) }
+            if ($P.SenderAddress) { $zoek['SenderAddress'] = $P.SenderAddress }
+            if ($P.RecipientAddress) { $zoek['RecipientAddress'] = $P.RecipientAddress }
+            $cmd = if (Get-Command Get-MessageTraceV2 -ErrorAction SilentlyContinue) { 'Get-MessageTraceV2' } else { 'Get-MessageTrace' }
+            return @(& $cmd @zoek -ErrorAction Stop | Select-Object -First 1000 | ForEach-Object {
+                [ordered]@{
+                    Received = "$($_.Received.ToString('o'))"; Sender = "$($_.SenderAddress)"; Recipient = "$($_.RecipientAddress)"
+                    Subject = "$($_.Subject)"; Status = "$($_.Status)"; Size = [long]$_.Size; Id = "$($_.MessageTraceId)"
+                }
+            })
         }
         'RechtToevoegen' {
             if ($PostvakRechten -notcontains $P.Recht) { throw "Unknown mailbox permission '$($P.Recht)'." }

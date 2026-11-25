@@ -5,7 +5,7 @@ under the EUPL-1.2. Public repository: never add personal or organisation data (
 check in `.github/workflows/privacy.yml` refuses e-mail addresses outside the example domains, public IPs and a secret
 blocklist). The maintainer does not write code: changes must be tested, documented and built by GitHub Actions.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R9 are done (0.32.0; the CA editor of R11 is done early), R10 next: code in English, one database
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R10 are done (0.33.0; the CA editor of R11 is done early), R11 next: code in English, one database
 per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. Open work is in the
 GitHub issues (label `roadmap` per step, `limitation`, `test`). The interface texts are still Dutch and move to dictionaries in R15; the inventory
 keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots). Script headers are English since 0.18 (`Name:`, `Version:`, ...); the
@@ -61,7 +61,10 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   in the cloud (0.31): `Changes/CloudUserPlans.cs` (`GraphCreateUser`, password only in `Secret`); `GraphConnection`
   remembers ids it just created or invited, so later steps of the same plan can use the UPN or address. Logon scripts
   (0.32): `LogonScripts/LogonScripts.cs` (analysis, explanation, diff, plans), `ILogonScriptShare` (real: `Ad/NetlogonShare.cs`),
-  writing through `AdWriteLogonScript` in `AdLdap`; versions are the change log entries.
+  writing through `AdWriteLogonScript` in `AdLdap`; versions are the change log entries. Helpdesk (0.33):
+  `Helpdesk/HelpdeskTools.cs`; a Temporary Access Pass comes back in `Change.Secret` (never logged); BitLocker, LAPS and
+  message trace go through `ManagementState.Helpdesk.cs`, which writes the access log. "Stay signed in" keeps the MSAL
+  cache in the tenant database, DPAPI-encrypted (`ProtectedTokenStore`), only when chosen.
 - Menu (0.21, `UI/Services/MenuModel.cs`): the main menu groups and the settings side bar; a new page is added there
   (and to `Access` for its role). Settings pages use `@layout SettingsLayout`; Ctrl+K searches `MenuModel.AllPages`.
 - `CHANGELOG.md`: a release is created when `Version` in `Directory.Build.props` has no release yet; the text comes

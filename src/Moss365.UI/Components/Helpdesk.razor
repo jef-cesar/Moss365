@@ -1,5 +1,7 @@
-@* Reset the password, unlock and enable an AD account. The password lives only in this screen. *@
+@* Reset the password, unlock and enable an AD account; a Temporary Access Pass for a cloud account (0.33). The password
+   and the pass live only in this screen. *@
 @inject ManagementState State
+@inject NavigationManager Nav
 
 <section class="kb-kaart">
     <h2>Helpdesk</h2>
@@ -51,23 +53,47 @@
             </p>
         }
 
-        @foreach (var f in errors)
-        {
-            <div class="kb-melding kb-fout">@f</div>
-        }
+    }
 
-        @if (plan is not null)
-        {
-            <PlanView Plan="plan" Context="@($"Helpdesk {Person.Name}")" Title="Helpdesk" Executed="AfterExecute" />
-        }
+    @if (Person.Entra is not null && !Person.IsGuest && State.HasMicrosoft365)
+    {
+        <h3>Temporary Access Pass</h3>
+        <p class="kb-zacht">Voor wie zijn telefoon kwijt is of MFA nog moet registreren: een tijdelijke code om zich aan te melden (en MFA opnieuw in te stellen).</p>
+        <div class="kb-filters">
+            <label>Geldig
+                <select class="kb-invoer" @bind="tapMinutes" aria-label="Geldigheid">
+                    <option value="60">1 uur</option>
+                    <option value="480">8 uur</option>
+                    <option value="1440">1 dag</option>
+                    <option value="10080">7 dagen</option>
+                </select>
+            </label>
+            <label><input type="checkbox" @bind="tapOnce" /> Eenmalig</label>
+            <button class="kb-knop" @onclick="() => Show(Moss365.Core.Helpdesk.HelpdeskTools.TemporaryAccessPass(Person, tapMinutes, tapOnce))">Pass maken (plan)</button>
+        </div>
+    }
 
-        @if (pass is not null)
-        {
-            <section class="kb-kaart kb-geheim">
-                <h3>Nieuw wachtwoord voor @Person.Name</h3>
-                <CopyField Value="@pass" Label="Nieuw wachtwoord" Secret="true" />
-            </section>
-        }
+    @if (Person.Ad is { LockedOut: true } && State.Can(Permission.Scripts) && LockoutScript is { } lockout)
+    {
+        <p><button class="kb-knop kb-klein" @onclick="() => FindLockout(lockout)">Waar komt de vergrendeling vandaan?</button> <span class="kb-zacht">(script; leest de gebeurtenissen van de domeincontrollers)</span></p>
+    }
+
+    @foreach (var f in errors)
+    {
+        <div class="kb-melding kb-fout">@f</div>
+    }
+
+    @if (plan is not null)
+    {
+        <PlanView Plan="plan" Context="@($"Helpdesk {Person.Name}")" Title="Helpdesk" Executed="AfterExecute" />
+    }
+
+    @if (pass is not null)
+    {
+        <section class="kb-kaart kb-geheim">
+            <h3>@passTitle voor @Person.Name</h3>
+            <CopyField Value="@pass" Label="@passTitle" Secret="true" />
+        </section>
     }
 </section>
 
@@ -83,6 +109,18 @@
     private IReadOnlyList<string> errors = Array.Empty<string>();
     private string? pass;
     private string? previousKey;
+    private int tapMinutes = 480;
+    private bool tapOnce = true;
+    private string passTitle = "Nieuw wachtwoord";
+
+    /// <summary>The library script that finds where a lockout comes from (0.33), when it is there.</summary>
+    private string? LockoutScript => State.ReadScripts().FirstOrDefault(s => string.Equals(s.Key, "Find-LockoutSource", StringComparison.OrdinalIgnoreCase))?.Key;
+
+    private void FindLockout(string key)
+    {
+        State.ScriptPrefill = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Gebruiker"] = Person.Ad?.SamAccountName ?? string.Empty };
+        Nav.NavigateTo($"scripts/starten/{Uri.EscapeDataString(key)}");
+    }
 
     protected override void OnParametersSet()
     {
@@ -120,10 +158,11 @@
 
     private void AfterExecute(IReadOnlyList<ChangeResult> results)
     {
-        var configure = plan?.FirstOrDefault(w => w.ChangeAction == ChangeAction.AdSetPassword);
+        var configure = plan?.FirstOrDefault(w => w.ChangeAction is ChangeAction.AdSetPassword or ChangeAction.GraphCreateTemporaryAccessPass);
         if (configure is not null && results.Any(r => r.ChangeId == configure.Id && r.Status == ResultStatus.Succeeded))
         {
             pass = configure.Secret;
+            passTitle = configure.ChangeAction == ChangeAction.GraphCreateTemporaryAccessPass ? "Temporary Access Pass" : "Nieuw wachtwoord";
             passwordForm = false;
         }
 

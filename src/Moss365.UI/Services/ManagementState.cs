@@ -321,6 +321,9 @@ public sealed partial class ManagementState
             TenantId = HasMicrosoft365 ? Settings.TenantId : string.Empty,
             ClientId = HasMicrosoft365 ? Settings.ClientId : string.Empty,
             ManagementUpn = HasMicrosoft365 ? Settings.ManagementUpn : string.Empty,
+            NetlogonPath = HasAd ? Settings.NetlogonPath : string.Empty,
+            RememberSignIn = Settings.RememberSignIn,
+            TokenCache = Settings.TokenCache,
             SearchUpdates = Settings.SearchUpdates,
             QuickLoad = Settings.QuickLoad,
             RefreshAuto = Settings.RefreshAuto,
@@ -503,16 +506,33 @@ public sealed partial class ManagementState
 
     private ConnectionSettings ReadSettings()
     {
+        ConnectionSettings read;
         try
         {
-            return _settingsStorage.Read() is { } json
+            read = _settingsStorage.Read() is { } json
                 ? JsonSerializer.Deserialize<ConnectionSettings>(json, JsonOptions) ?? new ConnectionSettings()
                 : new ConnectionSettings();
         }
         catch (Exception)
         {
-            return new ConnectionSettings();
+            read = new ConnectionSettings();
         }
+
+        // Where the encrypted sign-in is kept, when "stay signed in" is on (0.33); never saved with the settings
+        read.TokenCache = new DocumentTokenStore(Database);
+        return read;
+    }
+
+    /// <summary>Stay signed in on or off; off removes the kept sign-in from the database.</summary>
+    public void RememberSignIn(bool on)
+    {
+        Settings.RememberSignIn = on;
+        if (!on)
+        {
+            Settings.TokenCache?.Clear();
+        }
+
+        SaveSettings();
     }
 
     public void SaveSettings()

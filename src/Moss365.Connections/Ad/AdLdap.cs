@@ -123,6 +123,55 @@ public sealed class AdLdap : IAdConnection, IExecutor
         return Find(baseline, filter, AdLdapMapper.GroupAttributes, cancel).Select(AdLdapMapper.ToGroup).FirstOrDefault();
     }, cancel);
 
+    /// <summary>BitLocker keys (msFVE-RecoveryInformation under the computer) and the LAPS password (Windows LAPS in
+    /// clear text, or the legacy ms-Mcs-AdmPwd) of a computer (0.33). Only called when the access log records it.</summary>
+    public Task<Core.Helpdesk.AdComputerSecrets?> ComputerSecretsAsync(string computerName, CancellationToken cancel) => Task.Run(() =>
+    {
+        using var baseline = Item(ReadDomainDn());
+        var name = AdLdapMapper.FilterValue(computerName.Trim().TrimEnd('$'));
+        var computer = Find(baseline, $"(&(objectCategory=computer)(|(cn={name})(sAMAccountName={name}$)))",
+            new[] { "cn", "distinguishedName", "ms-Mcs-AdmPwd", "ms-Mcs-AdmPwdExpirationTime", "msLAPS-Password", "msLAPS-EncryptedPassword" }, cancel).FirstOrDefault();
+        if (computer is null)
+        {
+            return null;
+        }
+
+        string? First(string attribute) => computer.TryGetValue(attribute, out var v) && v.Length > 0 ? v[0]?.ToString() : null;
+        Core.Helpdesk.LapsPassword? laps = null;
+        string? note = null;
+        if (First("msLAPS-Password") is { } json)
+        {
+            // Windows LAPS in clear text: {"n":"account","t":"time","p":"password"}
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            laps = new Core.Helpdesk.LapsPassword(root.TryGetProperty("n", out var n) ? n.GetString() ?? string.Empty : string.Empty,
+                root.TryGetProperty("p", out var pw) ? pw.GetString() : null, null, "Windows LAPS in AD");
+        }
+        else if (First("ms-Mcs-AdmPwd") is { } legacy)
+        {
+            laps = new Core.Helpdesk.LapsPassword("Administrator", legacy, null, "LAPS (oud) in AD");
+        }
+        else if (computer.ContainsKey("msLAPS-EncryptedPassword"))
+        {
+            note = "Het LAPS-wachtwoord staat versleuteld in AD: bekijk het met de LAPS-tools van Windows.";
+        }
+
+        var dn = First("distinguishedName") ?? string.Empty;
+        var keys = new List<Core.Helpdesk.BitLockerKey>();
+        if (dn.Length > 0)
+        {
+            using var item = Item(dn);
+            foreach (var k in Find(item, "(objectClass=msFVE-RecoveryInformation)", new[] { "msFVE-RecoveryPassword", "msFVE-RecoveryGuid", "whenCreated" }, cancel))
+            {
+                var guid = k.TryGetValue("msFVE-RecoveryGuid", out var g) && g.Length > 0 && g[0] is byte[] bytes ? new Guid(bytes).ToString() : string.Empty;
+                var created = k.TryGetValue("whenCreated", out var w) && w.Length > 0 && w[0] is DateTime t ? new DateTimeOffset(DateTime.SpecifyKind(t, DateTimeKind.Utc)) : (DateTimeOffset?)null;
+                keys.Add(new Core.Helpdesk.BitLockerKey(guid, dn, k.TryGetValue("msFVE-RecoveryPassword", out var r) && r.Length > 0 ? r[0]?.ToString() : null, created, "AD"));
+            }
+        }
+
+        return new Core.Helpdesk.AdComputerSecrets(First("cn") ?? computerName, keys, laps, note);
+    }, cancel);
+
     private static IEnumerable<IReadOnlyDictionary<string, object?[]>> Find(DirectoryEntry baseline, string filter, string[] attributes, CancellationToken cancel)
     {
         using var searcher = new DirectorySearcher(baseline, filter, attributes, SearchScope.Subtree) { PageSize = 500 };

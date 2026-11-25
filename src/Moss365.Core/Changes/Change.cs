@@ -83,6 +83,10 @@ public enum ChangeAction
 
     // New in 0.32: logon scripts in NETLOGON
     AdWriteLogonScript,           // Target = path within NETLOGON; inhoud = the new content; Previous inhoud = the content before
+
+    // New in 0.33: helpdesk
+    GraphCreateTemporaryAccessPass, // Target = user id; minuten, eenmalig; the pass is put in Secret after running (never logged)
+    GraphSendMail,                // Target = addresses (;); onderwerp, tekst; sent by the signed-in administrator
 }
 
 /// <summary>

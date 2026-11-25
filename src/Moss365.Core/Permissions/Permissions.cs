@@ -172,7 +172,8 @@ public static class PermissionTable
     /// <see cref="Refusal"/>).</summary>
     public static Permission ForAction(ChangeAction action) => action switch
     {
-        ChangeAction.AdSetPassword or ChangeAction.AdUnlockAccount or ChangeAction.AdEnableAccount => Permission.Helpdesk,
+        ChangeAction.AdSetPassword or ChangeAction.AdUnlockAccount or ChangeAction.AdEnableAccount
+            or ChangeAction.GraphCreateTemporaryAccessPass or ChangeAction.GraphSendMail => Permission.Helpdesk,
         ChangeAction.AdAddGroupMember or ChangeAction.AdRemoveGroupMember
             or ChangeAction.GraphAddGroupMember or ChangeAction.GraphRemoveGroupMember
             or ChangeAction.ExchangeAddGroupMember or ChangeAction.ExchangeRemoveGroupMember => Permission.GroupMembers,

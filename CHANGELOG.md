@@ -2,6 +2,31 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.33.0
+
+Helpdesk and daily work: step R10 of the [roadmap](docs/roadmap-1.0.md).
+
+- **Temporary Access Pass** on the page of a user (one-time or for a while, 1 hour to 7 days), for someone who lost
+  their phone or still has to register MFA. The pass is shown once after running and is never stored or logged.
+- **BitLocker en LAPS** (Mensen): find a device (or give the key ID BitLocker shows) and look up the recovery key and the
+  local administrator password, from Entra and from AD (Windows LAPS and the legacy LAPS). Every lookup goes into the
+  access log; nothing is stored.
+- **Where a lockout comes from**: for a locked account, the Helpdesk card starts the new library script *Waar komt de
+  vergrendeling vandaan* (the lockout events on the domain controllers and the wrong passwords per domain controller).
+- **Wachtwoord verloopt binnenkort** (Mensen): the accounts in AD whose password expires within 7, 14 or 30 days (the
+  password age of the domain with a suggestion from the data), and a **reminder e-mail** to the user and/or the
+  manager, as a plan, with your own text.
+- **Berichtspoor** on the page of a user: did the mail arrive, and if not, why (spam, quarantine, failed), the last 10
+  days; in the access log.
+- **Afwezig en doorsturen** for someone else (illness, leave): an automatic reply between two moments, and forwarding
+  with an end date; the end of the forwarding is prepared in Gepland (never run by itself).
+- **Alle groepen, ook via andere groepen** on the page of a user, with the groups in between ("via X -> Y").
+- **Aangemeld blijven op deze pc** (Verbindingen, off by default): the sign-in stays in the tenant database, encrypted
+  with your Windows account; switching it off removes it.
+- **Ctrl+K** also finds scripts.
+- New permissions for the app registration (UserAuthenticationMethod.ReadWrite.All, BitLockerKey.Read.All,
+  DeviceLocalCredential.Read.All, Device.Read.All, Mail.Send): run **Tenant inrichten** once to add them.
+
 ## 0.32.0
 
 Logon scripts: with this, step R9 of the [roadmap](docs/roadmap-1.0.md) is done.

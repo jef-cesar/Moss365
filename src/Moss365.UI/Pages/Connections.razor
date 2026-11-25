@@ -87,6 +87,14 @@
         <label>Beheeraccount</label>
         <input class="kb-invoer kb-breed" placeholder="bv. naam@contoso.com" @bind="State.Settings.ManagementUpn" />
     </div>
+    <label>
+        <input type="checkbox" checked="@State.Settings.RememberSignIn" @onchange="e => State.RememberSignIn(e.Value is true)" aria-label="Aangemeld blijven" />
+        Aangemeld blijven op deze pc
+    </label>
+    <p class="kb-zacht">
+        Dan hoef je niet bij elke start opnieuw aan te melden. De aanmelding blijft in de databank van deze tenant, versleuteld met je
+        Windows-account: een ander account of een andere pc kan ze niet gebruiken. Uitzetten wist ze meteen.
+    </p>
     <p class="kb-zacht">
         Tenant ID en Client ID vult <a href="inrichten">Tenant inrichten</a> zelf in (eenmalig, met een Application of Global
         Administrator). Dat maakt de app-registratie "Moss365" aan met enkel gedelegeerde rechten en alleen toegewezen

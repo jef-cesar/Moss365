@@ -338,4 +338,7 @@ public static class Documents
 
     /// <summary>Who got which job profile, version and when (0.22).</summary>
     public const string JobProfileAssignments = "functieprofielen";
+
+    /// <summary>The sign-in of Microsoft, encrypted with the Windows account (0.33, only when chosen).</summary>
+    public const string SignInCache = "aanmeldcache";
 }

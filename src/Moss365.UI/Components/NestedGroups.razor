@@ -1,0 +1,30 @@
+@using Moss365.Core.Helpdesk
+@* Member of which groups, and why (R10, 0.33): also through other groups, with the groups in between. *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>Alle groepen, ook via andere groepen (@Paths.Count)</h2>
+    @if (Paths.Count(p => p.Via.Count > 0) == 0)
+    {
+        <p class="kb-zacht">Enkel rechtstreekse lidmaatschappen; geen groepen in groepen.</p>
+    }
+    <table class="kb-tabel">
+        <thead><tr><th>Groep</th><th>Soort</th><th>Waarom</th></tr></thead>
+        <tbody>
+            @foreach (var p in Paths)
+            {
+                <tr>
+                    <td><ObjectLink Object="p.Group.Ref" /></td>
+                    <td class="kb-zacht">@p.Group.KindText</td>
+                    <td>@(p.Via.Count == 0 ? "rechtstreeks lid" : "via " + string.Join(" → ", p.Via))</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = default!;
+
+    private IReadOnlyList<GroupPath> Paths => HelpdeskTools.GroupsWithPaths(State.Data, Person);
+}

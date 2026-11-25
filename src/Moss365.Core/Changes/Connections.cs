@@ -3,6 +3,41 @@ using Moss365.Core.Inventory;
 namespace Moss365.Core.Changes;
 
 /// <summary>Settings to connect live; no passwords (the app asks for those per session).</summary>
+/// <summary>Keeps the (already encrypted) sign-in of Microsoft between two starts of the app (0.33).</summary>
+public interface ITokenCacheStore
+{
+    byte[]? Load();
+
+    void Save(byte[] data);
+
+    void Clear();
+}
+
+/// <summary>The sign-in cache as a document in the tenant database (base64 of the encrypted bytes).</summary>
+public sealed class DocumentTokenStore : ITokenCacheStore
+{
+    private readonly Storage.Database _db;
+
+    public DocumentTokenStore(Storage.Database db) => _db = db;
+
+    public byte[]? Load()
+    {
+        var text = _db.ReadDocument(Storage.Documents.SignInCache);
+        try
+        {
+            return string.IsNullOrEmpty(text) ? null : Convert.FromBase64String(System.Text.Json.JsonSerializer.Deserialize<string>(text) ?? string.Empty);
+        }
+        catch (Exception ex) when (ex is FormatException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    public void Save(byte[] data) => _db.SaveDocument(Storage.Documents.SignInCache, System.Text.Json.JsonSerializer.Serialize(Convert.ToBase64String(data)));
+
+    public void Clear() => _db.DeleteDocument(Storage.Documents.SignInCache);
+}
+
 public sealed class ConnectionSettings
 {
     /// <summary>Domain controller (name or IP), e.g. dc01.contoso.internal.</summary>
@@ -31,6 +66,14 @@ public sealed class ConnectionSettings
 
     /// <summary>The NETLOGON share when it is not \\domain\NETLOGON (0.32); empty = that default.</summary>
     public string NetlogonPath { get; set; } = string.Empty;
+
+    /// <summary>Stay signed in on this PC (0.33): the sign-in is kept in the tenant database, encrypted with the
+    /// Windows account; off by default.</summary>
+    public bool RememberSignIn { get; set; }
+
+    /// <summary>Where the encrypted sign-in is kept (set by the app, never saved with the settings).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ITokenCacheStore? TokenCache { get; set; }
 
     public bool AdFilled => AdServer.Trim().Length > 0;
     public bool GraphFilled => TenantId.Trim().Length > 0 && ClientId.Trim().Length > 0;
@@ -76,6 +119,11 @@ public interface IAdConnection
 
     /// <summary>Read one group again by sAMAccountName, with the members; null = does not exist.</summary>
     Task<AdGroup?> ReadGroupAsync(string samAccountName, CancellationToken cancel);
+
+    /// <summary>BitLocker keys and the LAPS password of a computer in AD (0.33), or null when the computer does not
+    /// exist. Only call this when the access is written to the access log.</summary>
+    Task<Helpdesk.AdComputerSecrets?> ComputerSecretsAsync(string computerName, CancellationToken cancel)
+        => Task.FromResult<Helpdesk.AdComputerSecrets?>(null);
 }
 
 /// <summary>One Entra user with the ids of the groups it is a direct member of.</summary>
@@ -119,6 +167,19 @@ public interface IGraphConnection
 
     /// <summary>Owners of a cloud group (not in the inventory).</summary>
     Task<IReadOnlyList<GraphOwner>> ReadOwnersAsync(string groupId, CancellationToken cancel);
+
+    /// <summary>Devices in Entra by name (0.33, BitLocker and LAPS).</summary>
+    Task<IReadOnlyList<Helpdesk.DeviceInfo>> FindDevicesAsync(string name, CancellationToken cancel)
+        => Task.FromResult<IReadOnlyList<Helpdesk.DeviceInfo>>(Array.Empty<Helpdesk.DeviceInfo>());
+
+    /// <summary>BitLocker keys of a device, or the key with this id (the first characters are enough), with the key
+    /// itself. Only call this when the access is written to the access log.</summary>
+    Task<IReadOnlyList<Helpdesk.BitLockerKey>> BitLockerKeysAsync(string? deviceId, string? keyId, CancellationToken cancel)
+        => Task.FromResult<IReadOnlyList<Helpdesk.BitLockerKey>>(Array.Empty<Helpdesk.BitLockerKey>());
+
+    /// <summary>The Windows LAPS password of a device in Entra, or null. Only call this when the access is written to
+    /// the access log.</summary>
+    Task<Helpdesk.LapsPassword?> LapsAsync(string deviceId, CancellationToken cancel) => Task.FromResult<Helpdesk.LapsPassword?>(null);
 
     /// <summary>MFA registrations and members of admin roles; null where that is not possible.</summary>
     Task<SecurityData?> ReadSecurityAsync(IProgress<string>? progress, CancellationToken cancel)
@@ -166,6 +227,10 @@ public interface IExchangeConnection
     /// <summary>Shared mailboxes (with permissions, forwarding and automatic reply) and Exchange groups with
     /// members.</summary>
     Task<ExchangeData> ReadMailboxesAsync(IProgress<string>? progress, CancellationToken cancel);
+
+    /// <summary>Message trace (0.33): what was received by and/or sent from an address in the last days (at most 10).</summary>
+    Task<IReadOnlyList<Helpdesk.MessageTraceRow>> MessageTraceAsync(string? sender, string? recipient, int days, CancellationToken cancel)
+        => throw new NotSupportedException("Een berichtspoor kan niet in deze omgeving.");
 
     /// <summary>Read a few rooms, mailboxes or groups again (by address), in one Exchange session.</summary>
     Task<ExchangeObjects> ReadObjectsAsync(IReadOnlyList<string> addresses, CancellationToken cancel);

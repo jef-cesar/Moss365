@@ -26,7 +26,12 @@ public sealed class MsalTokenSource
     private readonly string[] GraphScopes;
 
     /// <param name="graphScopes">The Graph permissions to ask for; default .default (what the app registration has).</param>
-    public MsalTokenSource(string tenantId, string clientId, string? loginHint, SignInStatus? status = null, IEnumerable<string>? graphScopes = null)
+    private readonly bool _cached;
+
+    /// <param name="cache">Keeps the sign-in between starts (0.33, already encrypted by the caller); null = only while
+    /// the app is open.</param>
+    public MsalTokenSource(string tenantId, string clientId, string? loginHint, SignInStatus? status = null, IEnumerable<string>? graphScopes = null,
+        ITokenCacheStore? cache = null)
     {
         GraphScopes = graphScopes?.Select(x => x.Contains("://", StringComparison.Ordinal) ? x : "https://graph.microsoft.com/" + x).ToArray() ?? DefaultGraphScopes;
         _app = PublicClientApplicationBuilder.Create(clientId.Trim())
@@ -35,6 +40,24 @@ public sealed class MsalTokenSource
             .Build();
         _loginHint = string.IsNullOrWhiteSpace(loginHint) ? null : loginHint.Trim();
         _status = status;
+        if (cache is not null)
+        {
+            _cached = true;
+            _app.UserTokenCache.SetBeforeAccess(args =>
+            {
+                if (cache.Load() is { } data)
+                {
+                    args.TokenCache.DeserializeMsalV3(data);
+                }
+            });
+            _app.UserTokenCache.SetAfterAccess(args =>
+            {
+                if (args.HasStateChanged)
+                {
+                    cache.Save(args.TokenCache.SerializeMsalV3());
+                }
+            });
+        }
     }
 
     public string? SignedInAs => _account?.Username;
@@ -101,6 +124,14 @@ public sealed class MsalTokenSource
         await _lock.WaitAsync(cancel);
         try
         {
+            if (_account is null && _cached)
+            {
+                // Stay signed in: the account from the kept sign-in (the hint first, when there is one)
+                var accounts = (await _app.GetAccountsAsync()).ToList();
+                _account = accounts.FirstOrDefault(a => _loginHint is not null && string.Equals(a.Username, _loginHint, StringComparison.OrdinalIgnoreCase))
+                           ?? accounts.FirstOrDefault();
+            }
+
             if (_account is not null)
             {
                 try

@@ -138,12 +138,13 @@ public sealed class ConnectionFactory : IConnectionFactory
 
     private MsalTokenSource Token(ConnectionSettings settings)
     {
-        var key = $"{settings.TenantId.Trim()}|{settings.ClientId.Trim()}|{settings.ManagementUpn.Trim()}";
+        var key = $"{settings.TenantId.Trim()}|{settings.ClientId.Trim()}|{settings.ManagementUpn.Trim()}|{settings.RememberSignIn}";
         lock (_lock)
         {
             if (_token is null || _tokenKey != key)
             {
-                _token = new MsalTokenSource(settings.TenantId, settings.ClientId, settings.ManagementUpn, _signIn);
+                var cache = settings.RememberSignIn && settings.TokenCache is { } store && OperatingSystem.IsWindows() ? new Check.ProtectedTokenStore(store) : null;
+                _token = new MsalTokenSource(settings.TenantId, settings.ClientId, settings.ManagementUpn, _signIn, cache: cache);
                 _tokenKey = key;
             }
 

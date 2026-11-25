@@ -81,6 +81,8 @@ public static class Undo
                 => "de app-registratie wijzig je via Tenants > Inrichten of in Entra",
             ChangeAction.GraphCreateCaPolicy => "zet het beleid uit bij Conditional Access > Beheren (de app verwijdert geen beleiden)",
             ChangeAction.GraphInviteGuest => "verwijder de gast via Gastgebruikers",
+            ChangeAction.GraphCreateTemporaryAccessPass => "een Temporary Access Pass verloopt vanzelf; intrekken kan in Entra",
+            ChangeAction.GraphSendMail => "een verstuurde mail kan niet terug",
             ChangeAction.GraphRemoveGuest => "terugzetten via Entra > Verwijderde gebruikers (30 dagen)",
             ChangeAction.AdSetPassword => "een vorig wachtwoord kan niet terug",
             ChangeAction.GraphRevokeSessions => "afgemelde sessies kunnen niet terug",

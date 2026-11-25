@@ -20,6 +20,10 @@ public enum ScheduledKind
     /// <summary>End of a temporary exclusion from a Conditional Access policy (since 0.9): the person falls under it
     /// again.</summary>
     CaExclusionEnd,
+
+    /// <summary>A fixed plan for later (0.33, e.g. the end of a forwarding); like every scheduled action it never runs by
+    /// itself.</summary>
+    Plan,
 }
 
 /// <summary>How often a scheduled action comes back (scripts only).</summary>
@@ -129,6 +133,16 @@ public static class ScheduledPlans
         Upn = proposal.Upn,
         Changes = proposal.Now.Select(Copy).ToList(),
         AfterSynchronisation = proposal.AfterSynchronisation.Select(Copy).ToList(),
+    };
+
+    /// <summary>A fixed plan for later (0.33).</summary>
+    public static ScheduledAction Plan(string title, IEnumerable<Change> plan, DateTimeOffset whenValue, string byValue) => new()
+    {
+        Kind = ScheduledKind.Plan,
+        When = whenValue,
+        Title = title,
+        CreatedBy = byValue,
+        Changes = plan.Select(Copy).ToList(),
     };
 
     public static ScheduledAction Script(string key, bool builtIn, string name, IReadOnlyDictionary<string, string> values, DateTimeOffset whenValue, Recurrence recurrence, string byValue) => new()

@@ -1,0 +1,84 @@
+@using Moss365.Core.Helpdesk
+@* Message trace for one user (R10, 0.33): did the mail arrive, and if not, why. Read only, in the access log. *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>Berichtspoor</h2>
+    <p class="kb-zacht">Kwam de mail aan, en zo niet, waarom? Exchange Online toont de laatste 10 dagen. Elke opvraging komt in het toegangslogboek.</p>
+    <div class="kb-filters">
+        <label><input type="checkbox" @bind="received" /> Ontvangen</label>
+        <label><input type="checkbox" @bind="sent" /> Verzonden</label>
+        <label>Dagen
+            <select class="kb-invoer" @bind="days" aria-label="Dagen"><option value="1">1</option><option value="2">2</option><option value="7">7</option><option value="10">10</option></select>
+        </label>
+        <input class="kb-invoer" placeholder="enkel met dit adres (optioneel)" @bind="other" aria-label="Ander adres" />
+        <button class="kb-knop" disabled="@(busy || (!received && !sent))" @onclick="Load">Opzoeken</button>
+        @if (busy) { <span class="kb-zacht">bezig...</span> }
+    </div>
+    @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
+    @if (rows is not null)
+    {
+        <p>@Shown.Count bericht(en)@(Shown.Count(r => !Delivered(r)) is var n && n > 0 ? $", waarvan {n} niet afgeleverd" : null).</p>
+        <table class="kb-tabel">
+            <thead><tr><th>Wanneer</th><th>Van</th><th>Aan</th><th>Onderwerp</th><th>Status</th></tr></thead>
+            <tbody>
+                @foreach (var r in Shown.Take(200))
+                {
+                    <tr class="@(Delivered(r) ? null : "kb-verschil")">
+                        <td>@r.Received.LocalDateTime.ToString("dd/MM HH:mm")</td><td>@r.Sender</td><td>@r.Recipient</td><td>@r.Subject</td><td>@StatusText(r.Status)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = default!;
+
+    private bool received = true;
+    private bool sent;
+    private int days = 2;
+    private string other = string.Empty;
+    private bool busy;
+    private string? error;
+    private IReadOnlyList<MessageTraceRow>? rows;
+
+    private string Address => Person.Entra?.Mail is { Length: > 0 } m ? m : Person.Upn;
+
+    private IReadOnlyList<MessageTraceRow> Shown => (rows ?? Array.Empty<MessageTraceRow>())
+        .Where(r => other.Trim().Length == 0 || r.Sender.Contains(other.Trim(), StringComparison.OrdinalIgnoreCase) || r.Recipient.Contains(other.Trim(), StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    private static bool Delivered(MessageTraceRow r) => r.Status is "Delivered" or "Expanded" or "Resolved";
+
+    private static string StatusText(string s) => s switch
+    {
+        "Delivered" => "afgeleverd",
+        "Failed" => "mislukt",
+        "FilteredAsSpam" => "als spam tegengehouden",
+        "Quarantined" => "in quarantaine",
+        "Pending" => "onderweg",
+        "Expanded" => "uitgebreid (groep)",
+        "GettingStatus" => "status ophalen",
+        _ => s,
+    };
+
+    private async Task Load()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            rows = await State.MessageTraceAsync(Address, received, sent, days);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

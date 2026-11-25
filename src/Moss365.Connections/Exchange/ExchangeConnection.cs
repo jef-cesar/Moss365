@@ -171,7 +171,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             case ChangeAction.ExchangeAutoReply:
                 op = "AutoAntwoord";
                 p["Identity"] = w.Target;
-                Take(w, p, "AutoReplyState", "InternalMessage", "ExternalMessage");
+                Take(w, p, "AutoReplyState", "InternalMessage", "ExternalMessage", "StartTime", "EndTime");
                 break;
             case ChangeAction.ExchangeAddMailboxPermission:
             case ChangeAction.ExchangeRemoveMailboxPermission:
@@ -238,6 +238,30 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
         }
 
         return changes.Select(w => output[w.Id]).ToList();
+    }
+
+    /// <summary>Message trace (0.33): read only, the last days (at most 10).</summary>
+    public async Task<IReadOnlyList<Core.Helpdesk.MessageTraceRow>> MessageTraceAsync(string? sender, string? recipient, int days, CancellationToken cancel)
+    {
+        var p = new Dictionary<string, string> { ["Dagen"] = Math.Clamp(days, 1, 10).ToString(System.Globalization.CultureInfo.InvariantCulture) };
+        if (!string.IsNullOrWhiteSpace(sender)) p["SenderAddress"] = sender.Trim();
+        if (!string.IsNullOrWhiteSpace(recipient)) p["RecipientAddress"] = recipient.Trim();
+        var r = (await RunScriptAsync(new[] { new Command("spoor", "Berichtspoor", p) }, cancel)).Single();
+        if (r.Status != "Gelukt")
+        {
+            throw new InvalidOperationException(r.Message);
+        }
+
+        if (r.Data is not { ValueKind: JsonValueKind.Array } rows)
+        {
+            return Array.Empty<Core.Helpdesk.MessageTraceRow>();
+        }
+
+        return rows.EnumerateArray().Select(e => new Core.Helpdesk.MessageTraceRow(
+                DateTimeOffset.TryParse(S(e, "Received"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var t) ? t : DateTimeOffset.MinValue,
+                S(e, "Sender"), S(e, "Recipient"), S(e, "Subject"), S(e, "Status"),
+                e.TryGetProperty("Size", out var size) && size.TryGetInt64(out var n) ? n : 0, S(e, "Id")))
+            .OrderByDescending(x => x.Received).ToList();
     }
 
     public async Task<IReadOnlyList<Room>> ReadRoomsAsync(IProgress<string>? progress, CancellationToken cancel)

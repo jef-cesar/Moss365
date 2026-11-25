@@ -314,6 +314,80 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
     }
 
+    // ------------------------------------------------------------------ devices, BitLocker and LAPS (0.33)
+
+    public async Task<IReadOnlyList<Core.Helpdesk.DeviceInfo>> FindDevicesAsync(string name, CancellationToken cancel)
+    {
+        var value = name.Trim().Replace("'", "''", StringComparison.Ordinal);
+        if (value.Length == 0)
+        {
+            return Array.Empty<Core.Helpdesk.DeviceInfo>();
+        }
+
+        const string select = "$select=id,deviceId,displayName,operatingSystem,trustType,approximateLastSignInDateTime&$top=25";
+        var found = await _client.GetAllAsync($"/devices?$filter=startswith(displayName,'{Uri.EscapeDataString(value)}')&{select}", cancel);
+        return found.Select(d => new Core.Helpdesk.DeviceInfo(S(d, "id"), S(d, "deviceId"), S(d, "displayName"), S(d, "operatingSystem"), S(d, "trustType"),
+                DateTimeOffset.TryParse(S(d, "approximateLastSignInDateTime"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var t) ? t : null))
+            .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    public async Task<IReadOnlyList<Core.Helpdesk.BitLockerKey>> BitLockerKeysAsync(string? deviceId, string? keyId, CancellationToken cancel)
+    {
+        List<JsonElement> keys;
+        if (deviceId is { Length: > 0 })
+        {
+            keys = await _client.GetAllAsync($"/informationProtection/bitlocker/recoveryKeys?$filter=deviceId eq '{Uri.EscapeDataString(deviceId)}'", cancel);
+        }
+        else if (keyId is { Length: > 0 } k)
+        {
+            var prefix = k.Trim().Trim('{', '}');
+            keys = (await _client.GetAllAsync("/informationProtection/bitlocker/recoveryKeys", cancel))
+                .Where(e => S(e, "id").StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        else
+        {
+            return Array.Empty<Core.Helpdesk.BitLockerKey>();
+        }
+
+        var output = new List<Core.Helpdesk.BitLockerKey>();
+        foreach (var e in keys.Take(20))
+        {
+            var withKey = await _client.GetAsync($"/informationProtection/bitlocker/recoveryKeys/{Uri.EscapeDataString(S(e, "id"))}?$select=key,deviceId,createdDateTime,volumeType", cancel);
+            output.Add(new Core.Helpdesk.BitLockerKey(S(e, "id"), S(withKey, "deviceId"), S(withKey, "key"),
+                DateTimeOffset.TryParse(S(withKey, "createdDateTime"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var c) ? c : null,
+                S(withKey, "volumeType")));
+        }
+
+        return output;
+    }
+
+    public async Task<Core.Helpdesk.LapsPassword?> LapsAsync(string deviceId, CancellationToken cancel)
+    {
+        try
+        {
+            var c = await _client.GetAsync($"/directory/deviceLocalCredentials/{Uri.EscapeDataString(deviceId)}?$select=credentials", cancel);
+            if (!c.TryGetProperty("credentials", out var list) || list.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            var newest = list.EnumerateArray().OrderByDescending(x => S(x, "backupDateTime"), StringComparer.Ordinal).FirstOrDefault();
+            if (newest.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var password = S(newest, "passwordBase64") is { Length: > 0 } b ? System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(b)) : null;
+            return new Core.Helpdesk.LapsPassword(S(newest, "accountName"), password,
+                DateTimeOffset.TryParse(S(newest, "backupDateTime"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var t) ? t : null,
+                "Windows LAPS in Entra");
+        }
+        catch (GraphError ex) when (ex.Status == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
     // ------------------------------------------------------------------ security
 
     public async Task<SecurityData?> ReadSecurityAsync(IProgress<string>? progress, CancellationToken cancel)
@@ -854,6 +928,36 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             if (w.ChangeAction == ChangeAction.GraphCreateUser)
             {
                 return await CreateUserAsync(w, cancel);
+            }
+
+            if (w.ChangeAction == ChangeAction.GraphCreateTemporaryAccessPass)
+            {
+                // The pass goes into Secret (shown once by the app), never into the result or the change log
+                var tap = await _client.PostWithResponseAsync($"/users/{Uri.EscapeDataString(w.Target)}/authentication/temporaryAccessPassMethods",
+                    new Dictionary<string, object>
+                    {
+                        ["lifetimeInMinutes"] = int.Parse(w.P("minuten"), System.Globalization.CultureInfo.InvariantCulture),
+                        ["isUsableOnce"] = string.Equals(w.P("eenmalig"), "True", StringComparison.OrdinalIgnoreCase),
+                    }, cancel);
+                w.Secret = S(tap, "temporaryAccessPass");
+                return ChangeResult.Ok(w, $"Gemaakt; geldig vanaf {S(tap, "startDateTime")}");
+            }
+
+            if (w.ChangeAction == ChangeAction.GraphSendMail)
+            {
+                var to = w.Target.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(a => new Dictionary<string, object> { ["emailAddress"] = new Dictionary<string, string> { ["address"] = a } }).ToArray();
+                await _client.PostAsync("/me/sendMail", new Dictionary<string, object>
+                {
+                    ["message"] = new Dictionary<string, object>
+                    {
+                        ["subject"] = w.P("onderwerp"),
+                        ["body"] = new Dictionary<string, string> { ["contentType"] = "Text", ["content"] = w.P("tekst") },
+                        ["toRecipients"] = to,
+                    },
+                    ["saveToSentItems"] = true,
+                }, cancel);
+                return ChangeResult.Ok(w, "Verstuurd");
             }
 
             if (w.ChangeAction == ChangeAction.GraphCreateGroup)

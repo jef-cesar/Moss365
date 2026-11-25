@@ -27,6 +27,7 @@ public static class AppManifest
         "User.ReadWrite.All", "Group.ReadWrite.All", "GroupMember.ReadWrite.All", "Directory.Read.All", "AuditLog.Read.All",
         "Policy.Read.All", "Calendars.Read.Shared", "OnPremDirectorySynchronization.Read.All",
         "Policy.ReadWrite.ConditionalAccess", "Application.Read.All",
+        "UserAuthenticationMethod.ReadWrite.All", "BitLockerKey.Read.All", "DeviceLocalCredential.Read.All", "Device.Read.All", "Mail.Send",
     };
 
     /// <summary>Exchange Online: so that Exchange uses the same sign-in as Graph.</summary>

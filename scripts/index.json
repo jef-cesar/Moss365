@@ -119,6 +119,15 @@
       "connection": "Exchange, Graph"
     },
     {
+      "path": "UsersAndGroups/Find-LockoutSource.ps1",
+      "name": "Waar komt de vergrendeling vandaan",
+      "version": "1.0",
+      "sha256": "7cd1999a462fba7d688635c38d21be8120a9a422c20bd0dc7d05da50ab2d4427",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "AD"
+    },
+    {
       "path": "UsersAndGroups/Get-UserGroups.ps1",
       "name": "Groepen van een gebruiker",
       "version": "1.0",

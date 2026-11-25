@@ -20,7 +20,8 @@ public static class MenuModel
         new MenuGroup("Mensen", new MenuItem[]
         {
             new("gebruikers", "Gebruikers"), new("gasten", "Gastgebruikers"), new("nieuw", "Nieuwe gebruiker"), new("uitstroom", "Uitstroom"),
-            new("functieprofielen", "Functieprofielen"), new("spiegel", "Spiegelgebruiker"),
+            new("functieprofielen", "Functieprofielen"), new("spiegel", "Spiegelgebruiker"), new("wachtwoorden", "Wachtwoord verloopt"),
+            new("sleutels", "BitLocker en LAPS"),
         }),
         new MenuGroup("Groepen en toegang", new MenuItem[]
         {

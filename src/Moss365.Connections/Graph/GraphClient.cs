@@ -91,6 +91,9 @@ public sealed class GraphClient
             using var request = new HttpRequestMessage(method, path.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? path : Base + path);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _token(cancel));
             request.Headers.Add("ConsistencyLevel", "eventual");
+            // The BitLocker API asks who calls (0.33); harmless for the rest
+            request.Headers.Add("ocp-client-name", "Moss365");
+            request.Headers.Add("ocp-client-version", "1.0");
             if (content is not null)
             {
                 request.Content = new StringContent(JsonSerializer.Serialize(content), Encoding.UTF8, "application/json");

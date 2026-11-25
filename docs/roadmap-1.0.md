@@ -343,6 +343,9 @@ data (recovery keys, passwords, message traces) is written to the access log and
 | **Quick sign-in at every start**: an encrypted token cache per tenant (optional, Windows account) | No new sign-in every time |
 | Search everything with **Ctrl+K** (users, groups, mailboxes, PCs, scripts, screens) | Faster than menus |
 
+Done in 0.33 (R10): all of the above; devices are found on the BitLocker and LAPS page (the device list itself comes with
+R13).
+
 ### Security (R11)
 
 | Proposal | Why |

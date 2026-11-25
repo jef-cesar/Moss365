@@ -22,6 +22,7 @@ public static class Access
             "nieuw" or "uitstroom" or "gepland" or "opvolging" => Permission.Actions,
             "opkuis" => Permission.Manage,
             "logonscripts" => Permission.View,
+            "sleutels" or "wachtwoorden" => Permission.Helpdesk,
             "scripts" => Permission.Scripts,
             "logboek" => Permission.ChangeLogOwn,
             "organisatie" or "tenants" or "inrichten" or "databank" => Permission.Settings,
@@ -40,7 +41,7 @@ public static class Access
         {
             "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "beveiliging" or "conditional-access" or "inrichten" => hasMicrosoft365,
             "vergelijk" => hasAd && hasMicrosoft365,
-            "logonscripts" => hasAd,
+            "logonscripts" or "wachtwoorden" => hasAd,
             "nieuw" => hasAd || hasMicrosoft365, // in AD, or in the cloud (0.31)
             _ => true,
         };

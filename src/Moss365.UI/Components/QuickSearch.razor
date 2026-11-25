@@ -143,6 +143,25 @@
             yield return new("groep", g.Name, g.Layers, g.Ref.Route!);
         }
 
+        // Scripts (0.33): open the start form
+        if (Allowed("scripts"))
+        {
+            IReadOnlyList<Moss365.Core.Scripts.ScriptFile> scripts;
+            try
+            {
+                scripts = State.ReadScripts();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                scripts = Array.Empty<Moss365.Core.Scripts.ScriptFile>();
+            }
+
+            foreach (var s in scripts.Where(s => Hit(s.Header.Name, s.Header.Description, s.Key)).Take(6))
+            {
+                yield return new("script", s.Header.Name, s.Header.Description, "scripts/starten/" + Uri.EscapeDataString(s.Key));
+            }
+        }
+
         if (!State.HasMicrosoft365)
         {
             yield break;

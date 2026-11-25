@@ -65,7 +65,8 @@ $Rechten = @(
     'Policy.Read.All',                                         # 0.6: read Conditional Access
     'Calendars.Read.Shared',                                   # 0.7: calendar export (only calendars you have permissions on yourself)
     'OnPremDirectorySynchronization.Read.All',                 # 0.7: script diagnose wachtwoordverloop
-    'Policy.ReadWrite.ConditionalAccess', 'Application.Read.All'  # 0.9: manage Conditional Access
+    'Policy.ReadWrite.ConditionalAccess', 'Application.Read.All', # 0.9: manage Conditional Access
+    'UserAuthenticationMethod.ReadWrite.All', 'BitLockerKey.Read.All', 'DeviceLocalCredential.Read.All', 'Device.Read.All', 'Mail.Send'  # 0.33: helpdesk
 )
 $ExchangeRechten = @('Exchange.Manage')
 
