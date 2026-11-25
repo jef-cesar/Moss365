@@ -69,7 +69,7 @@ public static class Undo
 
         return action switch
         {
-            ChangeAction.AdCreateUser or ChangeAction.ExchangeCreateSharedMailbox or ChangeAction.ExchangeCreateGroup or ChangeAction.GraphCreateCaLocation
+            ChangeAction.AdCreateUser or ChangeAction.GraphCreateUser or ChangeAction.ExchangeCreateSharedMailbox or ChangeAction.ExchangeCreateGroup or ChangeAction.GraphCreateCaLocation
                 => "aangemaakte objecten verwijdert de app niet",
             ChangeAction.GraphCreateApplication or ChangeAction.GraphUpdateApplication or ChangeAction.GraphCreateServicePrincipal
                 or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole

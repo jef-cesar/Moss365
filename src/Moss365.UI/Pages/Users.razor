@@ -4,7 +4,7 @@
 
 <div class="kb-titelbalk">
     <h1>Gebruikers</h1>
-    @if (State.Can(Permission.Actions) && State.HasAd) { <a class="kb-knop kb-primair" href="nieuw">+ Nieuwe gebruiker</a> }
+    @if (State.Can(Permission.Actions)) { <a class="kb-knop kb-primair" href="nieuw">+ Nieuwe gebruiker</a> }
 </div>
 
 <KpiFilter Kpi="ActiveKpi" Count="KpiRows.Count" Shown="Filtered.Count" Cleared="() => z.Kpi = null">

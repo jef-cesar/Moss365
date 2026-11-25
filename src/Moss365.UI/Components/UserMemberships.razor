@@ -103,7 +103,10 @@
 
     private IReadOnlyList<Mailbox> MailboxAccess => State.Data.Index.MailboxPermissionsOf(Person).Select(r => r.Mailbox).Distinct().OrderBy(m => m.DisplayName).ToList();
 
-    private bool Fits(Group g) => (State.HasAd && g.Ad is not null) || (State.HasMicrosoft365 && (g.Cloud is not null || g.Exo is not null));
+    /// <summary>Groups in the layers this tenant has; a guest (0.31) only exists in Entra, so only cloud groups.</summary>
+    private bool Fits(Group g) => Person.IsGuest
+        ? State.HasMicrosoft365 && g.Ad is null && (g.Cloud is not null || g.Exo is not null)
+        : (State.HasAd && g.Ad is not null) || (State.HasMicrosoft365 && (g.Cloud is not null || g.Exo is not null));
 
     private bool Nothing => removeGroups.Count + removeMailboxes.Count + addGroups.Count + addMailboxes.Count == 0;
 

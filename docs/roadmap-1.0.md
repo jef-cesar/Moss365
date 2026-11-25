@@ -303,8 +303,8 @@ proposed), the version and date per person, and the profile on the user page.
 
 For a tenant with only Microsoft 365 (no AD), **New user** creates the account directly in Entra ID through Graph, with
 its licence, groups and mailbox access in the same plan (no follow-up after synchronisation). The first password is
-shown once, never stored or logged; the user changes it at the first sign-in. Until then, New user is hidden for such a
-tenant (0.21.1).
+shown once, never stored or logged; the user changes it at the first sign-in. **Done in 0.31**, also as a choice for a
+hybrid tenant; mail groups (and so access to shared mailboxes) become a follow-up task until the mailbox exists.
 
 (Naming: to avoid confusion with the app's roles, these are called **job profiles**, and the app's access levels are
 called **roles**.)

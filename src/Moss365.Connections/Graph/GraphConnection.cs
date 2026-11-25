@@ -18,6 +18,10 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                                        + "onPremisesSyncEnabled,onPremisesSamAccountName,assignedLicenses";
 
     private readonly GraphClient _client;
+
+    /// <summary>Users this connection just created or invited (address or UPN to id): the next steps of the same
+    /// plan find them at once, also before Entra can be searched for them (0.31).</summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _created = new(StringComparer.OrdinalIgnoreCase);
     private readonly Func<string?> _signedInAs;
     private readonly Func<IReadOnlyList<string>?> _appRoles;
     private readonly Func<CancellationToken, Task>? Signin_;
@@ -294,6 +298,11 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
     public async Task<string?> FindUserIdAsync(string upn, CancellationToken cancel)
     {
+        if (_created.TryGetValue(upn, out var created))
+        {
+            return created;
+        }
+
         try
         {
             var u = await _client.GetAsync($"/users/{Uri.EscapeDataString(upn)}?$select=id", cancel);
@@ -780,6 +789,41 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         return ChangeResult.Ok(w, $"Aangemaakt; id {S(groupValue, "id")}");
     }
 
+    /// <summary>A new cloud user (0.31): enabled, with the first password from the plan (never logged), to change at
+    /// the first sign-in.</summary>
+    private async Task<ChangeResult> CreateUserAsync(Change w, CancellationToken cancel)
+    {
+        if (string.IsNullOrEmpty(w.Secret))
+        {
+            return ChangeResult.Error(w, "Geen beginwachtwoord in het plan.");
+        }
+
+        var content = new Dictionary<string, object>
+        {
+            ["accountEnabled"] = true,
+            ["userPrincipalName"] = w.Target,
+            ["displayName"] = w.P("displayName"),
+            ["mailNickname"] = w.P("mailNickname"),
+            ["passwordProfile"] = new Dictionary<string, object> { ["forceChangePasswordNextSignIn"] = true, ["password"] = w.Secret },
+        };
+        foreach (var field in new[] { "givenName", "surname", "jobTitle", "department", "officeLocation", "companyName", "city", "usageLocation" })
+        {
+            if (w.P(field) is { Length: > 0 } value)
+            {
+                content[field] = value;
+            }
+        }
+
+        var user = await _client.PostWithResponseAsync("/users", content, cancel);
+        var id = S(user, "id");
+        if (id.Length > 0)
+        {
+            _created[w.Target] = id;
+        }
+
+        return ChangeResult.Ok(w, $"Aangemaakt; id {id}");
+    }
+
     private async Task<ChangeResult> RunAsync(Change w, CancellationToken cancel)
     {
         try
@@ -799,7 +843,17 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                     ["sendInvitationMessage"] = string.Equals(w.P("bericht"), "True", StringComparison.OrdinalIgnoreCase),
                 }, cancel);
                 var id = invitation.TryGetProperty("invitedUser", out var iu) ? S(iu, "id") : string.Empty;
+                if (id.Length > 0)
+                {
+                    _created[w.Target] = id;
+                }
+
                 return ChangeResult.Ok(w, $"Uitgenodigd; id {id}");
+            }
+
+            if (w.ChangeAction == ChangeAction.GraphCreateUser)
+            {
+                return await CreateUserAsync(w, cancel);
             }
 
             if (w.ChangeAction == ChangeAction.GraphCreateGroup)

@@ -77,6 +77,9 @@ public enum ChangeAction
     GraphUpdateServicePrincipal,  // Target = id of the service principal; json; Previous json
     GraphGrantConsent,            // Target = appName; resourceId, scope, grantId (empty = new); Previous scope
     GraphAssignAppRole,           // Target = id of the user or group, or the name of a group made in the same plan; appName, appRoleId, kind (user/group)
+
+    // New in 0.31: a user in the cloud (tenant without AD)
+    GraphCreateUser,              // Target = UPN; displayName, mailNickname, givenName, surname, jobTitle, department, officeLocation, companyName, city, usageLocation; the password is in Secret
 }
 
 /// <summary>

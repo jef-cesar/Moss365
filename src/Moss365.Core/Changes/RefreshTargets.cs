@@ -67,6 +67,7 @@ public sealed partial class RefreshTargets
                     }
 
                     break;
+                case ChangeAction.GraphCreateUser:
                 case ChangeAction.GraphInviteGuest:
                     // The invitation returns the id of the new guest
                     if (Guid().Match(succeeded[w.Id].Message) is { Success: true } id)

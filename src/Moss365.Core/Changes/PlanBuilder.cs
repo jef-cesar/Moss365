@@ -20,6 +20,12 @@ public sealed class NewUserRequest
 
     /// <summary>Id of a job profile (0.22): its groups, mailboxes, licences and attributes come along.</summary>
     public string? JobProfile { get; set; }
+
+    /// <summary>Create the account in Entra instead of AD (0.31): always for a tenant without AD.</summary>
+    public bool InCloud { get; set; }
+
+    /// <summary>The domain of the new account in the cloud when the kind of user does not say it (0.31).</summary>
+    public string? Domain { get; set; }
 }
 
 /// <summary>What the app suggests for a new user: the derived names and two plans (now and after the

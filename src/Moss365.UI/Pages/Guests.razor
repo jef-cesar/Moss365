@@ -26,6 +26,16 @@
         <label>Naam <input class="kb-invoer" placeholder="Voornaam Achternaam (Bedrijf)" @bind="input.Name" /></label>
     </div>
     <label><input type="checkbox" @bind="input.Message" /> Uitnodiging per e-mail sturen</label>
+    <ObjectPicker Label="Meteen in groepen plaatsen (optioneel)" Kinds="GroupKinds" Selected="r => { if (!input.Groups.Contains(r.Key)) input.Groups.Add(r.Key); }" />
+    @if (input.Groups.Count > 0)
+    {
+        <p>
+            @foreach (var key in input.Groups.ToList())
+            {
+                <span class="kb-label">@(State.Data.Index.Group(key)?.Name ?? key) <button class="kb-knop kb-klein" aria-label="@($"{State.Data.Index.Group(key)?.Name ?? key} niet")" @onclick="() => input.Groups.Remove(key)">&times;</button></span>
+            }
+        </p>
+    }
     <div class="kb-filters">
         <button class="kb-knop kb-primair" @onclick="Invite">Plan maken</button>
     </div>
@@ -36,6 +46,13 @@
     <input class="kb-invoer kb-breed" placeholder="Zoek op naam of adres" @bind="input.Find" @bind:event="oninput" aria-label="Zoeken" />
     <button class="kb-knop" hidden="@(!State.Can(Permission.Manage))" disabled="@(selected.Count == 0)" @onclick="Delete">Gekozen gasten verwijderen (@selected.Count)</button>
 </div>
+@if (selected.Count > 0 && State.Can(Permission.GroupMembers))
+{
+    <div class="kb-kolommen">
+        <ObjectPicker Label="@($"Gekozen gasten ({selected.Count}) in een groep plaatsen")" Kinds="GroupKinds" Selected="r => InGroup(r, true)" />
+        <ObjectPicker Label="@($"Gekozen gasten ({selected.Count}) uit een groep halen")" Kinds="GroupKinds" Selected="r => InGroup(r, false)" />
+    </div>
+}
 
 <KbTable Id="gasten" Items="Items" Columns="columns" DefaultSorting="naam" CountText="@($"{Items.Count} gasten")"
          Selectable KeyOf="p => p.Key" Selected="selected" SelectionChanged="_ => { }"
@@ -43,7 +60,7 @@
 
 @foreach (var f in errors)
 {
-    <div class="kb-melding kb-fout">@f</div>
+    <div class="kb-melding @(plan is null ? "kb-fout" : null)">@f</div>
 }
 @if (plan is not null)
 {
@@ -52,7 +69,9 @@
 
 @code {
     /// <summary>Search term and the invitation being filled in, kept while the app is open (Back, Forward, menu).</summary>
-    private sealed class Input { public string Find { get; set; } = string.Empty; public string Address { get; set; } = string.Empty; public string Name { get; set; } = string.Empty; public bool Message { get; set; } = true; }
+    private sealed class Input { public string Find { get; set; } = string.Empty; public string Address { get; set; } = string.Empty; public string Name { get; set; } = string.Empty; public bool Message { get; set; } = true; public List<string> Groups { get; set; } = new(); }
+
+    private static readonly ObjectKind[] GroupKinds = { ObjectKind.Group };
     private Input? _input;
     private Input input => _input ??= State.PageState.Form<Input>("gasten", "gasten", "Gast uitnodigen", filled: i => i.Address.Trim().Length > 0 || i.Name.Trim().Length > 0);
     private readonly HashSet<string> selected = new(StringComparer.OrdinalIgnoreCase);
@@ -101,7 +120,17 @@
         return DateTime.TryParse(p.Entra?.CreatedDateTime, out var created) && created < limit;
     }
 
-    private void Invite() => Show(GuestPlans.Invite(State.Data, input.Address, input.Name, input.Message));
+    private void Invite() => Show(GuestPlans.Invite(State.Data, input.Address, input.Name, input.Message,
+        input.Groups.Select(State.Data.Index.Group).OfType<Group>()));
+
+    /// <summary>The selected guests in a group or out of it (0.31): one plan, the usual checks per guest.</summary>
+    private void InGroup(ObjectRef r, bool add)
+    {
+        if (State.Data.Index.Group(r.Key) is { } g)
+        {
+            Show(BulkPlans.UsersInGroup(State.Data, All.Where(p => selected.Contains(p.Key)), g, add));
+        }
+    }
 
     private void Delete() => Show(GuestPlans.Delete(State.Data, All.Where(p => selected.Contains(p.Key))));
 
@@ -112,6 +141,7 @@
         {
             input.Address = string.Empty;
             input.Name = string.Empty;
+            input.Groups.Clear();
         }
     }
 

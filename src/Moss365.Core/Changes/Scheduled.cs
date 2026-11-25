@@ -192,7 +192,7 @@ public static class ScheduledPlans
 
         var plan = a.Changes.Select(Copy).ToList();
         string? password = null;
-        foreach (var w in plan.Where(w => w.ChangeAction == ChangeAction.AdCreateUser))
+        foreach (var w in plan.Where(w => w.ChangeAction is ChangeAction.AdCreateUser or ChangeAction.GraphCreateUser))
         {
             password ??= NameRules.InitialPassword();
             w.Secret = password;

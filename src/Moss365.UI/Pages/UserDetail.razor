@@ -58,7 +58,7 @@ else
         <EditUser Person="person" />
     }
 
-    @if (State.Can(Permission.GroupMembers) && !person.IsGuest && !State.IsHistoric)
+    @if (State.Can(Permission.GroupMembers) && !State.IsHistoric)
     {
         <UserMemberships Person="person" />
     }

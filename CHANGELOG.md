@@ -2,6 +2,21 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.31.0
+
+New users in the cloud, and guests in groups (step R9 of the [roadmap](docs/roadmap-1.0.md); logon scripts follow).
+
+- **Nieuwe gebruiker in de cloud**: for a tenant without AD, Nieuwe gebruiker creates the account directly in Entra (and a
+  hybrid tenant can choose "Enkel in de cloud"). The naming rules, the kind of user (or a domain of the tenant), the
+  department, office, job title and a **job profile** work as before; the licences and the cloud groups come in the
+  same plan, right after the account. Mail groups and access to shared mailboxes wait until Exchange has made the
+  mailbox (a few minutes after the licence) and become a follow-up task. The first password is shown once and never
+  stored or logged; the user changes it at the first sign-in. Scheduling for later works too.
+- **Guests in groups**: on the page of a guest, its groups can be edited (cloud groups only: a guest does not exist in
+  AD); the member picker of a cloud group finds guests; on Gastgebruikers the selected guests go into a group (or out of
+  it) in one plan; and inviting a guest can put it in cloud groups right away, in the same plan.
+- In the pickers a guest shows as "gast" with its e-mail address.
+
 ## 0.30.1
 
 - **Download link on the front page** of the repository: always the newest version (setup, portable zip and

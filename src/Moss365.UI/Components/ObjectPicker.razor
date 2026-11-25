@@ -28,6 +28,9 @@
     [Parameter] public string? Label { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Zoek op naam of adres";
     [Parameter] public IReadOnlyCollection<ObjectKind>? Kinds { get; set; }
+
+    /// <summary>Also guest users (0.31), e.g. to make them members of a group.</summary>
+    [Parameter] public bool WithGuests { get; set; }
     [Parameter] public EventCallback<ObjectRef> Selected { get; set; }
 
     private string search = string.Empty;
@@ -48,7 +51,7 @@
             var output = new List<ObjectRef>();
             if (Can(ObjectKind.User))
             {
-                output.AddRange(d.Persons.Where(p => !p.IsGuest && Past(p.Name, p.Upn, p.Ad?.SamAccountName, p.Entra?.Mail))
+                output.AddRange(d.Persons.Where(p => (WithGuests || !p.IsGuest) && Past(p.Name, p.Upn, p.Ad?.SamAccountName, p.Entra?.Mail))
                     .Where(p => d.Index.Find(p.Upn) is not { Kind: ObjectKind.Mailbox or ObjectKind.Room })
                     .Select(d.Index.Ref));
             }

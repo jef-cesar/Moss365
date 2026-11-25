@@ -404,7 +404,7 @@ public static class JobProfilePlans
         => g.Dynamic || config.IsDynamicGroup(g.Name) || config.Divisions.Any(a => Same(a.Group, g.Name));
 
     /// <summary>The usage location most licensed users have; BE when nobody has one.</summary>
-    private static string UsageLocation(InventoryData d)
+    public static string UsageLocation(InventoryData d)
         => d.EntraUsers.Where(u => u.UsageLocation.Length > 0).GroupBy(u => u.UsageLocation, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(g => g.Count()).Select(g => g.Key.ToUpperInvariant()).FirstOrDefault() ?? "BE";
 

@@ -5,18 +5,28 @@
 
 <p class="kb-zacht">
     Vul de gegevens in en kies <strong>Voorbeeld</strong>. De app leidt de namen af, controleert of ze al bestaan en toont wat er
-    gebeurt. Het account wordt in AD aangemaakt; licentie en cloudgroepen volgen na de synchronisatie naar Entra (scherm
-    <a href="opvolging">Opvolging</a>).
+    gebeurt.
+    @if (InCloud)
+    {
+        <text>Het account wordt rechtstreeks in Entra aangemaakt, met de licentie en de cloudgroepen meteen erbij. Mailgroepen (en toegang
+        tot gedeelde postvakken) volgen zodra het postvak bestaat (scherm <a href="opvolging">Opvolging</a>).</text>
+    }
+    else
+    {
+        <text>Het account wordt in AD aangemaakt; licentie en cloudgroepen volgen na de synchronisatie naar Entra (scherm
+        <a href="opvolging">Opvolging</a>).</text>
+    }
 </p>
 
-@if (!State.HasAd)
+@if (State.HasAd && State.HasMicrosoft365)
 {
-    <div class="kb-melding">
-        Deze tenant heeft geen Active Directory. Een nieuwe gebruiker maakt de app voorlopig enkel in AD aan; cloudgebruikers
-        rechtstreeks aanmaken staat op de <a href="https://github.com/jef-cesar/Moss365/blob/main/docs/roadmap-1.0.md">roadmap</a>.
+    <div class="kb-filters">
+        <label><input type="radio" name="waar" checked="@(!request.InCloud)" @onchange="() => SetInCloud(false)" aria-label="In AD" /> In AD (gesynchroniseerd naar Entra)</label>
+        <label><input type="radio" name="waar" checked="@request.InCloud" @onchange="() => SetInCloud(true)" aria-label="Enkel in de cloud" /> Enkel in de cloud (Entra)</label>
     </div>
 }
-else if (State.Config.Populations.Count == 0)
+
+@if (!InCloud && State.Config.Populations.Count == 0)
 {
     <div class="kb-melding kb-fout">
         Er zijn geen soorten (gemeente, OCMW, vrijwilliger) in de organisatie, dus kan je nog geen gebruiker aanmaken.
@@ -50,13 +60,24 @@ else if (State.Config.Populations.Count == 0)
     <div class="kb-raster">
         <label>Soort
             <select class="kb-invoer" @bind="request.Population" @bind:after="Clear">
-                <option value="">(kies)</option>
+                <option value="">@(InCloud ? "(geen)" : "(kies)")</option>
                 @foreach (var p in State.Config.Populations)
                 {
-                    <option value="@p.Name">@p.Name (@p.Ou)</option>
+                    <option value="@p.Name">@p.Name (@(InCloud ? p.UpnDomain : p.Ou))</option>
                 }
             </select>
         </label>
+        @if (InCloud && State.Config.SearchPopulation(request.Population) is null)
+        {
+            <label>Domein
+                <select class="kb-invoer" @bind="request.Domain" @bind:after="Clear" aria-label="Domein">
+                    @foreach (var d in Domains)
+                    {
+                        <option value="@d">@d</option>
+                    }
+                </select>
+            </label>
+        }
         <label>Voornaam <input class="kb-invoer" @bind="request.GivenName" @bind:after="Clear" /></label>
         <label>Achternaam <input class="kb-invoer" @bind="request.Surname" @bind:after="Clear" /></label>
         @if (!IsVolunteer)
@@ -81,6 +102,8 @@ else if (State.Config.Populations.Count == 0)
             </label>
         }
         <label>Functie <input class="kb-invoer" @bind="request.JobTitle" @bind:after="Clear" /></label>
+        @if (!InCloud)
+        {
         <label>Logonscript
             <select class="kb-invoer" @bind="request.LogonScript" @bind:after="Clear">
                 <option value="">(geen)</option>
@@ -90,6 +113,7 @@ else if (State.Config.Populations.Count == 0)
                 }
             </select>
         </label>
+        }
         <label>Licentie
             <select class="kb-invoer" @bind="request.LicenceSku" @bind:after="Clear">
                 <option value="">(geen)</option>
@@ -100,9 +124,12 @@ else if (State.Config.Populations.Count == 0)
             </select>
         </label>
     </div>
-    <div class="kb-filters">
-        <label><input type="checkbox" @bind="request.DefaultAdGroups" @bind:after="Clear" /> Standaardgroepen van de soort toevoegen</label>
-    </div>
+    @if (!InCloud)
+    {
+        <div class="kb-filters">
+            <label><input type="checkbox" @bind="request.DefaultAdGroups" @bind:after="Clear" /> Standaardgroepen van de soort toevoegen</label>
+        </div>
+    }
     <PersonPicker Label="Groepen overnemen van (optioneel, spiegelgebruiker)" Selected="request.Mirror" SelectedChanged="ChooseMirror" />
     <div class="kb-filters">
         <button class="kb-knop kb-primair" @onclick="MakeProposal">Voorbeeld</button>
@@ -128,8 +155,15 @@ else if (State.Config.Populations.Count == 0)
                 <tbody>
                     <tr><th>Weergavenaam</th><td>@proposal.ViewName</td></tr>
                     <tr><th>Aanmeldnaam (UPN)</th><td>@proposal.Upn</td></tr>
-                    <tr><th>sAMAccountName</th><td>@proposal.Sam</td></tr>
-                    <tr><th>Locatie in AD</th><td>@proposal.Dn</td></tr>
+                    @if (!InCloud)
+                    {
+                        <tr><th>sAMAccountName</th><td>@proposal.Sam</td></tr>
+                        <tr><th>Locatie in AD</th><td>@proposal.Dn</td></tr>
+                    }
+                    else
+                    {
+                        <tr><th>Waar</th><td>Entra (cloudaccount)</td></tr>
+                    }
                 </tbody>
             </table>
         }
@@ -137,7 +171,7 @@ else if (State.Config.Populations.Count == 0)
 
     @if (proposal.CanBeExecuted)
     {
-        <PlanView Plan="proposal.Now" Context="@($"Nieuwe gebruiker {proposal.Upn}")" Title="Nu in AD" Executed="AfterExecute" />
+        <PlanView Plan="proposal.Now" Context="@($"Nieuwe gebruiker {proposal.Upn}")" Title="@(InCloud ? "Nu in Entra" : "Nu in AD")" Executed="AfterExecute" />
 
         @if (!showPassword)
         {
@@ -165,10 +199,10 @@ else if (State.Config.Populations.Count == 0)
         }
 
         <section class="kb-kaart">
-            <h2>Na de synchronisatie naar Entra (@proposal.AfterSynchronisation.Count)</h2>
+            <h2>@(InCloud ? "Zodra het postvak bestaat" : "Na de synchronisatie naar Entra") (@proposal.AfterSynchronisation.Count)</h2>
             @if (proposal.AfterSynchronisation.Count == 0)
             {
-                <p class="kb-zacht">Geen licentie of cloudgroepen.</p>
+                <p class="kb-zacht">@(InCloud ? "Geen mailgroepen of toegang tot gedeelde postvakken." : "Geen licentie of cloudgroepen.")</p>
             }
             else
             {
@@ -188,9 +222,9 @@ else if (State.Config.Populations.Count == 0)
                     }
                     else
                     {
-                        @("Deze stappen worden een opvolgtaak zodra het account in AD aangemaakt is.")
+                        @(InCloud ? "Deze stappen worden een opvolgtaak zodra het account aangemaakt is." : "Deze stappen worden een opvolgtaak zodra het account in AD aangemaakt is.")
                     }
-                    Entra Connect synchroniseert standaard om de 30 minuten; werk ze daarna af in <a href="opvolging">Opvolging</a>.
+                    @(InCloud ? "Exchange maakt het postvak enkele minuten na de licentie;" : "Entra Connect synchroniseert standaard om de 30 minuten;") werk ze daarna af in <a href="opvolging">Opvolging</a>.
                 </p>
             }
         </section>
@@ -214,6 +248,17 @@ else if (State.Config.Populations.Count == 0)
     private IEnumerable<string> LogonScripts => string.IsNullOrWhiteSpace(request.LogonScript) || State.Config.LogonScripts.Contains(request.LogonScript, StringComparer.OrdinalIgnoreCase)
         ? State.Config.LogonScripts
         : State.Config.LogonScripts.Append(request.LogonScript);
+
+    /// <summary>In the cloud: always for a tenant without AD, by choice for a hybrid tenant (0.31).</summary>
+    private bool InCloud => !State.HasAd || (State.HasMicrosoft365 && request.InCloud);
+
+    private IReadOnlyList<string> Domains => CloudUserPlans.Domains(State.Data);
+
+    private void SetInCloud(bool value)
+    {
+        request.InCloud = value;
+        Clear();
+    }
 
     private bool IsVolunteer => State.Config.SearchPopulation(request.Population)?.City is not null;
 
@@ -292,7 +337,14 @@ else if (State.Config.Populations.Count == 0)
         if (request.LogonScript?.Length == 0) request.LogonScript = null;
 
         // One initial password per request, so that it does not change with every preview
-        proposal = PlanBuilder.NewUser(State.Data, State.Config, request, password);
+        if (InCloud && State.Config.SearchPopulation(request.Population) is null && string.IsNullOrWhiteSpace(request.Domain))
+        {
+            request.Domain = Domains.FirstOrDefault();
+        }
+
+        proposal = InCloud
+            ? CloudUserPlans.NewUser(State.Data, State.Config, request, password)
+            : PlanBuilder.NewUser(State.Data, State.Config, request, password);
         password = proposal.Password;
         showPassword = false;
         followUpSaved = false;
@@ -305,7 +357,7 @@ else if (State.Config.Populations.Count == 0)
             return;
         }
 
-        var create = proposal.Now.First(w => w.ChangeAction == ChangeAction.AdCreateUser);
+        var create = proposal.Now.First(w => w.ChangeAction is ChangeAction.AdCreateUser or ChangeAction.GraphCreateUser);
         if (results.Any(r => r.ChangeId == create.Id && r.Status == ResultStatus.Succeeded))
         {
             showPassword = true;

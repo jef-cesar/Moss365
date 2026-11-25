@@ -140,7 +140,8 @@ public sealed partial class PlanScreenTests
 
         // Another value: a new preview is needed
         cut.Find("input[list=kb-keuzes-mailbox]").Change("ander@test.be");
-        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent == "Uitvoeren");
+        // The new value reaches the panel through the page (an event callback): wait for that render
+        cut.WaitForAssertion(() => Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent == "Uitvoeren"));
         cut.Find("input[list=kb-keuzes-mailbox]").Change("info@test.be");
 
         cut.FindAll("button").First(b => b.TextContent == "Uitvoeren").Click();

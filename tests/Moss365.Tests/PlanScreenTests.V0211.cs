@@ -45,7 +45,7 @@ public sealed partial class PlanScreenTests
         hub.Update(hub.CurrentTenant with { Systems = TenantSystems.Microsoft365 });
         Assert.Empty(s.Data.AdUsers);
         Assert.All(s.Data.Persons, p => Assert.Null(p.Ad));
-        Assert.False(Access.FitsTenant("nieuw", s.HasAd, s.HasMicrosoft365));
+        Assert.True(Access.FitsTenant("nieuw", s.HasAd, s.HasMicrosoft365)); // in the cloud since 0.31
 
         using var ctx = new Bunit.TestContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -57,7 +57,7 @@ public sealed partial class PlanScreenTests
         Assert.DoesNotContain("sAMAccountName", users, StringComparison.Ordinal);
         Assert.DoesNotContain("Alleen AD", users, StringComparison.Ordinal);
         Assert.DoesNotContain(">OU<", users, StringComparison.Ordinal);
-        Assert.DoesNotContain("Nieuwe gebruiker", users, StringComparison.Ordinal);
+        Assert.Contains("Nieuwe gebruiker", users, StringComparison.Ordinal);
 
         var groups = ctx.RenderComponent<Groups>().Markup;
         Assert.DoesNotContain("Alleen AD", groups, StringComparison.Ordinal);

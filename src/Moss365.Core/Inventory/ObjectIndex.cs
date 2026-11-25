@@ -242,7 +242,7 @@ public sealed class ObjectIndex
         => Find(identity) ?? ObjectRef.Unknown(identity,
             detail.Length > 0 ? detail : identity.StartsWith("S-1-5-", StringComparison.OrdinalIgnoreCase) ? "verwijderd account (SID)" : "niet gevonden");
 
-    public ObjectRef Ref(Person p) => new(ObjectKind.User, p.Key, p.Name, p.Upn);
+    public ObjectRef Ref(Person p) => new(ObjectKind.User, p.Key, p.Name, p.IsGuest ? $"gast, {p.Entra?.Mail}" : p.Upn);
 
     // ------------------------------------------------------------------ relations of a group
 
