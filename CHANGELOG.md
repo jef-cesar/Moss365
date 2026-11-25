@@ -2,6 +2,30 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.34.0
+
+Security checks: step R11 of the [roadmap](docs/roadmap-1.0.md) (the Conditional Access editor of R11 came in 0.30).
+
+- **Beveiligingscontroles** (Beveiliging): every check says OK, aandacht or probleem, and onbekend when the data is not
+  enough; **Alles nakijken** runs them all, and every check shows its details. Everything reads only.
+  - **Meldingen uit de momentopnames** (last day, 7 or 30 days): a new member of a privileged group or an admin role, a
+    disabled account enabled again, a changed Conditional Access policy; also what happened outside Moss365.
+  - **Doorsturen naar buiten**: mailboxes that forward outside the own domains, and (optionally, slower) inbox rules
+    that forward or redirect: a classic sign of a taken-over account.
+  - **Apps**: secrets and certificates that expired or expire within 30 days, broad application permissions and
+    consents users gave themselves.
+  - **Microsoft Secure Score** with its trend and the actions that gain the most.
+  - **Beheerrollen en PIM**: who has which role permanently, active or eligible (with P2), and too many Global
+    Administrators.
+  - **Zwakke MFA-methoden**: who only has SMS, phone or e-mail, or nothing.
+  - **Risicovolle gebruikers** (Entra ID P2).
+  - **AD-beveiliging**: accounts with an SPN, unconstrained delegation, "password not required", reversible encryption,
+    the age of the krbtgt password, adminCount orphans and outdated operating systems.
+  - **Groepsbeleid**: policies that are not linked, empty or switched off.
+- **AD-gezondheid**: a new library script for the domain controllers, replication, FSMO roles and time.
+- New permissions for the app registration (SecurityEvents.Read.All, RoleManagement.Read.Directory,
+  IdentityRiskyUser.Read.All): run **Tenant inrichten** once to add them.
+
 ## 0.33.0
 
 Helpdesk and daily work: step R10 of the [roadmap](docs/roadmap-1.0.md).

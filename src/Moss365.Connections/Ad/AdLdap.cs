@@ -172,6 +172,78 @@ public sealed class AdLdap : IAdConnection, IExecutor
         return new Core.Helpdesk.AdComputerSecrets(First("cn") ?? computerName, keys, laps, note);
     }, cancel);
 
+    /// <summary>The light AD security check (0.34): read only, a few LDAP queries.</summary>
+    public Task<Core.Security.AdSecurityReading?> ReadSecurityAsync(CancellationToken cancel) => Task.Run<Core.Security.AdSecurityReading?>(() =>
+    {
+        var domainDn = ReadDomainDn();
+        using var baseline = Item(domainDn);
+        List<string> Names(string filter) => Find(baseline, filter, new[] { "sAMAccountName", "cn" }, cancel)
+            .Select(r => (r.TryGetValue("sAMAccountName", out var v) && v.Length > 0 ? v[0]?.ToString() : null)
+                         ?? (r.TryGetValue("cn", out var c) && c.Length > 0 ? c[0]?.ToString() : null) ?? string.Empty)
+            .Where(n => n.Length > 0).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+
+        const string bit = "userAccountControl:1.2.840.113556.1.4.803:";
+        var spn = Names("(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*)(!(sAMAccountName=krbtgt)))");
+        var delegation = Names($"(&(|(objectCategory=person)(objectCategory=computer))({bit}=524288)(!(primaryGroupID=516)))");
+        var notRequired = Names($"(&(objectCategory=person)(objectClass=user)({bit}=32)(!({bit}=2)))");
+        var reversible = Names($"(&(objectCategory=person)(objectClass=user)({bit}=128))");
+        DateTimeOffset? krbtgt = Find(baseline, "(&(objectClass=user)(sAMAccountName=krbtgt))", new[] { "pwdLastSet" }, cancel)
+            .Select(r => r.TryGetValue("pwdLastSet", out var v) && v.Length > 0 && v[0] is long ft && ft > 0 ? DateTimeOffset.FromFileTime(ft) : (DateTimeOffset?)null)
+            .FirstOrDefault();
+
+        // adminCount=1 while no longer in a privileged group (the rights of AdminSDHolder stay on the account)
+        var privileged = Find(baseline, "(&(objectClass=group)(adminCount=1))", new[] { "distinguishedName" }, cancel)
+            .Select(r => r.TryGetValue("distinguishedName", out var v) && v.Length > 0 ? v[0]?.ToString() : null).OfType<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var orphans = Find(baseline, "(&(objectCategory=person)(objectClass=user)(adminCount=1))", new[] { "sAMAccountName", "memberOf" }, cancel)
+            .Where(r => !(r.TryGetValue("memberOf", out var m) && m.OfType<object>().Select(x => x.ToString()).Any(x => x is not null && privileged.Contains(x))))
+            .Select(r => r.TryGetValue("sAMAccountName", out var v) && v.Length > 0 ? v[0]?.ToString() ?? string.Empty : string.Empty)
+            .Where(n => n.Length > 0 && !n.Equals("krbtgt", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        var old = Find(baseline, "(&(objectCategory=computer)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(|(operatingSystem=*XP*)(operatingSystem=*Vista*)(operatingSystem=*Windows 7*)(operatingSystem=*Windows 8*)(operatingSystem=*2003*)(operatingSystem=*2008*)(operatingSystem=*2012*)))",
+                new[] { "cn", "operatingSystem" }, cancel)
+            .Select(r => (Name: r.TryGetValue("cn", out var c) && c.Length > 0 ? c[0]?.ToString() ?? string.Empty : string.Empty,
+                          Os: r.TryGetValue("operatingSystem", out var o) && o.Length > 0 ? o[0]?.ToString() ?? string.Empty : string.Empty))
+            .ToList();
+        return new Core.Security.AdSecurityReading(spn, delegation, notRequired, reversible, krbtgt, orphans, old);
+    }, cancel);
+
+    /// <summary>Group Policies (groupPolicyContainer) and where they are linked (gPLink), read only (0.34).</summary>
+    public Task<IReadOnlyList<Core.Security.GpoInfo>?> ReadGpoAsync(CancellationToken cancel) => Task.Run<IReadOnlyList<Core.Security.GpoInfo>?>(() =>
+    {
+        var domainDn = ReadDomainDn();
+        using var baseline = Item(domainDn);
+        var links = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var r in Find(baseline, "(gPLink=*)", new[] { "distinguishedName", "gPLink" }, cancel))
+        {
+            var dn = r.TryGetValue("distinguishedName", out var d) && d.Length > 0 ? d[0]?.ToString() ?? string.Empty : string.Empty;
+            var text = r.TryGetValue("gPLink", out var l) && l.Length > 0 ? l[0]?.ToString() ?? string.Empty : string.Empty;
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(text, @"cn=(\{[0-9a-fA-F-]+\})", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            {
+                var id = m.Groups[1].Value;
+                if (!links.TryGetValue(id, out var list))
+                {
+                    links[id] = list = new List<string>();
+                }
+
+                list.Add(dn);
+            }
+        }
+
+        using var policies = Item($"CN=Policies,CN=System,{domainDn}");
+        return Find(policies, "(objectClass=groupPolicyContainer)", new[] { "cn", "displayName", "flags", "versionNumber", "whenChanged" }, cancel)
+            .Select(r =>
+            {
+                string First(string a) => r.TryGetValue(a, out var v) && v.Length > 0 ? v[0]?.ToString() ?? string.Empty : string.Empty;
+                var id = First("cn");
+                var flags = int.TryParse(First("flags"), out var f) ? f : 0;
+                var changed = r.TryGetValue("whenChanged", out var w) && w.Length > 0 && w[0] is DateTime t ? new DateTimeOffset(DateTime.SpecifyKind(t, DateTimeKind.Utc)) : (DateTimeOffset?)null;
+                return new Core.Security.GpoInfo(id, First("displayName"), (flags & 1) != 0, (flags & 2) != 0, int.TryParse(First("versionNumber"), out var vn) ? vn : 0,
+                    links.GetValueOrDefault(id) ?? new List<string>(), changed);
+            })
+            .ToList();
+    }, cancel);
+
     private static IEnumerable<IReadOnlyDictionary<string, object?[]>> Find(DirectoryEntry baseline, string filter, string[] attributes, CancellationToken cancel)
     {
         using var searcher = new DirectorySearcher(baseline, filter, attributes, SearchScope.Subtree) { PageSize = 500 };

@@ -128,6 +128,15 @@
       "connection": "AD"
     },
     {
+      "path": "UsersAndGroups/Get-AdHealth.ps1",
+      "name": "AD-gezondheid",
+      "version": "1.0",
+      "sha256": "1cb32e23c3b61000b72abd618f4a4935a3233e81ec1a54ef1f85f047e3b707c9",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "AD"
+    },
+    {
       "path": "UsersAndGroups/Get-UserGroups.ps1",
       "name": "Groepen van een gebruiker",
       "version": "1.0",

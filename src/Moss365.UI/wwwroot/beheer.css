@@ -596,3 +596,9 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 .kb-ca-eraf { color: var(--kb-groen, #2f6b3a); font-weight: 600; }
 .kb-ca-verschil li { margin: 0.15rem 0; }
 .kb-status-tenant { cursor: default; }
+
+/* 0.34: security checks */
+.kb-controle-ok { background: var(--kb-ok); color: #fff; }
+.kb-controle-attention { background: #b26a00; color: #fff; }
+.kb-controle-problem { background: var(--kb-rood); color: #fff; }
+.kb-controle-unknown { background: var(--kb-lijn); color: var(--kb-tekst); }

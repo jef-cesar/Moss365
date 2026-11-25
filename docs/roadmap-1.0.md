@@ -362,6 +362,8 @@ R13).
 | **Weak MFA methods** (SMS, phone) and who has no stronger one yet | Becoming phishing resistant |
 | **Risky users and sign-ins** (requires Entra ID P2) | React quickly |
 
+Done in 0.34 (R11): the Beveiligingscontroles screen with all of the above; AD health as a library script.
+
 ### Licences and costs (R12)
 
 | Proposal | Why |

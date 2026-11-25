@@ -388,6 +388,154 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
     }
 
+    // ------------------------------------------------------------------ security checks (0.34)
+
+    private static DateTimeOffset? Date(JsonElement e, string name)
+        => DateTimeOffset.TryParse(S(e, name), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var t) ? t : null;
+
+    public async Task<Core.Security.AppsReading?> ReadAppsAsync(CancellationToken cancel)
+    {
+        var credentials = new List<Core.Security.AppCredential>();
+        foreach (var app in await _client.GetAllAsync("/applications?$select=id,appId,displayName,passwordCredentials,keyCredentials&$top=999", cancel))
+        {
+            foreach (var (list, kind) in new[] { ("passwordCredentials", "geheim"), ("keyCredentials", "certificaat") })
+            {
+                if (app.TryGetProperty(list, out var items) && items.ValueKind == JsonValueKind.Array)
+                {
+                    credentials.AddRange(items.EnumerateArray().Select(c => Date(c, "endDateTime")).OfType<DateTimeOffset>()
+                        .Select(end => new Core.Security.AppCredential(S(app, "displayName"), S(app, "appId"), kind, end)));
+                }
+            }
+        }
+
+        var names = (await _client.GetAllAsync("/servicePrincipals?$select=id,appId,displayName&$top=999", cancel))
+            .ToDictionary(sp => S(sp, "id"), sp => (Name: S(sp, "displayName"), AppId: S(sp, "appId")), StringComparer.OrdinalIgnoreCase);
+        var users = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var permissions = new List<Core.Security.AppPermission>();
+        foreach (var g in await _client.GetAllAsync("/oauth2PermissionGrants", cancel))
+        {
+            var client = names.GetValueOrDefault(S(g, "clientId"));
+            foreach (var scope in S(g, "scope").Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                permissions.Add(new Core.Security.AppPermission(client.Name ?? S(g, "clientId"), client.AppId ?? string.Empty, scope, "Delegated",
+                    S(g, "consentType"), S(g, "principalId") is { Length: > 0 } pid ? pid : null));
+            }
+        }
+
+        // Application permissions on Microsoft Graph and Exchange Online (what an app can do without a user)
+        foreach (var resource in new[] { "00000003-0000-0000-c000-000000000000", "00000002-0000-0ff1-ce00-000000000000" })
+        {
+            try
+            {
+                var sp = await _client.GetAsync($"/servicePrincipals(appId='{resource}')?$select=id,appRoles", cancel);
+                var roles = sp.TryGetProperty("appRoles", out var r) && r.ValueKind == JsonValueKind.Array
+                    ? r.EnumerateArray().ToDictionary(x => S(x, "id"), x => S(x, "value"), StringComparer.OrdinalIgnoreCase)
+                    : new Dictionary<string, string>();
+                foreach (var a in await _client.GetAllAsync($"/servicePrincipals/{S(sp, "id")}/appRoleAssignedTo?$top=999", cancel))
+                {
+                    if (S(a, "principalType") == "ServicePrincipal" && roles.TryGetValue(S(a, "appRoleId"), out var value))
+                    {
+                        var who = names.GetValueOrDefault(S(a, "principalId"));
+                        permissions.Add(new Core.Security.AppPermission(who.Name ?? S(a, "principalDisplayName"), who.AppId ?? string.Empty, value, "Application", "AllPrincipals", null));
+                    }
+                }
+            }
+            catch (GraphError ex) when (ex.Status == HttpStatusCode.NotFound)
+            {
+                // Exchange Online not in this tenant
+            }
+        }
+
+        return new Core.Security.AppsReading(credentials, permissions);
+    }
+
+    public async Task<Core.Security.SecureScoreReading?> ReadSecureScoreAsync(CancellationToken cancel)
+    {
+        try
+        {
+            var scores = (await _client.GetAsync("/security/secureScores?$top=90", cancel)).TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.Array
+                ? v.EnumerateArray().Select(x => x.Clone()).ToList() : new List<JsonElement>();
+            var history = scores.Select(x => (Date(x, "createdDateTime") ?? DateTimeOffset.MinValue,
+                    x.TryGetProperty("currentScore", out var c) && c.TryGetDouble(out var cd) ? cd : 0,
+                    x.TryGetProperty("maxScore", out var m) && m.TryGetDouble(out var md) ? md : 0))
+                .Where(h => h.Item1 > DateTimeOffset.MinValue).ToList();
+            var achieved = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            if (scores.OrderByDescending(x => S(x, "createdDateTime"), StringComparer.Ordinal).FirstOrDefault() is { ValueKind: JsonValueKind.Object } latest
+                && latest.TryGetProperty("controlScores", out var cs) && cs.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var c in cs.EnumerateArray())
+                {
+                    achieved[S(c, "controlName")] = c.TryGetProperty("score", out var sc) && sc.TryGetDouble(out var d) ? d : 0;
+                }
+            }
+
+            var actions = new List<(string, double, string)>();
+            foreach (var p in await _client.GetAllAsync("/security/secureScoreControlProfiles?$top=200", cancel))
+            {
+                var max = p.TryGetProperty("maxScore", out var mx) && mx.TryGetDouble(out var mxd) ? mxd : 0;
+                var left = max - achieved.GetValueOrDefault(S(p, "id"));
+                var deprecated = p.TryGetProperty("deprecated", out var dep) && dep.ValueKind == JsonValueKind.True;
+                if (left > 0 && !deprecated)
+                {
+                    actions.Add((S(p, "title"), left, S(p, "actionUrl")));
+                }
+            }
+
+            return new Core.Security.SecureScoreReading(history, actions);
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task<IReadOnlyList<Core.Security.RoleAssignmentInfo>?> ReadRoleAssignmentsAsync(CancellationToken cancel)
+    {
+        var output = new List<Core.Security.RoleAssignmentInfo>();
+        static string Principal(JsonElement e) => e.TryGetProperty("principal", out var p) && p.ValueKind == JsonValueKind.Object
+            ? (S(p, "userPrincipalName") is { Length: > 0 } u ? u : S(p, "displayName")) : S(e, "principalId");
+        static string RoleName(JsonElement e) => e.TryGetProperty("roleDefinition", out var r) && r.ValueKind == JsonValueKind.Object ? S(r, "displayName") : S(e, "roleDefinitionId");
+        try
+        {
+            // With PIM (P2): active assignments with their end, and the eligible ones
+            foreach (var a in await _client.GetAllAsync("/roleManagement/directory/roleAssignmentScheduleInstances?$expand=principal,roleDefinition", cancel))
+            {
+                var end = Date(a, "endDateTime");
+                output.Add(new Core.Security.RoleAssignmentInfo(RoleName(a), Principal(a), S(a, "assignmentType") == "Activated" ? "actief (PIM)" : end is null ? "permanent" : "tijdelijk", end));
+            }
+
+            foreach (var a in await _client.GetAllAsync("/roleManagement/directory/roleEligibilityScheduleInstances?$expand=principal,roleDefinition", cancel))
+            {
+                output.Add(new Core.Security.RoleAssignmentInfo(RoleName(a), Principal(a), "in aanmerking", Date(a, "endDateTime")));
+            }
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.BadRequest)
+        {
+            // Without P2: the assignments themselves (all permanent)
+            output.Clear();
+            foreach (var a in await _client.GetAllAsync("/roleManagement/directory/roleAssignments?$expand=principal,roleDefinition", cancel))
+            {
+                output.Add(new Core.Security.RoleAssignmentInfo(RoleName(a), Principal(a), "permanent", null));
+            }
+        }
+
+        return output;
+    }
+
+    public async Task<IReadOnlyList<Core.Security.RiskyUser>?> ReadRiskyUsersAsync(CancellationToken cancel)
+    {
+        try
+        {
+            return (await _client.GetAllAsync("/identityProtection/riskyUsers?$top=500", cancel))
+                .Select(u => new Core.Security.RiskyUser(S(u, "userPrincipalName"), S(u, "riskLevel"), S(u, "riskState"), Date(u, "riskLastUpdatedDateTime")))
+                .ToList();
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
+        {
+            return null;
+        }
+    }
+
     // ------------------------------------------------------------------ security
 
     public async Task<SecurityData?> ReadSecurityAsync(IProgress<string>? progress, CancellationToken cancel)

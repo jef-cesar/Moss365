@@ -29,7 +29,7 @@ public static class MenuModel
         }),
         new MenuGroup("Beveiliging", new MenuItem[]
         {
-            new("beveiliging", "Overzicht beveiliging"), new("conditional-access", "Conditional Access"),
+            new("beveiliging", "Overzicht beveiliging"), new("controles", "Beveiligingscontroles"), new("conditional-access", "Conditional Access"),
         }),
         new MenuGroup("Inzicht", new MenuItem[]
         {

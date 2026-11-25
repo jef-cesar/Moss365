@@ -1,0 +1,94 @@
+@page "/controles"
+@inject ManagementState State
+@using Moss365.Core.Security
+@* The security checks of R11 (0.34): each says OK, attention or problem, and "unknown" when the data is not enough.
+   Everything reads only; changing is done in the screens for that (plans as always). *@
+
+<h1>Beveiligingscontroles</h1>
+
+<p class="kb-zacht">
+    Wat een aanvaller eerst zoekt, en wat er veranderde, ook buiten Moss365. Elke controle leest enkel; wat je wil aanpassen, doe je
+    in het scherm ervoor (als plan). Een controle zegt OK, aandacht of probleem, en "onbekend" als de gegevens niet volstaan.
+</p>
+
+<div class="kb-filters">
+    <button class="kb-knop kb-primair" disabled="@busy" @onclick="All">Alles nakijken</button>
+    <label>Meldingen van de laatste
+        <select class="kb-invoer" @bind="days" aria-label="Dagen"><option value="1">dag</option><option value="7">7 dagen</option><option value="30">30 dagen</option></select>
+    </label>
+    @if (State.HasMicrosoft365) { <label><input type="checkbox" @bind="rules" /> Ook inboxregels nakijken (traag)</label> }
+    @if (busy) { <span class="kb-zacht">bezig: @running</span> }
+</div>
+
+<table class="kb-tabel">
+    <thead><tr><th>Controle</th><th>Status</th><th>Samenvatting</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var (key, title) in State.SecurityCheckList())
+        {
+            var c = State.SecurityCheckResults.GetValueOrDefault(key);
+            <tr>
+                <td><strong>@title</strong></td>
+                <td>@if (c is not null) { <span class="kb-label kb-controle-@c.Status.ToString().ToLowerInvariant()">@c.StatusText</span> } else { <span class="kb-zacht">nog niet</span> }</td>
+                <td class="kb-zacht">@c?.Summary</td>
+                <td><span class="kb-filters">
+                    <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => Run(key)">Nakijken</button>
+                    @if (c is { Rows.Count: > 0 }) { <button class="kb-knop kb-klein" @onclick="() => open = open == key ? null : key">@(open == key ? "Verbergen" : $"Details ({c.Rows.Count})")</button> }
+                </span></td>
+            </tr>
+            @if (open == key && c is not null)
+            {
+                <tr><td colspan="4">
+                    <table class="kb-tabel">
+                        <tbody>
+                            @foreach (var r in c.Rows.OrderByDescending(r => r.Status == Moss365.Core.Security.CheckStatus.Problem).ThenByDescending(r => r.Status == Moss365.Core.Security.CheckStatus.Attention))
+                            {
+                                <tr>
+                                    <td><span class="kb-label kb-controle-@r.Status.ToString().ToLowerInvariant()">@(new SecurityCheck("", "", r.Status, "", Array.Empty<CheckRow>()).StatusText)</span></td>
+                                    <td>@r.Object</td>
+                                    <td>@if (r.Href is { Length: > 0 } href) { <a href="@href" target="_blank" rel="noopener">@r.Detail</a> } else { @r.Detail }</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </td></tr>
+            }
+        }
+    </tbody>
+</table>
+
+@if (State.HasAd && HealthScript is { } health)
+{
+    <p class="kb-zacht">AD-gezondheid (domeincontrollers, replicatie, FSMO-rollen, tijd): <a href="@($"scripts/starten/{Uri.EscapeDataString(health)}")">start het script AD-gezondheid</a>.</p>
+}
+
+@code {
+    private bool busy;
+    private bool rules;
+    private int days = 7;
+    private string? open;
+    private string running = string.Empty;
+
+    private string? HealthScript => State.ReadScripts().FirstOrDefault(s => string.Equals(s.Key, "Get-AdHealth", StringComparison.OrdinalIgnoreCase))?.Key;
+
+    private async Task Run(string key)
+    {
+        busy = true;
+        running = State.SecurityCheckList().FirstOrDefault(c => c.Key == key).Title ?? key;
+        try
+        {
+            await State.RunSecurityCheckAsync(key, days, rules);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task All()
+    {
+        foreach (var (key, _) in State.SecurityCheckList())
+        {
+            await Run(key);
+        }
+    }
+}

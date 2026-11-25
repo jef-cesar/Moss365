@@ -56,6 +56,7 @@ $Toegestaan = @{
     'PostvakInstellen' = @('Identity', 'DisplayName', 'HiddenFromAddressListsEnabled', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward')
     'AutoAntwoord'     = @('Identity', 'AutoReplyState', 'InternalMessage', 'ExternalMessage', 'StartTime', 'EndTime')
     'Berichtspoor'     = @('SenderAddress', 'RecipientAddress', 'Dagen')
+    'Doorsturen'       = @('MetRegels')
     'RechtToevoegen'   = @('Identity', 'Recht', 'Trustee')
     'RechtVerwijderen' = @('Identity', 'Recht', 'Trustee')
     'PostvakAanmaken'  = @('Name', 'DisplayName', 'Alias', 'PrimarySmtpAddress')
@@ -316,6 +317,26 @@ function Invoke-Opdracht {
             }
             Set-MailboxAutoReplyConfiguration @P -ErrorAction Stop
             return $null
+        }
+        'Doorsturen' {
+            # Read only: forwarding on every mailbox, and (MetRegels) inbox rules that forward or redirect
+            $uit = New-Object System.Collections.Generic.List[object]
+            $postvakken = @(Get-Mailbox -ResultSize Unlimited -ErrorAction Stop)
+            foreach ($m in $postvakken) {
+                foreach ($doel in @("$($m.ForwardingSmtpAddress)", "$($m.ForwardingAddress)")) {
+                    if ($doel) { $uit.Add([ordered]@{ Mailbox = "$($m.PrimarySmtpAddress)"; Kind = 'postvak'; Name = ''; Target = $doel }) }
+                }
+            }
+            if ($P.MetRegels) {
+                foreach ($m in $postvakken | Where-Object { $_.RecipientTypeDetails -in 'UserMailbox', 'SharedMailbox' }) {
+                    foreach ($r in @(Get-InboxRule -Mailbox "$($m.PrimarySmtpAddress)" -ErrorAction SilentlyContinue | Where-Object { $_.Enabled })) {
+                        foreach ($doel in @($r.ForwardTo) + @($r.RedirectTo) + @($r.ForwardAsAttachmentTo)) {
+                            if ($doel) { $uit.Add([ordered]@{ Mailbox = "$($m.PrimarySmtpAddress)"; Kind = 'regel'; Name = "$($r.Name)"; Target = "$doel" }) }
+                        }
+                    }
+                }
+            }
+            return @($uit)
         }
         'Berichtspoor' {
             # Message trace (read only): the last days (at most 10), for a sender and/or a recipient

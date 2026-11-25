@@ -747,6 +747,18 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
             return Task.FromResult(TestData.AppEnvironment().AdGroupsByDn.Values.FirstOrDefault(g => g.SamAccountName == samAccountName));
         }
 
+        public Task<Core.Security.AdSecurityReading?> ReadSecurityAsync(CancellationToken cancel)
+            => Task.FromResult<Core.Security.AdSecurityReading?>(new Core.Security.AdSecurityReading(
+                new[] { "svc.sql" }, Array.Empty<string>(), new[] { "oud.account" }, Array.Empty<string>(), DateTimeOffset.Now.AddDays(-400),
+                Array.Empty<string>(), new[] { ("SRV-OUD", "Windows Server 2008 R2") }));
+
+        public Task<IReadOnlyList<Core.Security.GpoInfo>?> ReadGpoAsync(CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Security.GpoInfo>?>(new[]
+            {
+                new Core.Security.GpoInfo("{A}", "Default Domain Policy", false, false, 12, new[] { "DC=test,DC=internal" }, null),
+                new Core.Security.GpoInfo("{B}", "Oud beleid", false, false, 0, Array.Empty<string>(), null),
+            });
+
         public Task<Core.Helpdesk.AdComputerSecrets?> ComputerSecretsAsync(string computerName, CancellationToken cancel)
             => Task.FromResult<Core.Helpdesk.AdComputerSecrets?>(computerName.Equals("PC-AD", StringComparison.OrdinalIgnoreCase)
                 ? new Core.Helpdesk.AdComputerSecrets("PC-AD", new[] { new Core.Helpdesk.BitLockerKey("aaaabbbb-0000", "CN=PC-AD", "111111-222222", null, "AD") },
@@ -767,6 +779,24 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public Task<IReadOnlyList<Core.Helpdesk.BitLockerKey>> BitLockerKeysAsync(string? deviceId, string? keyId, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Helpdesk.BitLockerKey>>(new[] { new Core.Helpdesk.BitLockerKey("ccccdddd-1111", deviceId ?? "dev-1", "333333-444444", null, "OperatingSystemVolume") });
+
+        public Task<Core.Security.AppsReading?> ReadAppsAsync(CancellationToken cancel)
+            => Task.FromResult<Core.Security.AppsReading?>(new Core.Security.AppsReading(
+                new[] { new Core.Security.AppCredential("Koppeling HR", "app-1", "geheim", DateTimeOffset.Now.AddDays(-2)), new Core.Security.AppCredential("Scanner", "app-2", "certificaat", DateTimeOffset.Now.AddDays(300)) },
+                new[] { new Core.Security.AppPermission("Koppeling HR", "app-1", "Mail.ReadWrite", "Application", "AllPrincipals", null),
+                        new Core.Security.AppPermission("Gratis PDF", "app-3", "Mail.Send", "Delegated", "Principal", "e-bo") }));
+
+        public Task<Core.Security.SecureScoreReading?> ReadSecureScoreAsync(CancellationToken cancel)
+            => Task.FromResult<Core.Security.SecureScoreReading?>(new Core.Security.SecureScoreReading(
+                new[] { (DateTimeOffset.Now.AddDays(-30), 40.0, 100.0), (DateTimeOffset.Now, 55.0, 100.0) },
+                new[] { ("MFA voor beheerders", 10.0, "https://security.microsoft.com"), ("Verouderde aanmelding blokkeren", 8.0, "") }));
+
+        public Task<IReadOnlyList<Core.Security.RoleAssignmentInfo>?> ReadRoleAssignmentsAsync(CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Security.RoleAssignmentInfo>?>(new[]
+            {
+                new Core.Security.RoleAssignmentInfo("Global Administrator", "an.peeters@test.be", "permanent", null),
+                new Core.Security.RoleAssignmentInfo("User Administrator", "bo.janssens@test.be", "in aanmerking", null),
+            });
 
         public Task<Core.Helpdesk.LapsPassword?> LapsAsync(string deviceId, CancellationToken cancel)
             => Task.FromResult<Core.Helpdesk.LapsPassword?>(new Core.Helpdesk.LapsPassword("LocalAdmin", "Laps-Entra-Secret", DateTimeOffset.Now, "Windows LAPS in Entra"));
@@ -838,6 +868,13 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
     private sealed class FakeExchange(FakeFactory f) : IExchangeConnection, IExecutor
     {
         public TargetSystem TargetSystem => TargetSystem.Exchange;
+
+        public Task<IReadOnlyList<Core.Security.ForwardingRule>> ReadForwardingAsync(bool includeRules, IProgress<string>? progress, CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Security.ForwardingRule>>(new[]
+            {
+                new Core.Security.ForwardingRule("info@test.be", "postvak", "", "smtp:collega@test.be"),
+                new Core.Security.ForwardingRule("bo.janssens@test.be", "regel", "Alles", "aanvaller@example.com"),
+            }.Where(r => includeRules || r.Kind == "postvak").ToList());
 
         public Task<IReadOnlyList<Core.Helpdesk.MessageTraceRow>> MessageTraceAsync(string? sender, string? recipient, int days, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Helpdesk.MessageTraceRow>>(new[]

@@ -240,6 +240,21 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
         return changes.Select(w => output[w.Id]).ToList();
     }
 
+    /// <summary>Forwarding on mailboxes and inbox rules that forward (0.34), read only.</summary>
+    public async Task<IReadOnlyList<Core.Security.ForwardingRule>> ReadForwardingAsync(bool includeRules, IProgress<string>? progress, CancellationToken cancel)
+    {
+        progress?.Report(includeRules ? "Exchange: doorsturen en inboxregels lezen (kan enkele minuten duren)..." : "Exchange: doorsturen lezen...");
+        var r = (await RunScriptAsync(new[] { new Command("doorsturen", "Doorsturen", new() { ["MetRegels"] = includeRules ? "True" : "False" }) }, cancel)).Single();
+        if (r.Status != "Gelukt")
+        {
+            throw new InvalidOperationException(r.Message);
+        }
+
+        return r.Data is { ValueKind: JsonValueKind.Array } rows
+            ? rows.EnumerateArray().Select(e => new Core.Security.ForwardingRule(S(e, "Mailbox"), S(e, "Kind"), S(e, "Name"), S(e, "Target"))).ToList()
+            : Array.Empty<Core.Security.ForwardingRule>();
+    }
+
     /// <summary>Message trace (0.33): read only, the last days (at most 10).</summary>
     public async Task<IReadOnlyList<Core.Helpdesk.MessageTraceRow>> MessageTraceAsync(string? sender, string? recipient, int days, CancellationToken cancel)
     {

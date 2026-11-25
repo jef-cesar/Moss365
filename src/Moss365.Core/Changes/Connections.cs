@@ -124,6 +124,12 @@ public interface IAdConnection
     /// exist. Only call this when the access is written to the access log.</summary>
     Task<Helpdesk.AdComputerSecrets?> ComputerSecretsAsync(string computerName, CancellationToken cancel)
         => Task.FromResult<Helpdesk.AdComputerSecrets?>(null);
+
+    /// <summary>The light security check of AD (0.34): SPN, delegation, password flags, krbtgt, adminCount, old systems.</summary>
+    Task<Security.AdSecurityReading?> ReadSecurityAsync(CancellationToken cancel) => Task.FromResult<Security.AdSecurityReading?>(null);
+
+    /// <summary>Group Policies and where they are linked (0.34), read only.</summary>
+    Task<IReadOnlyList<Security.GpoInfo>?> ReadGpoAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Security.GpoInfo>?>(null);
 }
 
 /// <summary>One Entra user with the ids of the groups it is a direct member of.</summary>
@@ -181,6 +187,19 @@ public interface IGraphConnection
     /// the access log.</summary>
     Task<Helpdesk.LapsPassword?> LapsAsync(string deviceId, CancellationToken cancel) => Task.FromResult<Helpdesk.LapsPassword?>(null);
 
+    /// <summary>Secrets and certificates of app registrations, application permissions and consents (0.34); null where
+    /// that is not possible.</summary>
+    Task<Security.AppsReading?> ReadAppsAsync(CancellationToken cancel) => Task.FromResult<Security.AppsReading?>(null);
+
+    /// <summary>Microsoft Secure Score with its history and the actions that gain the most (0.34).</summary>
+    Task<Security.SecureScoreReading?> ReadSecureScoreAsync(CancellationToken cancel) => Task.FromResult<Security.SecureScoreReading?>(null);
+
+    /// <summary>Admin role assignments: permanent, active and eligible (PIM) (0.34).</summary>
+    Task<IReadOnlyList<Security.RoleAssignmentInfo>?> ReadRoleAssignmentsAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Security.RoleAssignmentInfo>?>(null);
+
+    /// <summary>Risky users (Entra ID P2); null when that cannot be read (0.34).</summary>
+    Task<IReadOnlyList<Security.RiskyUser>?> ReadRiskyUsersAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Security.RiskyUser>?>(null);
+
     /// <summary>MFA registrations and members of admin roles; null where that is not possible.</summary>
     Task<SecurityData?> ReadSecurityAsync(IProgress<string>? progress, CancellationToken cancel)
         => Task.FromResult<SecurityData?>(null);
@@ -227,6 +246,10 @@ public interface IExchangeConnection
     /// <summary>Shared mailboxes (with permissions, forwarding and automatic reply) and Exchange groups with
     /// members.</summary>
     Task<ExchangeData> ReadMailboxesAsync(IProgress<string>? progress, CancellationToken cancel);
+
+    /// <summary>Forwarding on mailboxes and (with includeRules) inbox rules that forward (0.34).</summary>
+    Task<IReadOnlyList<Security.ForwardingRule>> ReadForwardingAsync(bool includeRules, IProgress<string>? progress, CancellationToken cancel)
+        => throw new NotSupportedException("Doorsturen nakijken kan niet in deze omgeving.");
 
     /// <summary>Message trace (0.33): what was received by and/or sent from an address in the last days (at most 10).</summary>
     Task<IReadOnlyList<Helpdesk.MessageTraceRow>> MessageTraceAsync(string? sender, string? recipient, int days, CancellationToken cancel)
