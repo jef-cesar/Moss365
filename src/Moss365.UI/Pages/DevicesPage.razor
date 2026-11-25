@@ -1,0 +1,140 @@
+@page "/toestellen"
+@inherits RefreshingPage
+@using Moss365.Core.Devices
+@* Devices (R13, 0.36): computers in AD (no longer signed in, systems, OU) and devices in Intune (not compliant,
+   not seen). Disabling stale computers is a plan; nothing is deleted. *@
+
+<h1>Toestellen</h1>
+
+<p class="kb-zacht">
+    Computers in AD die niet meer aanmelden, welke systemen er draaien, en toestellen in Intune die niet in orde zijn of niet meer gezien worden.
+    Oude computers uitschakelen is een plan zoals altijd; er wordt niets verwijderd.
+</p>
+
+<button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? "Bezig met lezen..." : "Toestellen lezen")</button>
+@if (State.DevicesNote is { } note)
+{
+    <div class="kb-melding">@note</div>
+}
+
+@if (State.AdComputers is { } computers)
+{
+    <section class="kb-kaart">
+        <h2>Computers in AD (@computers.Count(c => c.Enabled) ingeschakeld)</h2>
+        <div class="kb-kolommen">
+            <div>
+                <h3>Systemen</h3>
+                <table class="kb-tabel">
+                    <thead><tr><th>Systeem</th><th class="kb-getal">Aantal</th></tr></thead>
+                    <tbody>
+                        @foreach (var (system, count) in DeviceAnalysis.Systems(computers))
+                        {
+                            <tr><td>@system @if (DeviceAnalysis.Outdated(system)) { <span class="kb-label kb-fout">niet meer ondersteund</span> }</td><td class="kb-getal">@count</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <h3>Per OU</h3>
+                <table class="kb-tabel">
+                    <thead><tr><th>OU</th><th class="kb-getal">Aantal</th></tr></thead>
+                    <tbody>
+                        @foreach (var g in computers.Where(c => c.Enabled).GroupBy(c => c.OuPath).OrderByDescending(g => g.Count()).Take(20))
+                        {
+                            <tr><td>@(g.Key.Length > 0 ? g.Key : "(container Computers)")</td><td class="kb-getal">@g.Count()</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h3>Niet meer aangemeld</h3>
+        <label>Langer dan <input class="kb-invoer kb-smal" type="number" min="30" max="730" @bind="days" aria-label="Dagen" /> dagen</label>
+        <table class="kb-tabel">
+            <thead><tr><th></th><th>Computer</th><th>Systeem</th><th>OU</th><th>Laatst aangemeld</th></tr></thead>
+            <tbody>
+                @foreach (var c in Stale)
+                {
+                    <tr>
+                        <td><input type="checkbox" checked="@chosen.Contains(c.DistinguishedName)" aria-label="@c.Name" @onchange="e => Toggle(c.DistinguishedName, e.Value is true)" /></td>
+                        <td>@c.Name</td><td>@c.OperatingSystem</td><td class="kb-zacht">@c.OuPath</td>
+                        <td>@(c.LastLogon?.LocalDateTime.ToString("dd/MM/yyyy") ?? "nooit")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (State.Can(Permission.Manage) && !State.IsHistoric)
+        {
+            <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="MakePlan">Computers uitschakelen (@chosen.Count)</button>
+        }
+    </section>
+}
+
+@if (State.IntuneDevices is { } devices)
+{
+    <section class="kb-kaart">
+        <h2>Toestellen in Intune (@devices.Count)</h2>
+        <div class="kb-kolommen">
+            <div>
+                <h3>Niet in orde (@DeviceAnalysis.NotCompliant(devices).Count)</h3>
+                @DeviceTable(DeviceAnalysis.NotCompliant(devices))
+            </div>
+            <div>
+                <h3>Niet gezien in 30 dagen (@DeviceAnalysis.NotSeen(devices, DateTimeOffset.Now).Count)</h3>
+                @DeviceTable(DeviceAnalysis.NotSeen(devices, DateTimeOffset.Now))
+            </div>
+        </div>
+        <h3>Systemen</h3>
+        <table class="kb-tabel">
+            <thead><tr><th>Systeem</th><th>Versie</th><th class="kb-getal">Aantal</th></tr></thead>
+            <tbody>
+                @foreach (var g in devices.GroupBy(d => (d.OperatingSystem, d.Version)).OrderByDescending(g => g.Count()).Take(25))
+                {
+                    <tr><td>@g.Key.OperatingSystem</td><td>@g.Key.Version</td><td class="kb-getal">@g.Count()</td></tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
+@if (outcome is not null && outcome.Plan.Count > 0)
+{
+    <PlanView Plan="outcome.Plan" Context="Oude computers" Title="Computers uitschakelen" />
+}
+
+@code {
+    private bool busy;
+    private int days = 90;
+    private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
+    private Moss365.Core.Changes.PlanOutcome? outcome;
+
+    private IReadOnlyList<AdComputer> Stale => DeviceAnalysis.StaleComputers(State.AdComputers ?? Array.Empty<AdComputer>(), DateTimeOffset.Now, Math.Max(30, days));
+
+    private async Task Read()
+    {
+        busy = true;
+        try { await State.ReadDevicesAsync(); }
+        finally { busy = false; }
+    }
+
+    private void Toggle(string dn, bool on)
+    {
+        if (on) { chosen.Add(dn); } else { chosen.Remove(dn); }
+        outcome = null;
+    }
+
+    private void MakePlan() => outcome = DeviceAnalysis.DisableComputers(Stale.Where(c => chosen.Contains(c.DistinguishedName)), DateOnly.FromDateTime(DateTime.Today));
+
+    private static RenderFragment DeviceTable(IReadOnlyList<IntuneDevice> list) => __builder =>
+    {
+        <table class="kb-tabel">
+            <thead><tr><th>Toestel</th><th>Gebruiker</th><th>Systeem</th><th>Status</th><th>Laatst gezien</th></tr></thead>
+            <tbody>
+                @foreach (var d in list.Take(100))
+                {
+                    <tr><td>@d.Name</td><td>@d.Owner</td><td>@d.OperatingSystem @d.Version</td><td>@d.Compliance</td><td>@(d.LastSync?.LocalDateTime.ToString("dd/MM/yyyy") ?? "nooit")</td></tr>
+                }
+            </tbody>
+        </table>
+    };
+}

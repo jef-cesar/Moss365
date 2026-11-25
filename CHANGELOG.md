@@ -2,6 +2,23 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.36.0
+
+Devices, Teams and SharePoint: step R13 of the [roadmap](docs/roadmap-1.0.md).
+
+- **Toestellen** (Inzicht): the computers in AD with their **systems and versions** (systems Microsoft no longer
+  supports are marked), the number **per OU**, and the computers that have **not signed in** for 90 days (or a number
+  of days you choose). **Computers uitschakelen** is a plan as always; nothing is deleted.
+- **Devices in Intune**: devices that are **not compliant** or **not seen for 30 days**, with their user, and the
+  systems and versions in use.
+- **Teams en SharePoint** (Groepen en toegang, only with Microsoft 365): every Microsoft 365 group and Team with its
+  owners, members and guests, and its last activity; filters for **no owner**, **with guests** and **not used**.
+- **SharePoint**: the **sharing setting** of the tenant in words (with a warning for links without sign-in), the total
+  storage, **sites without activity** for 90 days and the largest sites.
+- New read permissions: DeviceManagementManagedDevices.Read.All, Reports.Read.All and SharePointTenantSettings.Read.All.
+  Run **Tenant inrichten** again to add them. When the usage reports hide names (a Microsoft 365 setting), the screen
+  says how to show them.
+
 ## 0.35.0
 
 Licences and costs: step R12 of the [roadmap](docs/roadmap-1.0.md).

@@ -128,6 +128,9 @@ public interface IAdConnection
     /// <summary>The light security check of AD (0.34): SPN, delegation, password flags, krbtgt, adminCount, old systems.</summary>
     Task<Security.AdSecurityReading?> ReadSecurityAsync(CancellationToken cancel) => Task.FromResult<Security.AdSecurityReading?>(null);
 
+    /// <summary>The computers in AD with their system and last sign-in (0.36).</summary>
+    Task<IReadOnlyList<Devices.AdComputer>?> ReadComputersAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Devices.AdComputer>?>(null);
+
     /// <summary>Group Policies and where they are linked (0.34), read only.</summary>
     Task<IReadOnlyList<Security.GpoInfo>?> ReadGpoAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Security.GpoInfo>?>(null);
 }
@@ -190,6 +193,12 @@ public interface IGraphConnection
     /// <summary>Secrets and certificates of app registrations, application permissions and consents (0.34); null where
     /// that is not possible.</summary>
     Task<Security.AppsReading?> ReadAppsAsync(CancellationToken cancel) => Task.FromResult<Security.AppsReading?>(null);
+
+    /// <summary>Devices in Intune (0.36); null where that cannot be read (licence, permission).</summary>
+    Task<IReadOnlyList<Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Devices.IntuneDevice>?>(null);
+
+    /// <summary>Microsoft 365 groups and Teams (owners, activity) and SharePoint sites (storage, activity) (0.36).</summary>
+    Task<Devices.CollaborationReading?> ReadCollaborationAsync(CancellationToken cancel) => Task.FromResult<Devices.CollaborationReading?>(null);
 
     /// <summary>Microsoft Secure Score with its history and the actions that gain the most (0.34).</summary>
     Task<Security.SecureScoreReading?> ReadSecureScoreAsync(CancellationToken cancel) => Task.FromResult<Security.SecureScoreReading?>(null);

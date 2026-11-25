@@ -67,7 +67,8 @@ $Rechten = @(
     'OnPremDirectorySynchronization.Read.All',                 # 0.7: script diagnose wachtwoordverloop
     'Policy.ReadWrite.ConditionalAccess', 'Application.Read.All', # 0.9: manage Conditional Access
     'UserAuthenticationMethod.ReadWrite.All', 'BitLockerKey.Read.All', 'DeviceLocalCredential.Read.All', 'Device.Read.All', 'Mail.Send', # 0.33: helpdesk
-    'SecurityEvents.Read.All', 'RoleManagement.Read.Directory', 'IdentityRiskyUser.Read.All'  # 0.34: security checks
+    'SecurityEvents.Read.All', 'RoleManagement.Read.Directory', 'IdentityRiskyUser.Read.All', # 0.34: security checks
+    'DeviceManagementManagedDevices.Read.All', 'Reports.Read.All', 'SharePointTenantSettings.Read.All'  # 0.36: devices, Teams, SharePoint
 )
 $ExchangeRechten = @('Exchange.Manage')
 

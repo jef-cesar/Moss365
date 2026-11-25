@@ -25,7 +25,7 @@ public static class MenuModel
         }),
         new MenuGroup("Groepen en toegang", new MenuItem[]
         {
-            new("groepen", "Groepen"), new("postvakken", "Gedeelde postvakken"), new("rooms", "Rooms"), new("logonscripts", "Logonscripts"),
+            new("groepen", "Groepen"), new("postvakken", "Gedeelde postvakken"), new("rooms", "Rooms"), new("samenwerking", "Teams en SharePoint"), new("logonscripts", "Logonscripts"),
         }),
         new MenuGroup("Beveiliging", new MenuItem[]
         {
@@ -33,7 +33,7 @@ public static class MenuModel
         }),
         new MenuGroup("Inzicht", new MenuItem[]
         {
-            new("statistieken", "Statistieken"), new("licenties", "Licenties en kosten"), new("geschiedenis", "Geschiedenis"), new("vergelijk", "AD tegenover Entra"), new("logboek", "Logboek"),
+            new("statistieken", "Statistieken"), new("licenties", "Licenties en kosten"), new("toestellen", "Toestellen"), new("geschiedenis", "Geschiedenis"), new("vergelijk", "AD tegenover Entra"), new("logboek", "Logboek"),
         }),
         new MenuGroup("Werk", new MenuItem[]
         {

@@ -1,0 +1,96 @@
+@page "/samenwerking"
+@inherits RefreshingPage
+@using Moss365.Core.Devices
+@* Teams and SharePoint (R13, 0.36): Microsoft 365 groups and Teams without an owner, with guests or unused, and
+   SharePoint sites with their storage and activity, plus the sharing setting of the tenant. Read only. *@
+
+<h1>Teams en SharePoint</h1>
+
+<p class="kb-zacht">
+    Microsoft 365-groepen en Teams zonder eigenaar, met gasten of die niet meer gebruikt worden, en SharePoint-sites met hun opslag.
+    De activiteit komt uit de gebruiksrapporten van Microsoft 365 (tot 180 dagen terug).
+</p>
+
+<button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? "Bezig met lezen..." : "Teams en SharePoint lezen")</button>
+@if (State.DevicesNote is { } note) { <div class="kb-melding">@note</div> }
+@if (State.Collaboration?.Note is { } note2) { <div class="kb-melding">@note2</div> }
+
+@{
+    var groups = DeviceAnalysis.Groups(State.Data, State.Collaboration, DateTimeOffset.Now);
+}
+<section class="kb-kaart">
+    <h2>Groepen en Teams (@groups.Count)</h2>
+    <div class="kb-filters">
+        @foreach (var (key, text) in Filters)
+        {
+            <button class="kb-knop kb-klein @(filter == key ? "kb-primair" : null)" @onclick="() => filter = filter == key ? null : key">@text (@groups.Count(g => Fits(g, key)))</button>
+        }
+    </div>
+    <table class="kb-tabel">
+        <thead><tr><th>Naam</th><th class="kb-getal">Eigenaars</th><th class="kb-getal">Leden</th><th class="kb-getal">Gasten</th><th>Laatste activiteit</th><th>Aandacht</th></tr></thead>
+        <tbody>
+            @foreach (var g in groups.Where(g => filter is null || Fits(g, filter)))
+            {
+                <tr>
+                    <td><a href="@($"groep/{Uri.EscapeDataString("cloud:" + g.Id.ToLowerInvariant())}")">@g.Name</a> @if (g.IsTeam) { <span class="kb-label">Team</span> }</td>
+                    <td class="kb-getal">@(g.Owners < 0 ? "?" : g.Owners.ToString())</td><td class="kb-getal">@g.Members</td><td class="kb-getal">@g.Guests</td>
+                    <td>@(g.LastActivity?.LocalDateTime.ToString("dd/MM/yyyy") ?? "")</td>
+                    <td class="kb-zacht">@string.Join(", ", g.Points)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (State.Collaboration is null)
+    {
+        <p class="kb-zacht">Eigenaars en activiteit komen er bij na "Teams en SharePoint lezen".</p>
+    }
+</section>
+
+@if (State.Collaboration is { } reading)
+{
+    var sharing = DeviceAnalysis.Sharing(reading.Sharing);
+    <section class="kb-kaart">
+        <h2>SharePoint</h2>
+        <p>Delen met mensen buiten de organisatie: <strong>@sharing.Text</strong>
+            @if (sharing.Attention) { <span class="kb-label kb-fout">let op</span> }</p>
+        <p>Opslag in totaal: <strong>@DeviceAnalysis.Size(reading.Sites.Sum(s => s.StorageBytes))</strong> in @reading.Sites.Count sites.</p>
+        <h3>Sites zonder activiteit in 90 dagen (@DeviceAnalysis.UnusedSites(reading, DateTimeOffset.Now).Count)</h3>
+        @SiteTable(DeviceAnalysis.UnusedSites(reading, DateTimeOffset.Now))
+        <h3>Grootste sites</h3>
+        @SiteTable(reading.Sites.OrderByDescending(s => s.StorageBytes).Take(20).ToList())
+    </section>
+}
+
+@code {
+    private static readonly (string, string)[] Filters = { ("eigenaar", "Geen eigenaar"), ("gasten", "Met gasten"), ("ongebruikt", "Niet gebruikt") };
+
+    private bool busy;
+    private string? filter;
+
+    private static bool Fits(GroupFinding g, string key) => key switch
+    {
+        "eigenaar" => g.Owners == 0,
+        "gasten" => g.Guests > 0,
+        _ => g.Points.Any(p => p.StartsWith("niet gebruikt", StringComparison.Ordinal) || p.StartsWith("geen activiteit", StringComparison.Ordinal)),
+    };
+
+    private async Task Read()
+    {
+        busy = true;
+        try { await State.ReadCollaborationAsync(); }
+        finally { busy = false; }
+    }
+
+    private static RenderFragment SiteTable(IReadOnlyList<SiteUsage> sites) => __builder =>
+    {
+        <table class="kb-tabel">
+            <thead><tr><th>Site</th><th>Eigenaar</th><th class="kb-getal">Opslag</th><th class="kb-getal">Bestanden</th><th>Laatste activiteit</th></tr></thead>
+            <tbody>
+                @foreach (var s in sites.Take(50))
+                {
+                    <tr><td>@s.Url</td><td>@s.Owner</td><td class="kb-getal">@DeviceAnalysis.Size(s.StorageBytes)</td><td class="kb-getal">@s.Files</td><td>@(s.LastActivity?.LocalDateTime.ToString("dd/MM/yyyy") ?? "nooit")</td></tr>
+                }
+            </tbody>
+        </table>
+    };
+}

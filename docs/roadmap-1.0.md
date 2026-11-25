@@ -383,6 +383,10 @@ Done in 0.35 (R12): the Licenties en kosten screen with all of the above; the KP
 | **Teams and Microsoft 365 groups without an owner**, with guests, no longer used | The most heard complaint about Teams |
 | **SharePoint sites**: external sharing, storage, unused | Data leaks and costs |
 
+Done in 0.36 (R13): the Toestellen screen (computers in AD with systems, OU and a plan to disable stale ones; devices in
+Intune) and the Teams en SharePoint screen (owners, guests, activity, sites, the sharing setting). New read permissions:
+DeviceManagementManagedDevices.Read.All, Reports.Read.All, SharePointTenantSettings.Read.All.
+
 ### Reporting and working as a team (R14)
 
 | Proposal | Why |

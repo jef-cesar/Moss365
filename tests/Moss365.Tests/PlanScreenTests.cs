@@ -747,6 +747,15 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
             return Task.FromResult(TestData.AppEnvironment().AdGroupsByDn.Values.FirstOrDefault(g => g.SamAccountName == samAccountName));
         }
 
+        public Task<IReadOnlyList<Core.Devices.AdComputer>?> ReadComputersAsync(CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Devices.AdComputer>?>(new[]
+            {
+                new Core.Devices.AdComputer("PC-NIEUW", "CN=PC-NIEUW,OU=Werkposten,DC=test,DC=internal", "Windows 11 Pro", "10.0 (22631)", DateTimeOffset.Now.AddDays(-2), true, null),
+                new Core.Devices.AdComputer("PC-OUD", "CN=PC-OUD,OU=Werkposten,DC=test,DC=internal", "Windows 10 Pro", "10.0 (19045)", DateTimeOffset.Now.AddDays(-200), true, null),
+                new Core.Devices.AdComputer("SRV-OUD", "CN=SRV-OUD,OU=Servers,DC=test,DC=internal", "Windows Server 2008 R2", "6.1", null, true, null),
+                new Core.Devices.AdComputer("PC-UIT", "CN=PC-UIT,OU=Werkposten,DC=test,DC=internal", "Windows 10 Pro", "10.0", DateTimeOffset.Now.AddDays(-400), false, null),
+            });
+
         public Task<Core.Security.AdSecurityReading?> ReadSecurityAsync(CancellationToken cancel)
             => Task.FromResult<Core.Security.AdSecurityReading?>(new Core.Security.AdSecurityReading(
                 new[] { "svc.sql" }, Array.Empty<string>(), new[] { "oud.account" }, Array.Empty<string>(), DateTimeOffset.Now.AddDays(-400),
@@ -779,6 +788,21 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public Task<IReadOnlyList<Core.Helpdesk.BitLockerKey>> BitLockerKeysAsync(string? deviceId, string? keyId, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Helpdesk.BitLockerKey>>(new[] { new Core.Helpdesk.BitLockerKey("ccccdddd-1111", deviceId ?? "dev-1", "333333-444444", null, "OperatingSystemVolume") });
+
+        public Task<IReadOnlyList<Core.Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Devices.IntuneDevice>?>(new[]
+            {
+                new Core.Devices.IntuneDevice("d1", "LAPTOP-1", "an@test.be", "Windows", "10.0.22631", "compliant", DateTimeOffset.Now.AddDays(-1), "company"),
+                new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal"),
+                new Core.Devices.IntuneDevice("d3", "LAPTOP-OUD", "cas@test.be", "Windows", "10.0.19045", "compliant", DateTimeOffset.Now.AddDays(-60), "company"),
+            });
+
+        public Task<Core.Devices.CollaborationReading?> ReadCollaborationAsync(CancellationToken cancel)
+            => Task.FromResult<Core.Devices.CollaborationReading?>(new Core.Devices.CollaborationReading(
+                new[] { new Core.Devices.GroupActivity("g-team", "DNST_CULTUUR", true, 0, DateTimeOffset.Now.AddDays(-5)), new Core.Devices.GroupActivity("g-afd", "AFD_VRIJETIJD", false, 2, null) },
+                new[] { new Core.Devices.SiteUsage("https://contoso.sharepoint.com/sites/oud", "an@test.be", 3L << 30, 1200, DateTimeOffset.Now.AddDays(-300)),
+                        new Core.Devices.SiteUsage("https://contoso.sharepoint.com/sites/cultuur", "bo@test.be", 5L << 20, 30, DateTimeOffset.Now.AddDays(-1)) },
+                "externalUserAndGuestSharing", null));
 
         public Task<Core.Security.AppsReading?> ReadAppsAsync(CancellationToken cancel)
             => Task.FromResult<Core.Security.AppsReading?>(new Core.Security.AppsReading(

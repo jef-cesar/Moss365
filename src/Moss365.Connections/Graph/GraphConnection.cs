@@ -388,6 +388,86 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
     }
 
+    // ------------------------------------------------------------------ devices, Teams and SharePoint (0.36)
+
+    public async Task<IReadOnlyList<Core.Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel)
+    {
+        try
+        {
+            const string select = "id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managedDeviceOwnerType";
+            return (await _client.GetAllAsync($"/deviceManagement/managedDevices?$select={select}&$top=999", cancel))
+                .Select(d => new Core.Devices.IntuneDevice(S(d, "id"), S(d, "deviceName"), S(d, "userPrincipalName"), S(d, "operatingSystem"), S(d, "osVersion"),
+                    S(d, "complianceState"), Date(d, "lastSyncDateTime"), S(d, "managedDeviceOwnerType")))
+                .ToList();
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
+        {
+            return null;
+        }
+    }
+
+    public async Task<Core.Devices.CollaborationReading?> ReadCollaborationAsync(CancellationToken cancel)
+    {
+        var notes = new List<string>();
+        var groups = new List<Core.Devices.GroupActivity>();
+        var activity = new Dictionary<string, DateTimeOffset?>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var r in await _client.GetAllAsync("https://graph.microsoft.com/beta/reports/getOffice365GroupsActivityDetail(period='D180')?$format=application/json", cancel))
+            {
+                activity[S(r, "groupId")] = Date(r, "lastActivityDate");
+            }
+        }
+        catch (GraphError)
+        {
+            notes.Add("Het gebruiksrapport van de groepen is niet leesbaar (recht Reports.Read.All).");
+        }
+
+        foreach (var g in await _client.GetAllAsync("/groups?$filter=groupTypes/any(c:c eq 'Unified')&$select=id,displayName,resourceProvisioningOptions&$expand=owners($select=id)&$top=100", cancel))
+        {
+            var isTeam = g.TryGetProperty("resourceProvisioningOptions", out var o) && o.ValueKind == JsonValueKind.Array
+                         && o.EnumerateArray().Any(x => x.ValueKind == JsonValueKind.String && x.GetString() == "Team");
+            var owners = g.TryGetProperty("owners", out var w) && w.ValueKind == JsonValueKind.Array ? w.GetArrayLength() : 0;
+            groups.Add(new Core.Devices.GroupActivity(S(g, "id"), S(g, "displayName"), isTeam, owners, activity.GetValueOrDefault(S(g, "id"))));
+        }
+
+        var sites = new List<Core.Devices.SiteUsage>();
+        try
+        {
+            foreach (var r in await _client.GetAllAsync("https://graph.microsoft.com/beta/reports/getSharePointSiteUsageDetail(period='D180')?$format=application/json", cancel))
+            {
+                if (B(r, "isDeleted"))
+                {
+                    continue;
+                }
+
+                long L(string name) => r.TryGetProperty(name, out var v) && v.TryGetInt64(out var n) ? n : 0;
+                sites.Add(new Core.Devices.SiteUsage(S(r, "siteUrl"), S(r, "ownerPrincipalName"), L("storageUsedInBytes"), L("fileCount"), Date(r, "lastActivityDate")));
+            }
+        }
+        catch (GraphError)
+        {
+            notes.Add("Het gebruiksrapport van SharePoint is niet leesbaar (recht Reports.Read.All).");
+        }
+
+        string? sharing = null;
+        try
+        {
+            sharing = S(await _client.GetAsync("/admin/sharepoint/settings?$select=sharingCapability", cancel), "sharingCapability");
+        }
+        catch (GraphError)
+        {
+            notes.Add("De deelinstelling van SharePoint is niet leesbaar (recht SharePointTenantSettings.Read.All).");
+        }
+
+        if (sites.Count > 0 && sites.All(s => s.Url.Length == 0))
+        {
+            notes.Add("De rapporten tonen geen namen: zet in het Microsoft 365-beheercentrum 'Namen verbergen in rapporten' uit om sites te zien.");
+        }
+
+        return new Core.Devices.CollaborationReading(groups, sites, string.IsNullOrEmpty(sharing) ? null : sharing, notes.Count == 0 ? null : string.Join(" ", notes));
+    }
+
     // ------------------------------------------------------------------ security checks (0.34)
 
     private static DateTimeOffset? Date(JsonElement e, string name)

@@ -208,6 +208,24 @@ public sealed class AdLdap : IAdConnection, IExecutor
         return new Core.Security.AdSecurityReading(spn, delegation, notRequired, reversible, krbtgt, orphans, old);
     }, cancel);
 
+    /// <summary>The computers with their system and last sign-in (lastLogonTimestamp, replicated) (0.36).</summary>
+    public Task<IReadOnlyList<Core.Devices.AdComputer>?> ReadComputersAsync(CancellationToken cancel) => Task.Run<IReadOnlyList<Core.Devices.AdComputer>?>(() =>
+    {
+        using var baseline = Item(ReadDomainDn());
+        return Find(baseline, "(objectCategory=computer)",
+                new[] { "cn", "distinguishedName", "operatingSystem", "operatingSystemVersion", "lastLogonTimestamp", "userAccountControl", "whenCreated" }, cancel)
+            .Select(r =>
+            {
+                string First(string a) => r.TryGetValue(a, out var v) && v.Length > 0 ? v[0]?.ToString() ?? string.Empty : string.Empty;
+                DateTimeOffset? last = r.TryGetValue("lastLogonTimestamp", out var l) && l.Length > 0 && l[0] is long ft && ft > 0 ? DateTimeOffset.FromFileTime(ft) : null;
+                DateTimeOffset? created = r.TryGetValue("whenCreated", out var w) && w.Length > 0 && w[0] is DateTime t ? new DateTimeOffset(DateTime.SpecifyKind(t, DateTimeKind.Utc)) : null;
+                var uac = int.TryParse(First("userAccountControl"), out var u) ? u : 0;
+                return new Core.Devices.AdComputer(First("cn"), First("distinguishedName"), First("operatingSystem"), First("operatingSystemVersion"), last, (uac & 2) == 0, created);
+            })
+            .Where(c => c.Name.Length > 0)
+            .ToList();
+    }, cancel);
+
     /// <summary>Group Policies (groupPolicyContainer) and where they are linked (gPLink), read only (0.34).</summary>
     public Task<IReadOnlyList<Core.Security.GpoInfo>?> ReadGpoAsync(CancellationToken cancel) => Task.Run<IReadOnlyList<Core.Security.GpoInfo>?>(() =>
     {
