@@ -276,11 +276,12 @@ Describe 'Register-App.ps1' {
         $r[0].Type | Should -Be 'Scope'
     }
 
-    It 'asks for the permissions up to and including 0.9 at once, and nothing beyond' {
+    It 'asks for the permissions up to and including 0.33 at once, and nothing beyond' {
         @($Rechten) | Sort-Object | Should -Be (@(
             'Application.Read.All', 'AuditLog.Read.All', 'Calendars.Read.Shared', 'Directory.Read.All', 'Group.ReadWrite.All',
             'GroupMember.ReadWrite.All', 'OnPremDirectorySynchronization.Read.All', 'Policy.Read.All',
-            'Policy.ReadWrite.ConditionalAccess', 'User.ReadWrite.All') | Sort-Object)
+            'Policy.ReadWrite.ConditionalAccess', 'User.ReadWrite.All',
+            'UserAuthenticationMethod.ReadWrite.All', 'BitLockerKey.Read.All', 'DeviceLocalCredential.Read.All', 'Device.Read.All', 'Mail.Send') | Sort-Object)
         # No permissions that can do more than needed (e.g. read all mail, or write the whole directory)
         @($Rechten | Where-Object { $_ -in 'Mail.Read', 'Mail.ReadWrite', 'Directory.ReadWrite.All', 'RoleManagement.ReadWrite.Directory' }).Count | Should -Be 0
     }
