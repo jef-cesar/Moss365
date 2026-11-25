@@ -9,6 +9,132 @@
       "minimumApp": "",
       "writes": true,
       "connection": "Local"
+    },
+    {
+      "path": "Rooms/Connect-RoomsToPlaces.ps1",
+      "name": "Rooms koppelen in Microsoft Places",
+      "version": "1.0",
+      "sha256": "a37c168231369f904d0b3c8d79988667a61808db3b0945a5e62151e7bf9edfc8",
+      "minimumApp": "",
+      "writes": true,
+      "connection": "Exchange"
+    },
+    {
+      "path": "Rooms/Get-RoomInfo.ps1",
+      "name": "Room bekijken",
+      "version": "1.0",
+      "sha256": "f66a0b27af6219105a1cf714206c630610c3a41cb5fc03bd783274828f7a15f9",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "Exchange"
+    },
+    {
+      "path": "Rooms/Set-RoomCalendarPermissions.ps1",
+      "name": "Agendarechten van alle rooms",
+      "version": "1.0",
+      "sha256": "cfde93fd044c2086c86eb71086642fe8fcc49cc58fcd8d33397628f517828f80",
+      "minimumApp": "",
+      "writes": true,
+      "connection": "Exchange"
+    },
+    {
+      "path": "Rooms/Set-RoomPlace.ps1",
+      "name": "Room instellen",
+      "version": "1.0",
+      "sha256": "1c22defac320e408c845280023305c6bf265ded7efcd00bb8e95fb42d6c9a27c",
+      "minimumApp": "",
+      "writes": true,
+      "connection": "Exchange"
+    },
+    {
+      "path": "SharedMailboxes/Compare-Mailboxes.ps1",
+      "name": "Postvakken vergelijken",
+      "version": "1.0",
+      "sha256": "60861b9d81f1f46aa95f9d8b4903705ae1cfe7db417b5a7d178d1afcc48791ef",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "Exchange"
+    },
+    {
+      "path": "SharedMailboxes/Convert-MailboxAccessToGroup.ps1",
+      "name": "Toegang tot een gedeeld postvak via een groep",
+      "version": "1.0",
+      "sha256": "5a93ffc771019eb7ac139c30bd5141114faddc0107d481e2eebb99e4b7d826c9",
+      "minimumApp": "",
+      "writes": true,
+      "connection": "Exchange"
+    },
+    {
+      "path": "SharedMailboxes/Export-Calendar.ps1",
+      "name": "Agenda-export",
+      "version": "1.0",
+      "sha256": "419ca65b85d0d851a3eb90b3e61382291934a0c1b505a9d1261559a56512bfc0",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "Graph"
+    },
+    {
+      "path": "SharedMailboxes/Set-SentItemsCopy.ps1",
+      "name": "Verzonden items bewaren in gedeelde postvakken",
+      "version": "1.0",
+      "sha256": "6bab7c5325e5645572225173924411d755d4936b886d5510dda5d392334d6e33",
+      "minimumApp": "",
+      "writes": true,
+      "connection": "Exchange"
+    },
+    {
+      "path": "SharedMailboxes/Test-SendOnBehalf.ps1",
+      "name": "Send on Behalf nakijken",
+      "version": "1.0",
+      "sha256": "5a3db747c3d5c148b61a93c88b772b5770ba261531fc7c3d5ee115a5070468fd",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "Exchange"
+    },
+    {
+      "path": "UsersAndGroups/Add-RecipientsToGroup.ps1",
+      "name": "Ontvangers aan een lijst toevoegen",
+      "version": "1.0",
+      "sha256": "964f60f2fa0a66cf0b18d6afcbc742822d8a9e598235b1109d9020ee91c6e3f8",
+      "minimumApp": "",
+      "writes": true,
+      "connection": "Exchange"
+    },
+    {
+      "path": "UsersAndGroups/Compare-MailGroups.ps1",
+      "name": "Mailgroepen vergelijken",
+      "version": "1.0",
+      "sha256": "ebaead527a6ce974eaab6a1f152e122759a81f717f5f814f8ba23087569afcf3",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "Exchange"
+    },
+    {
+      "path": "UsersAndGroups/Export-UsersAndGroupMembership.ps1",
+      "name": "Medewerkers en groepslidmaatschap",
+      "version": "1.0",
+      "sha256": "c5622f90ed001fada13f83aa075e026ff31f7230c5068b6e8fbfde7fade190e5",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "Exchange, Graph"
+    },
+    {
+      "path": "UsersAndGroups/Get-UserGroups.ps1",
+      "name": "Groepen van een gebruiker",
+      "version": "1.0",
+      "sha256": "b40a28aac8c9f0fedb2db5b6dbc7521ebdaeb44370b1d5dd06293ad3270f8833",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "Graph"
+    },
+    {
+      "path": "UsersAndGroups/Test-PasswordExpiry.ps1",
+      "name": "Diagnose wachtwoordverloop",
+      "version": "1.0",
+      "sha256": "43fa3259b500a50708ef7dc2970bb6d1c2c1bec680c721ea2a9813f59585f55f",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "Graph, AD"
     }
   ]
 }

@@ -2,6 +2,22 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.31.1
+
+The script library is filled: 14 scripts join the one there was, made general (no names, addresses or servers of an
+organisation; English headers; ASCII; the app connects, no Connect- in the scripts). They reach every installation
+through **Bibliotheek bijwerken** on the Scripts screen, and come with the download.
+
+- **Rooms**: Room bekijken, Room instellen (name, building, city, floor, capacity, room list), Agendarechten van alle
+  rooms, Rooms koppelen in Microsoft Places.
+- **Shared mailboxes**: Postvakken vergelijken, Send on Behalf nakijken, Verzonden items bewaren in gedeelde postvakken,
+  Toegang tot een gedeeld postvak via een groep, Agenda-export.
+- **Users and groups**: Groepen van een gebruiker, Mailgroepen vergelijken, Ontvangers aan een lijst toevoegen,
+  Medewerkers en groepslidmaatschap, Diagnose wachtwoordverloop.
+- Not taken over: scripts for one organisation only, software removal on workstations (that runs through the RMM tool,
+  not through Moss365), and copying groups from one user to another (Spiegelgebruiker and job profiles do that, with a
+  plan).
+
 ## 0.31.0
 
 New users in the cloud, and guests in groups (step R9 of the [roadmap](docs/roadmap-1.0.md); logon scripts follow).
