@@ -13,38 +13,38 @@
 
     @if (State.ScriptBusy && !IsMyRun)
     {
-        <div class="kb-melding">Er draait al een ander script (@State.ScriptRun!.Run.Name). <a href="@RunLink(State.ScriptRun.Run)">Bekijken</a></div>
+        <div class="kb-melding">Er draait al een ander script (@State.ScriptRun!.Run.Name). <a href="@RunLink(State.ScriptRun.Run)">@T["script-run-panel.view"]</a></div>
     }
 
     <div class="kb-filters">
         @if (IsMyRun && State.ScriptBusy)
         {
-            <span class="kb-zacht">bezig...</span>
-            <button class="kb-knop" @onclick="State.CancelScript">Annuleren</button>
+            <span class="kb-zacht">@T["message-trace-card.busy"]</span>
+            <button class="kb-knop" @onclick="State.CancelScript">@T["action.cancel"]</button>
         }
         else if (!Script.Header.Writes)
         {
-            <button class="kb-knop kb-primair" disabled="@State.ScriptBusy" @onclick="() => Start(false)">Starten</button>
+            <button class="kb-knop kb-primair" disabled="@State.ScriptBusy" @onclick="() => Start(false)">@T["script-run-panel.start"]</button>
         }
         else
         {
-            <button class="kb-knop @(PreviewOk ? null : "kb-primair")" disabled="@State.ScriptBusy" @onclick="() => Start(true)">Voorbeeld (-WhatIf)</button>
+            <button class="kb-knop @(PreviewOk ? null : "kb-primair")" disabled="@State.ScriptBusy" @onclick="() => Start(true)">@T["script-run-panel.preview-whatif"]</button>
             @if (PreviewOk)
             {
                 @if (confirm)
                 {
-                    <span>Dit script wijzigt echt. Zeker?</span>
-                    <button class="kb-knop kb-gevaar" @onclick="() => Start(false)">Ja, uitvoeren</button>
-                    <button class="kb-knop" @onclick="() => confirm = false">Nee</button>
+                    <span>@T["script-run-panel.this-script-really-changes-things"]</span>
+                    <button class="kb-knop kb-gevaar" @onclick="() => Start(false)">@T["script-run-panel.yes-run"]</button>
+                    <button class="kb-knop" @onclick="() => confirm = false">@T["script-run-panel.no"]</button>
                 }
                 else
                 {
-                    <button class="kb-knop kb-primair" @onclick="() => confirm = true">Uitvoeren</button>
+                    <button class="kb-knop kb-primair" @onclick="() => confirm = true">@T["script-run-panel.run"]</button>
                 }
             }
             else
             {
-                <span class="kb-zacht">Dit script wijzigt iets: bekijk eerst het voorbeeld. Daarna kan je het uitvoeren.</span>
+                <span class="kb-zacht">@T["script-run-panel.this-script-changes-something-look"]</span>
             }
         }
     </div>
@@ -59,7 +59,7 @@
         {
             <div class="kb-melding @(s.Run.Result is RunResult.Error ? "kb-fout" : null)">
                 <strong>@s.Run.ResultText</strong> @s.Run.Message
-                <a href="@RunLink(s.Run)">Deze run openen</a>
+                <a href="@RunLink(s.Run)">@T["script-run-panel.open-this-run"]</a>
             </div>
             <ScriptResult @key="s.Run.Folder" Run="s.Run" Events="s.Events" />
         }

@@ -3,7 +3,7 @@
 
 @if (Header.Variables.Count == 0)
 {
-    <p class="kb-zacht">Dit script heeft geen variabelen.</p>
+    <p class="kb-zacht">@T["script-form.this-script-has-no-variables"]</p>
 }
 else
 {
@@ -12,15 +12,15 @@ else
         {
             var name = v.Name;
             <label class="kb-veld">
-                <span>@v.Label @if (v.Required) { <span class="kb-verplicht" title="verplicht">*</span> }</span>
+                <span>@v.Label @if (v.Required) { <span class="kb-verplicht" title="@T["script-form.required"]">*</span> }</span>
                 @switch (v.Kind)
                 {
                     case VariableKind.YesNo:
-                        <span><input type="checkbox" checked="@IsYes(name)" @onchange="e => SetYesNo(name, e)" /> ja</span>
+                        <span><input type="checkbox" checked="@IsYes(name)" @onchange="e => SetYesNo(name, e)" /> @T["yesno.yes"]</span>
                         break;
                     case VariableKind.Choice:
                         <select class="kb-invoer" value="@Value(name)" @onchange="e => Set(name, e.Value?.ToString())">
-                            <option value="">(kies)</option>
+                            <option value="">@T["script-form.choose"]</option>
                             @foreach (var o in v.Options ?? Array.Empty<string>())
                             {
                                 <option value="@o">@o</option>
@@ -33,7 +33,7 @@ else
                             {
                                 <input class="kb-invoer" type="date" value="@IsoDate(Value(name))" @onchange="e => Set(name, e.Value?.ToString())" />
                             }
-                            <select class="kb-invoer" value="@RelativeValue(name)" @onchange="e => SetRelative(name, e)" aria-label="Relatieve datum">
+                            <select class="kb-invoer" value="@RelativeValue(name)" @onchange="e => SetRelative(name, e)" aria-label="@T["script-form.relative-date"]">
                                 @foreach (var (w, t) in Relative)
                                 {
                                     <option value="@w">@t</option>
@@ -42,7 +42,7 @@ else
                         </span>
                         break;
                     case VariableKind.Items:
-                        <textarea class="kb-invoer" rows="4" placeholder="een waarde per regel" @onchange="e => Set(name, e.Value?.ToString())">@Value(name)</textarea>
+                        <textarea class="kb-invoer" rows="4" placeholder="@T["script-form.one-value-per-line"]" @onchange="e => Set(name, e.Value?.ToString())">@Value(name)</textarea>
                         break;
                     case VariableKind.Number:
                         <input class="kb-invoer" type="number" value="@Value(name)" @onchange="e => Set(name, e.Value?.ToString())" />

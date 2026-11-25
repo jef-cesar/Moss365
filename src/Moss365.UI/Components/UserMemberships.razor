@@ -5,10 +5,10 @@
 @inject ManagementState State
 
 <section class="kb-kaart" id="lidmaatschappen">
-    <h2>Groepen en postvakken bewerken</h2>
+    <h2>@T["user-memberships.edit-groups-and-mailboxes"]</h2>
     @if (Groups.Count > 0)
     {
-        <h3>Groepen</h3>
+        <h3>@T["menu.groepen"]</h3>
         <ul class="kb-lijst-plat">
             @foreach (var g in Groups)
             {
@@ -16,22 +16,22 @@
                     <label>
                         <input type="checkbox" checked="@removeGroups.Contains(g.Key)" disabled="@(g.Dynamic)" aria-label="@($"{g.Name} weghalen")" @onchange="e => Toggle(removeGroups, g.Key, e.Value is true)" />
                         @g.Name <span class="kb-zacht">@g.Layers</span>
-                        @if (g.Dynamic) { <span class="kb-label">automatisch, niet met de hand</span> }
+                        @if (g.Dynamic) { <span class="kb-label">@T["user-memberships.automatic-not-by-hand"]</span> }
                     </label>
                 </li>
             }
         </ul>
-        <p class="kb-zacht">Aangevinkt = weghalen.</p>
+        <p class="kb-zacht">@T["user-memberships.ticked-remove"]</p>
     }
 
     <div class="kb-rij">
-        <label>Groep toevoegen
-            <input class="kb-invoer kb-breed" list="kb-groepen-@Person.Key.GetHashCode()" @bind="groupToAdd" placeholder="naam van de groep" aria-label="Groep toevoegen" />
+        <label>@T["user-memberships.add-group"]
+            <input class="kb-invoer kb-breed" list="kb-groepen-@Person.Key.GetHashCode()" @bind="groupToAdd" placeholder="@T["user-memberships.name-of-the-group"]" aria-label="@T["user-memberships.add-group"]" />
         </label>
         <datalist id="kb-groepen-@Person.Key.GetHashCode()">
             @foreach (var g in Candidates) { <option value="@g.Name">@g.Layers</option> }
         </datalist>
-        <button class="kb-knop kb-klein" disabled="@(groupToAdd.Trim().Length == 0)" @onclick="AddGroup">Erbij</button>
+        <button class="kb-knop kb-klein" disabled="@(groupToAdd.Trim().Length == 0)" @onclick="AddGroup">@T["user-memberships.add"]</button>
     </div>
     @if (addGroups.Count > 0)
     {
@@ -40,8 +40,8 @@
 
     @if (State.HasMicrosoft365)
     {
-        <h3>Gedeelde postvakken</h3>
-        @if (MailboxAccess.Count == 0) { <p class="kb-zacht">Geen toegang tot gedeelde postvakken.</p> }
+        <h3>@T["menu.postvakken"]</h3>
+        @if (MailboxAccess.Count == 0) { <p class="kb-zacht">@T["user-memberships.no-access-to-shared-mailboxes"]</p> }
         <ul class="kb-lijst-plat">
             @foreach (var m in MailboxAccess)
             {
@@ -54,16 +54,16 @@
             }
         </ul>
         <div class="kb-rij">
-            <label>Toegang geven tot
-                <select class="kb-invoer" @bind="mailboxToAdd" aria-label="Toegang geven tot postvak">
-                    <option value="">(kies een postvak)</option>
+            <label>@T["user-memberships.give-access-to"]
+                <select class="kb-invoer" @bind="mailboxToAdd" aria-label="@T["user-memberships.give-access-to-mailbox"]">
+                    <option value="">@T["user-memberships.choose-a-mailbox"]</option>
                     @foreach (var m in State.Data.Mailboxes.Where(m => MailboxAccess.All(x => x.Smtp != m.Smtp)).OrderBy(m => m.DisplayName))
                     {
                         <option value="@m.Smtp">@m.DisplayName</option>
                     }
                 </select>
             </label>
-            <button class="kb-knop kb-klein" disabled="@(mailboxToAdd.Length == 0)" @onclick="AddMailbox">Erbij</button>
+            <button class="kb-knop kb-klein" disabled="@(mailboxToAdd.Length == 0)" @onclick="AddMailbox">@T["user-memberships.add"]</button>
         </div>
         @if (addMailboxes.Count > 0)
         {
@@ -71,7 +71,7 @@
         }
     }
 
-    <button class="kb-knop kb-primair" disabled="@(Nothing)" @onclick="MakePlan">Plan maken</button>
+    <button class="kb-knop kb-primair" disabled="@(Nothing)" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
     @if (errors.Count > 0)
     {
         <ul class="kb-fouten">@foreach (var f in errors) { <li>@f</li> }</ul>

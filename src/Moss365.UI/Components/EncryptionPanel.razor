@@ -6,10 +6,10 @@
 @inject NavigationManager Nav
 
 <section class="kb-kaart" id="versleuteling">
-    <h2>Versleuteling</h2>
+    <h2>@T["encryption-panel.encryption"]</h2>
     @if (Hub is not { } hub)
     {
-        <p class="kb-zacht">Versleutelen kan enkel in de Windows-app.</p>
+        <p class="kb-zacht">@T["encryption-panel.encrypting-is-only-possible-in"]</p>
     }
     else
     {
@@ -17,24 +17,23 @@
         @if (info is null)
         {
             <p>
-                <strong>Uit.</strong> <span class="kb-zacht">De databank bevat persoonsgegevens en de geschiedenis van de organisatie. Versleutelen
-                (AES-256, SQLCipher) beschermt ze tegen een gestolen schijf of een andere gebruiker van deze pc.</span>
+                @Html("encryption.off")
             </p>
         }
         else
         {
             <p>
-                <strong>Aan</strong> sinds @info.Since.LocalDateTime.ToString("dd/MM/yyyy"): @MethodText(info.Method)@(info.Group is { } g ? $" ({g})" : string.Empty).
-                <span class="kb-zacht">Een back-up is versleuteld met dezelfde sleutel; terugzetten vraagt de herstelsleutel.</span>
+                @Html("encryption.on", info.Since.LocalDateTime.ToString("dd/MM/yyyy"), MethodText(info.Method) + (info.Group is { } g ? $" ({g})" : string.Empty))
+                <span class="kb-zacht">@T["encryption-panel.a-backup-is-encrypted-with"]</span>
             </p>
         }
 
         @if (recoveryKey is not null && step == Step.Done)
         {
             <div class="kb-melding">
-                <p><strong>Nieuwe herstelsleutel</strong>, schrijf hem op of druk hem af en bewaar hem op een veilige plek (kluis):</p>
+                <p>@Html("encryption.newkey")</p>
                 <p><code class="kb-herstelsleutel">@recoveryKey</code></p>
-                <button class="kb-knop kb-primair" @onclick='() => Nav.NavigateTo("databank", forceLoad: true)'>Bewaard: doorgaan</button>
+                <button class="kb-knop kb-primair" @onclick='() => Nav.NavigateTo("databank", forceLoad: true)'>@T["encryption-panel.saved-continue"]</button>
             </div>
         }
 
@@ -52,54 +51,52 @@
                     }
                     @if (method == EncryptionMethod.Password)
                     {
-                        <label>Wachtwoord <input type="password" class="kb-invoer" @bind="password" aria-label="Wachtwoord" /></label>
-                        <label>Nog eens <input type="password" class="kb-invoer" @bind="again" aria-label="Wachtwoord nog eens" /></label>
+                        <label>@T["encryption-panel.password"] <input type="password" class="kb-invoer" @bind="password" aria-label="@T["encryption-panel.password"]" /></label>
+                        <label>@T["encryption-panel.again"] <input type="password" class="kb-invoer" @bind="again" aria-label="@T["encryption-panel.password-again"]" /></label>
                     }
                     @if (method == EncryptionMethod.AdGroup)
                     {
-                        <label>AD-groep <input class="kb-invoer" @bind="group" placeholder="DOMEIN\GG-Moss365-Administrators" aria-label="AD-groep" /></label>
+                        <label>@T["encryption-panel.ad-group"] <input class="kb-invoer" @bind="group" placeholder="@T["encryption-panel.domain-gg-moss365-administrators"]" aria-label="@T["encryption-panel.ad-group"]" /></label>
                     }
                 </fieldset>
                 <div class="kb-rij">
                     <button class="kb-knop kb-primair" disabled="@(method == EncryptionMethod.None)" @onclick="() => Next(info)">@(info is null ? "Volgende" : "Bewaren")</button>
-                    <button class="kb-knop" @onclick="Reset">Annuleren</button>
+                    <button class="kb-knop" @onclick="Reset">@T["action.cancel"]</button>
                 </div>
                 break;
 
             case Step.Recovery:
                 <div class="kb-melding">
                     <p>
-                        <strong>Herstelsleutel.</strong> Wie het wachtwoord vergeet, een andere Windows-gebruiker is of niet meer in de groep zit,
-                        opent de databank enkel nog met deze sleutel. Ook een back-up zet je ermee terug op een andere pc. Moss365 bewaart hem
-                        nergens: schrijf hem op of druk hem af en bewaar hem op een veilige plek (kluis).
+                        @Html("encryption.recovery")
                     </p>
                     <p><code class="kb-herstelsleutel">@recoveryKey</code></p>
-                    <label>Typ ter bevestiging de laatste groep van de sleutel <input class="kb-invoer" @bind="confirmation" @bind:event="oninput" aria-label="Laatste groep van de herstelsleutel" /></label>
+                    <label>@T["encryption-panel.type-the-last-group-of"] <input class="kb-invoer" @bind="confirmation" @bind:event="oninput" aria-label="@T["encryption-panel.last-group-of-the-recovery"]" /></label>
                 </div>
-                <p class="kb-zacht">De app maakt een versleutelde kopie, kijkt die na en vervangt dan de databank. De kopieën van voor een update gaan weg (ze zijn niet versleuteld). Eerder gemaakte back-ups blijven onversleuteld.</p>
+                <p class="kb-zacht">@T["encryption-panel.the-app-makes-an-encrypted"]</p>
                 <div class="kb-rij">
                     <button class="kb-knop kb-gevaar" disabled="@(!RecoveryConfirmed || busy)" @onclick="Encrypt">Versleutelen in @State.Tenant.Name</button>
-                    <button class="kb-knop" @onclick="Reset">Annuleren</button>
+                    <button class="kb-knop" @onclick="Reset">@T["action.cancel"]</button>
                 </div>
                 break;
 
             case Step.Renew:
-                <p>Een nieuwe sleutel, bijvoorbeeld als iemand anders de herstelsleutel kan kennen. De oude herstelsleutel werkt daarna niet meer (ook niet voor oudere back-ups: die openen enkel met de oude).</p>
+                <p>@T["encryption-panel.a-new-key-for-example"]</p>
                 @if (info?.Method == EncryptionMethod.Password)
                 {
-                    <label>Wachtwoord <input type="password" class="kb-invoer" @bind="password" aria-label="Wachtwoord" /></label>
+                    <label>@T["encryption-panel.password"] <input type="password" class="kb-invoer" @bind="password" aria-label="@T["encryption-panel.password"]" /></label>
                 }
                 <div class="kb-rij">
-                    <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="() => Renew(info)">Ja, nieuwe sleutel</button>
-                    <button class="kb-knop" @onclick="Reset">Annuleren</button>
+                    <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="() => Renew(info)">@T["encryption-panel.yes-new-key"]</button>
+                    <button class="kb-knop" @onclick="Reset">@T["action.cancel"]</button>
                 </div>
                 break;
 
             case Step.Off:
-                <p>De databank van <strong>@State.Tenant.Name</strong> weer onversleuteld bewaren?</p>
+                <p>@Html("encryption.decrypt", State.Tenant.Name)</p>
                 <div class="kb-rij">
-                    <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="Decrypt">Ja, versleuteling uitzetten</button>
-                    <button class="kb-knop" @onclick="Reset">Annuleren</button>
+                    <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="Decrypt">@T["encryption-panel.yes-turn-off-encryption"]</button>
+                    <button class="kb-knop" @onclick="Reset">@T["action.cancel"]</button>
                 </div>
                 break;
 
@@ -107,13 +104,13 @@
                 <div class="kb-rij">
                     @if (info is null)
                     {
-                        <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || State.ScriptBusy)" @onclick="() => step = Step.Choose">Versleutelen</button>
+                        <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || State.ScriptBusy)" @onclick="() => step = Step.Choose">@T["encryption-panel.encrypt"]</button>
                     }
                     else
                     {
-                        <button class="kb-knop" @onclick="() => { method = info.Method; group = info.Group ?? string.Empty; step = Step.Choose; }">Beveiliging wijzigen</button>
-                        <button class="kb-knop" disabled="@(State.TaskBusy || State.ScriptBusy)" @onclick="() => step = Step.Renew">Nieuwe sleutel</button>
-                        <button class="kb-knop kb-gevaar" disabled="@(State.TaskBusy || State.ScriptBusy)" @onclick="() => step = Step.Off">Uitzetten</button>
+                        <button class="kb-knop" @onclick="() => { method = info.Method; group = info.Group ?? string.Empty; step = Step.Choose; }">@T["encryption-panel.change-protection"]</button>
+                        <button class="kb-knop" disabled="@(State.TaskBusy || State.ScriptBusy)" @onclick="() => step = Step.Renew">@T["encryption-panel.new-key"]</button>
+                        <button class="kb-knop kb-gevaar" disabled="@(State.TaskBusy || State.ScriptBusy)" @onclick="() => step = Step.Off">@T["encryption-panel.turn-off"]</button>
                     }
                 </div>
                 break;

@@ -3,23 +3,19 @@
 @inject ManagementState State
 
 <section class="kb-kaart">
-    <h2>Functieprofielen</h2>
+    <h2>@T["menu.organisatie.functieprofielen"]</h2>
     <p class="kb-zacht">
-        Wat iemand in een job krijgt: groepen, gedeelde postvakken, licenties en gegevens zoals functie en dienst. Je kiest
-        een profiel bij <a href="nieuw">Nieuwe gebruiker</a>, en bij <a href="functieprofielen">Functieprofielen</a> pas je het
-        toe op bestaande gebruikers en zie je wie meer of minder heeft. Groepen en postvakken staan op naam, zodat een profiel
-        ook in een andere tenant werkt (exporteren en importeren bij Bedrijf en naamgeving). Een bewaard profiel dat verandert,
-        krijgt een nieuwe versie.
+        @Html("job-profile-editor.intro")
     </p>
 
     @if (State.Config.JobProfiles.Count == 0)
     {
-        <p>Nog geen functieprofielen.</p>
+        <p>@T["job-profile-editor.no-job-profiles-yet"]</p>
     }
     else
     {
         <table class="kb-tabel">
-            <thead><tr><th>Profiel</th><th class="kb-getal">Versie</th><th class="kb-getal">Groepen</th><th class="kb-getal">Postvakken</th><th>Licenties</th><th>Functie</th><th></th></tr></thead>
+            <thead><tr><th>@T["nav.profile"]</th><th class="kb-getal">@T["update-panel.version"]</th><th class="kb-getal">@T["menu.groepen"]</th><th class="kb-getal">@T["nav.part.Postvakken"]</th><th>@T["job-profile-editor.licences"]</th><th>@T["bulk-tasks.job-title"]</th><th></th></tr></thead>
             <tbody>
                 @foreach (var p in State.Config.JobProfiles.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
                 {
@@ -32,8 +28,8 @@
                         <td>@p.JobTitle</td>
                         <td>
                             <span class="kb-filters">
-                                <button class="kb-knop kb-klein" @onclick="() => editing = p.Id">Bewerken</button>
-                                <button class="kb-knop kb-klein kb-gevaar" @onclick="() => Remove(p)">Verwijderen</button>
+                                <button class="kb-knop kb-klein" @onclick="() => editing = p.Id">@T["edit-user.edit"]</button>
+                                <button class="kb-knop kb-klein kb-gevaar" @onclick="() => Remove(p)">@T["variables-editor.remove"]</button>
                             </span>
                         </td>
                     </tr>
@@ -42,10 +38,10 @@
         </table>
     }
 
-    <h3>Nieuw profiel</h3>
+    <h3>@T["job-profile-editor.new-profile"]</h3>
     <div class="kb-rij">
-        <label>Naam <input class="kb-invoer" @bind="newName" @bind:event="oninput" placeholder="bv. Medewerker onthaal" aria-label="Naam van het nieuwe profiel" /></label>
-        <button class="kb-knop" disabled="@(!CanAdd)" @onclick="AddEmpty">Leeg profiel</button>
+        <label>@T["variables-editor.name"] <input class="kb-invoer" @bind="newName" @bind:event="oninput" placeholder="@T["job-profile-editor.e-g-reception-employee"]" aria-label="@T["job-profile-editor.name-of-the-new-profile"]" /></label>
+        <button class="kb-knop" disabled="@(!CanAdd)" @onclick="AddEmpty">@T["job-profile-editor.empty-profile"]</button>
     </div>
     <PersonPicker Label="Of neem over van een gebruiker (groepen, postvakken, licenties en gegevens)" Selected="example" SelectedChanged="p => example = p" />
     <div class="kb-rij">
@@ -59,21 +55,21 @@
     <section class="kb-kaart" id="profiel-bewerken">
         <h2>@jp.Name <span class="kb-zacht">versie @jp.Version</span></h2>
         <div class="kb-raster">
-            <label>Naam <input class="kb-invoer" value="@jp.Name" @onchange="e => Change(() => jp.Name = Text(e.Value) ?? jp.Name)" aria-label="Naam" /></label>
-            <label>Omschrijving <input class="kb-invoer" value="@jp.Description" @onchange="e => Change(() => jp.Description = Text(e.Value) ?? string.Empty)" aria-label="Omschrijving" /></label>
-            <label>Functie <input class="kb-invoer" value="@jp.JobTitle" @onchange="e => Change(() => jp.JobTitle = Text(e.Value))" aria-label="Functie" /></label>
-            <label>Dienst
-                <select class="kb-invoer" aria-label="Dienst" @onchange="e => Change(() => jp.Department = Text(e.Value))">
-                    <option value="" selected="@(jp.Department is null)">(niet wijzigen)</option>
+            <label>@T["variables-editor.name"] <input class="kb-invoer" value="@jp.Name" @onchange="e => Change(() => jp.Name = Text(e.Value) ?? jp.Name)" aria-label="@T["variables-editor.name"]" /></label>
+            <label>@T["edit-user.description"] <input class="kb-invoer" value="@jp.Description" @onchange="e => Change(() => jp.Description = Text(e.Value) ?? string.Empty)" aria-label="@T["edit-user.description"]" /></label>
+            <label>@T["bulk-tasks.job-title"] <input class="kb-invoer" value="@jp.JobTitle" @onchange="e => Change(() => jp.JobTitle = Text(e.Value))" aria-label="@T["bulk-tasks.job-title"]" /></label>
+            <label>@T["service-health-card.service"]
+                <select class="kb-invoer" aria-label="@T["service-health-card.service"]" @onchange="e => Change(() => jp.Department = Text(e.Value))">
+                    <option value="" selected="@(jp.Department is null)">@T["yesno.nochange"]</option>
                     @foreach (var d in State.Config.Departments.OrderBy(d => d.Department, StringComparer.CurrentCultureIgnoreCase))
                     {
                         <option value="@d.Department" selected="@(string.Equals(jp.Department, d.Department, StringComparison.OrdinalIgnoreCase))">@d.Department</option>
                     }
                 </select>
             </label>
-            <label>Kantoor
-                <select class="kb-invoer" aria-label="Kantoor" @onchange="e => Change(() => jp.Office = Text(e.Value))">
-                    <option value="" selected="@(jp.Office is null)">(niet wijzigen)</option>
+            <label>@T["bulk-tasks.office"]
+                <select class="kb-invoer" aria-label="@T["bulk-tasks.office"]" @onchange="e => Change(() => jp.Office = Text(e.Value))">
+                    <option value="" selected="@(jp.Office is null)">@T["yesno.nochange"]</option>
                     @foreach (var o in State.Config.Offices.Append(jp.Office).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase))
                     {
                         <option value="@o" selected="@(string.Equals(jp.Office, o, StringComparison.OrdinalIgnoreCase))">@o</option>
@@ -82,9 +78,9 @@
             </label>
             @if (State.HasAd)
             {
-                <label>Logonscript
-                    <select class="kb-invoer" aria-label="Logonscript" @onchange="e => Change(() => jp.LogonScript = Text(e.Value))">
-                        <option value="" selected="@(jp.LogonScript is null)">(niet wijzigen)</option>
+                <label>@T["edit-user.logon-script"]
+                    <select class="kb-invoer" aria-label="@T["edit-user.logon-script"]" @onchange="e => Change(() => jp.LogonScript = Text(e.Value))">
+                        <option value="" selected="@(jp.LogonScript is null)">@T["yesno.nochange"]</option>
                         @foreach (var s in State.Config.LogonScripts.Append(jp.LogonScript).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase))
                         {
                             <option value="@s" selected="@(string.Equals(jp.LogonScript, s, StringComparison.OrdinalIgnoreCase))">@s</option>
@@ -100,7 +96,7 @@
             {
                 var g = JobProfilePlans.FindGroup(State.Data, name);
                 <li>
-                    @if (g is null) { <span>@name</span> <span class="kb-label">niet gevonden</span> }
+                    @if (g is null) { <span>@name</span> <span class="kb-label">@T["start.notfound"]</span> }
                     else { <ObjectLink Object="g.Ref" /> <span class="kb-zacht">@g.KindText</span> }
                     <button class="kb-knop kb-klein" aria-label="@name uit het profiel" @onclick="() => Change(() => jp.Groups.Remove(name))">&times;</button>
                 </li>
@@ -117,15 +113,15 @@
                     var mb = State.Data.Index.Mailbox(smtp);
                     <li>
                         @(mb?.DisplayName ?? smtp) <span class="kb-zacht">@smtp</span>
-                        @if (mb is null) { <span class="kb-label">niet gevonden</span> }
-                        else if (State.Data.Index.AccessGroupOf(mb) is null) { <span class="kb-label">geen toegangsgroep</span> }
+                        @if (mb is null) { <span class="kb-label">@T["start.notfound"]</span> }
+                        else if (State.Data.Index.AccessGroupOf(mb) is null) { <span class="kb-label">@T["job-profile-editor.no-access-group"]</span> }
                         <button class="kb-knop kb-klein" aria-label="@smtp uit het profiel" @onclick="() => Change(() => jp.Mailboxes.Remove(smtp))">&times;</button>
                     </li>
                 }
             </ul>
             <div class="kb-rij">
-                <select class="kb-invoer" aria-label="Postvak toevoegen" @onchange="e => AddMailbox(jp, Text(e.Value))">
-                    <option value="">(postvak toevoegen)</option>
+                <select class="kb-invoer" aria-label="@T["job-profile-editor.add-mailbox"]" @onchange="e => AddMailbox(jp, Text(e.Value))">
+                    <option value="">@T["job-profile-editor.add-mailbox-2"]</option>
                     @foreach (var m in State.Data.Mailboxes.Where(m => !jp.Mailboxes.Contains(m.Smtp, StringComparer.OrdinalIgnoreCase)))
                     {
                         <option value="@m.Smtp">@m.DisplayName (@m.Smtp)</option>
@@ -133,7 +129,7 @@
                 </select>
             </div>
 
-            <h3>Licenties</h3>
+            <h3>@T["job-profile-editor.licences"]</h3>
             <div class="kb-keuzelijst">
                 @foreach (var (sku, name) in LicenceChoices(jp))
                 {
@@ -145,7 +141,7 @@
                 }
             </div>
         }
-        <p class="kb-zacht">Dynamische en bevoorrechte groepen geeft de app nooit via een profiel. Vergeet niet te bewaren (bovenaan).</p>
+        <p class="kb-zacht">@T["job-profile-editor.the-app-never-gives-dynamic"]</p>
     </section>
 }
 

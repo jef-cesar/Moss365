@@ -1,17 +1,17 @@
 @* The variables of a script: name, question, kind, required, default and (for Choice) the options *@
 
 <table class="kb-tabel kb-variabelen">
-    <thead><tr><th>Naam</th><th>Vraag</th><th>Soort</th><th>Verplicht</th><th>Standaard</th><th></th></tr></thead>
+    <thead><tr><th>@T["variables-editor.name"]</th><th>@T["variables-editor.question"]</th><th>@T["nested-groups.kind"]</th><th>@T["variables-editor.required"]</th><th>@T["kb-table.default"]</th><th></th></tr></thead>
     <tbody>
         @for (var i = 0; i < rows.Count; i++)
         {
             var r = rows[i];
             var index = i;
             <tr>
-                <td><input class="kb-invoer" value="@r.Name" @onchange="e => Set(index, r with { Name = Clean(e.Value) })" aria-label="Naam" placeholder="Postvak" /></td>
-                <td><input class="kb-invoer" value="@r.Question" @onchange="e => Set(index, r with { Question = e.Value?.ToString() ?? string.Empty })" aria-label="Vraag" placeholder="Welk postvak?" /></td>
+                <td><input class="kb-invoer" value="@r.Name" @onchange="e => Set(index, r with { Name = Clean(e.Value) })" aria-label="@T["variables-editor.name"]" placeholder="@T["variables-editor.mailbox"]" /></td>
+                <td><input class="kb-invoer" value="@r.Question" @onchange="e => Set(index, r with { Question = e.Value?.ToString() ?? string.Empty })" aria-label="@T["variables-editor.question"]" placeholder="@T["variables-editor.which-mailbox"]" /></td>
                 <td>
-                    <select class="kb-invoer" value="@r.Kind" @onchange="e => Set(index, r with { Kind = Enum.Parse<VariableKind>(e.Value?.ToString() ?? nameof(VariableKind.Text)) })" aria-label="Soort">
+                    <select class="kb-invoer" value="@r.Kind" @onchange="e => Set(index, r with { Kind = Enum.Parse<VariableKind>(e.Value?.ToString() ?? nameof(VariableKind.Text)) })" aria-label="@T["nested-groups.kind"]">
                         @foreach (var s in Enum.GetValues<VariableKind>())
                         {
                             <option value="@s">@KindName(s)</option>
@@ -19,25 +19,24 @@
                     </select>
                     @if (r.Kind == VariableKind.Choice)
                     {
-                        <input class="kb-invoer" value="@string.Join("; ", r.Options ?? Array.Empty<string>())" placeholder="optie 1; optie 2" aria-label="Opties"
+                        <input class="kb-invoer" value="@string.Join("; ", r.Options ?? Array.Empty<string>())" placeholder="@T["variables-editor.option-1-option-2"]" aria-label="@T["variables-editor.options"]"
                                @onchange="e => Set(index, r with { Options = (e.Value?.ToString() ?? string.Empty).Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) })" />
                     }
                 </td>
-                <td><input type="checkbox" checked="@r.Required" @onchange="e => Set(index, r with { Required = e.Value is true })" aria-label="Verplicht" /></td>
-                <td><input class="kb-invoer" value="@r.Default" @onchange="e => Set(index, r with { Default = string.IsNullOrWhiteSpace(e.Value?.ToString()) ? null : e.Value!.ToString() })" aria-label="Standaard" /></td>
+                <td><input type="checkbox" checked="@r.Required" @onchange="e => Set(index, r with { Required = e.Value is true })" aria-label="@T["variables-editor.required"]" /></td>
+                <td><input class="kb-invoer" value="@r.Default" @onchange="e => Set(index, r with { Default = string.IsNullOrWhiteSpace(e.Value?.ToString()) ? null : e.Value!.ToString() })" aria-label="@T["kb-table.default"]" /></td>
                 <td class="kb-knoppen-klein">
-                    <button class="kb-knop kb-klein" title="Omhoog" disabled="@(index == 0)" @onclick="() => Move(index, -1)">&uarr;</button>
-                    <button class="kb-knop kb-klein" title="Omlaag" disabled="@(index == rows.Count - 1)" @onclick="() => Move(index, 1)">&darr;</button>
-                    <button class="kb-knop kb-klein" title="Verwijderen" @onclick="() => Remove(index)">&times;</button>
+                    <button class="kb-knop kb-klein" title="@T["variables-editor.up"]" disabled="@(index == 0)" @onclick="() => Move(index, -1)">&uarr;</button>
+                    <button class="kb-knop kb-klein" title="@T["variables-editor.down"]" disabled="@(index == rows.Count - 1)" @onclick="() => Move(index, 1)">&darr;</button>
+                    <button class="kb-knop kb-klein" title="@T["variables-editor.remove"]" @onclick="() => Remove(index)">&times;</button>
                 </td>
             </tr>
         }
     </tbody>
 </table>
-<button class="kb-knop" @onclick="New">+ Variabele</button>
+<button class="kb-knop" @onclick="New">@T["variables-editor.variable"]</button>
 <p class="kb-zacht">
-    De naam is de parameter in het script (<code>$Naam</code>): enkel letters, cijfers en _. Een datum kan ook relatief zijn,
-    bv. <code>@@werkjaar.van</code> of <code>@@vorigemaand.tot</code>.
+    @Html("variables-editor.help")
 </p>
 
 @code {

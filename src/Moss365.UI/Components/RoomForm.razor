@@ -1,21 +1,21 @@
 @* Desired room settings; leave empty = do not change *@
 <div class="kb-raster">
-    <label>Verwerking <select class="kb-invoer" @bind="Desired.AutomateProcessing"><option value="">(niet wijzigen)</option><option>AutoAccept</option><option>AutoUpdate</option><option>None</option></select></label>
-    <label>Boekingsvenster (dagen) <input class="kb-invoer" type="number" @bind="Desired.BookingWindowInDays" /></label>
-    <label>Maximale duur (min.) <input class="kb-invoer" type="number" @bind="Desired.MaximumDurationInMinutes" /></label>
-    <label>Conflicten toestaan <YesNo @bind-Value="Desired.AllowConflicts" /></label>
-    <label>Terugkerende vergaderingen <YesNo @bind-Value="Desired.AllowRecurringMeetings" /></label>
-    <label>Organisator in onderwerp <YesNo @bind-Value="Desired.AddOrganizerToSubject" /></label>
-    <label>Onderwerp wissen <YesNo @bind-Value="Desired.DeleteSubject" /></label>
-    <label>Standaardrecht agenda
+    <label>@T["room-form.processing"] <select class="kb-invoer" @bind="Desired.AutomateProcessing"><option value="">@T["yesno.nochange"]</option><option>@T["room-form.autoaccept"]</option><option>@T["room-form.autoupdate"]</option><option>@T["room-form.none"]</option></select></label>
+    <label>@T["room-form.booking-window-days"] <input class="kb-invoer" type="number" @bind="Desired.BookingWindowInDays" /></label>
+    <label>@T["room-form.maximum-duration-min"] <input class="kb-invoer" type="number" @bind="Desired.MaximumDurationInMinutes" /></label>
+    <label>@T["room-form.allow-conflicts"] <YesNo @bind-Value="Desired.AllowConflicts" /></label>
+    <label>@T["room-form.recurring-meetings"] <YesNo @bind-Value="Desired.AllowRecurringMeetings" /></label>
+    <label>@T["room-form.organiser-in-subject"] <YesNo @bind-Value="Desired.AddOrganizerToSubject" /></label>
+    <label>@T["room-form.clear-subject"] <YesNo @bind-Value="Desired.DeleteSubject" /></label>
+    <label>@T["room-form.default-calendar-permission"]
         <select class="kb-invoer" @bind="Desired.DefaultCalendarPermission">
-            <option value="">(niet wijzigen)</option><option>AvailabilityOnly</option><option>LimitedDetails</option><option>Reviewer</option>
+            <option value="">@T["yesno.nochange"]</option><option>@T["room-form.availabilityonly"]</option><option>@T["room-form.limiteddetails"]</option><option>@T["room-form.reviewer"]</option>
         </select>
     </label>
-    <label>Gebouw <input class="kb-invoer" @bind="Desired.Building" /></label>
-    <label>Verdieping <input class="kb-invoer" @bind="Desired.Floor" /></label>
-    <label>Verdiepingslabel <input class="kb-invoer" @bind="Desired.FloorLabel" /></label>
-    <label>Capaciteit <input class="kb-invoer" type="number" @bind="Desired.Capacity" /></label>
+    <label>@T["room-form.building"] <input class="kb-invoer" @bind="Desired.Building" /></label>
+    <label>@T["room-form.floor"] <input class="kb-invoer" @bind="Desired.Floor" /></label>
+    <label>@T["room-form.floor-label"] <input class="kb-invoer" @bind="Desired.FloorLabel" /></label>
+    <label>@T["room-form.capacity"] <input class="kb-invoer" type="number" @bind="Desired.Capacity" /></label>
 </div>
 
 @code {

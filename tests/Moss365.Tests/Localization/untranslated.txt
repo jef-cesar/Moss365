@@ -1,16 +1,8 @@
 # Screens with text that is not yet in the dictionaries (R15): number of texts, file. The numbers may only go down.
-36 Components/EncryptionPanel.razor
-44 Components/JobProfileEditor.razor
+2 Components/JobProfileEditor.razor
 3 Components/KbTable.razor
-61 Components/ManageCa.razor
-20 Components/RoomForm.razor
-6 Components/ScriptForm.razor
-18 Components/ScriptResult.razor
-11 Components/ScriptRunPanel.razor
-14 Components/SecurityCard.razor
-26 Components/UpdatePanel.razor
-17 Components/UserMemberships.razor
-24 Components/VariablesEditor.razor
+2 Components/UserMemberships.razor
+3 Components/VariablesEditor.razor
 10 Pages/AboutAndUpdates.razor
 50 Pages/CaOverview.razor
 27 Pages/CaPolicyDetail.razor

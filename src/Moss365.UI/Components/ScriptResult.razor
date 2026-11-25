@@ -2,11 +2,11 @@
 @inject ManagementState State
 
 <div class="kb-filters">
-    <span class="kb-segment" role="group" aria-label="Resultaat">
-        <button class="kb-knop @(part == 0 ? "kb-primair" : null)" @onclick="() => part = 0">Uitvoer</button>
+    <span class="kb-segment" role="group" aria-label="@T["plan.result"]">
+        <button class="kb-knop @(part == 0 ? "kb-primair" : null)" @onclick="() => part = 0">@T["script-result.output"]</button>
         <button class="kb-knop @(part == 1 ? "kb-primair" : null)" @onclick="() => part = 1">Tabellen (@tables.Count)</button>
         <button class="kb-knop @(part == 2 ? "kb-primair" : null)" @onclick="() => part = 2">Bestanden (@files.Count)</button>
-        <button class="kb-knop @(part == 3 ? "kb-primair" : null)" @onclick="() => part = 3">Details</button>
+        <button class="kb-knop @(part == 3 ? "kb-primair" : null)" @onclick="() => part = 3">@T["script-result.details"]</button>
     </span>
 </div>
 
@@ -18,14 +18,14 @@
     case 1:
         @if (tables.Count == 0)
         {
-            <p class="kb-zacht">Het script gaf geen objecten terug en maakte geen CSV-bestand.</p>
+            <p class="kb-zacht">@T["script-result.the-script-returned-no-objects"]</p>
         }
         else
         {
             @if (tables.Count > 1)
             {
                 <div class="kb-filters">
-                    <select class="kb-invoer" @bind="tableIndex" aria-label="Tabel">
+                    <select class="kb-invoer" @bind="tableIndex" aria-label="@T["script-result.table"]">
                         @for (var i = 0; i < tables.Count; i++)
                         {
                             <option value="@i">@tables[i].Name (@tables[i].Rows.Count)</option>
@@ -40,26 +40,26 @@
     case 2:
         @if (files.Count == 0)
         {
-            <p class="kb-zacht">Het script zette geen bestanden in zijn uitvoermap.</p>
+            <p class="kb-zacht">@T["script-result.the-script-put-no-files"]</p>
         }
         else
         {
             <table class="kb-tabel">
-                <thead><tr><th>Bestand</th><th class="kb-getal">Grootte</th><th></th></tr></thead>
+                <thead><tr><th>@T["start.file"]</th><th class="kb-getal">@T["script-result.size"]</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var b in files)
                     {
                         <tr>
                             <td>@b.Path[(FilesFolder.Length + 1)..]</td>
                             <td class="kb-getal">@Size(b.Size)</td>
-                            <td><button class="kb-knop kb-klein" @onclick="() => Open(b)">Openen</button></td>
+                            <td><button class="kb-knop kb-klein" @onclick="() => Open(b)">@T["script-result.open"]</button></td>
                         </tr>
                     }
                 </tbody>
             </table>
             @if (opened is not null)
             {
-                <p class="kb-zacht">Gekopieerd naar <code>@opened</code>.</p>
+                <p class="kb-zacht">@T["script-result.copied-to"] <code>@opened</code>.</p>
             }
         }
         <p class="kb-zacht">De bestanden van deze run staan in de databank van @State.Tenant.Name; Openen zet een kopie in de exportmap.</p>
@@ -67,13 +67,13 @@
     default:
         <table class="kb-tabel kb-naast">
             <tbody>
-                <tr><th>Script</th><td>@Run.Name @if (Run.Once) { <span class="kb-label">eenmalig</span> }</td></tr>
-                <tr><th>Resultaat</th><td>@Run.ResultText <span class="kb-zacht">@Run.Message</span></td></tr>
-                <tr><th>Wie</th><td>@Run.Who</td></tr>
-                <tr><th>Start</th><td>@Run.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm:ss")</td></tr>
-                <tr><th>Duur</th><td>@(Run.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "bezig")</td></tr>
-                <tr><th>Waarden</th><td>@foreach (var (k, v) in Run.Values) { <div><strong>@k</strong>: @v.Replace("\n", ", ")</div> }</td></tr>
-                <tr><th>Vingerafdruk</th><td><code>@Run.Fingerprint</code></td></tr>
+                <tr><th>@T["code-editor.script"]</th><td>@Run.Name @if (Run.Once) { <span class="kb-label">@T["script-result.one-off"]</span> }</td></tr>
+                <tr><th>@T["plan.result"]</th><td>@Run.ResultText <span class="kb-zacht">@Run.Message</span></td></tr>
+                <tr><th>@T["script-result.who"]</th><td>@Run.Who</td></tr>
+                <tr><th>@T["script-result.start"]</th><td>@Run.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm:ss")</td></tr>
+                <tr><th>@T["script-result.duration"]</th><td>@(Run.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "bezig")</td></tr>
+                <tr><th>@T["script-result.values"]</th><td>@foreach (var (k, v) in Run.Values) { <div><strong>@k</strong>: @v.Replace("\n", ", ")</div> }</td></tr>
+                <tr><th>@T["script-result.fingerprint"]</th><td><code>@Run.Fingerprint</code></td></tr>
             </tbody>
         </table>
         break;

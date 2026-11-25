@@ -5,11 +5,9 @@
 @inject ManagementState State
 
 <section class="kb-kaart">
-    <h2>Beheren</h2>
+    <h2>@T["manage-ca.manage"]</h2>
     <p class="kb-zacht">
-        Elke wijziging toont eerst een voorbeeld; pas na je bevestiging gaat ze naar Entra, en ze komt in het logboek (ongedaan te
-        maken). Je eigen account heeft de rol Conditional Access Administrator (of Security Administrator) nodig, en de
-        app-registratie het recht Policy.ReadWrite.ConditionalAccess (dat regelt <a href="inrichten">Tenant inrichten</a>).
+        @Html("manage-ca.intro")
     </p>
     @if (EmergencyError is { } emergencyError)
     {
@@ -21,7 +19,7 @@
     }
 
     <div class="kb-filters">
-        <span class="kb-segment" role="group" aria-label="Beheren">
+        <span class="kb-segment" role="group" aria-label="@T["manage-ca.manage"]">
             @foreach (var (o, text) in new[] { (Section.Status, "Aan en uit"), (Section.Exclusions, "Uitzonderingen"), (Section.New, "Nieuw beleid"),
                                                  (Section.Locations, "Benoemde locaties"), (Section.Backups, "Back-ups"), (Section.Audit, "Wie wijzigde wat") })
             {
@@ -34,17 +32,16 @@
     {
         case Section.Status:
             <p class="kb-zacht">
-                Een nieuw beleid laat je eerst in <strong>alleen rapport</strong> lopen (voorstel: 14 dagen) en je bekijkt het effect
-                (Beleiden > Effect laden). Pas dan zet je het aan.
+                @Html("manage-ca.reportfirst")
             </p>
-            <label class="kb-groot-plan"><input type="checkbox" @bind="effectViewed" /> Ik heb het effect in alleen rapport bekeken en wil een beleid <strong>aanzetten</strong></label>
+            <label class="kb-groot-plan"><input type="checkbox" @bind="effectViewed" /> @Html("manage-ca.effectviewed")</label>
             <table class="kb-tabel">
-                <thead><tr><th>Beleid</th><th>Status</th><th>Vereist</th><th></th></tr></thead>
+                <thead><tr><th>@T["what-if-table.policy"]</th><th>@T["service-health-card.status"]</th><th>@T["manage-ca.requires"]</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var b in Ca.Policies)
                     {
                         <tr>
-                            <td><a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Name</a> <a class="kb-knop kb-klein" href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}/bewerken")">Bewerken</a></td>
+                            <td><a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Name</a> <a class="kb-knop kb-klein" href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}/bewerken")">@T["edit-user.edit"]</a></td>
                             <td><CaLabel Status="b.Status" /></td>
                             <td class="kb-zacht">@(b.Blocks ? "blokkeert" : string.Join(", ", b.Checks.Select(CaReader.CheckName)))</td>
                             <td>
@@ -65,20 +62,19 @@
 
         case Section.Exclusions:
             <p class="kb-zacht">
-                Iemand tijdelijk uitsluiten van een beleid (bv. op reis buiten de toegelaten landen), met een einddatum. Op die datum
-                staat het terugzetten klaar bij <a href="gepland">Gepland</a>; de app voert het niet vanzelf uit.
+                @Html("manage-ca.exclude")
             </p>
             <div class="kb-formulier">
-                <label>Beleid
+                <label>@T["what-if-table.policy"]
                     <select class="kb-invoer" @bind="exclusionPolicyId">
-                        <option value="">(kies een beleid)</option>
+                        <option value="">@T["manage-ca.choose-a-policy"]</option>
                         @foreach (var b in Ca.Policies) { <option value="@b.Id">@b.Name</option> }
                     </select>
                 </label>
                 <PersonPicker Label="Wie" @bind-Selected="exclusionPerson" />
-                <label>Tot en met <input type="date" class="kb-invoer" @bind="exclusionUntil" /></label>
+                <label>@T["manage-ca.up-to-and-including"] <input type="date" class="kb-invoer" @bind="exclusionUntil" /></label>
                 <div class="kb-filters">
-                    <button class="kb-knop kb-primair" disabled="@(ExclusionPolicy is null || exclusionPerson is null)" @onclick="Exclude">Plan maken</button>
+                    <button class="kb-knop kb-primair" disabled="@(ExclusionPolicy is null || exclusionPerson is null)" @onclick="Exclude">@T["bulk-tasks.make-plan"]</button>
                 </div>
             </div>
             @if (ExclusionPolicy is { } selected)
@@ -90,8 +86,8 @@
                         var p = State.Data.Persons.FirstOrDefault(x => string.Equals(x.Entra?.Id, id, StringComparison.OrdinalIgnoreCase));
                         <li>
                             @if (p is not null) { <ObjectLink Object="State.Data.Index.Ref(p)" /> } else { <code>@id</code> }
-                            @if (p is not null && Emergency.Contains(p)) { <span class="kb-label">noodaccount</span> }
-                            else if (p is not null) { <button class="kb-knop kb-klein" @onclick="() => ExclusionRemoved(selected, p)">Weghalen</button> }
+                            @if (p is not null && Emergency.Contains(p)) { <span class="kb-label">@T["manage-ca.emergency-account"]</span> }
+                            else if (p is not null) { <button class="kb-knop kb-klein" @onclick="() => ExclusionRemoved(selected, p)">@T["manage-ca.remove"]</button> }
                         </li>
                     }
                 </ul>
@@ -100,15 +96,12 @@
 
         case Section.New:
             <p class="kb-zacht">
-                Een nieuw beleid uit de aanbevelingen van Microsoft. Het komt altijd in <strong>alleen rapport</strong>, met de noodaccounts
-                uitgesloten. Met een pilotgroep geldt het eerst enkel voor die groep.
-                Liever helemaal zelf? <a href="conditional-access/nieuw-beleid">Maak een beleid in de editor</a>, of open een beleid en kies
-                <strong>Kopie maken</strong>.
+                @Html("manage-ca.templates")
             </p>
             <div class="kb-formulier">
-                <label>Sjabloon
+                <label>@T["manage-ca.template"]
                     <select class="kb-invoer" @bind="template">
-                        <option value="">(kies een sjabloon)</option>
+                        <option value="">@T["manage-ca.choose-a-template"]</option>
                         @foreach (var s in CaTemplates.All)
                         {
                             <option value="@s.Key" disabled="@Ca.Policies.Any(b => b.Name == s.Name)">@s.Name@(Ca.Policies.Any(b => b.Name == s.Name) ? " (bestaat al)" : "")</option>
@@ -120,24 +113,24 @@
                     <p>@sj.Explanation</p>
                     @if (sj.CanPilot)
                     {
-                        <label>Pilotgroep (leeg = iedereen)
+                        <label>@T["manage-ca.pilot-group-empty-everyone"]
                             <select class="kb-invoer" @bind="pilotGroup">
-                                <option value="">Iedereen</option>
+                                <option value="">@T["manage-ca.everyone"]</option>
                                 @foreach (var g in CloudGroups) { <option value="@g.Cloud!.Id">@g.Name</option> }
                             </select>
                         </label>
                     }
                     @if (sj.AsksCountriesLocation)
                     {
-                        <label>Toegelaten landen
+                        <label>@T["manage-ca.allowed-countries"]
                             <select class="kb-invoer" @bind="countries">
-                                <option value="">(kies een locatie met landen)</option>
+                                <option value="">@T["manage-ca.choose-a-location-with-countries"]</option>
                                 @foreach (var l in Ca.Locations.Where(l => !l.IsIp)) { <option value="@l.Id">@l.Name (@string.Join(", ", l.Values))</option> }
                             </select>
                         </label>
                     }
                     <div class="kb-filters">
-                        <button class="kb-knop kb-primair" disabled="@(EmergencyError is not null)" @onclick="New">Plan maken</button>
+                        <button class="kb-knop kb-primair" disabled="@(EmergencyError is not null)" @onclick="New">@T["bulk-tasks.make-plan"]</button>
                     </div>
                 }
             </div>
@@ -145,11 +138,10 @@
 
         case Section.Locations:
             <p class="kb-zacht">
-                IP-adressen van de gebouwen (CIDR, bv. <code>203.0.113.10/32</code>) of landen (code van twee letters, bv. <code>BE</code>), één per regel.
-                Een vertrouwde locatie met IP-adressen gebruik je voor "registreren enkel vanop kantoor".
+                @Html("manage-ca.locations")
             </p>
             <table class="kb-tabel">
-                <thead><tr><th>Locatie</th><th>Soort</th><th>Waarden</th><th></th></tr></thead>
+                <thead><tr><th>@T["manage-ca.location"]</th><th>@T["nested-groups.kind"]</th><th>@T["script-result.values"]</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var l in Ca.Locations)
                     {
@@ -157,57 +149,55 @@
                             <td>@l.Name</td>
                             <td>@(l.IsIp ? (l.Trusted ? "IP-adressen, vertrouwd" : "IP-adressen") : "landen")</td>
                             <td class="kb-zacht">@string.Join(", ", l.Values)</td>
-                            <td><button class="kb-knop kb-klein" @onclick="() => Edit(l)">Wijzigen</button></td>
+                            <td><button class="kb-knop kb-klein" @onclick="() => Edit(l)">@T["manage-ca.change"]</button></td>
                         </tr>
                     }
                 </tbody>
             </table>
             <h3>@(location is null ? "Nieuwe locatie" : $"\"{location.Name}\" wijzigen")</h3>
             <div class="kb-formulier">
-                <label>Naam <input class="kb-invoer" @bind="locName" /></label>
+                <label>@T["variables-editor.name"] <input class="kb-invoer" @bind="locName" /></label>
                 @if (location is null)
                 {
-                    <label><input type="radio" name="locsoort" checked="@locIp" @onchange="() => locIp = true" /> IP-adressen</label>
-                    <label><input type="radio" name="locsoort" checked="@(!locIp)" @onchange="() => locIp = false" /> Landen</label>
+                    <label><input type="radio" name="locsoort" checked="@locIp" @onchange="() => locIp = true" /> @T["manage-ca.ip-addresses"]</label>
+                    <label><input type="radio" name="locsoort" checked="@(!locIp)" @onchange="() => locIp = false" /> @T["manage-ca.countries"]</label>
                 }
-                @if (locIp) { <label><input type="checkbox" @bind="locTrusted" /> Vertrouwde locatie (kantoor)</label> }
+                @if (locIp) { <label><input type="checkbox" @bind="locTrusted" /> @T["manage-ca.trusted-location-office"]</label> }
                 <label>@(locIp ? "IP-bereiken" : "Landen"), één per regel <textarea class="kb-invoer" rows="5" @bind="locValues"></textarea></label>
                 <div class="kb-filters">
-                    <button class="kb-knop kb-primair" @onclick="LocationPlan">Plan maken</button>
-                    @if (location is not null) { <button class="kb-knop" @onclick="() => Edit(null)">Nieuwe locatie</button> }
+                    <button class="kb-knop kb-primair" @onclick="LocationPlan">@T["bulk-tasks.make-plan"]</button>
+                    @if (location is not null) { <button class="kb-knop" @onclick="() => Edit(null)">@T["manage-ca.new-location"]</button> }
                 </div>
             </div>
             break;
 
         case Section.Backups:
             <p class="kb-zacht">
-                Na elk live laden bewaart de app een kopie van alle beleiden en locaties, als er iets veranderde. Ze staan in de databank van
-                <strong>@State.Tenant.Name</strong>; ze bevatten id's van personen en groepen: hou ze lokaal en zet een kopie op een plek
-                met beperkte toegang.
+                @Html("manage-ca.backups", State.Tenant.Name)
             </p>
             <div class="kb-filters">
-                <button class="kb-knop" @onclick="BackupNow">Nu een back-up maken</button>
+                <button class="kb-knop" @onclick="BackupNow">@T["manage-ca.make-a-backup-now"]</button>
                 @if (backupMessage is not null) { <span class="kb-zacht">@backupMessage</span> }
             </div>
             @if (backups.Count == 0)
             {
-                <p class="kb-zacht">Nog geen back-ups. Laad live (Verbindingen) of kies "Nu een back-up maken".</p>
+                <p class="kb-zacht">@T["manage-ca.no-backups-yet-load-live"]</p>
             }
             else
             {
-                <label>Back-up
+                <label>@T["manage-ca.backup"]
                     <select class="kb-invoer" value="@backupPath" @onchange="ChooseBackup">
-                        <option value="">(kies een back-up)</option>
+                        <option value="">@T["manage-ca.choose-a-backup"]</option>
                         @foreach (var b in backups) { <option value="@b.FilePath">@b.Time.ToString("dd/MM/yyyy HH:mm") (@b.Policies beleiden)</option> }
                     </select>
                 </label>
             }
             @if (backup is not null)
             {
-                <h3>Verschillen met nu</h3>
+                <h3>@T["manage-ca.differences-with-now"]</h3>
                 @if (differences.Count == 0)
                 {
-                    <p>Geen verschillen: de beleiden zijn nu zoals in deze back-up.</p>
+                    <p>@T["manage-ca.no-differences-the-policies-are"]</p>
                 }
                 <table class="kb-tabel">
                     <tbody>
@@ -219,11 +209,11 @@
                                 <td>
                                     @if (v.Kind != "nieuw" && backup.Policies.FirstOrDefault(b => b.Id == v.PolicyId) is { } old)
                                     {
-                                        <button class="kb-knop kb-klein" @onclick="() => Restore(old)">Terugzetten</button>
+                                        <button class="kb-knop kb-klein" @onclick="() => Restore(old)">@T["manage-ca.restore"]</button>
                                     }
                                     else
                                     {
-                                        <span class="kb-zacht">nieuw sinds de back-up; uitzetten bij Aan en uit</span>
+                                        <span class="kb-zacht">@T["manage-ca.new-since-the-backup-turn"]</span>
                                     }
                                 </td>
                             </tr>
@@ -234,10 +224,10 @@
             break;
 
         default:
-            <p class="kb-zacht">Uit het auditlogboek van Entra: wie welk beleid of welke locatie maakte, wijzigde of verwijderde (de laatste 30 dagen).</p>
+            <p class="kb-zacht">@T["manage-ca.from-the-audit-log-of"]</p>
             <div class="kb-filters">
-                <button class="kb-knop" disabled="@auditBusy" @onclick="LoadAudit">Auditlogboek laden</button>
-                @if (auditBusy) { <span class="kb-zacht">bezig...</span> }
+                <button class="kb-knop" disabled="@auditBusy" @onclick="LoadAudit">@T["manage-ca.load-audit-log"]</button>
+                @if (auditBusy) { <span class="kb-zacht">@T["message-trace-card.busy"]</span> }
             </div>
             @if (auditError is not null) { <div class="kb-melding kb-fout">@auditError</div> }
             @if (audit is not null)

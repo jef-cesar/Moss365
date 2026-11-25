@@ -2,6 +2,15 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.38.1
+
+Languages (R15), second part: every shared component now comes from the dictionaries in five languages, as well as
+the start screen and the search with Ctrl+K: the plan preview (choose, run, confirm, results), the sign-in box, tables
+(filters, columns, export, pages), the helpdesk card, absence and forwarding, message trace, memberships, editing a
+user, the script forms and results, the library update, encryption, updates, job profiles, Conditional Access
+management, rooms, security and sign-ins. Sentences with a link or a value are one text per language, so a
+translation can put the words in its own order. 600 texts fewer in the screens (1,204 left, in the pages).
+
 ## 0.38.0
 
 Languages: the start of step R15 of the [roadmap](docs/roadmap-1.0.md).

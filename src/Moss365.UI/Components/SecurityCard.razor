@@ -2,43 +2,43 @@
 @inject ManagementState State
 
 <section class="kb-kaart kb-beveiliging">
-    <h2>Beveiliging</h2>
+    <h2>@T["group.beveiliging"]</h2>
     <table class="kb-tabel kb-naast">
         <tbody>
             <tr>
-                <th>MFA</th>
+                <th>@T["security-card.mfa"]</th>
                 <td>
                     @if (Person.Entra is null)
                     {
-                        <span class="kb-zacht">geen Entra-account</span>
+                        <span class="kb-zacht">@T["security-card.no-entra-account"]</span>
                     }
                     else if (State.Data.Security is not { MfaKnown: true } b)
                     {
-                        <span class="kb-zacht">onbekend (laad live: Verbindingen, Alles live laden)</span>
+                        <span class="kb-zacht">@T["security-card.unknown-load-live-connections-load"]</span>
                     }
                     else if (b.MfaOf(Person.Entra.Id) is not { } m)
                     {
-                        <span class="kb-zacht">niet in het rapport</span>
+                        <span class="kb-zacht">@T["security-card.not-in-the-report"]</span>
                     }
                     else if (m.MfaRegistered)
                     {
-                        <span class="kb-label kb-label-goed">geregistreerd</span>
+                        <span class="kb-label kb-label-goed">@T["security-card.registered"]</span>
                         <span>@string.Join(", ", m.Methods.Select(SecurityStatistics.MethodName))</span>
                         @if (m.DefaultMethod.Length > 0) { <span class="kb-zacht">(standaard: @SecurityStatistics.MethodName(m.DefaultMethod))</span> }
                     }
                     else
                     {
-                        <span class="kb-label kb-rood">⚠ geen MFA</span>
+                        <span class="kb-label kb-rood">@T["security-card.no-mfa"]</span>
                         @if (m.Methods.Count > 0) { <span class="kb-zacht">enkel: @string.Join(", ", m.Methods.Select(SecurityStatistics.MethodName))</span> }
                     }
                 </td>
             </tr>
             <tr>
-                <th>Entra-beheerrollen</th>
+                <th>@T["security-card.entra-admin-roles"]</th>
                 <td>
                     @if (State.Data.Security is not { RolesKnown: true } br)
                     {
-                        <span class="kb-zacht">onbekend</span>
+                        <span class="kb-zacht">@T["security-card.unknown"]</span>
                     }
                     else if (br.RolesOf(Person.Entra?.Id).ToList() is { Count: > 0 } roles)
                     {
@@ -49,12 +49,12 @@
                     }
                     else
                     {
-                        <span class="kb-zacht">geen</span>
+                        <span class="kb-zacht">@T["security-card.none"]</span>
                     }
                 </td>
             </tr>
             <tr>
-                <th>Bevoorrechte AD-groepen</th>
+                <th>@T["security-card.privileged-ad-groups"]</th>
                 <td>
                     @if (State.Data.AdGroupsOf(Person).Where(MirrorUser.IsPrivileged).ToList() is { Count: > 0 } groups)
                     {
@@ -65,7 +65,7 @@
                     }
                     else
                     {
-                        <span class="kb-zacht">geen</span>
+                        <span class="kb-zacht">@T["security-card.none"]</span>
                     }
                 </td>
             </tr>
@@ -75,8 +75,8 @@
     @if (Person.Entra is { } entra)
     {
         <div class="kb-filters">
-            <button class="kb-knop" disabled="@busy" @onclick="() => Load(entra.Id)">Aanmeldingen laden (30 dagen)</button>
-            <label><input type="checkbox" @bind="onlyFailed" /> Alleen mislukte</label>
+            <button class="kb-knop" disabled="@busy" @onclick="() => Load(entra.Id)">@T["security-card.load-sign-ins-30-days"]</button>
+            <label><input type="checkbox" @bind="onlyFailed" /> @T["security-card.only-failed"]</label>
         </div>
         @if (error is not null)
         {
