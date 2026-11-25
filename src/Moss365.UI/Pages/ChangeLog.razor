@@ -2,17 +2,16 @@
 @inject ManagementState State
 @inject NavigationManager Nav
 
-<h1>Logboek</h1>
+<h1>@T["menu.logboek"]</h1>
 
 <p class="kb-zacht">
-    Elke uitgevoerde wijziging in <strong>@State.Tenant.Name</strong>: wie, wanneer, wat en met welk resultaat. Wachtwoorden
-    staan er nooit in.
+    @Html("change-log.intro", State.Tenant.Name)
 </p>
 
 <div class="kb-filters">
-    <input class="kb-invoer kb-breed" placeholder="Filter op naam, groep, actie of resultaat" @bind="z.Filter" @bind:event="oninput" />
-    @if (ActiveKpi is null) { <label><input type="checkbox" @bind="z.OnlyErrors" /> Alleen mislukt</label> }
-    <button class="kb-knop" @onclick="Read">Vernieuwen</button>
+    <input class="kb-invoer kb-breed" placeholder="@T["change-log.filter-on-name-group-action"]" @bind="z.Filter" @bind:event="oninput" />
+    @if (ActiveKpi is null) { <label><input type="checkbox" @bind="z.OnlyErrors" /> @T["change-log.only-failed"]</label> }
+    <button class="kb-knop" @onclick="Read">@T["change-log.refresh"]</button>
 </div>
 
 <KpiFilter Kpi="ActiveKpi" Count="KpiRows().Count" Shown="Filtered().Count()" Cleared="() => z.Kpi = null" />
@@ -23,22 +22,20 @@
 }
 else if (rules.Count == 0)
 {
-    <div class="kb-melding">Nog niets uitgevoerd.</div>
+    <div class="kb-melding">@T["change-log.nothing-run-yet"]</div>
 }
 else
 {
     @if (State.Can(Permission.Manage))
     {
     <section class="kb-kaart">
-        <h2>Ongedaan maken</h2>
+        <h2>@T["change-log.undo"]</h2>
         <p class="kb-zacht">
-            Vink de wijzigingen aan die je wil terugdraaien, of kies een heel plan. De app maakt het omgekeerde plan (in omgekeerde
-            volgorde) en toont het eerst; pas na <strong>Uitvoeren</strong> en een bevestiging verandert er iets. Aanmaken,
-            wachtwoorden, licenties en verwijderde gasten kunnen niet terug.
+            @Html("change-log.undo.help")
         </p>
         <div class="kb-filters">
-            <select class="kb-invoer" @onchange="ChoosePlan" aria-label="Heel plan kiezen">
-                <option value="">Heel plan kiezen...</option>
+            <select class="kb-invoer" @onchange="ChoosePlan" aria-label="@T["change-log.choose-a-whole-plan"]">
+                <option value="">@T["change-log.choose-a-whole-plan-2"]</option>
                 @foreach (var pl in Plans())
                 {
                     <option value="@pl.Id">@pl.Text</option>
@@ -47,7 +44,7 @@ else
             <button class="kb-knop kb-primair" disabled="@(selected.Count == 0)" @onclick="MakeUndoPlan">Gekozen wijzigingen ongedaan maken (@selected.Count)</button>
             @if (selected.Count > 0)
             {
-                <button class="kb-knop" @onclick="() => { selected.Clear(); reverse = null; }">Keuze wissen</button>
+                <button class="kb-knop" @onclick="() => { selected.Clear(); reverse = null; }">@T["change-log.clear-choice"]</button>
             }
         </div>
     </section>
@@ -76,11 +73,11 @@ else
 @if (State.Can(Permission.ChangeLogAll))
 {
     <section class="kb-kaart">
-        <h2>Toegangslog</h2>
-        <p class="kb-zacht">Wie exporteerde en wie aanmeldingen of beveiligingsgegevens bekeek (de laatste 200). Enkel wat en hoeveel, nooit de inhoud.</p>
+        <h2>@T["change-log.access-log"]</h2>
+        <p class="kb-zacht">@T["change-log.who-exported-and-who-viewed"]</p>
         @if (access.Count == 0)
         {
-            <p class="kb-zacht">Nog niets.</p>
+            <p class="kb-zacht">@T["change-log.nothing-yet"]</p>
         }
         else
         {
@@ -92,10 +89,9 @@ else
 @if (State.Can(Permission.Manage))
 {
     <section class="kb-kaart">
-        <h2>Bewaartermijn</h2>
+        <h2>@T["change-log.retention-period"]</h2>
         <p class="kb-zacht">
-            Het logboek blijft @State.Config.ChangeLogSaveYears jaar in de databank (af te stemmen met de DPO; aan te passen bij
-            <a href="databank">Databank</a>, waar je ook de rest van de databank opruimt). Oudere regels archiveer je eerst naar een CSV; pas daarna kan je ze uit de databank halen.
+            @Html("change-log.retention", State.Config.ChangeLogSaveYears)
         </p>
         @if (tooOld == 0)
         {
@@ -105,19 +101,19 @@ else
         {
             <p><strong>@tooOld</strong> regels ouder dan @Limit.ToString("dd/MM/yyyy").</p>
             <div class="kb-filters">
-                <button class="kb-knop" @onclick="Archive">Archiveren naar CSV</button>
+                <button class="kb-knop" @onclick="Archive">@T["change-log.archive-to-csv"]</button>
                 @if (archive is not null)
                 {
                     <span class="kb-ok">@archive.Value.Count regels in <code>@archive.Value.FilePath</code></span>
                     @if (!removeConfirm)
                     {
-                        <button class="kb-knop kb-gevaar" @onclick="() => removeConfirm = true">Uit de databank halen</button>
+                        <button class="kb-knop kb-gevaar" @onclick="() => removeConfirm = true">@T["change-log.remove-from-the-database"]</button>
                     }
                     else
                     {
                         <span>@tooOld regels definitief uit de databank halen?</span>
-                        <button class="kb-knop kb-gevaar" @onclick="TakeAway">Ja, weghalen</button>
-                        <button class="kb-knop" @onclick="() => removeConfirm = false">Annuleren</button>
+                        <button class="kb-knop kb-gevaar" @onclick="TakeAway">@T["change-log.yes-remove"]</button>
+                        <button class="kb-knop" @onclick="() => removeConfirm = false">@T["action.cancel"]</button>
                     }
                 }
             </div>

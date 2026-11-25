@@ -4,23 +4,22 @@
 @* Licences and costs (R12, 0.35): the subscriptions with a price per month, the cost per department and division,
    licences that bring nothing (with a plan to remove them) and licences against the job profile. *@
 
-<h1>Licenties en kosten</h1>
+<h1>@T["menu.licenties"]</h1>
 
 <p class="kb-zacht">
-    Vul per licentie de prijs per maand in: dan zie je wat Microsoft 365 kost, per dienst en per afdeling, en wat je kan besparen.
-    Licenties weghalen is een plan zoals altijd.
+    @T["licences.fill-in-the-price-per"]
 </p>
 
 @if (State.Data.Licences.Count == 0)
 {
-    <div class="kb-melding">Geen licentiegegevens geladen: laad Entra live (Verbindingen).</div>
+    <div class="kb-melding">@T["licences.no-licence-data-loaded-load"]</div>
 }
 else
 {
     <section class="kb-kaart">
-        <h2>Abonnementen</h2>
+        <h2>@T["licences.subscriptions"]</h2>
         <table class="kb-tabel">
-            <thead><tr><th>Licentie</th><th class="kb-getal">In gebruik</th><th class="kb-getal">Totaal</th><th class="kb-getal">Vrij</th><th>Prijs per maand</th><th class="kb-getal">Kost per maand</th></tr></thead>
+            <thead><tr><th>@T["licences.licence"]</th><th class="kb-getal">@T["licences.in-use"]</th><th class="kb-getal">@T["licences.total"]</th><th class="kb-getal">@T["licences.free"]</th><th>@T["licences.price-per-month"]</th><th class="kb-getal">@T["licences.cost-per-month"]</th></tr></thead>
             <tbody>
                 @foreach (var l in State.Data.Licences.OrderByDescending(l => l.Assigned))
                 {
@@ -33,24 +32,24 @@ else
                     </tr>
                 }
             </tbody>
-            <tfoot><tr><th colspan="5">Totaal per maand (betaalde licenties)</th><th class="kb-getal">@Money(State.Data.Licences.Sum(l => LicenceAnalysis.PriceOf(State.Config, l.SkuPartNumber) * l.Total))</th></tr></tfoot>
+            <tfoot><tr><th colspan="5">@T["licences.total-per-month-paid-licences"]</th><th class="kb-getal">@Money(State.Data.Licences.Sum(l => LicenceAnalysis.PriceOf(State.Config, l.SkuPartNumber) * l.Total))</th></tr></tfoot>
         </table>
     </section>
 
     <div class="kb-kolommen">
         <section class="kb-kaart">
-            <h2>Per afdeling</h2>
+            <h2>@T["licences.per-division"]</h2>
             @CostTable(LicenceAnalysis.CostPer(State.Data, State.Config, p => State.Config.DivisionFor(p.Department)?.Name ?? string.Empty))
         </section>
         <section class="kb-kaart">
-            <h2>Per dienst</h2>
+            <h2>@T["licences.per-department"]</h2>
             @CostTable(LicenceAnalysis.CostPer(State.Data, State.Config, p => p.Department))
         </section>
     </div>
 
     <section class="kb-kaart">
         <h2>Licenties die niets opleveren (@Wasted.Count)</h2>
-        <p>Mogelijke besparing: <strong>@Money(LicenceAnalysis.Savings(Wasted, State.Config))</strong> per maand@(chosen.Count > 0 ? $"; gekozen: {Money(LicenceAnalysis.Savings(Chosen, State.Config))}" : null).</p>
+        <p>@Html("licences.savings", Money(LicenceAnalysis.Savings(Wasted, State.Config)), chosen.Count > 0 ? T.Format("licences.chosen", Money(LicenceAnalysis.Savings(Chosen, State.Config))) : string.Empty)</p>
         <div class="kb-filters">
             @foreach (var (kind, text) in Kinds)
             {
@@ -58,7 +57,7 @@ else
             }
         </div>
         <table class="kb-tabel">
-            <thead><tr><th></th><th>Account</th><th>Waarom</th><th>Licenties</th><th class="kb-getal">Per maand</th></tr></thead>
+            <thead><tr><th></th><th>@T["security.account"]</th><th>@T["nested-groups.why"]</th><th>@T["job-profile-editor.licences"]</th><th class="kb-getal">@T["licences.per-month"]</th></tr></thead>
             <tbody>
                 @foreach (var w in Wasted.Where(w => filter is null || w.Kind == filter))
                 {
@@ -84,7 +83,7 @@ else
         <section class="kb-kaart">
             <h2>Volgens het functieprofiel (@ByProfile.Count)</h2>
             <table class="kb-tabel">
-                <thead><tr><th>Account</th><th>Profiel</th><th>Ontbreekt</th><th>Meer dan het profiel</th></tr></thead>
+                <thead><tr><th>@T["security.account"]</th><th>@T["nav.profile"]</th><th>@T["job-profiles.missing"]</th><th>@T["licences.more-than-the-profile"]</th></tr></thead>
                 <tbody>
                     @foreach (var r in ByProfile)
                     {
@@ -92,7 +91,7 @@ else
                     }
                 </tbody>
             </table>
-            <p class="kb-zacht">Toepassen en opkuisen doe je bij <a href="functieprofielen">Functieprofielen</a>.</p>
+            <p class="kb-zacht">@Html("licences.apply")</p>
         </section>
     }
 }

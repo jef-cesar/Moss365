@@ -2,12 +2,9 @@
 50 Pages/CaOverview.razor
 27 Pages/CaPolicyDetail.razor
 79 Pages/CaPolicyEditor.razor
-24 Pages/ChangeLog.razor
 47 Pages/Connections.razor
 29 Pages/DatabaseMaintenance.razor
 34 Pages/GroupDetail.razor
-21 Pages/JobProfilesPage.razor
-24 Pages/LicencesPage.razor
 29 Pages/LogonScripts.razor
 42 Pages/MailboxDetail.razor
 53 Pages/NewUser.razor
@@ -16,8 +13,6 @@
 37 Pages/ReportsPage.razor
 30 Pages/RequestsPage.razor
 38 Pages/RoomDetail.razor
-24 Pages/Scheduled.razor
-23 Pages/Security.razor
 37 Pages/SetUpTenant.razor
 35 Pages/Statistics.razor
 43 Pages/Tenants.razor

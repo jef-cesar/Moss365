@@ -1,7 +1,7 @@
 @page "/beveiliging"
 @inherits RefreshingPage
 
-<h1>Beveiliging</h1>
+<h1>@T["group.beveiliging"]</h1>
 
 <p class="kb-zacht">
     MFA-registraties en beheerrollen uit Entra (@(State.Data.Security is null ? "niet geladen" : State.OriginOf(new ObjectRef(ObjectKind.User, "", "")))),
@@ -11,9 +11,7 @@
 @if (State.Data.Security is not { } b)
 {
     <div class="kb-melding">
-        Nog geen beveiligingsgegevens. Kies op <a href="verbindingen">Verbindingen</a> <strong>Alles live laden</strong> of
-        <strong>Live laden (AD en Entra)</strong>; de stap "Beveiliging lezen" haalt MFA en beheerrollen op. Daarvoor heeft je
-        account de rol Reports Reader, Security Reader of Global Reader nodig, en de tenant Entra ID P1 (zit in Business Premium).
+        @Html("security.nodata")
     </div>
 }
 else
@@ -35,7 +33,7 @@ else
         <h2>Actieve medewerkers zonder MFA (@WithoutMfa.Count)</h2>
         @if (!b.MfaKnown)
         {
-            <p class="kb-zacht">Onbekend: de MFA-registraties konden niet gelezen worden.</p>
+            <p class="kb-zacht">@T["security.unknown-the-mfa-registrations-could"]</p>
         }
         else
         {
@@ -45,7 +43,7 @@ else
 
     <section class="kb-kaart">
         <h2>Entra-beheerrollen (@b.Roles.Count)</h2>
-        <p class="kb-zacht">Actieve roltoewijzingen. Wie via PIM enkel in aanmerking komt (nog niet geactiveerd), staat hier niet.</p>
+        <p class="kb-zacht">@T["security.active-role-assignments-who-is"]</p>
         <KbTable Id="beheerrollen" ExportName="Beheerrollen" Items="b.Roles" Columns="roleColumns" DefaultSorting="rol" />
     </section>
 
@@ -54,22 +52,22 @@ else
         <ul class="kb-lijst-plat">
             @foreach (var (p, groups) in AdPrivileged)
             {
-                <li><ObjectLink Object="State.Data.Index.Ref(p)" /> <span class="kb-zacht">@string.Join(", ", groups)</span> @if (!p.Enabled) { <span class="kb-label">uitgeschakeld</span> }</li>
+                <li><ObjectLink Object="State.Data.Index.Ref(p)" /> <span class="kb-zacht">@string.Join(", ", groups)</span> @if (!p.Enabled) { <span class="kb-label">@T["helpdesk.disabled"]</span> }</li>
             }
         </ul>
     </section>
 }
 
 <section class="kb-kaart">
-    <h2>Mislukte aanmeldingen</h2>
+    <h2>@T["security.failed-sign-ins"]</h2>
     <div class="kb-filters">
-        <select class="kb-invoer" @bind="days" aria-label="Periode">
-            <option value="1">laatste 24 uur</option>
-            <option value="7">laatste 7 dagen</option>
-            <option value="30">laatste 30 dagen</option>
+        <select class="kb-invoer" @bind="days" aria-label="@T["security.period"]">
+            <option value="1">@T["security.last-24-hours"]</option>
+            <option value="7">@T["security.last-7-days"]</option>
+            <option value="30">@T["security.last-30-days"]</option>
         </select>
-        <button class="kb-knop" disabled="@busy" @onclick="LoadSignIns">Live laden</button>
-        @if (busy) { <span class="kb-zacht">bezig...</span> }
+        <button class="kb-knop" disabled="@busy" @onclick="LoadSignIns">@T["security.load-live"]</button>
+        @if (busy) { <span class="kb-zacht">@T["message-trace-card.busy"]</span> }
     </div>
     @if (error is not null)
     {
@@ -79,7 +77,7 @@ else
     {
         <p class="kb-zacht">@failed.Count mislukte aanmeldingen (de nieuwste 500), samengevat per account.</p>
         <table class="kb-tabel">
-            <thead><tr><th>Account</th><th class="kb-getal">Aantal</th><th>Laatste</th><th>Reden (laatste)</th><th>Plaatsen</th></tr></thead>
+            <thead><tr><th>@T["security.account"]</th><th class="kb-getal">@T["suggestions-panel.number"]</th><th>@T["security.last"]</th><th>@T["security.reason-last"]</th><th>@T["security.locations"]</th></tr></thead>
             <tbody>
                 @foreach (var g in failed.GroupBy(a => a.Upn).OrderByDescending(g => g.Count()))
                 {
@@ -95,7 +93,7 @@ else
             </tbody>
         </table>
         <details>
-            <summary>Alle mislukte aanmeldingen</summary>
+            <summary>@T["security.all-failed-sign-ins"]</summary>
             <SignInList SignIns="failed" />
         </details>
     }

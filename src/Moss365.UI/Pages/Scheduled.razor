@@ -1,33 +1,31 @@
 @page "/gepland"
 @inherits RefreshingPage
 
-<h1>Gepland</h1>
+<h1>@T["menu.gepland"]</h1>
 
 <p class="kb-zacht">
-    Uit- en instroom, scripts en het einde van een tijdelijke uitzondering op een Conditional Access-beleid, klaargezet voor later. De app voert niets vanzelf uit: is het moment voorbij, dan staat de actie
-    hier klaar en verschijnt er een melding onderaan het menu. Kies <strong>Plan tonen</strong>, kijk het na en voer het uit.
-    Een uitstroom wordt dan opnieuw berekend uit de gegevens van dat moment; laad daarom eerst live.
+    @Html("scheduled.intro")
 </p>
 
 @if (!State.IsLive && actions.Any(a => a.IsDue(DateTimeOffset.Now)))
 {
-    <div class="kb-melding">De gegevens zijn niet live. <a href="verbindingen">Laad eerst live</a>, zodat het plan klopt met de huidige toestand.</div>
+    <div class="kb-melding">@Html("scheduled.notlive")</div>
 }
 
 @if (actions.Count == 0)
 {
-    <div class="kb-melding">Niets gepland. Inplannen doe je bij <a href="uitstroom">Uitstroom</a>, <a href="nieuw">Nieuwe gebruiker</a> of <a href="scripts">Scripts</a>.</div>
+    <div class="kb-melding">@Html("scheduled.none")</div>
 }
 else
 {
     <table class="kb-tabel">
-        <thead><tr><th>Wanneer</th><th>Wat</th><th>Ingepland door</th><th></th></tr></thead>
+        <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["service-health-card.what"]</th><th>@T["scheduled.scheduled-by"]</th><th></th></tr></thead>
         <tbody>
             @foreach (var a in actions)
             {
                 var done = a.IsDue(DateTimeOffset.Now);
                 <tr class="@(done ? "kb-vervallen" : null)">
-                    <td>@a.When.ToString("ddd dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.GetCultureInfo("nl-BE")) @if (done) { <span class="kb-label kb-label-let">klaar om uit te voeren</span> }</td>
+                    <td>@a.When.ToString("ddd dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.GetCultureInfo("nl-BE")) @if (done) { <span class="kb-label kb-label-let">@T["scheduled.ready-to-run"]</span> }</td>
                     <td>
                         @if (a.Kind == ScheduledKind.Script)
                         {
@@ -35,7 +33,7 @@ else
                         }
                         else if (a.Kind == ScheduledKind.Offboarding && a.PersonKey is { } key && State.Data.SearchPerson(key) is { } p)
                         {
-                            <text>Uitstroom van </text><ObjectLink Object="State.Data.Index.Ref(p)" />
+                            @T["scheduled.offboardingof"] <ObjectLink Object="State.Data.Index.Ref(p)" />
                         }
                         else
                         {
@@ -47,20 +45,20 @@ else
                         <span class="kb-filters">
                             @if (a.Kind == ScheduledKind.Script)
                             {
-                                <a class="kb-knop kb-klein @(done ? "kb-primair" : null)" href="@($"scripts/starten/{Uri.EscapeDataString(a.ScriptKey ?? string.Empty)}?gepland={a.Id}")">Starten</a>
+                                <a class="kb-knop kb-klein @(done ? "kb-primair" : null)" href="@($"scripts/starten/{Uri.EscapeDataString(a.ScriptKey ?? string.Empty)}?gepland={a.Id}")">@T["script-run-panel.start"]</a>
                             }
                             else
                             {
-                                <button class="kb-knop kb-klein @(done ? "kb-primair" : null)" @onclick="() => Show(a)">Plan tonen</button>
+                                <button class="kb-knop kb-klein @(done ? "kb-primair" : null)" @onclick="() => Show(a)">@T["scheduled.show-plan"]</button>
                             }
                             @if (remove == a.Id)
                             {
-                                <button class="kb-knop kb-klein kb-gevaar" @onclick="() => Remove(a)">Ja, schrappen</button>
-                                <button class="kb-knop kb-klein" @onclick="() => remove = null">Nee</button>
+                                <button class="kb-knop kb-klein kb-gevaar" @onclick="() => Remove(a)">@T["scheduled.yes-cancel-it"]</button>
+                                <button class="kb-knop kb-klein" @onclick="() => remove = null">@T["script-run-panel.no"]</button>
                             }
                             else
                             {
-                                <button class="kb-knop kb-klein" @onclick="() => remove = a.Id">Schrappen</button>
+                                <button class="kb-knop kb-klein" @onclick="() => remove = a.Id">@T["scheduled.cancel"]</button>
                             }
                         </span>
                     </td>
@@ -90,9 +88,9 @@ else
     @if (password is not null)
     {
         <section class="kb-kaart kb-geheim">
-            <h2>Startwachtwoord</h2>
+            <h2>@T["scheduled.initial-password"]</h2>
             <CopyField Value="@password" Label="Startwachtwoord" Secret="true" />
-            <p class="kb-zacht">Geef dit door aan de gebruiker; het moet gewijzigd worden bij de eerste aanmelding. De app bewaart het nergens.</p>
+            <p class="kb-zacht">@T["scheduled.pass-this-on-to-the"]</p>
         </section>
     }
 

@@ -3,25 +3,22 @@
 @inject NavigationManager Nav
 @* Job profiles (R9, 0.22): who holds a profile, who has more or less, and applying a profile to a user as a plan. *@
 
-<h1>Functieprofielen</h1>
+<h1>@T["menu.organisatie.functieprofielen"]</h1>
 
 <p class="kb-zacht">
-    Kies een profiel: je ziet wie het heeft (gekregen via de app, of met dezelfde functie) en wie meer of minder heeft dan het
-    profiel. Toepassen is een plan zoals altijd: eerst een voorbeeld, dan bevestigen. Wat iemand meer heeft, stelt de app
-    enkel voor (niet aangevinkt). De profielen zelf maak je bij
-    <a href="organisatie/functieprofielen">Instellingen &gt; Organisatie &gt; Functieprofielen</a>.
+    @Html("job-profiles.intro")
 </p>
 
 @if (State.Config.JobProfiles.Count == 0)
 {
-    <div class="kb-melding">Er zijn nog geen functieprofielen. Maak er een bij <a href="organisatie/functieprofielen">Organisatie</a>, bv. van een gebruiker die de job al heeft.</div>
+    <div class="kb-melding">@Html("job-profiles.none")</div>
 }
 else
 {
     <div class="kb-rij">
-        <label>Profiel
-            <select class="kb-invoer" aria-label="Profiel" @onchange="e => Go(e.Value?.ToString(), null)">
-                <option value="" selected="@(profile is null)">(kies)</option>
+        <label>@T["nav.profile"]
+            <select class="kb-invoer" aria-label="@T["nav.profile"]" @onchange="e => Go(e.Value?.ToString(), null)">
+                <option value="" selected="@(profile is null)">@T["script-form.choose"]</option>
                 @foreach (var p in State.Config.JobProfiles.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
                 {
                     <option value="@p.Id" selected="@(p.Id == profile?.Id)">@p.Name (versie @p.Version)</option>
@@ -41,7 +38,7 @@ else
             else
             {
                 <table class="kb-tabel">
-                    <thead><tr><th>Naam</th><th>Functie</th><th>Gekregen</th><th class="kb-getal">Ontbreekt</th><th class="kb-getal">Meer</th><th></th></tr></thead>
+                    <thead><tr><th>@T["variables-editor.name"]</th><th>@T["bulk-tasks.job-title"]</th><th>@T["job-profiles.received"]</th><th class="kb-getal">@T["job-profiles.missing"]</th><th class="kb-getal">@T["job-profiles.more"]</th><th></th></tr></thead>
                     <tbody>
                         @foreach (var (p, items) in holders)
                         {
@@ -52,7 +49,7 @@ else
                                 <td>@(a is { } x && x.ProfileId == profile.Id ? $"versie {x.Version}, {x.Applied.LocalDateTime:dd/MM/yyyy}" + (x.Version < profile.Version ? " (oudere versie)" : null) : "functie")</td>
                                 <td class="kb-getal">@items.Count(i => i.Status == ProfileStatus.Missing)</td>
                                 <td class="kb-getal">@items.Count(i => i.Status == ProfileStatus.Extra)</td>
-                                <td><button class="kb-knop kb-klein" @onclick="() => Go(profile.Id, p.Key)">Bekijken</button></td>
+                                <td><button class="kb-knop kb-klein" @onclick="() => Go(profile.Id, p.Key)">@T["script-run-panel.view"]</button></td>
                             </tr>
                         }
                     </tbody>
@@ -73,7 +70,7 @@ else
                     }
                 </div>
                 <table class="kb-tabel">
-                    <thead><tr><th>Soort</th><th>Wat</th><th>Status</th><th>Opmerking</th></tr></thead>
+                    <thead><tr><th>@T["nested-groups.kind"]</th><th>@T["service-health-card.what"]</th><th>@T["service-health-card.status"]</th><th>@T["mirror.note"]</th></tr></thead>
                     <tbody>
                         @foreach (var i in comparison.OrderBy(i => i.Status == ProfileStatus.Has).ThenBy(i => i.Kind))
                         {
@@ -89,8 +86,8 @@ else
                 @if (State.Can(Permission.Actions))
                 {
                     <div class="kb-filters">
-                        <label><input type="checkbox" @bind="removeExtras" @bind:after="() => outcome = null" /> Wat meer is ook voorstellen om weg te halen (niet aangevinkt)</label>
-                        <button class="kb-knop kb-primair" @onclick="MakePlan">Plan maken</button>
+                        <label><input type="checkbox" @bind="removeExtras" @bind:after="() => outcome = null" /> @T["job-profiles.also-suggest-removing-what-is"]</label>
+                        <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
                     </div>
                 }
             </section>
