@@ -372,6 +372,8 @@ Done in 0.34 (R11): the Beveiligingscontroles screen with all of the above; AD h
 | **Cost per month** (price per licence configurable), per department and division, with its trend | For the budget |
 | **Licences according to the job profile**: who has more or less than their profile | Clean-up and fair distribution |
 
+Done in 0.35 (R12): the Licenties en kosten screen with all of the above; the KPI "licentie-verspild" has its trend.
+
 ### Devices, Teams and SharePoint (R13)
 
 | Proposal | Why |

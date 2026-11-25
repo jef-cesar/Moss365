@@ -42,6 +42,7 @@ public static class Access
             "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "beveiliging" or "conditional-access" or "inrichten" => hasMicrosoft365,
             "vergelijk" => hasAd && hasMicrosoft365,
             "logonscripts" or "wachtwoorden" => hasAd,
+            "licenties" => hasMicrosoft365,
             "nieuw" => hasAd || hasMicrosoft365, // in AD, or in the cloud (0.31)
             _ => true,
         };

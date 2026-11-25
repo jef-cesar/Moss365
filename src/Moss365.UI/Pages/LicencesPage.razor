@@ -1,0 +1,160 @@
+@page "/licenties"
+@inherits RefreshingPage
+@using Moss365.Core.Licences
+@* Licences and costs (R12, 0.35): the subscriptions with a price per month, the cost per department and division,
+   licences that bring nothing (with a plan to remove them) and licences against the job profile. *@
+
+<h1>Licenties en kosten</h1>
+
+<p class="kb-zacht">
+    Vul per licentie de prijs per maand in: dan zie je wat Microsoft 365 kost, per dienst en per afdeling, en wat je kan besparen.
+    Licenties weghalen is een plan zoals altijd.
+</p>
+
+@if (State.Data.Licences.Count == 0)
+{
+    <div class="kb-melding">Geen licentiegegevens geladen: laad Entra live (Verbindingen).</div>
+}
+else
+{
+    <section class="kb-kaart">
+        <h2>Abonnementen</h2>
+        <table class="kb-tabel">
+            <thead><tr><th>Licentie</th><th class="kb-getal">In gebruik</th><th class="kb-getal">Totaal</th><th class="kb-getal">Vrij</th><th>Prijs per maand</th><th class="kb-getal">Kost per maand</th></tr></thead>
+            <tbody>
+                @foreach (var l in State.Data.Licences.OrderByDescending(l => l.Assigned))
+                {
+                    <tr>
+                        <td>@Name(l.SkuPartNumber) <span class="kb-zacht">@l.SkuPartNumber</span></td>
+                        <td class="kb-getal">@l.Assigned</td><td class="kb-getal">@l.Total</td><td class="kb-getal">@l.Free</td>
+                        <td><input class="kb-invoer kb-smal" type="number" min="0" step="0.01" value="@Price(l.SkuPartNumber)" aria-label="@($"Prijs {l.SkuPartNumber}")"
+                                   disabled="@(!State.Can(Permission.Settings))" @onchange="e => SetPrice(l.SkuPartNumber, e.Value)" /></td>
+                        <td class="kb-getal">@Money(LicenceAnalysis.PriceOf(State.Config, l.SkuPartNumber) * l.Total)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot><tr><th colspan="5">Totaal per maand (betaalde licenties)</th><th class="kb-getal">@Money(State.Data.Licences.Sum(l => LicenceAnalysis.PriceOf(State.Config, l.SkuPartNumber) * l.Total))</th></tr></tfoot>
+        </table>
+    </section>
+
+    <div class="kb-kolommen">
+        <section class="kb-kaart">
+            <h2>Per afdeling</h2>
+            @CostTable(LicenceAnalysis.CostPer(State.Data, State.Config, p => State.Config.DivisionFor(p.Department)?.Name ?? string.Empty))
+        </section>
+        <section class="kb-kaart">
+            <h2>Per dienst</h2>
+            @CostTable(LicenceAnalysis.CostPer(State.Data, State.Config, p => p.Department))
+        </section>
+    </div>
+
+    <section class="kb-kaart">
+        <h2>Licenties die niets opleveren (@Wasted.Count)</h2>
+        <p>Mogelijke besparing: <strong>@Money(LicenceAnalysis.Savings(Wasted, State.Config))</strong> per maand@(chosen.Count > 0 ? $"; gekozen: {Money(LicenceAnalysis.Savings(Chosen, State.Config))}" : null).</p>
+        <div class="kb-filters">
+            @foreach (var (kind, text) in Kinds)
+            {
+                <button class="kb-knop kb-klein @(filter == kind ? "kb-primair" : null)" @onclick="() => filter = filter == kind ? null : kind">@text (@Wasted.Count(w => w.Kind == kind))</button>
+            }
+        </div>
+        <table class="kb-tabel">
+            <thead><tr><th></th><th>Account</th><th>Waarom</th><th>Licenties</th><th class="kb-getal">Per maand</th></tr></thead>
+            <tbody>
+                @foreach (var w in Wasted.Where(w => filter is null || w.Kind == filter))
+                {
+                    var key = Key(w);
+                    <tr>
+                        <td><input type="checkbox" checked="@chosen.Contains(key)" aria-label="@w.Person.Name" @onchange="e => Toggle(key, e.Value is true)" /></td>
+                        <td><a href="@Searcher.Link(w.Person)">@w.Person.Name</a> <span class="kb-label">@w.KindText</span></td>
+                        <td class="kb-zacht">@w.Reason</td>
+                        <td>@string.Join(", ", w.Skus)</td>
+                        <td class="kb-getal">@Money(w.Skus.Sum(s => LicenceAnalysis.PriceOf(State.Config, s)))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (State.Can(Permission.Manage) && !State.IsHistoric)
+        {
+            <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0)" @onclick="MakePlan">Licenties weghalen (@chosen.Count)</button>
+        }
+    </section>
+
+    @if (ByProfile.Count > 0)
+    {
+        <section class="kb-kaart">
+            <h2>Volgens het functieprofiel (@ByProfile.Count)</h2>
+            <table class="kb-tabel">
+                <thead><tr><th>Account</th><th>Profiel</th><th>Ontbreekt</th><th>Meer dan het profiel</th></tr></thead>
+                <tbody>
+                    @foreach (var r in ByProfile)
+                    {
+                        <tr><td><a href="@Searcher.Link(r.Person)">@r.Person.Name</a></td><td>@r.Profile.Name</td><td>@string.Join(", ", r.Missing)</td><td>@string.Join(", ", r.Extra)</td></tr>
+                    }
+                </tbody>
+            </table>
+            <p class="kb-zacht">Toepassen en opkuisen doe je bij <a href="functieprofielen">Functieprofielen</a>.</p>
+        </section>
+    }
+}
+
+@if (outcome is not null)
+{
+    @foreach (var e in outcome.Errors) { <div class="kb-melding">@e</div> }
+    @if (outcome.Plan.Count > 0) { <PlanView Plan="outcome.Plan" Context="Licenties opkuisen" Title="Licenties weghalen" /> }
+}
+
+@code {
+    private static readonly (WasteKind, string)[] Kinds =
+    {
+        (WasteKind.Disabled, "Uitgeschakeld"), (WasteKind.SharedMailbox, "Gedeelde postvakken"), (WasteKind.Duplicate, "Dubbele plannen"), (WasteKind.Unused, "Niet gebruikt (90 dagen)"),
+    };
+
+    private WasteKind? filter;
+    private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
+    private PlanOutcome? outcome;
+
+    private IReadOnlyList<WastedLicence> Wasted => LicenceAnalysis.Wasted(State.Data, DateTime.Now);
+
+    private IReadOnlyList<WastedLicence> Chosen => Wasted.Where(w => chosen.Contains(Key(w))).ToList();
+
+    private IReadOnlyList<ProfileLicenceRow> ByProfile => LicenceAnalysis.ByProfile(State.Data, State.Config, State.ProfileAssignments());
+
+    private static string Key(WastedLicence w) => $"{w.Person.Key}|{w.Kind}";
+
+    private string Name(string sku) => State.Config.Licences.FirstOrDefault(l => string.Equals(l.Sku, sku, StringComparison.OrdinalIgnoreCase))?.Name ?? string.Empty;
+
+    private string Price(string sku) => State.Config.LicencePrices.TryGetValue(sku, out var p) ? p.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) : string.Empty;
+
+    private static string Money(decimal value) => value.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("nl-BE"));
+
+    private void SetPrice(string sku, object? value)
+    {
+        var text = value?.ToString()?.Replace(',', '.') ?? string.Empty;
+        if (text.Length == 0)
+        {
+            State.Config.LicencePrices.Remove(sku);
+        }
+        else if (decimal.TryParse(text, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var price) && price >= 0)
+        {
+            State.Config.LicencePrices[sku] = price;
+        }
+
+        State.SaveConfig();
+    }
+
+    private void Toggle(string key, bool on)
+    {
+        if (on) { chosen.Add(key); } else { chosen.Remove(key); }
+        outcome = null;
+    }
+
+    private void MakePlan() => outcome = LicenceAnalysis.Remove(State.Data, Chosen);
+
+    private RenderFragment CostTable(IReadOnlyList<CostRow> rows) => __builder =>
+    {
+        <table class="kb-tabel">
+            <thead><tr><th>Naam</th><th class="kb-getal">Mensen</th><th class="kb-getal">Per maand</th></tr></thead>
+            <tbody>@foreach (var r in rows.Take(25)) { <tr><td>@r.Name</td><td class="kb-getal">@r.People</td><td class="kb-getal">@Money(r.Cost)</td></tr> }</tbody>
+        </table>
+    };
+}

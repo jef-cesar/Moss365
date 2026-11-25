@@ -90,6 +90,9 @@ public static class Kpis
     public static readonly Kpi Privileged = new("bevoorrecht", "in een bevoorrechte AD-groep", KpiList.Users, Attention: true);
     public static readonly Kpi PrivilegedAll = new("bevoorrecht-alle", "in een bevoorrechte AD-groep (ook uitgeschakeld)", KpiList.Users);
 
+    // Licences (0.35): accounts with a licence that brings nothing (disabled, shared mailbox, duplicate plan, not used)
+    public static readonly Kpi WastedLicences = new("licentie-verspild", "accounts met een licentie die niets oplevert", KpiList.Users, Attention: true);
+
     // Security
     public static readonly Kpi WithoutMfa = new("zonder-mfa", "actieve medewerkers zonder MFA", KpiList.Users, Attention: true);
     public static readonly Kpi AdministratorsWithoutMfa = new("beheerders-zonder-mfa", "beheerders zonder MFA", KpiList.Users, Attention: true);
@@ -290,6 +293,7 @@ public static class Kpis
             "zonder-mfa" => security is null ? Enumerable.Empty<Person>() : b.Active.Where(p => security.MfaOf(p.Entra?.Id) is { MfaRegistered: false }),
             "beheerders-zonder-mfa" => WithRole(d, r => SecurityData.IsCriticalRole(r.Role) && security!.MfaOf(r.MemberId) is { MfaRegistered: false }),
             "beheerrol" => WithRole(d, _ => true),
+            "licentie-verspild" => Licences.LicenceAnalysis.Wasted(d, now).Select(w => w.Person),
             "global-admin" => WithRole(d, r => r.Role == "Global Administrator"),
             "buiten-mfa-beleid" => b.CaFindings.FirstOrDefault(x => x.Subject == "Medewerkers zonder MFA-beleid")?.Persons ?? Enumerable.Empty<Person>(),
             _ when k.Key.StartsWith("bron:", StringComparison.Ordinal) => d.Persons.Where(p => p.Source == k.Value),

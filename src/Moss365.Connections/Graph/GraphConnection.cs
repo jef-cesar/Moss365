@@ -1206,6 +1206,13 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                 {
                     var u = await _client.GetAsync($"/users/{userId}?$select=assignedLicenses", cancel);
                     var ids = u.GetProperty("assignedLicenses").EnumerateArray().Select(l => S(l, "skuId")).ToArray();
+                    // Only some licences (0.35, a duplicate plan); otherwise all
+                    var only = w.P("skuIds").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    if (only.Length > 0)
+                    {
+                        ids = ids.Where(i => only.Contains(i, StringComparer.OrdinalIgnoreCase)).ToArray();
+                    }
+
                     if (ids.Length == 0)
                     {
                         return ChangeResult.Ok(w, "Had geen licenties.");

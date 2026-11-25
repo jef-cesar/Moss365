@@ -33,7 +33,7 @@ public static class MenuModel
         }),
         new MenuGroup("Inzicht", new MenuItem[]
         {
-            new("statistieken", "Statistieken"), new("geschiedenis", "Geschiedenis"), new("vergelijk", "AD tegenover Entra"), new("logboek", "Logboek"),
+            new("statistieken", "Statistieken"), new("licenties", "Licenties en kosten"), new("geschiedenis", "Geschiedenis"), new("vergelijk", "AD tegenover Entra"), new("logboek", "Logboek"),
         }),
         new MenuGroup("Werk", new MenuItem[]
         {

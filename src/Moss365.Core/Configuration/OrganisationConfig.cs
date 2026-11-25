@@ -79,6 +79,9 @@ public sealed class OrganisationConfig
     /// <summary>The reminder e-mail for a password that expires ({naam}, {datum}, {dagen}); empty = the default text.</summary>
     public string? PasswordReminderText { get; set; }
 
+    /// <summary>The price per month of a licence, by SKU (0.35); a licence without a price counts as 0.</summary>
+    public Dictionary<string, decimal> LicencePrices { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Job profiles (R9, 0.22): what someone in a job gets.</summary>
     public List<JobProfile> JobProfiles { get; set; } = new();
 

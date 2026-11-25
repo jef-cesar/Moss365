@@ -602,3 +602,4 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 .kb-controle-attention { background: #b26a00; color: #fff; }
 .kb-controle-problem { background: var(--kb-rood); color: #fff; }
 .kb-controle-unknown { background: var(--kb-lijn); color: var(--kb-tekst); }
+.kb-smal { width: 7rem; }

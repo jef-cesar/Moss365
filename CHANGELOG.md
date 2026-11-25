@@ -2,6 +2,21 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.35.0
+
+Licences and costs: step R12 of the [roadmap](docs/roadmap-1.0.md).
+
+- **Licenties en kosten** (Inzicht): the subscriptions (in use, total, free) with a **price per month** per licence, the
+  cost per month in total, **per division and per department**.
+- **Licences that bring nothing**: disabled accounts with a licence, shared mailboxes with a licence, **duplicate plans**
+  (a licence that is already part of another one, such as Office 365 E3 next to Microsoft 365 E3) and licences not used
+  for 90 days, with the possible saving per month. **Licenties weghalen** is a plan: for a duplicate plan only the
+  licence that is already included goes, otherwise all licences of the account (with the warning about the mailbox).
+- **Volgens het functieprofiel**: who has more or fewer licences than their job profile.
+- The number of accounts with a licence that brings nothing is a **KPI with its trend** (from the snapshots).
+- The 0.33 changes came to GitHub with 0.34 (the 0.33 build stopped on a test); the status bar no longer reads the live
+  parts while they change.
+
 ## 0.34.0
 
 Security checks: step R11 of the [roadmap](docs/roadmap-1.0.md) (the Conditional Access editor of R11 came in 0.30).
