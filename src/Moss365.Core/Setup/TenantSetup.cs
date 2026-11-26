@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Moss365.Core.Changes;
@@ -189,9 +190,9 @@ public sealed record SetupChoices(bool CreateGroups = true, bool AssignSignedIn 
 /// </summary>
 public static class TenantSetup
 {
-    public const string AppStep = "App-registratie";
-    public const string ProfilesStep = "Profielen";
-    public const string TenantStep = "Tenant";
+    public static string AppStep => Localization.Texts.T["setup.step.app"];
+    public static string ProfilesStep => Localization.Texts.T["setup.step.profiles"];
+    public static string TenantStep => Localization.Texts.T["setup.step.tenant"];
 
     public static SetupAssessment Assess(TenantSetupReading r, SetupChoices? choices = null)
     {
@@ -200,19 +201,18 @@ public static class TenantSetup
         var plan = new List<Change>();
 
         items.Add(new(TenantStep, r.OrganisationName.Length > 0 ? r.OrganisationName : r.TenantId, SetupStatus.InOrder,
-            $"Tenant {r.TenantId}" + (r.VerifiedDomains.Count > 0 ? "; domeinen " + string.Join(", ", r.VerifiedDomains) : string.Empty) + "."));
+            r.VerifiedDomains.Count > 0 ? Localization.Texts.T.Format("setup.tenant.domains", r.TenantId, string.Join(", ", r.VerifiedDomains)) : Localization.Texts.T.Format("setup.tenant", r.TenantId)));
         items.Add(r.SyncEnabled switch
         {
-            true => new(TenantStep, "Hybride", SetupStatus.InOrder,
-                "Accounts komen uit AD (Entra Connect of Cloud Sync)" + (r.LastSync is { } l ? $", laatste synchronisatie {l.LocalDateTime:dd/MM/yyyy HH:mm}" : string.Empty)
-                + ". Wijzigingen aan gesynchroniseerde accounts schrijft de app in AD."),
-            false => new(TenantStep, "Enkel cloud", SetupStatus.InOrder, "Geen synchronisatie met AD: de app schrijft alles in Entra."),
-            _ => new(TenantStep, "Hybride", SetupStatus.Unknown, "Niet te lezen of AD gesynchroniseerd wordt."),
+            true => new(TenantStep, Texts.T["code.tenant-setup.hybrid"], SetupStatus.InOrder,
+                r.LastSync is { } l ? Localization.Texts.T.Format("setup.hybrid.synced", l.LocalDateTime) : Localization.Texts.T["setup.hybrid"]),
+            false => new(TenantStep, Texts.T["code.tenant-setup.cloud-only"], SetupStatus.InOrder, Texts.T["code.tenant-setup.no-synchronisation-with-ad-the"]),
+            _ => new(TenantStep, Texts.T["code.tenant-setup.hybrid"], SetupStatus.Unknown, Texts.T["code.tenant-setup.cannot-read-whether-ad-is"]),
         });
 
         if (r.GraphSp is null)
         {
-            items.Add(new(AppStep, "Microsoft Graph", SetupStatus.Missing, "Microsoft Graph staat niet in deze tenant; zo kan de app niets."));
+            items.Add(new(AppStep, "Microsoft Graph", SetupStatus.Missing, Texts.T["code.tenant-setup.microsoft-graph-is-not-in"]));
             return new SetupAssessment(items, plan, r.App?.AppId);
         }
 
@@ -225,13 +225,13 @@ public static class TenantSetup
             }
             else
             {
-                items.Add(new(AppStep, scope, SetupStatus.Attention, "Dit recht bestaat niet bij Microsoft Graph in deze tenant."));
+                items.Add(new(AppStep, scope, SetupStatus.Attention, Texts.T["code.tenant-setup.this-permission-does-not-exist"]));
             }
         }
 
         if (r.ExchangeSp is null)
         {
-            items.Add(new(AppStep, "Exchange Online", SetupStatus.Attention, "Exchange Online staat niet in deze tenant (geen licentie?): de app werkt zonder postvakken en rooms."));
+            items.Add(new(AppStep, "Exchange Online", SetupStatus.Attention, Texts.T["code.tenant-setup.exchange-online-is-not-in"]));
         }
         else
         {
@@ -248,14 +248,14 @@ public static class TenantSetup
         Change? createApp = null;
         if (r.App is null)
         {
-            createApp = Graph(ChangeAction.GraphCreateApplication, AppManifest.Name, $"App-registratie {AppManifest.Name} maken: publieke client, enkel deze tenant, {wanted.Count} gedelegeerde rechten en {PermissionTable.AppRoles.Count} profielen",
+            createApp = Graph(ChangeAction.GraphCreateApplication, AppManifest.Name, Texts.T.Format("code.tenant-setup.create-app-registration-public-client", AppManifest.Name, wanted.Count, PermissionTable.AppRoles.Count),
                 parameters: ("json", NewApplication(wanted).ToJsonString()));
             plan.Add(createApp);
-            items.Add(new(AppStep, AppManifest.Name, SetupStatus.Missing, "Bestaat nog niet: het plan maakt ze (dat vraagt de rol Application of Global Administrator)."));
+            items.Add(new(AppStep, AppManifest.Name, SetupStatus.Missing, Texts.T["code.tenant-setup.does-not-exist-yet-the"]));
         }
         else
         {
-            items.Add(new(AppStep, AppManifest.Name, SetupStatus.InOrder, $"Gevonden, client ID {r.App.AppId}."));
+            items.Add(new(AppStep, AppManifest.Name, SetupStatus.InOrder, Texts.T.Format("code.tenant-setup.found-client-id", r.App.AppId)));
             var update = UpdateApplication(r.App, wanted, items);
             if (update is not null)
             {
@@ -267,21 +267,21 @@ public static class TenantSetup
         Change? createSp = null;
         if (r.AppSp is null)
         {
-            createSp = Graph(ChangeAction.GraphCreateServicePrincipal, AppManifest.Name, "Bedrijfstoepassing maken, met \"toewijzing vereist\": enkel wie een profiel heeft, kan aanmelden",
+            createSp = Graph(ChangeAction.GraphCreateServicePrincipal, AppManifest.Name, Texts.T["code.tenant-setup.create-the-enterprise-application-with"],
                 dependentOf: createApp?.Id);
             plan.Add(createSp);
-            items.Add(new(AppStep, "Bedrijfstoepassing", SetupStatus.Missing, "Bestaat nog niet."));
+            items.Add(new(AppStep, Texts.T["setup.enterprise-app"], SetupStatus.Missing, Texts.T["code.tenant-setup.does-not-exist-yet"]));
         }
         else if (!r.AppSp.AssignmentRequired)
         {
-            plan.Add(Graph(ChangeAction.GraphUpdateServicePrincipal, r.AppSp.Id, "\"Toewijzing vereist\" aanzetten: enkel wie een profiel heeft, kan aanmelden",
-                current: "iedereen in de tenant kan aanmelden", newValue: "enkel toegewezen", previous: ("json", "{\"appRoleAssignmentRequired\":false}"),
+            plan.Add(Graph(ChangeAction.GraphUpdateServicePrincipal, r.AppSp.Id, Texts.T["code.tenant-setup.turn-on-assignment-required-only"],
+                current: Texts.T["code.tenant-setup.everyone-in-the-tenant-can"], newValue: Texts.T["code.tenant-setup.assigned-only"], previous: ("json", "{\"appRoleAssignmentRequired\":false}"),
                 parameters: ("json", "{\"appRoleAssignmentRequired\":true}")));
-            items.Add(new(AppStep, "Toewijzing vereist", SetupStatus.Missing, "Staat uit: iedereen in de tenant kan aanmelden bij de app."));
+            items.Add(new(AppStep, Texts.T["code.tenant-setup.assignment-required"], SetupStatus.Missing, Texts.T["code.tenant-setup.off-everyone-in-the-tenant"]));
         }
         else
         {
-            items.Add(new(AppStep, "Bedrijfstoepassing", SetupStatus.InOrder, "Gevonden, toewijzing vereist."));
+            items.Add(new(AppStep, Texts.T["setup.enterprise-app"], SetupStatus.InOrder, Texts.T["code.tenant-setup.found-assignment-required"]));
         }
 
         // 3. Admin consent, per API
@@ -297,15 +297,15 @@ public static class TenantSetup
             var missing = scopes.Where(s => sp.Scopes.ContainsKey(s) && !has.Contains(s, StringComparer.OrdinalIgnoreCase)).ToList();
             if (missing.Count == 0)
             {
-                items.Add(new(AppStep, "Toestemming " + sp.DisplayName, SetupStatus.InOrder, "Beheerderstoestemming voor alle rechten."));
+                items.Add(new(AppStep, Localization.Texts.T.Format("setup.consent", sp.DisplayName), SetupStatus.InOrder, Texts.T["code.tenant-setup.admin-consent-for-all-permissions"]));
                 continue;
             }
 
             var scope = string.Join(' ', has.Concat(missing));
-            plan.Add(Graph(ChangeAction.GraphGrantConsent, AppManifest.Name, $"Beheerderstoestemming {sp.DisplayName}: {string.Join(", ", missing)}",
+            plan.Add(Graph(ChangeAction.GraphGrantConsent, AppManifest.Name, Texts.T.Format("setup.consent.plan", sp.DisplayName, string.Join(", ", missing)),
                 dependentOf: createSp?.Id, current: grant?.Scope ?? string.Empty, newValue: scope, previous: grant is null ? null : ("scope", grant.Scope),
                 parameters: new[] { ("resourceId", sp.Id), ("scope", scope), ("grantId", grant?.Id ?? string.Empty) }));
-            items.Add(new(AppStep, "Toestemming " + sp.DisplayName, SetupStatus.Missing, $"Ontbreekt voor {missing.Count} recht(en)."));
+            items.Add(new(AppStep, Localization.Texts.T.Format("setup.consent", sp.DisplayName), SetupStatus.Missing, Texts.T.Format("code.tenant-setup.missing-for-permission-s", missing.Count)));
         }
 
         // 4. A group per profile, assigned to its app role
@@ -317,25 +317,25 @@ public static class TenantSetup
             {
                 if (!choices.CreateGroups)
                 {
-                    items.Add(new(ProfilesStep, groupName, SetupStatus.Attention, "Bestaat niet; zonder groep wijs je het profiel per persoon toe in Entra."));
+                    items.Add(new(ProfilesStep, groupName, SetupStatus.Attention, Texts.T["code.tenant-setup.does-not-exist-without-a"]));
                     continue;
                 }
 
-                createGroup = Graph(ChangeAction.GraphCreateGroup, groupName, $"Groep {groupName} maken (beveiliging, cloud)", targetName: groupName,
+                createGroup = Graph(ChangeAction.GraphCreateGroup, groupName, Texts.T.Format("code.tenant-setup.create-group-security-cloud", groupName), targetName: groupName,
                     parameters: new[] { ("displayName", groupName), ("mailNickname", groupName), ("soort", "Beveiliging"), ("description", $"Profile {role} in Moss365. {AppManifest.Explanation(role)}") });
                 plan.Add(createGroup);
             }
 
             if (groupId is not null && assigned.Contains((groupId.ToLowerInvariant(), roleId)))
             {
-                items.Add(new(ProfilesStep, groupName, SetupStatus.InOrder, $"Gekoppeld aan het profiel {role}: wie in de groep zit, krijgt het."));
+                items.Add(new(ProfilesStep, groupName, SetupStatus.InOrder, Texts.T.Format("code.tenant-setup.linked-to-the-profile-who", role)));
                 continue;
             }
 
-            plan.Add(Graph(ChangeAction.GraphAssignAppRole, groupId ?? groupName, $"Groep {groupName} koppelen aan het profiel {role} ({value})",
-                targetName: groupName, dependentOf: createGroup?.Id ?? createSp?.Id, warning: "Een groep aan een app koppelen vraagt Entra ID P1.",
+            plan.Add(Graph(ChangeAction.GraphAssignAppRole, groupId ?? groupName, Texts.T.Format("code.tenant-setup.link-group-to-the-profile", groupName, role, value),
+                targetName: groupName, dependentOf: createGroup?.Id ?? createSp?.Id, warning: Texts.T["code.tenant-setup.linking-a-group-to-an"],
                 parameters: new[] { ("appRoleId", roleId), ("kind", "group") }));
-            items.Add(new(ProfilesStep, groupName, SetupStatus.Missing, groupId is null ? "Bestaat nog niet en is niet gekoppeld." : "Bestaat, maar is niet gekoppeld aan het profiel."));
+            items.Add(new(ProfilesStep, groupName, SetupStatus.Missing, groupId is null ? Texts.T["code.tenant-setup.does-not-exist-yet-and"] : Texts.T["code.tenant-setup.exists-but-is-not-linked"]));
         }
 
         // 5. The administrator who sets it up: Administrator and AppAdmin
@@ -349,7 +349,7 @@ public static class TenantSetup
                     continue;
                 }
 
-                plan.Add(Graph(ChangeAction.GraphAssignAppRole, r.SignedIn.Id, $"{r.SignedIn.Upn} het profiel {role} geven ({value})",
+                plan.Add(Graph(ChangeAction.GraphAssignAppRole, r.SignedIn.Id, Texts.T.Format("code.tenant-setup.give-the-profile", r.SignedIn.Upn, role, value),
                     targetName: r.SignedIn.Name, dependentOf: createSp?.Id, parameters: new[] { ("appRoleId", roleId), ("kind", "user") }));
             }
         }
@@ -428,14 +428,14 @@ public static class TenantSetup
         {
             patch["publicClient"] = new JsonObject { ["redirectUris"] = new JsonArray(app.RedirectUris.Append(AppManifest.RedirectUri).Select(u => (JsonNode?)JsonValue.Create(u)).ToArray()) };
             previous["publicClient"] = new JsonObject { ["redirectUris"] = new JsonArray(app.RedirectUris.Select(u => (JsonNode?)JsonValue.Create(u)).ToArray()) };
-            what.Add("adres " + AppManifest.RedirectUri);
+            what.Add(Localization.Texts.T.Format("setup.app.address", AppManifest.RedirectUri));
         }
 
         if (!app.FallbackPublicClient)
         {
             patch["isFallbackPublicClient"] = true;
             previous["isFallbackPublicClient"] = false;
-            what.Add("publieke client");
+            what.Add(Texts.T["code.tenant-setup.public-client"]);
         }
 
         var has = app.RequiredAccess.Select(a => (a.ResourceAppId.ToLowerInvariant(), a.Id.ToLowerInvariant())).ToHashSet();
@@ -444,12 +444,12 @@ public static class TenantSetup
         {
             patch["requiredResourceAccess"] = RequiredAccess(app.RequiredAccess.Concat(missing));
             previous["requiredResourceAccess"] = RequiredAccess(app.RequiredAccess);
-            what.Add($"{missing.Count} recht(en)");
-            items.Add(new(AppStep, "Rechten", SetupStatus.Missing, $"{missing.Count} recht(en) ontbreken in de app-registratie."));
+            what.Add(Texts.T.Format("code.tenant-setup.permission-s", missing.Count));
+            items.Add(new(AppStep, Texts.T["code.tenant-setup.permissions"], SetupStatus.Missing, Texts.T.Format("code.tenant-setup.permission-s-missing-in-the", missing.Count)));
         }
         else
         {
-            items.Add(new(AppStep, "Rechten", SetupStatus.InOrder, "Alle rechten staan in de app-registratie."));
+            items.Add(new(AppStep, Texts.T["code.tenant-setup.permissions"], SetupStatus.InOrder, Texts.T["code.tenant-setup.all-permissions-are-in-the"]));
         }
 
         var roles = ProfileRoles();
@@ -459,13 +459,13 @@ public static class TenantSetup
         {
             patch["appRoles"] = new JsonArray(app.AppRoles.Concat(missingRoles).Select(Json).ToArray<JsonNode?>());
             previous["appRoles"] = new JsonArray(app.AppRoles.Select(Json).ToArray<JsonNode?>());
-            what.Add($"{missingRoles.Count} profiel(en)");
-            items.Add(new(ProfilesStep, "App-rollen", SetupStatus.Missing, "Ontbreken: " + string.Join(", ", missingRoles.Select(m => m.Value)) + "."));
+            what.Add(Texts.T.Format("code.tenant-setup.profile-s", missingRoles.Count));
+            items.Add(new(ProfilesStep, Texts.T["code.tenant-setup.app-roles"], SetupStatus.Missing, Localization.Texts.T.Format("setup.roles.missing", string.Join(", ", missingRoles.Select(m => m.Value)))));
         }
         else
         {
-            items.Add(new(ProfilesStep, "App-rollen", off.Count > 0 ? SetupStatus.Attention : SetupStatus.InOrder,
-                off.Count > 0 ? "Uitgeschakeld in de app-registratie: " + string.Join(", ", off.Select(o => o.Value)) + ". Zet ze aan in Entra." : "Alle profielen staan als app-rol in de app-registratie."));
+            items.Add(new(ProfilesStep, Texts.T["code.tenant-setup.app-roles"], off.Count > 0 ? SetupStatus.Attention : SetupStatus.InOrder,
+                off.Count > 0 ? Localization.Texts.T.Format("setup.roles.off", string.Join(", ", off.Select(o => o.Value))) : Texts.T["code.tenant-setup.all-profiles-are-app-roles"]));
         }
 
         if (patch.Count == 0)
@@ -473,7 +473,7 @@ public static class TenantSetup
             return null;
         }
 
-        return Graph(ChangeAction.GraphUpdateApplication, app.ObjectId, $"App-registratie {AppManifest.Name} bijwerken: " + string.Join(", ", what),
+        return Graph(ChangeAction.GraphUpdateApplication, app.ObjectId, Localization.Texts.T.Format("setup.app.update", AppManifest.Name, string.Join(", ", what)),
             targetName: app.DisplayName, previous: ("json", previous.ToJsonString()), parameters: ("json", patch.ToJsonString()));
     }
 }
