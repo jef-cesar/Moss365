@@ -1,6 +1,7 @@
 using Moss365.Core.Changes;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Helpdesk;
 
@@ -50,17 +51,17 @@ public static class HelpdeskTools
     {
         if (p.Entra is not { } e)
         {
-            return PlanOutcome.Error($"{p.Name} heeft geen Entra-account.");
+            return PlanOutcome.Error(Texts.T.Format("helpdesk.no-entra", p.Name));
         }
 
         if (p.IsGuest)
         {
-            return PlanOutcome.Error("Een gast meldt zich aan bij de eigen organisatie; een Temporary Access Pass kan niet.");
+            return PlanOutcome.Error(Texts.T["code.helpdesk-tools.a-guest-signs-in-at"]);
         }
 
         if (minutes is < 60 or > 43200)
         {
-            return PlanOutcome.Error("Een Temporary Access Pass is tussen 1 uur en 30 dagen geldig.");
+            return PlanOutcome.Error(Texts.T["code.helpdesk-tools.a-temporary-access-pass-is"]);
         }
 
         return PlanOutcome.Of(new[]
@@ -72,14 +73,14 @@ public static class HelpdeskTools
                 Target = e.Id,
                 TargetName = p.Name,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["minuten"] = minutes.ToString(System.Globalization.CultureInfo.InvariantCulture), ["eenmalig"] = once ? "True" : "False" },
-                Description = $"Temporary Access Pass maken ({(once ? "eenmalig" : "meermaals")}, {Duration(minutes)} geldig)",
-                NewValue = once ? "eenmalig" : "meermaals",
-                Warning = "De pass verschijnt één keer na het uitvoeren; de app bewaart hem nergens. Geef hem rechtstreeks aan de gebruiker.",
+                Description = Texts.T.Format(once ? "helpdesk.tap.once" : "helpdesk.tap.multiple", Duration(minutes)),
+                NewValue = once ? Texts.T["helpdesk.tap.once.value"] : Texts.T["helpdesk.tap.multiple.value"],
+                Warning = Texts.T["code.helpdesk-tools.the-pass-appears-once-after"],
             },
         });
     }
 
-    private static string Duration(int minutes) => minutes % 1440 == 0 ? $"{minutes / 1440} dag(en)" : $"{minutes / 60} uur";
+    private static string Duration(int minutes) => minutes % 1440 == 0 ? Texts.T.Format("helpdesk.days", minutes / 1440) : Texts.T.Format("helpdesk.hours", minutes / 60);
 
     /// <summary>Out of office (now or between two moments) and forwarding for a user; the end of the forwarding is
     /// prepared as a scheduled plan (never run by itself).</summary>
@@ -88,7 +89,7 @@ public static class HelpdeskTools
         var address = p.Entra?.Mail is { Length: > 0 } m ? m : p.Upn;
         if (p.Entra is null || address.Length == 0)
         {
-            return (PlanOutcome.Error($"{p.Name} heeft geen postvak in Exchange Online."), Array.Empty<Change>());
+            return (PlanOutcome.Error(Texts.T.Format("code.helpdesk-tools.has-no-mailbox-in-exchange", p.Name)), Array.Empty<Change>());
         }
 
         var errors = new List<string>();
@@ -97,12 +98,12 @@ public static class HelpdeskTools
         {
             if (a.Start is { } s && a.End is { } t && t <= s)
             {
-                errors.Add("Het einde van het automatisch antwoord ligt voor het begin.");
+                errors.Add(Texts.T["code.helpdesk-tools.the-end-of-the-automatic"]);
             }
 
             if (a.Internal.Trim().Length == 0)
             {
-                errors.Add("Schrijf het bericht voor collega's.");
+                errors.Add(Texts.T["code.helpdesk-tools.write-the-message-for-colleagues"]);
             }
 
             var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -124,7 +125,7 @@ public static class HelpdeskTools
                 Target = address,
                 TargetName = p.Name,
                 Parameters = parameters,
-                Description = a.End is { } until ? $"Automatisch antwoord tot {until.LocalDateTime:dd/MM/yyyy HH:mm}" : "Automatisch antwoord aanzetten",
+                Description = a.End is { } until ? Texts.T.Format("code.helpdesk-tools.automatic-reply-until", until.LocalDateTime) : Texts.T["code.mailbox-plans.turn-on-the-automatic-reply"],
                 NewValue = a.End is null ? "aan" : "gepland",
             });
         }
@@ -135,7 +136,7 @@ public static class HelpdeskTools
             var to = a.ForwardTo.Trim();
             if (!System.Net.Mail.MailAddress.TryCreate(to, out _))
             {
-                errors.Add($"'{to}' is geen geldig e-mailadres.");
+                errors.Add(Texts.T.Format("code.helpdesk-tools.is-not-a-valid-e", to));
             }
 
             var domain = address.Contains('@') ? address[(address.IndexOf('@') + 1)..] : string.Empty;
@@ -147,10 +148,10 @@ public static class HelpdeskTools
                 TargetName = p.Name,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["ForwardingSmtpAddress"] = to, ["DeliverToMailboxAndForward"] = a.KeepCopy ? "True" : "False" },
                 Previous = new(StringComparer.OrdinalIgnoreCase) { ["ForwardingSmtpAddress"] = string.Empty, ["DeliverToMailboxAndForward"] = "False" },
-                Description = $"Mail doorsturen naar {to}" + (a.KeepCopy ? " (een kopie blijft in het postvak)" : string.Empty)
-                              + (a.ForwardUntil is { } u ? $", tot {u:dd/MM/yyyy}" : string.Empty),
+                Description = Texts.T.Format(a.KeepCopy ? "helpdesk.forward.copy" : "helpdesk.forward", to)
+                              + (a.ForwardUntil is { } u ? Texts.T.Format("helpdesk.forward.until", u) : string.Empty),
                 NewValue = to,
-                Warning = domain.Length > 0 && !to.EndsWith("@" + domain, StringComparison.OrdinalIgnoreCase) ? "Doorsturen naar een ander domein: controleer of dat mag." : null,
+                Warning = domain.Length > 0 && !to.EndsWith("@" + domain, StringComparison.OrdinalIgnoreCase) ? Texts.T["code.mailbox-plans.forwarding-to-another-domain-check"] : null,
             });
 
             if (a.ForwardUntil is { } until)
@@ -163,15 +164,15 @@ public static class HelpdeskTools
                     TargetName = p.Name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["ForwardingSmtpAddress"] = string.Empty, ["DeliverToMailboxAndForward"] = "False" },
                     Previous = new(StringComparer.OrdinalIgnoreCase) { ["ForwardingSmtpAddress"] = to, ["DeliverToMailboxAndForward"] = a.KeepCopy ? "True" : "False" },
-                    Description = $"Doorsturen naar {to} stoppen (einde {until:dd/MM/yyyy})",
-                    NewValue = "niet doorsturen",
+                    Description = Texts.T.Format("code.helpdesk-tools.stop-forwarding-to-end", to, until),
+                    NewValue = Texts.T["code.helpdesk-tools.no-forwarding"],
                 });
             }
         }
 
         if (plan.Count == 0 && errors.Count == 0)
         {
-            errors.Add("Kies een automatisch antwoord, doorsturen of allebei.");
+            errors.Add(Texts.T["code.helpdesk-tools.choose-an-automatic-reply-forwarding"]);
         }
 
         return (errors.Count > 0 ? new PlanOutcome(Array.Empty<Change>(), errors) : PlanOutcome.Of(plan), endOfForwarding);
@@ -190,7 +191,7 @@ public static class HelpdeskTools
                 Target = address,
                 TargetName = p.Name,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["AutoReplyState"] = "Disabled" },
-                Description = "Automatisch antwoord uitzetten",
+                Description = Texts.T["absence-card.turn-off-automatic-reply"],
                 NewValue = "uit",
             },
         });
@@ -265,7 +266,7 @@ public static class HelpdeskTools
 
             if (to.Count == 0)
             {
-                errors.Add($"{x.Person.Name} heeft geen e-mailadres.");
+                errors.Add(Texts.T.Format("code.group-plans.has-no-e-mail-address-2", x.Person.Name));
                 continue;
             }
 
@@ -278,8 +279,8 @@ public static class HelpdeskTools
                 ChangeAction = ChangeAction.GraphSendMail,
                 Target = string.Join(';', to),
                 TargetName = x.Person.Name,
-                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["onderwerp"] = "Je wachtwoord verloopt binnenkort", ["tekst"] = body },
-                Description = $"Herinnering mailen: wachtwoord verloopt op {x.Expires:dd/MM/yyyy}",
+                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["onderwerp"] = Texts.T["helpdesk.reminder.subject"], ["tekst"] = body },
+                Description = Texts.T.Format("helpdesk.reminder", x.Expires),
                 NewValue = string.Join(", ", to),
             });
         }
