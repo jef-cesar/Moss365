@@ -11,5 +11,6 @@
   <ItemGroup>
     <!-- The dictionaries of the interface (R15): one per language, by key -->
     <EmbeddedResource Include="Localization\Texts\*.json" LogicalName="Moss365.Texts.%(Filename).json" />
+    <EmbeddedResource Include="Devices\lifecycle.json" LogicalName="Moss365.Lifecycle.json" />
   </ItemGroup>
 </Project>

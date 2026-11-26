@@ -178,7 +178,9 @@ public static class SecurityChecks
         rows.AddRange(r.PasswordNotRequired.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-not-required-is-on"], CheckStatus.Problem) { Fix = "PasswordNotRequired" }));
         rows.AddRange(r.ReversibleEncryption.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-with-reversible-encryption"], CheckStatus.Problem) { Fix = "ReversibleEncryption" }));
         rows.AddRange(r.AdminCountOrphans.Select(u => new CheckRow(u, Texts.T["code.security-checks.admincount-1-but-not-any"], CheckStatus.Attention)));
-        rows.AddRange(r.OldSystems.Select(c => new CheckRow(c.Name, Texts.T.Format("code.security-checks.outdated-operating-system", c.OperatingSystem), CheckStatus.Problem)));
+        // The connection gives the systems of the enabled computers; the life cycle data says which are no longer supported
+        rows.AddRange(r.OldSystems.Where(c => Devices.Lifecycle.Of(c.OperatingSystem, string.Empty, now).Status == Devices.SupportStatus.Ended)
+            .Select(c => new CheckRow(c.Name, Texts.T.Format("code.security-checks.outdated-operating-system", c.OperatingSystem), CheckStatus.Problem)));
         if (r.KrbtgtPasswordSet is { } k)
         {
             var days = (now - k).TotalDays;

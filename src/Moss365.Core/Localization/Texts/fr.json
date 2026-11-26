@@ -3312,5 +3312,6 @@
   "advice.solve.flag-off": "Désactiver « {0} » pour {1}",
   "advice.solve.reversible-warning": "Le mot de passe conservé avec chiffrement réversible ne disparaît qu'au changement du mot de passe : demandez à la personne de le changer, ou définissez-en un nouveau.",
   "advice.solve.not-found": "{0} ne figure pas dans les données lues ; relisez AD.",
-  "advice.solve.unknown-flag": "Moss365 ne peut pas modifier cet indicateur."
+  "advice.solve.unknown-flag": "Moss365 ne peut pas modifier cet indicateur.",
+  "devices.support-ends": "fin du support le {0}"
 }

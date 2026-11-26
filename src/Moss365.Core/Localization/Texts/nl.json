@@ -3312,5 +3312,6 @@
   "advice.solve.flag-off": "\"{0}\" uitzetten voor {1}",
   "advice.solve.reversible-warning": "Het wachtwoord dat met omkeerbare versleuteling bewaard is, verdwijnt pas als het wachtwoord verandert: vraag de persoon het te wijzigen, of zet een nieuw.",
   "advice.solve.not-found": "{0} staat niet in de gelezen gegevens; lees AD opnieuw.",
-  "advice.solve.unknown-flag": "Moss365 mag deze vlag niet wijzigen."
+  "advice.solve.unknown-flag": "Moss365 mag deze vlag niet wijzigen.",
+  "devices.support-ends": "ondersteuning stopt {0}"
 }

@@ -28,7 +28,7 @@
                     <tbody>
                         @foreach (var (system, count) in DeviceAnalysis.Systems(computers))
                         {
-                            <tr><td>@system @if (DeviceAnalysis.Outdated(system)) { <span class="kb-label kb-fout">@T["devices.no-longer-supported"]</span> }</td><td class="kb-getal">@count</td></tr>
+                            <tr><td>@system @SupportLabel(system, string.Empty)</td><td class="kb-getal">@count</td></tr>
                         }
                     </tbody>
                 </table>
@@ -89,7 +89,7 @@
             <tbody>
                 @foreach (var g in devices.GroupBy(d => (d.OperatingSystem, d.Version)).OrderByDescending(g => g.Count()).Take(25))
                 {
-                    <tr><td>@g.Key.OperatingSystem</td><td>@g.Key.Version</td><td class="kb-getal">@g.Count()</td></tr>
+                    <tr><td>@g.Key.OperatingSystem @SupportLabel(g.Key.OperatingSystem, g.Key.Version)</td><td>@g.Key.Version</td><td class="kb-getal">@g.Count()</td></tr>
                 }
             </tbody>
         </table>
@@ -102,6 +102,18 @@
 }
 
 @code {
+    // The life cycle data (R17): no longer supported, or support that ends within half a year
+    private RenderFragment SupportLabel(string os, string version)
+    {
+        var support = Lifecycle.Of(os, version, DateTimeOffset.Now);
+        return support.Status switch
+        {
+            SupportStatus.Ended => @<span class="kb-label kb-fout">@T["devices.no-longer-supported"]</span>,
+            SupportStatus.EndingSoon => @<span class="kb-label kb-let">@T.Format("devices.support-ends", support.End!.Value.ToString("d", T.Culture))</span>,
+            _ => @<text></text>,
+        };
+    }
+
     private bool busy;
     private int days = 90;
     private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);

@@ -3312,5 +3312,6 @@
   "advice.solve.flag-off": "Turn off \"{0}\" for {1}",
   "advice.solve.reversible-warning": "The password kept with reversible encryption only disappears when the password changes: ask the person to change it, or set a new one.",
   "advice.solve.not-found": "{0} is not in the data read; read AD again.",
-  "advice.solve.unknown-flag": "Moss365 may not change this flag."
+  "advice.solve.unknown-flag": "Moss365 may not change this flag.",
+  "devices.support-ends": "support ends {0}"
 }

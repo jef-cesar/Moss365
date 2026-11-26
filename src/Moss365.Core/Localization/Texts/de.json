@@ -3312,5 +3312,6 @@
   "advice.solve.flag-off": "„{0}“ für {1} ausschalten",
   "advice.solve.reversible-warning": "Das mit umkehrbarer Verschlüsselung gespeicherte Kennwort verschwindet erst, wenn sich das Kennwort ändert: Bitten Sie die Person, es zu ändern, oder setzen Sie ein neues.",
   "advice.solve.not-found": "{0} ist nicht in den gelesenen Daten; lesen Sie AD erneut.",
-  "advice.solve.unknown-flag": "Moss365 darf dieses Kennzeichen nicht ändern."
+  "advice.solve.unknown-flag": "Moss365 darf dieses Kennzeichen nicht ändern.",
+  "devices.support-ends": "Support endet am {0}"
 }

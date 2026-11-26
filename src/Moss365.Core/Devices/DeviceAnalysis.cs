@@ -43,9 +43,8 @@ public static class DeviceAnalysis
             .GroupBy(c => $"{(c.OperatingSystem.Length > 0 ? c.OperatingSystem : "(onbekend)")} {c.Version}".Trim())
             .Select(g => (g.Key, g.Count())).OrderByDescending(x => x.Item2).ToList();
 
-    /// <summary>Is this system no longer supported by Microsoft?</summary>
-    public static bool Outdated(string os)
-        => new[] { "XP", "Vista", "Windows 7", "Windows 8", "2003", "2008", "2012" }.Any(o => os.Contains(o, StringComparison.OrdinalIgnoreCase));
+    /// <summary>Is this system (with its version) no longer supported by Microsoft? From the life cycle data (R17).</summary>
+    public static bool Outdated(string os) => Lifecycle.Of(os, string.Empty, DateTimeOffset.Now).Status == SupportStatus.Ended;
 
     public static IReadOnlyList<IntuneDevice> NotCompliant(IReadOnlyList<IntuneDevice> devices)
         => devices.Where(d => d.Compliance is not ("compliant" or "unknown" or "")).OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();

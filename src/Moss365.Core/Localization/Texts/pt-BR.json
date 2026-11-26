@@ -3312,5 +3312,6 @@
   "advice.solve.flag-off": "Desativar \"{0}\" para {1}",
   "advice.solve.reversible-warning": "A senha guardada com criptografia reversível só some quando a senha muda: peça à pessoa que a troque, ou defina uma nova.",
   "advice.solve.not-found": "{0} não está nos dados lidos; leia o AD de novo.",
-  "advice.solve.unknown-flag": "O Moss365 não pode alterar este sinalizador."
+  "advice.solve.unknown-flag": "O Moss365 não pode alterar este sinalizador.",
+  "devices.support-ends": "o suporte termina em {0}"
 }
