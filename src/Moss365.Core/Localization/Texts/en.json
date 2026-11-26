@@ -1884,5 +1884,7 @@
   "state.calendar.denied": "Your account may not read the calendar of this room. Give yourself at least the permission Reviewer (or LimitedDetails) on the calendar: under Change > Calendar permissions on this page, or in Exchange with Add-MailboxFolderPermission \"{0}:\\Calendar\". Then load again. ({1})",
   "state.caeffect": "{0} sign-ins of the last {1} days{2}, read at {3:HH:mm}.",
   "state.caeffect.more": " (the newest {0}; there are more)",
-  "state.cabackup": "Backup of Conditional Access saved ({0})."
+  "state.cabackup": "Backup of Conditional Access saved ({0}).",
+  "pending.filled": "Filled in, not run yet",
+  "state.ownconfig": "the database of this tenant"
 }

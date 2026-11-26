@@ -2,6 +2,21 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.38.4
+
+Languages (R15), fifth part: the whole interface layer now speaks five languages, also what it builds in code.
+
+- Column titles of the tables, labels of the pickers, titles of the plans, the choice lists (systems, roles mode,
+  kinds of groups, relative dates, sections), short words in tables ("ingeschakeld", "nooit", "ja"), counts ("12
+  gasten"), the rows of a user's details, the messages of the services (tasks, updates, encryption, tenants,
+  maintenance, scripts) and the status texts of tasks and message trace.
+- Lists of choices are no longer kept in a static field, so that they follow a change of language; a test keeps it so.
+- The scanner of hard-coded text also guards the parameters of components (Label, Title, Context, ...).
+- On purpose not translated: what is already written in the change log and the access log (records), and data from AD
+  and Microsoft 365.
+- Still Dutch for now: the texts that Core builds (plan descriptions, check results, KPI names, warnings) and the
+  messages of the connections. They are the last part of R15.
+
 ## 0.38.3
 
 Languages (R15), fourth part.

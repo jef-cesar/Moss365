@@ -1884,5 +1884,7 @@
   "state.calendar.denied": "Votre compte ne peut pas lire le calendrier de cette salle. Donnez-vous au moins le droit Reviewer (ou LimitedDetails) sur le calendrier : sous Modifier > Autorisations du calendrier sur cette page, ou dans Exchange avec Add-MailboxFolderPermission \"{0}:\\Calendar\". Puis rechargez. ({1})",
   "state.caeffect": "{0} connexions des {1} derniers jours{2}, lues à {3:HH:mm}.",
   "state.caeffect.more": " (les {0} plus récentes ; il y en a d'autres)",
-  "state.cabackup": "Sauvegarde de l'accès conditionnel enregistrée ({0})."
+  "state.cabackup": "Sauvegarde de l'accès conditionnel enregistrée ({0}).",
+  "pending.filled": "Rempli, pas encore exécuté",
+  "state.ownconfig": "la base de données de ce tenant"
 }

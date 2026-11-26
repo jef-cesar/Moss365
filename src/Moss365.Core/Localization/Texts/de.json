@@ -1884,5 +1884,7 @@
   "state.calendar.denied": "Ihr Konto darf den Kalender dieses Raums nicht lesen. Geben Sie sich mindestens die Berechtigung Reviewer (oder LimitedDetails) auf den Kalender: unter Ändern > Kalenderberechtigungen auf dieser Seite oder in Exchange mit Add-MailboxFolderPermission \"{0}:\\Calendar\". Danach neu laden. ({1})",
   "state.caeffect": "{0} Anmeldungen der letzten {1} Tage{2}, gelesen um {3:HH:mm}.",
   "state.caeffect.more": " (die neuesten {0}; es gibt mehr)",
-  "state.cabackup": "Sicherung des bedingten Zugriffs gespeichert ({0})."
+  "state.cabackup": "Sicherung des bedingten Zugriffs gespeichert ({0}).",
+  "pending.filled": "Ausgefüllt, noch nicht ausgeführt",
+  "state.ownconfig": "die Datenbank dieses Mandanten"
 }

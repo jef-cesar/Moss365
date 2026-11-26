@@ -82,7 +82,7 @@
 <section class="kb-kaart">
     <h2>@T["menu.organisatie"]</h2>
     <p>
-        @T["start.source"] <code>@(State.ConfigSource ?? T["start.noconfig"])</code>
+        @T["start.source"] <code>@(State.ConfigSourceText ?? T["start.noconfig"])</code>
         @if (State.ConfigIsModified)
         {
             <span class="kb-label">@T["start.ownchanges"]</span>

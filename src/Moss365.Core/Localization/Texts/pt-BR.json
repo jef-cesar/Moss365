@@ -1884,5 +1884,7 @@
   "state.calendar.denied": "Sua conta não pode ler o calendário desta sala. Dê a si mesmo pelo menos a permissão Reviewer (ou LimitedDetails) no calendário: em Alterar > Permissões do calendário nesta página, ou no Exchange com Add-MailboxFolderPermission \"{0}:\\Calendar\". Depois carregue novamente. ({1})",
   "state.caeffect": "{0} logins dos últimos {1} dias{2}, lidos às {3:HH:mm}.",
   "state.caeffect.more": " (os {0} mais recentes; há mais)",
-  "state.cabackup": "Backup do Acesso Condicional salvo ({0})."
+  "state.cabackup": "Backup do Acesso Condicional salvo ({0}).",
+  "pending.filled": "Preenchido, ainda não executado",
+  "state.ownconfig": "o banco de dados deste tenant"
 }

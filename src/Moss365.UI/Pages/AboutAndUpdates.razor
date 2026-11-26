@@ -30,7 +30,7 @@
     </div>
     <label><input type="checkbox" checked="@State.Settings.SearchUpdates" @onchange="SetUpdateSearch" /> @T["about-and-updates.search-for-a-new-version"]</label>
     <p>
-        @T["about.organisation"] <code>@(State.ConfigSource ?? T["start.notfound"])</code>
+        @T["about.organisation"] <code>@(State.ConfigSourceText ?? T["start.notfound"])</code>
         @T.Format("about.counts", State.Config.Populations.Count, State.Config.Departments.Count, State.Config.Offices.Count)
         @if (State.ConfigWarning is { } w) { <span class="kb-label kb-rood">@w</span> }
     </p>

@@ -114,7 +114,7 @@ public sealed class Pending
                 var path = Normalise(f.FilePath);
                 if (!withPlan.Contains(path))
                 {
-                    list.Add(new OpenItem(path, OpenKind.Form, "Ingevuld, nog niet uitgevoerd") { Screen = f.Screen });
+                    list.Add(new OpenItem(path, OpenKind.Form, Moss365.Core.Localization.Texts.T["pending.filled"]) { Screen = f.Screen });
                 }
             }
 

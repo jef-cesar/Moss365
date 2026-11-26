@@ -376,6 +376,9 @@ public sealed partial class ManagementState
     /// <summary>How the own organisation is named in messages.</summary>
     public const string OwnConfigName = "de databank van deze tenant";
 
+    /// <summary>Where the organisation comes from, in the language of the interface.</summary>
+    public string? ConfigSourceText => ConfigIsModified ? Texts.T["state.ownconfig"] : ConfigSource;
+
     public int CountFollowUpTasks => FollowUp.Read().Count;
 
     private readonly ITextStorage _settingsStorage;

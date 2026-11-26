@@ -1884,5 +1884,7 @@
   "state.calendar.denied": "Je account mag de agenda van deze room niet lezen. Geef jezelf minstens het recht Reviewer (of LimitedDetails) op de agenda: bij Wijzigen > Agendarechten op deze pagina, of in Exchange met Add-MailboxFolderPermission \"{0}:\\Calendar\". Daarna opnieuw laden. ({1})",
   "state.caeffect": "{0} aanmeldingen van de laatste {1} dagen{2}, gelezen om {3:HH:mm}.",
   "state.caeffect.more": " (de nieuwste {0}; er zijn er meer)",
-  "state.cabackup": "Back-up van Conditional Access bewaard ({0})."
+  "state.cabackup": "Back-up van Conditional Access bewaard ({0}).",
+  "pending.filled": "Ingevuld, nog niet uitgevoerd",
+  "state.ownconfig": "de databank van deze tenant"
 }
