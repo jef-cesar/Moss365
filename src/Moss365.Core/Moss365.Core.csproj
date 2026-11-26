@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Moss365.Core</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <!-- SQLite with SQLCipher (R6): the same build opens plain and encrypted tenant databases -->
-    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.11" />
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.10" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.15" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />
   </ItemGroup>
   <ItemGroup>
     <!-- The dictionaries of the interface (R15): one per language, by key -->

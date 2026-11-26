@@ -12,15 +12,17 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    outputs:
+      release: ${{ steps.version.outputs.release }}
     env:
       # Signing only happens when the secrets are configured (from 1.0, see SECURITY.md)
       WITH_AZURE_SIGNING: ${{ secrets.AZURE_CLIENT_SECRET != '' && vars.SIGNING_ENDPOINT != '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Tests (.NET)
         run: dotnet test tests/Moss365.Tests -c Release
@@ -76,17 +78,51 @@ jobs:
         shell: pwsh
         run: Write-Host '::notice::Moss365.exe is not signed (signing starts at 1.0). Verify downloads with SHA256SUMS.txt.'
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: Moss365-win-x64
           path: publish
           retention-days: 90
 
-      - name: Release (once per version)
+      - name: New version?
+        id: version
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Select-Xml -Path Directory.Build.props -XPath '//Version').Node.InnerText.Trim()
+          gh release view "v$version" *> $null
+          $new = if ($LASTEXITCODE -eq 0) { 'false' } else { 'true' }
+          Write-Host "Version $version, new release: $new"
+          "release=$new" >> $env:GITHUB_OUTPUT
+          exit 0
+
+  # U23: a new version waits here for the maintainer's approval (the environment "release" with a required reviewer,
+  # set in Settings > Environments) before the release is made and offered as an update
+  release:
+    needs: build
+    if: needs.build.outputs.release == 'true'
+    runs-on: windows-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Moss365-win-x64
+          path: publish
+
+      - name: Release (once per version)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # vpk is a .NET tool: let it run on the newest runtime of the runner
+          DOTNET_ROLL_FORWARD: Major
         run: |
           $version = (Select-Xml -Path Directory.Build.props -XPath '//Version').Node.InnerText.Trim()
           $tag = "v$version"

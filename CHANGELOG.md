@@ -2,6 +2,21 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.39.0
+
+.NET 10 and the first fixes from the security review of 26 November 2026 (decisions U22 and U23 of the
+[roadmap](docs/roadmap-1.0.md)).
+
+- **.NET 10** instead of .NET 8: .NET 8 gets no security updates since 10 November 2026, and Moss365 ships the runtime
+  itself, so this update also brings a supported runtime (until November 2028). The packages moved along (SQLite,
+  ASP.NET Core components, the WebView, MSAL, the directory and protection libraries). Nothing changes in how you work.
+- **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
+  address; anything else (such as a script link or a file share) is no longer clickable.
+- **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.
+- **Faster**: the alerts from the snapshots no longer slow down with many accounts, and *Alles nakijken* reads the app
+  registrations once instead of twice.
+- **Releases** now wait for the maintainer's approval before they are published and offered as an update (U23).
+
 ## 0.38.6
 
 Languages (R15), seventh part: the last Dutch names, and texts the scanner did not see.
