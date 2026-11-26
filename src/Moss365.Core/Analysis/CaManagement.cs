@@ -73,7 +73,7 @@ public static class CaSafety
             var scope = g is null ? CaAnswer.Maybe(Texts.T["code.ca-management.no-entra-data"]) : CaReader.Scope(newValue, g, name, ca);
             if (scope.Applies != CaApplies.No)
             {
-                list.Add($"Het noodaccount {p.Name} valt {(scope.Applies == CaApplies.Yes ? "onder" : "misschien onder")} dit beleid ({scope.Reason}). Sluit het uit.{behind}");
+                list.Add(Texts.T.Format(scope.Applies == CaApplies.Yes ? "ca-policy.emergency-under" : "ca-policy.emergency-maybe", p.Name, scope.Reason) + behind);
             }
         }
 
@@ -98,7 +98,7 @@ public static class CaSafety
                 var location = s.App == CaApp.Office365 ? "Office 365" : Texts.T["code.ca-management.the-admin-portals"];
                 if (newValue.Blocks)
                 {
-                    var text = $"Dit beleid blokkeert {(applies.Applies == CaApplies.Yes ? "" : "misschien ")}jouw eigen account ({own!.Name}) voor {location} vanuit België ({applies.Reason}).";
+                    var text = Texts.T.Format(applies.Applies == CaApplies.Yes ? "ca-policy.blocks-you" : "ca-policy.blocks-you-maybe", own!.Name, location, applies.Reason);
                     (newValue.Status == CaStatus.On ? errors : warnings).Add(text);
                     break;
                 }
@@ -206,7 +206,7 @@ public static class CaTemplates
         var template = All.FirstOrDefault(s => s.Key == key);
         if (template is null)
         {
-            return PlanOutcome.Error("Onbekend sjabloon.");
+            return PlanOutcome.Error(Texts.T["code.ca-management.unknown-template"]);
         }
 
         if (d.ConditionalAccess is not { Message: null } ca)
@@ -311,9 +311,9 @@ public static class CaTemplates
             Target = "nieuw",
             TargetName = policy.Name,
             Parameters = new(StringComparer.OrdinalIgnoreCase) { ["json"] = json },
-            Description = $"Nieuw Conditional Access-beleid \"{policy.Name}\" in alleen rapport" + (pilot is null ? string.Empty : (" " + Texts.T["code.ca-management.only-the-pilot-group"])),
+            Description = Texts.T.Format("ca-policy.new", policy.Name) + (pilot is null ? string.Empty : (" " + Texts.T["code.ca-management.only-the-pilot-group"])),
             CurrentValue = Texts.T["code.ca-management.does-not-exist"],
-            NewValue = $"alleen rapport; {emergency.Count} noodaccount(s) uitgesloten",
+            NewValue = Texts.T.Format("ca-policy.new.value", emergency.Count),
             Warning = check.Warnings.Count == 0 ? null : string.Join(" ", check.Warnings),
         };
         return PlanOutcome.Of(new[] { w });
@@ -381,7 +381,7 @@ public static class CaPlans
         var patch = CaJson.ExclusionsPatch(b, list);
         Change Make(string? warning) => Modify(b, patch,
             add ? Texts.T.Format("code.ca-management.exclude-from", p.Name, b.Name) : Texts.T.Format("code.ca-management.remove-the-exception-of-on", p.Name, b.Name),
-            $"{b.UsersOff.Count} rechtstreeks uitgezonderd", $"{list.Count} rechtstreeks uitgezonderd", warning);
+            Texts.T.Format("ca-policy.direct-exclusions", b.UsersOff.Count), Texts.T.Format("ca-policy.direct-exclusions", list.Count), warning);
 
         // Removing can bring an emergency account under the policy again: check when the data is there
         return d is not null && c is not null ? WithCheck(b, patch, d, c, ownUpn, Make) : PlanOutcome.Of(new[] { Make(null) });
@@ -466,7 +466,7 @@ public static class CaPlans
 
         if (list.Count == 0)
         {
-            errors.Add(isIp ? "Geef minstens één IP-bereik (bv. 203.0.113.10/32)." : "Geef minstens één land (bv. BE).");
+            errors.Add(isIp ? Texts.T["code.ca-management.enter-at-least-one-ip"] : Texts.T["code.ca-management.enter-at-least-one-country"]);
         }
 
         errors.AddRange(isIp
@@ -501,7 +501,7 @@ public static class CaPlans
                 Target = "nieuw",
                 TargetName = name,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["json"] = json },
-                Description = $"Nieuwe benoemde locatie \"{name}\"" + (isIp && trusted ? " (vertrouwd)" : string.Empty),
+                Description = Texts.T.Format(isIp && trusted ? "ca-location.new.trusted" : "ca-location.new", name),
                 CurrentValue = Texts.T["code.ca-management.does-not-exist"],
                 NewValue = text,
             }
@@ -518,7 +518,7 @@ public static class CaPlans
                         ? CaJson.LocationWritable(existing.Json)
                         : CaJson.LocationJson(existing.Name, existing.IsIp, existing.Values, existing.Trusted, existing.UnknownCountries),
                 },
-                Description = $"Benoemde locatie \"{existing.Name}\" wijzigen",
+                Description = Texts.T.Format("ca-location.change", existing.Name),
                 CurrentValue = string.Join(", ", existing.Values),
                 NewValue = text,
                 Warning = warning,
@@ -548,7 +548,7 @@ public static class CaComparison
             var details = Details(o, n, name, ca).ToList();
             if (details.Count == 0 && Plain(o.Json) != Plain(n.Json))
             {
-                details.Add("andere instellingen (sessie, toestelfilter, ...)");
+                details.Add(Texts.T["code.ca-management.other-settings-session-device-filter"]);
             }
 
             if (details.Count > 0)
@@ -580,24 +580,24 @@ public static class CaComparison
         string Location(string id) => ca is null ? id : CaReader.LocationName(id, ca);
         foreach (var (title, a, b, names) in new (string, IReadOnlyList<string>, IReadOnlyList<string>, Func<string, string>)[]
                  {
-                     ("opgenomen gebruikers", o.UsersIn, n.UsersIn, name),
-                     ("uitgezonderde gebruikers", o.UsersOff, n.UsersOff, name),
-                     ("opgenomen groepen", o.GroupsIn, n.GroupsIn, name),
-                     ("uitgezonderde groepen", o.GroupsOff, n.GroupsOff, name),
-                     ("opgenomen rollen", o.RolesIn, n.RolesIn, Role),
-                     ("uitgezonderde rollen", o.RolesOff, n.RolesOff, Role),
-                     ("apps", o.AppsIn, n.AppsIn, CaReader.AppName),
-                     ("uitgezonderde apps", o.AppsOff, n.AppsOff, CaReader.AppName),
-                     ("programma's", o.ClientApps, n.ClientApps, CaReader.ClientName),
-                     ("locaties", o.LocationsIn, n.LocationsIn, Location),
-                     ("uitgezonderde locaties", o.LocationsOff, n.LocationsOff, Location),
-                     ("vereisten", o.Checks, n.Checks, CaReader.CheckName),
-                     ("gebruikersacties", o.UserActions, n.UserActions, CaReader.ActionName),
-                     ("platformen", o.PlatformsIn, n.PlatformsIn, CaReader.PlatformName),
-                     ("uitgezonderde platformen", o.PlatformsOff, n.PlatformsOff, CaReader.PlatformName),
-                     ("aanmeldrisico", o.SignInRisk, n.SignInRisk, CaReader.RiskName),
-                     ("gebruikersrisico", o.UsersRisk, n.UsersRisk, CaReader.RiskName),
-                     ("overdracht", o.Transfer, n.Transfer, t => t == "deviceCodeFlow" ? "toestelcode" : t == "authenticationTransfer" ? "verificatie-overdracht" : t),
+                     (Texts.T["ca-diff.users-in"], o.UsersIn, n.UsersIn, name),
+                     (Texts.T["ca-diff.users-off"], o.UsersOff, n.UsersOff, name),
+                     (Texts.T["ca-diff.groups-in"], o.GroupsIn, n.GroupsIn, name),
+                     (Texts.T["ca-diff.groups-off"], o.GroupsOff, n.GroupsOff, name),
+                     (Texts.T["ca-diff.roles-in"], o.RolesIn, n.RolesIn, Role),
+                     (Texts.T["ca-diff.roles-off"], o.RolesOff, n.RolesOff, Role),
+                     (Texts.T["ca-diff.apps-in"], o.AppsIn, n.AppsIn, CaReader.AppName),
+                     (Texts.T["ca-diff.apps-off"], o.AppsOff, n.AppsOff, CaReader.AppName),
+                     (Texts.T["ca-diff.client-apps"], o.ClientApps, n.ClientApps, CaReader.ClientName),
+                     (Texts.T["ca-diff.locations-in"], o.LocationsIn, n.LocationsIn, Location),
+                     (Texts.T["ca-diff.locations-off"], o.LocationsOff, n.LocationsOff, Location),
+                     (Texts.T["ca-diff.checks"], o.Checks, n.Checks, CaReader.CheckName),
+                     (Texts.T["ca-diff.user-actions"], o.UserActions, n.UserActions, CaReader.ActionName),
+                     (Texts.T["ca-diff.platforms-in"], o.PlatformsIn, n.PlatformsIn, CaReader.PlatformName),
+                     (Texts.T["ca-diff.platforms-off"], o.PlatformsOff, n.PlatformsOff, CaReader.PlatformName),
+                     (Texts.T["ca-diff.sign-in-risk"], o.SignInRisk, n.SignInRisk, CaReader.RiskName),
+                     (Texts.T["ca-diff.user-risk"], o.UsersRisk, n.UsersRisk, CaReader.RiskName),
+                     (Texts.T["ca-diff.transfer"], o.Transfer, n.Transfer, t => t == "deviceCodeFlow" ? Texts.T["ca-diff.device-code"] : t == "authenticationTransfer" ? Texts.T["ca-diff.authentication-transfer"] : t),
                  })
         {
             var added = b.Except(a, StringComparer.OrdinalIgnoreCase).Select(names).ToList();
@@ -626,7 +626,7 @@ public static class CaComparison
 
         if (o.StrengthId != n.StrengthId)
         {
-            yield return $"authenticatiesterkte: {o.StrengthName ?? o.StrengthId ?? "(geen)"} → {n.StrengthName ?? n.StrengthId ?? "(geen)"}";
+            yield return Texts.T.Format("ca-diff.strength", o.StrengthName ?? o.StrengthId ?? Texts.T["plan.none"], n.StrengthName ?? n.StrengthId ?? Texts.T["plan.none"]);
         }
     }
 

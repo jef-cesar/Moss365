@@ -105,7 +105,7 @@ public static class CaReader
 
     public static string ActionName(string action) => action.ToLowerInvariant() switch
     {
-        ActionSecurityData => "beveiligingsgegevens registreren (MFA instellen)",
+        ActionSecurityData => Texts.T["code.ca-analysis.register-security-information-set-up"],
         "urn:user:registerdevice" => Texts.T["code.ca-analysis.registering-or-joining-a-device"],
         _ => action,
     };
@@ -265,7 +265,7 @@ public static class CaReader
     {
         if (b.UsersOff.Contains(g.Id, StringComparer.OrdinalIgnoreCase))
         {
-            return CaAnswer.No("rechtstreeks uitgezonderd");
+            return CaAnswer.No(Texts.T["code.ca-analysis.excluded-directly"]);
         }
 
         if (b.GroupsOff.FirstOrDefault(g.Groups.Contains) is { } groupOff)
@@ -286,11 +286,11 @@ public static class CaReader
         CaAnswer? inValue = null;
         if (b.UsersIn.Contains("All"))
         {
-            inValue = CaAnswer.Yes("alle gebruikers");
+            inValue = CaAnswer.Yes(Texts.T["compare.all-users"]);
         }
         else if (b.UsersIn.Contains(g.Id, StringComparer.OrdinalIgnoreCase))
         {
-            inValue = CaAnswer.Yes("rechtstreeks opgenomen");
+            inValue = CaAnswer.Yes(Texts.T["code.ca-analysis.included-directly"]);
         }
         else if (b.GuestsIn && g.IsGuest)
         {
@@ -370,7 +370,7 @@ public static class CaReader
         var specific = b.AppsIn.Where(a => a is not "None" && !AppNames.ContainsKey(a)).ToList();
         return app == CaApp.Other && specific.Count > 0
             ? CaAnswer.Maybe(Texts.T["code.ca-analysis.applies-to-specific-apps"])
-            : CaAnswer.No("andere apps");
+            : CaAnswer.No(Texts.T["code.ca-analysis.other-apps"]);
     }
 
     private static bool? LocationMatches(string id, CaPlace place, CaData ca)
@@ -533,7 +533,7 @@ public static class CaReader
                 options = options.Except(device).ToList();
             }
 
-            var texts = options.Select(c => c == "mfa" && b.AsksPhishingResistant ? "phishingbestendige MFA" : CheckName(c)).ToList();
+            var texts = options.Select(c => c == "mfa" && b.AsksPhishingResistant ? Texts.T["code.ca-analysis.phishing-resistant-mfa"] : CheckName(c)).ToList();
             if (b.TermsOfUse)
             {
                 texts.Add(Texts.T["code.ca-analysis.accepting-the-terms-of-use"]);
@@ -557,7 +557,7 @@ public static class CaReader
         }
         else if (certain.Count > 0)
         {
-            summary = "Toegang zonder extra eisen";
+            summary = Texts.T["code.ca-analysis.access-without-extra-requirements"];
         }
         else
         {

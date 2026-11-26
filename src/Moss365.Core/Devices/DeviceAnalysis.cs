@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Moss365.Core.Inventory;
 
@@ -80,17 +81,17 @@ public static class DeviceAnalysis
             var points = new List<string>();
             if (a is { Owners: 0 })
             {
-                points.Add("geen eigenaar");
+                points.Add(Texts.T["code.device-analysis.no-owner"]);
             }
 
             if (guestCount > 0)
             {
-                points.Add($"{guestCount} gast(en)");
+                points.Add(Texts.T.Format("code.device-analysis.guest-s", guestCount));
             }
 
             if (reading is not null && (a?.LastActivity is null || a.LastActivity < now.AddDays(-90)))
             {
-                points.Add(a?.LastActivity is { } last ? $"niet gebruikt sinds {last.LocalDateTime:dd/MM/yyyy}" : "geen activiteit gekend");
+                points.Add(a?.LastActivity is { } last ? Texts.T.Format("code.device-analysis.not-used-since", last.LocalDateTime) : Texts.T["code.device-analysis.no-activity-known"]);
             }
 
             output.Add(new GroupFinding(g.Id, g.DisplayName, a?.IsTeam ?? false, a?.Owners ?? -1, all.Count, guestCount, a?.LastActivity, points));
@@ -105,11 +106,11 @@ public static class DeviceAnalysis
     /// <summary>The SharePoint sharing setting of the tenant in words, and whether it deserves attention.</summary>
     public static (string Text, bool Attention) Sharing(string? capability) => capability switch
     {
-        "disabled" => ("Alleen mensen van de organisatie", false),
-        "existingExternalUserSharingOnly" => ("Alleen gasten die al in de directory staan", false),
-        "externalUserSharingOnly" => ("Nieuwe en bestaande gasten (met aanmelding)", false),
-        "externalUserAndGuestSharing" => ("Iedereen, ook met een link zonder aanmelding", true),
-        null or "" => ("Niet gelezen", false),
+        "disabled" => (Texts.T["code.device-analysis.only-people-of-the-organisation"], false),
+        "existingExternalUserSharingOnly" => (Texts.T["code.device-analysis.only-guests-already-in-the"], false),
+        "externalUserSharingOnly" => (Texts.T["code.device-analysis.new-and-existing-guests-with"], false),
+        "externalUserAndGuestSharing" => (Texts.T["code.device-analysis.everyone-also-with-a-link"], true),
+        null or "" => (Texts.T["code.device-analysis.not-read"], false),
         _ => (capability, false),
     };
 
@@ -128,8 +129,8 @@ public static class DeviceAnalysis
             ChangeAction = ChangeAction.AdDisableAccount,
             Target = c.DistinguishedName,
             TargetName = c.Name,
-            Description = $"Computer {c.Name} uitschakelen (laatst aangemeld {c.LastLogon?.LocalDateTime.ToString("dd/MM/yyyy") ?? "nooit"})",
-            CurrentValue = "ingeschakeld",
-            NewValue = "uitgeschakeld",
+            Description = c.LastLogon is { } last ? Localization.Texts.T.Format("device.disable", c.Name, last.LocalDateTime) : Localization.Texts.T.Format("device.disable.never", c.Name),
+            CurrentValue = Localization.Texts.T["device.enabled"],
+            NewValue = Localization.Texts.T["device.disabled"],
         }));
 }

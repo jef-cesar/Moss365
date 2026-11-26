@@ -2,6 +2,7 @@ using System.Text.Json;
 using Moss365.Core.Changes;
 using Moss365.Core.Inventory;
 using Moss365.Core.Storage;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Reporting;
 
@@ -57,12 +58,12 @@ public static class GuestRenewal
             if (since is null || since < now.AddMonths(-months))
             {
                 output.Add(new GuestDue(guest, sponsor, since, review?.Confirmed is null
-                    ? since is null ? "nooit bevestigd, uitnodiging onbekend" : $"nooit bevestigd, uitgenodigd op {since.Value.LocalDateTime:dd/MM/yyyy}"
-                    : $"laatst bevestigd op {since.Value.LocalDateTime:dd/MM/yyyy}"));
+                    ? since is null ? Texts.T["code.guest-renewal.never-confirmed-invitation-unknown"] : Texts.T.Format("code.guest-renewal.never-confirmed-invited-on", since.Value.LocalDateTime)
+                    : Texts.T.Format("code.guest-renewal.last-confirmed-on", since.Value.LocalDateTime)));
             }
             else if (sponsor.Length == 0)
             {
-                output.Add(new GuestDue(guest, sponsor, since, "geen sponsor"));
+                output.Add(new GuestDue(guest, sponsor, since, Texts.T["code.guest-renewal.no-sponsor"]));
             }
         }
 
@@ -82,9 +83,8 @@ public static class GuestRenewal
             .Append(current with { Confirmed = now, ConfirmedBy = by, Note = note.Length > 0 ? note : current.Note }).ToList();
     }
 
-    public const string DefaultQuestion = "Beste,\n\nJe bent sponsor van deze gasten in onze Microsoft 365-omgeving:\n\n{gasten}\n\n"
-                                          + "Hebben ze nog toegang nodig? Antwoord op deze mail met de namen die mogen blijven. "
-                                          + "Wie niet bevestigd wordt, verliest de toegang.\n\nDe IT-dienst";
+    /// <summary>The default question in the language of the interface; {gasten} stays (the list per sponsor).</summary>
+    public static string DefaultQuestion => Texts.T.Format("guest-renewal.question", "{gasten}");
 
     /// <summary>One mail per sponsor with the guests to confirm; guests without a sponsor are an error.</summary>
     public static PlanOutcome AskSponsors(IEnumerable<GuestDue> due, string template)
@@ -95,7 +95,7 @@ public static class GuestRenewal
         {
             if (group.Key.Length == 0 || !group.Key.Contains('@'))
             {
-                errors.AddRange(group.Select(g => $"{g.Guest.Name} heeft geen sponsor (met e-mailadres)."));
+                errors.AddRange(group.Select(g => Texts.T.Format("code.guest-renewal.has-no-sponsor-with-an", g.Guest.Name)));
                 continue;
             }
 
@@ -106,8 +106,8 @@ public static class GuestRenewal
                 ChangeAction = ChangeAction.GraphSendMail,
                 Target = group.Key,
                 TargetName = group.Key,
-                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["onderwerp"] = "Hebben je gasten nog toegang nodig?", ["tekst"] = template.Replace("{gasten}", list, StringComparison.OrdinalIgnoreCase) },
-                Description = $"Sponsor vragen om {group.Count()} gast(en) te bevestigen",
+                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["onderwerp"] = Texts.T["guest-renewal.subject"], ["tekst"] = template.Replace("{gasten}", list, StringComparison.OrdinalIgnoreCase) },
+                Description = Texts.T.Format("code.guest-renewal.ask-the-sponsor-to-confirm", group.Count()),
                 NewValue = group.Key,
             });
         }
@@ -125,7 +125,7 @@ public static class GuestRenewal
             TargetName = g.Name,
             Parameters = new(StringComparer.OrdinalIgnoreCase) { ["accountEnabled"] = "false" },
             Previous = new(StringComparer.OrdinalIgnoreCase) { ["accountEnabled"] = "true" },
-            Description = "Gast uitschakelen (niet meer bevestigd door de sponsor)",
+            Description = Texts.T["code.guest-renewal.disable-guest-no-longer-confirmed"],
             CurrentValue = "ingeschakeld",
             NewValue = "uitgeschakeld",
         }));

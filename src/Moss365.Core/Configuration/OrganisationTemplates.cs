@@ -9,23 +9,23 @@ public sealed record OrganisationTemplate(string Key, string Name, string Descri
 /// </summary>
 public static class OrganisationTemplates
 {
-    public static IReadOnlyList<OrganisationTemplate> All { get; } = new[]
+    public static IReadOnlyList<OrganisationTemplate> All => new[]
     {
-        new OrganisationTemplate("lokaal-bestuur", "Lokaal bestuur", "Gemeente en OCMW: afdelingen, diensten en vrijwilligers.", () => new OrganisationConfig
+        new OrganisationTemplate("lokaal-bestuur", Localization.Texts.T["template.local-government"], Localization.Texts.T["template.local-government.help"], () => new OrganisationConfig
         {
             Divisions = new() { D("Burger en welzijn"), D("Vrije tijd"), D("Grondgebiedzaken"), D("Interne zaken") },
             Populations = new() { P("Medewerkers"), P("Vrijwilligers", noLicence: true) },
             GroupPrefixes = new() { "gg_", "AFD_", "DNST_", "SG-" },
             Naming = new NamingSettings { LocalPart = LocalPartPattern.GivenDotSurname, DisplayName = DisplayNamePattern.GivenSurname },
         }),
-        new OrganisationTemplate("school", "School", "Directie, leerkrachten en leerlingen, met groepen per klas.", () => new OrganisationConfig
+        new OrganisationTemplate("school", Localization.Texts.T["template.school"], Localization.Texts.T["template.school.help"], () => new OrganisationConfig
         {
             Divisions = new() { D("Directie"), D("Secretariaat"), D("Leerkrachten"), D("ICT") },
             Populations = new() { P("Personeel"), P("Leerlingen") },
             GroupPrefixes = new() { "GRP_", "KLAS_", "SG-" },
             Naming = new NamingSettings { LocalPart = LocalPartPattern.GivenDotSurname, DisplayName = DisplayNamePattern.GivenSurname },
         }),
-        new OrganisationTemplate("kleine-onderneming", "Kleine onderneming", "Enkele afdelingen, gedeelde postvakken via groepen.", () => new OrganisationConfig
+        new OrganisationTemplate("kleine-onderneming", Localization.Texts.T["template.small-business"], Localization.Texts.T["template.small-business.help"], () => new OrganisationConfig
         {
             Divisions = new() { D("Directie"), D("Verkoop"), D("Administratie"), D("IT") },
             Populations = new() { P("Medewerkers") },
@@ -42,13 +42,13 @@ public static class OrganisationTemplates
         foreach (var d in t.Divisions.Where(d => !c.Divisions.Any(x => string.Equals(x.Name, d.Name, StringComparison.OrdinalIgnoreCase))))
         {
             c.Divisions.Add(d);
-            added.Add("afdeling " + d.Name);
+            added.Add(Localization.Texts.T.Format("template.added.division", d.Name));
         }
 
         foreach (var p in t.Populations.Where(p => !c.Populations.Any(x => string.Equals(x.Name, p.Name, StringComparison.OrdinalIgnoreCase))))
         {
             c.Populations.Add(p);
-            added.Add("soort gebruiker " + p.Name);
+            added.Add(Localization.Texts.T.Format("template.added.population", p.Name));
         }
 
         foreach (var g in t.GroupPrefixes.Where(g => !c.GroupPrefixes.Contains(g, StringComparer.OrdinalIgnoreCase)))

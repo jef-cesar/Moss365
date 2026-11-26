@@ -288,8 +288,9 @@ public static class HelpdeskTools
         return PlanOutcome.Of(plan, errors);
     }
 
-    public const string DefaultReminder = "Beste {naam},\n\nJe wachtwoord verloopt op {datum} (over {dagen} dagen). Wijzig het voor die datum: "
-                                          + "druk op Ctrl+Alt+Del op je pc en kies Wachtwoord wijzigen, of via https://mysignins.microsoft.com.\n\nDe IT-dienst";
+    /// <summary>The default reminder in the language of the interface; {naam}, {datum} and {dagen} stay as they are
+    /// (they are filled in per person).</summary>
+    public static string DefaultReminder => Texts.T.Format("helpdesk.reminder.body", "{naam}", "{datum}", "{dagen}");
 
     /// <summary>Every group of a person, also through other groups (nested), with the groups in between.</summary>
     public static IReadOnlyList<GroupPath> GroupsWithPaths(InventoryData d, Person p)
