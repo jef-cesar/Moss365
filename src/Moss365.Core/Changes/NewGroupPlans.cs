@@ -1,6 +1,7 @@
 using Moss365.Core.Analysis;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -73,47 +74,47 @@ public static class NewGroupPlans
 
         if (name.Length == 0)
         {
-            return PlanOutcome.Error("Geef de groep een naam.");
+            return PlanOutcome.Error(Texts.T["code.new-group-plans.give-the-group-a-name"]);
         }
 
         if (name.IndexOfAny(new[] { '"', '/', '\\', '[', ']', ':', ';', '|', '=', ',', '+', '*', '?', '<', '>', '@' }) >= 0)
         {
-            errors.Add("De naam bevat een teken dat niet mag in een groepsnaam (bv. / \\ : ; , @).");
+            errors.Add(Texts.T["code.new-group-plans.the-name-contains-a-character"]);
         }
 
         if (data.Index.Groups.Any(g => string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase)
                                         || string.Equals(g.Ad?.SamAccountName, name, StringComparison.OrdinalIgnoreCase)))
         {
-            errors.Add($"Er bestaat al een groep {name}.");
+            errors.Add(Texts.T.Format("code.new-group-plans.a-group-already-exists", name));
         }
 
         if (MirrorUser.IsPrivileged(new AdGroup { Name = name }))
         {
-            errors.Add($"{name} is een bevoorrechte naam; zo'n groep maak je bewust buiten deze app.");
+            errors.Add(Texts.T.Format("code.new-group-plans.is-a-privileged-name-you", name));
         }
 
         if (config.IsDynamicGroup(name))
         {
-            errors.Add($"{name} is een dynamische groep in de organisatie: die volgt uit regels en maak je niet hier.");
+            errors.Add(Texts.T.Format("code.new-group-plans.is-a-dynamic-group-in", name));
         }
 
         var prefixes = config.GroupPrefixes.Count > 0 ? config.GroupPrefixes : new List<string> { "gg_", "AFD_", "DNST_", "SG-", "WKG_" };
         if (!prefixes.Any(v => name.StartsWith(v, StringComparison.OrdinalIgnoreCase)))
         {
-            warnings.Add($"De naam volgt de naamgeving niet (begint niet met {string.Join(", ", prefixes)}).");
+            warnings.Add(Texts.T.Format("plan.group.prefix", string.Join(", ", prefixes)));
         }
 
         if (WithMail(a.Kind))
         {
             if (!mail.Contains('@') || mail.StartsWith('@') || mail.EndsWith('@'))
             {
-                errors.Add("Geef een geldig e-mailadres.");
+                errors.Add(Texts.T["code.new-group-plans.enter-a-valid-e-mail"]);
             }
             else if (data.Index.Groups.Any(g => string.Equals(g.Mail, mail, StringComparison.OrdinalIgnoreCase))
                      || data.Mailboxes.Any(p => string.Equals(p.Smtp, mail, StringComparison.OrdinalIgnoreCase))
                      || data.Index.AccountOf(mail) is not null)
             {
-                errors.Add($"Het adres {mail} is al in gebruik.");
+                errors.Add(Texts.T.Format("code.new-group-plans.the-address-is-already-in", mail));
             }
         }
 
@@ -125,7 +126,7 @@ public static class NewGroupPlans
         {
             if (string.IsNullOrWhiteSpace(config.GroupsOu))
             {
-                errors.Add("Stel eerst bij Organisatie de OU voor nieuwe groepen in.");
+                errors.Add(Texts.T["code.new-group-plans.first-set-the-ou-for"]);
             }
             else
             {
@@ -158,7 +159,7 @@ public static class NewGroupPlans
                 }
                 else if (administrator is not null)
                 {
-                    errors.Add($"{administrator.Name} heeft geen AD-account en kan geen beheerder van een AD-groep zijn.");
+                    errors.Add(Texts.T.Format("code.new-group-plans.has-no-ad-account-and", administrator.Name));
                 }
 
                 var create = new Change
@@ -168,7 +169,7 @@ public static class NewGroupPlans
                     Target = dn,
                     TargetName = name,
                     Parameters = p,
-                    Description = $"AD-beveiligingsgroep {name} aanmaken ({a.Scope}) in {config.GroupsOu}",
+                    Description = Texts.T.Format("code.new-group-plans.create-ad-security-group-in", name, a.Scope, config.GroupsOu),
                     NewValue = dn,
                     Warning = warning,
                 };
@@ -177,7 +178,7 @@ public static class NewGroupPlans
                 {
                     if (member.Ad is null)
                     {
-                        errors.Add($"{member.Name} heeft geen AD-account en kan geen lid worden van een AD-groep.");
+                        errors.Add(Texts.T.Format("code.new-group-plans.has-no-ad-account-and-2", member.Name));
                         continue;
                     }
 
@@ -188,7 +189,7 @@ public static class NewGroupPlans
                         Target = member.Ad.DistinguishedName,
                         TargetName = member.Name,
                         Parameters = GroupPlans.P(("groepDn", dn), ("groep", name)),
-                        Description = $"Lid maken van de nieuwe AD-groep {name}",
+                        Description = Texts.T.Format("code.new-group-plans.make-member-of-the-new", name),
                         DependentOf = create.Id,
                     });
                 }
@@ -202,10 +203,10 @@ public static class NewGroupPlans
                 var m365 = a.Kind == NewGroupKind.Microsoft365;
                 var alias = m365 ? mail.Split('@')[0] : new string(name.Where(char.IsLetterOrDigit).ToArray());
                 var withoutEntra = members.Where(l => l.Entra is null).ToList();
-                errors.AddRange(withoutEntra.Select(l => $"{l.Name} bestaat niet in Entra en kan geen lid worden van een cloudgroep."));
+                errors.AddRange(withoutEntra.Select(l => Texts.T.Format("code.new-group-plans.does-not-exist-in-entra", l.Name)));
                 if (administrator is { Entra: null })
                 {
-                    errors.Add($"{administrator.Name} bestaat niet in Entra en kan geen eigenaar zijn.");
+                    errors.Add(Texts.T.Format("code.new-group-plans.does-not-exist-in-entra-2", administrator.Name));
                 }
 
                 var p = GroupPlans.P(("displayName", name), ("mailNickname", alias), ("soort", m365 ? "M365" : "Beveiliging"));
@@ -228,7 +229,7 @@ public static class NewGroupPlans
 
                 if (membersIds.Count + (p.ContainsKey("eigenaar") ? 1 : 0) > 20)
                 {
-                    errors.Add("Een nieuwe cloudgroep kan bij het aanmaken maximaal 20 leden en eigenaars krijgen; voeg de rest daarna toe.");
+                    errors.Add(Texts.T["code.new-group-plans.a-new-cloud-group-can"]);
                     break;
                 }
 
@@ -239,9 +240,9 @@ public static class NewGroupPlans
                     Target = m365 ? mail : alias,
                     TargetName = name,
                     Parameters = p,
-                    Description = (m365 ? $"Microsoft 365-groep {name} aanmaken ({mail})" : $"Cloudbeveiligingsgroep {name} aanmaken")
-                                   + (membersIds.Count > 0 ? $" met {membersIds.Count} {(membersIds.Count == 1 ? "lid" : "leden")}" : string.Empty)
-                                   + (administrator?.Entra is not null ? $", eigenaar {administrator.Name}" : string.Empty),
+                    Description = (m365 ? Texts.T.Format("plan.group.m365", name, mail) : Texts.T.Format("plan.group.security", name))
+                                   + (membersIds.Count > 0 ? Texts.T.Format(membersIds.Count == 1 ? "plan.group.with-member" : "plan.group.with-members", membersIds.Count) : string.Empty)
+                                   + (administrator?.Entra is not null ? Texts.T.Format("plan.group.owner", administrator.Name) : string.Empty),
                     NewValue = name,
                     Warning = warning,
                 });
@@ -259,8 +260,8 @@ public static class NewGroupPlans
                     Parameters = GroupPlans.P(("Name", name), ("DisplayName", name), ("Alias", mail.Split('@')[0]),
                         ("Type", a.Kind == NewGroupKind.Distribution ? "Distribution" : "Security")),
                     Description = a.Kind == NewGroupKind.Distribution
-                        ? $"Distributielijst {name} aanmaken ({mail})"
-                        : $"Mail-beveiligingsgroep {name} aanmaken ({mail}, lidmaatschap gesloten)",
+                        ? Texts.T.Format("code.new-group-plans.create-distribution-list", name, mail)
+                        : Texts.T.Format("code.new-group-plans.create-mail-enabled-security-group", name, mail),
                     NewValue = mail,
                     Warning = warning,
                 };
@@ -276,14 +277,14 @@ public static class NewGroupPlans
                             Target = mail,
                             TargetName = name,
                             Parameters = GroupPlans.P(("Toevoegen", address)),
-                            Description = $"{administrator.Name} beheerder maken",
+                            Description = Texts.T.Format("code.group-plans.make-manager", administrator.Name),
                             NewValue = administrator.Name,
                             DependentOf = create.Id,
                         });
                     }
                     else
                     {
-                        errors.Add($"{administrator.Name} heeft geen e-mailadres en kan geen beheerder zijn.");
+                        errors.Add(Texts.T.Format("code.new-group-plans.has-no-e-mail-address", administrator.Name));
                     }
                 }
 
@@ -291,7 +292,7 @@ public static class NewGroupPlans
                 {
                     if (GroupPlans.Address(data, data.Index.Ref(member)) is not { } address)
                     {
-                        errors.Add($"{member.Name} heeft geen e-mailadres en kan geen lid worden van een mailgroep.");
+                        errors.Add(Texts.T.Format("code.new-group-plans.has-no-e-mail-address-2", member.Name));
                         continue;
                     }
 
@@ -302,7 +303,7 @@ public static class NewGroupPlans
                         Target = address,
                         TargetName = member.Name,
                         Parameters = GroupPlans.P(("groep", mail), ("groepNaam", name)),
-                        Description = $"Lid maken van de nieuwe groep {name} (Exchange)",
+                        Description = Texts.T.Format("code.new-group-plans.make-member-of-the-new-2", name),
                         DependentOf = create.Id,
                     });
                 }

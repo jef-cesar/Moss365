@@ -1,5 +1,6 @@
 using Moss365.Core.Analysis;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -36,15 +37,14 @@ public static class GroupPlans
     {
         if (g.Dynamic)
         {
-            return PlanOutcome.Error($"{g.Name} is een dynamische groep: de leden volgen uit de regel, niet uit handmatige wijzigingen.");
+            return PlanOutcome.Error(Texts.T.Format("code.group-plans.is-a-dynamic-group-the", g.Name));
         }
 
         if (add && g.Ad is { } adg && MirrorUser.IsPrivileged(adg))
         {
-            return PlanOutcome.Error($"{g.Name} is een bevoorrechte groep; leden toevoegen doe je bewust buiten deze app.");
+            return PlanOutcome.Error(Texts.T.Format("code.group-plans.is-a-privileged-group-you", g.Name));
         }
 
-        var verb = add ? "Lid maken van" : "Uit";
         switch (g.Route)
         {
             case WriteRoute.ActiveDirectory:
@@ -52,7 +52,7 @@ public static class GroupPlans
                 var dn = AdDn(data, member);
                 if (dn is null)
                 {
-                    return PlanOutcome.Error($"{member.Name} heeft geen AD-object; {g.Name} is een AD-groep (ook in de cloud gaat het lidmaatschap via AD).");
+                    return PlanOutcome.Error(Texts.T.Format("code.group-plans.has-no-ad-object-is", member.Name, g.Name));
                 }
 
                 return PlanOutcome.Of(new[]
@@ -64,7 +64,7 @@ public static class GroupPlans
                         Target = dn,
                         TargetName = member.Name,
                         Parameters = P(("groepDn", g.Ad!.DistinguishedName), ("groep", g.Ad.Name)),
-                        Description = add ? $"Lid maken van AD-groep {g.Name}" : $"Uit AD-groep {g.Name} halen",
+                        Description = add ? Texts.T.Format("code.plan-builder.make-member-of-ad-group", g.Name) : Texts.T.Format("code.plan-builder.remove-from-ad-group", g.Name),
                         DependentOf = dependentOf,
                     },
                 });
@@ -75,7 +75,7 @@ public static class GroupPlans
                 var id = EntraId(data, member);
                 if (id is null)
                 {
-                    return PlanOutcome.Error($"{member.Name} bestaat niet in Entra.");
+                    return PlanOutcome.Error(Texts.T.Format("code.group-plans.does-not-exist-in-entra", member.Name));
                 }
 
                 return PlanOutcome.Of(new[]
@@ -87,7 +87,7 @@ public static class GroupPlans
                         Target = id,
                         TargetName = member.Name,
                         Parameters = P(("groepId", g.Cloud!.Id), ("groep", g.Name)),
-                        Description = add ? $"Lid maken van cloudgroep {g.Name}" : $"Uit cloudgroep {g.Name} halen",
+                        Description = add ? Texts.T.Format("code.plan-builder.make-member-of-cloud-group", g.Name) : Texts.T.Format("code.plan-builder.remove-from-cloud-group", g.Name),
                         DependentOf = dependentOf,
                     },
                 });
@@ -98,7 +98,7 @@ public static class GroupPlans
                 var address = Address(data, member);
                 if (address is null)
                 {
-                    return PlanOutcome.Error($"{member.Name} heeft geen e-mailadres; alleen ontvangers kunnen lid zijn van een mailgroep.");
+                    return PlanOutcome.Error(Texts.T.Format("code.group-plans.has-no-e-mail-address", member.Name));
                 }
 
                 return PlanOutcome.Of(new[]
@@ -110,15 +110,15 @@ public static class GroupPlans
                         Target = address,
                         TargetName = member.Name,
                         Parameters = P(("groep", ExoIdentity(g)), ("groepNaam", g.Name)),
-                        Description = $"{verb} {g.Name} (Exchange)" + (add ? string.Empty : " halen")
-                                       + (add && g.Name.StartsWith("SG-SM-", StringComparison.OrdinalIgnoreCase) ? ": toegang tot een gedeeld postvak" : string.Empty),
+                        Description = !add ? Texts.T.Format("plan.remove-exchange", g.Name)
+                            : g.Name.StartsWith("SG-SM-", StringComparison.OrdinalIgnoreCase) ? Texts.T.Format("plan.member-exchange.shared", g.Name) : Texts.T.Format("plan.member-exchange", g.Name),
                         DependentOf = dependentOf,
                     },
                 });
             }
 
             default:
-                return PlanOutcome.Error($"Voor {g.Name} is geen schrijfweg bekend.");
+                return PlanOutcome.Error(Texts.T.Format("code.group-plans.no-write-route-is-known", g.Name));
         }
     }
 
@@ -138,7 +138,7 @@ public static class GroupPlans
                 var p = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if (name is not null) p["displayName"] = name;
                 if (description is not null) p["description"] = description;
-                if (mail is not null) errors.Add("Het e-mailadres van een AD-groep wijzig je niet hier (het domein heeft geen Exchange-schema).");
+                if (mail is not null) errors.Add(Texts.T["code.group-plans.you-do-not-change-the"]);
                 if (p.Count > 0)
                 {
                     plan.Add(new Change
@@ -148,7 +148,7 @@ public static class GroupPlans
                         Target = g.Ad!.DistinguishedName,
                         TargetName = g.Name,
                         Parameters = p,
-                        Description = "Naam en/of omschrijving van de AD-groep aanpassen" + (g.Cloud is null ? string.Empty : " (Entra volgt na de synchronisatie)"),
+                        Description = Texts.T.Format("code.group-plans.change-the-name-and-or", (g.Cloud is null ? string.Empty : (" " + Texts.T["code.group-plans.entra-follows-after-the-synchronisation"]))),
                         CurrentValue = Text(("displayName", g.Ad.DisplayName.Length > 0 ? g.Ad.DisplayName : g.Ad.Name), ("description", g.Ad.Description), p),
                         NewValue = Text(p),
                         Previous = Previous(p, ("displayName", g.Ad.DisplayName), ("description", g.Ad.Description)),
@@ -163,7 +163,7 @@ public static class GroupPlans
                 var p = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if (name is not null) p["displayName"] = name;
                 if (description is not null) p["description"] = description;
-                if (mail is not null) errors.Add("Het e-mailadres van een Microsoft 365-groep wijzig je in Exchange; dat zit nog niet in de app.");
+                if (mail is not null) errors.Add(Texts.T["code.group-plans.you-change-the-e-mail"]);
                 if (p.Count > 0)
                 {
                     plan.Add(new Change
@@ -173,7 +173,7 @@ public static class GroupPlans
                         Target = g.Cloud!.Id,
                         TargetName = g.Name,
                         Parameters = p,
-                        Description = "Naam en/of omschrijving van de cloudgroep aanpassen",
+                        Description = Texts.T["code.group-plans.change-the-name-and-or-2"],
                         CurrentValue = Text(("displayName", g.Cloud.DisplayName), ("description", g.Cloud.Description), p),
                         NewValue = Text(p),
                         Previous = Previous(p, ("displayName", g.Cloud.DisplayName), ("description", g.Cloud.Description)),
@@ -188,7 +188,7 @@ public static class GroupPlans
                 var p = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if (name is not null) p["DisplayName"] = name;
                 if (mail is not null) p["PrimarySmtpAddress"] = mail;
-                if (description is not null) errors.Add("Een mailgroep heeft in Exchange geen omschrijving die de app kan zetten; de omschrijving blijft ongewijzigd.");
+                if (description is not null) errors.Add(Texts.T["code.group-plans.a-mail-group-has-no"]);
                 if (p.Count > 0)
                 {
                     plan.Add(new Change
@@ -198,7 +198,7 @@ public static class GroupPlans
                         Target = ExoIdentity(g),
                         TargetName = g.Name,
                         Parameters = p,
-                        Description = "Naam en/of e-mailadres van de mailgroep aanpassen",
+                        Description = Texts.T["code.group-plans.change-the-name-and-or-3"],
                         CurrentValue = Text(("DisplayName", g.Name), ("PrimarySmtpAddress", g.Mail), p),
                         NewValue = Text(p),
                         Previous = Previous(p, ("DisplayName", g.Name), ("PrimarySmtpAddress", g.Mail)),
@@ -209,7 +209,7 @@ public static class GroupPlans
             }
 
             default:
-                errors.Add($"{g.Name} is dynamisch of heeft geen gekende schrijfweg.");
+                errors.Add(Texts.T.Format("code.group-plans.is-dynamic-or-has-no", g.Name));
                 break;
         }
 
@@ -224,7 +224,7 @@ public static class GroupPlans
             var dn = AdDn(data, who);
             if (add && dn is null)
             {
-                return PlanOutcome.Error($"{who.Name} heeft geen AD-object en kan geen beheerder van een AD-groep zijn.");
+                return PlanOutcome.Error(Texts.T.Format("code.group-plans.has-no-ad-object-and", who.Name));
             }
 
             return PlanOutcome.Of(new[]
@@ -237,9 +237,9 @@ public static class GroupPlans
                     TargetName = g.Name,
                     Parameters = P(("managedBy", add ? dn! : string.Empty)),
                     Previous = P(("managedBy", g.Ad.ManagedBy)),
-                    Description = add ? $"{who.Name} beheerder maken (managedBy; een AD-groep heeft er maar één)" : "Beheerder (managedBy) weghalen",
-                    CurrentValue = g.Ad.ManagedBy.Length > 0 ? DnHelp.Name(g.Ad.ManagedBy) : "(geen)",
-                    NewValue = add ? who.Name : "(geen)",
+                    Description = add ? Texts.T.Format("code.group-plans.make-manager-managedby-an-ad", who.Name) : Texts.T["code.group-plans.remove-the-manager-managedby"],
+                    CurrentValue = g.Ad.ManagedBy.Length > 0 ? DnHelp.Name(g.Ad.ManagedBy) : Texts.T["edit-user.none"],
+                    NewValue = add ? who.Name : Texts.T["edit-user.none"],
                 },
             });
         }
@@ -249,7 +249,7 @@ public static class GroupPlans
             var address = Address(data, who);
             if (address is null)
             {
-                return PlanOutcome.Error($"{who.Name} heeft geen e-mailadres.");
+                return PlanOutcome.Error(Texts.T.Format("code.group-plans.has-no-e-mail-address-2", who.Name));
             }
 
             return PlanOutcome.Of(new[]
@@ -261,7 +261,7 @@ public static class GroupPlans
                     Target = ExoIdentity(g),
                     TargetName = g.Name,
                     Parameters = P((add ? "Toevoegen" : "Verwijderen", address)),
-                    Description = add ? $"{who.Name} beheerder maken" : $"{who.Name} als beheerder weghalen",
+                    Description = add ? Texts.T.Format("code.group-plans.make-manager", who.Name) : Texts.T.Format("code.group-plans.remove-as-manager", who.Name),
                     NewValue = who.Name,
                 },
             });
@@ -272,7 +272,7 @@ public static class GroupPlans
             var id = EntraId(data, who);
             if (id is null)
             {
-                return PlanOutcome.Error($"{who.Name} bestaat niet in Entra.");
+                return PlanOutcome.Error(Texts.T.Format("code.group-plans.does-not-exist-in-entra", who.Name));
             }
 
             return PlanOutcome.Of(new[]
@@ -284,13 +284,13 @@ public static class GroupPlans
                     Target = g.Cloud.Id,
                     TargetName = g.Name,
                     Parameters = P(("lid", id), ("lidNaam", who.Name)),
-                    Description = add ? $"{who.Name} eigenaar maken" : $"{who.Name} als eigenaar weghalen",
+                    Description = add ? Texts.T.Format("code.group-plans.make-owner", who.Name) : Texts.T.Format("code.group-plans.remove-as-owner", who.Name),
                     NewValue = who.Name,
                 },
             });
         }
 
-        return PlanOutcome.Error("Deze groep heeft geen beheerders die de app kan wijzigen.");
+        return PlanOutcome.Error(Texts.T["code.group-plans.this-group-has-no-managers"]);
     }
 
     // ---------------------------------------------------------------- helper functions (also for the mailbox plans)
