@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Moss365.Core.Permissions;
 using Moss365.Core.Setup;
@@ -60,7 +61,7 @@ public sealed partial class ManagementState
     {
         if (_factory?.Setup(Settings.TenantId) is not { } setup)
         {
-            return "Zoek eerst de tenant op (stap 1).";
+            return Texts.T["code.management-state-setup.look-up-the-tenant-first"];
         }
 
         try
@@ -73,7 +74,7 @@ public sealed partial class ManagementState
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Warning("Wizard: lezen mislukt ({Soort})", ex.GetType().Name);
-            return "Nakijken mislukt: " + ex.Message;
+            return (Texts.T["code.library-panel.check-failed"] + " ") + ex.Message;
         }
     }
 
@@ -85,12 +86,12 @@ public sealed partial class ManagementState
     {
         if (_factory?.Setup(Settings.TenantId) is not { } setup)
         {
-            throw new InvalidOperationException("Zoek eerst de tenant op (stap 1).");
+            throw new InvalidOperationException(Texts.T["code.management-state-setup.look-up-the-tenant-first"]);
         }
 
         if (IsHistoric)
         {
-            throw new InvalidOperationException("Je bekijkt een stand uit het verleden: ga eerst terug naar nu.");
+            throw new InvalidOperationException(Texts.T["code.management-state-library.you-are-looking-at-a"]);
         }
 
         var roles = Roles;
@@ -169,7 +170,7 @@ public sealed partial class ManagementState
     {
         if (Check is not { } check || rule.Module is null || rule.PowerShell is null)
         {
-            return "Mislukt: installeren kan hier niet.";
+            return Texts.T["code.management-state-setup.failed-installing-is-not-possible"];
         }
 
         string outcome;

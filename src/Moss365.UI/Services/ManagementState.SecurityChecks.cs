@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Security;
 using Moss365.Core.Setup;
 
@@ -13,13 +14,13 @@ public sealed partial class ManagementState
     /// <summary>The checks this tenant has (AD, Microsoft 365), in the order of the screen.</summary>
     public IReadOnlyList<(string Key, string Title)> SecurityCheckList()
     {
-        var list = new List<(string, string)> { ("meldingen", "Meldingen uit de momentopnames") };
+        var list = new List<(string, string)> { ("meldingen", Texts.T["code.management-state-security-checks.alerts-from-the-snapshots"]) };
         if (HasMicrosoft365)
         {
             list.AddRange(new[]
             {
-                ("doorsturen", "Doorsturen naar buiten"), ("app-geheimen", "Geheimen en certificaten van apps"), ("app-rechten", "Brede app-rechten en toestemmingen van gebruikers"),
-                ("secure-score", "Microsoft Secure Score"), ("rollen", "Beheerrollen en PIM"), ("zwakke-mfa", "Zwakke MFA-methoden"), ("risico", "Risicovolle gebruikers"),
+                ("doorsturen", Texts.T["code.management-state-security-checks.forwarding-outside"]), ("app-geheimen", Texts.T["code.management-state-security-checks.secrets-and-certificates-of-apps"]), ("app-rechten", Texts.T["code.management-state-security-checks.broad-app-permissions-and-consents"]),
+                ("secure-score", "Microsoft Secure Score"), ("rollen", Texts.T["code.management-state-security-checks.admin-roles-and-pim"]), ("zwakke-mfa", "Zwakke MFA-methoden"), ("risico", "Risicovolle gebruikers"),
             });
         }
 
@@ -55,7 +56,7 @@ public sealed partial class ManagementState
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            check = SecurityCheck.Unknown(key, SecurityCheckList().FirstOrDefault(c => c.Key == key).Title ?? key, "Niet gelukt: " + ex.Message);
+            check = SecurityCheck.Unknown(key, SecurityCheckList().FirstOrDefault(c => c.Key == key).Title ?? key, (Texts.T["code.management-state-security-checks.did-not-work"] + " ") + ex.Message);
         }
 
         _checks[key] = check;

@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Moss365.Core.Storage;
@@ -127,7 +128,7 @@ public sealed partial class TenantHub
                 string? sid = null;
                 if (method == EncryptionMethod.AdGroup)
                 {
-                    sid = _protector.GroupSid((group ?? string.Empty).Trim()) ?? throw new ArgumentException($"De groep \"{group}\" is niet gevonden in AD.");
+                    sid = _protector.GroupSid((group ?? string.Empty).Trim()) ?? throw new ArgumentException(Texts.T.Format("code.tenant-hub-encryption.the-group-was-not-found", group));
                 }
 
                 var blob = _protector.Protect(method, key, sid);
@@ -139,20 +140,20 @@ public sealed partial class TenantHub
                 catch (CryptographicException ex)
                 {
                     throw new ArgumentException(method == EncryptionMethod.AdGroup
-                        ? "Je kan de sleutel zelf niet openen: zit je in de groep? Meld je na het toevoegen eerst af en weer aan."
-                        : "Windows kon de sleutel niet beschermen: " + ex.Message);
+                        ? Texts.T["code.tenant-hub-encryption.you-cannot-open-the-key"]
+                        : (Texts.T["code.tenant-hub-encryption.windows-could-not-protect-the"] + " ") + ex.Message);
                 }
 
                 if (!back.AsSpan().SequenceEqual(key))
                 {
-                    throw new ArgumentException("Windows gaf een andere sleutel terug.");
+                    throw new ArgumentException(Texts.T["code.tenant-hub-encryption.windows-returned-a-different-key"]);
                 }
 
                 return new EncryptionInfo(method, Convert.ToBase64String(blob), Group: group?.Trim(), GroupSid: sid);
             }
 
             default:
-                throw new ArgumentException("Deze manier van beveiligen kan niet op deze pc.");
+                throw new ArgumentException(Texts.T["code.tenant-hub-encryption.this-way-of-protecting-is"]);
         }
     }
 
@@ -161,7 +162,7 @@ public sealed partial class TenantHub
     {
         if (Encryption(tenant.Id) is not null)
         {
-            throw new InvalidOperationException("Deze tenant is al versleuteld.");
+            throw new InvalidOperationException(Texts.T["code.tenant-hub-encryption.this-tenant-is-already-encrypted"]);
         }
 
         var protection = Protection(key, method, password, group);
@@ -175,7 +176,7 @@ public sealed partial class TenantHub
     {
         if (!TryKey(tenant, out var key) || key is null)
         {
-            throw new InvalidOperationException("Open de tenant eerst.");
+            throw new InvalidOperationException(Texts.T["code.tenant-hub-encryption.open-the-tenant-first"]);
         }
 
         SaveEncryption(tenant.Id, Protection(key, method, password, group));
@@ -185,7 +186,7 @@ public sealed partial class TenantHub
     /// <summary>A new key (for example when the recovery key may be known to someone else); returns the new recovery key.</summary>
     public string RenewKey(TenantInfo tenant, string? password = null)
     {
-        var info = Encryption(tenant.Id) ?? throw new InvalidOperationException("Deze tenant is niet versleuteld.");
+        var info = Encryption(tenant.Id) ?? throw new InvalidOperationException(Texts.T["code.tenant-hub-encryption.this-tenant-is-not-encrypted"]);
         var (key, recovery) = NewKey();
         var protection = Protection(key, info.Method, password, info.Group);
         Reencrypt(tenant, key);
@@ -199,7 +200,7 @@ public sealed partial class TenantHub
     {
         if (Encryption(tenant.Id) is null)
         {
-            throw new InvalidOperationException("Deze tenant is niet versleuteld.");
+            throw new InvalidOperationException(Texts.T["code.tenant-hub-encryption.this-tenant-is-not-encrypted"]);
         }
 
         Reencrypt(tenant, null);
@@ -216,7 +217,7 @@ public sealed partial class TenantHub
         var state = Open(tenant);
         if (state.TaskBusy || state.ScriptBusy)
         {
-            throw new InvalidOperationException("Wacht tot de taak of het script klaar is.");
+            throw new InvalidOperationException(Texts.T["code.tenant-hub-encryption.wait-until-the-task-or"]);
         }
 
         var path = state.Database.FilePath;

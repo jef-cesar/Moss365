@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 namespace Moss365.UI.Services;
 
 public enum StepStatus
@@ -79,6 +80,6 @@ public sealed class BackgroundTask
             ? $"{Steps.Count(s => s.Status == StepStatus.Busy)} bezig: {string.Join(", ", Steps.Where(s => s.Status == StepStatus.Busy).Select(s => s.Name))}"
             : $"{Current?.Name ?? Name}: {Current?.Message ?? "bezig..."}"
         : Cancelled ? $"{Name}: geannuleerd"
-        : WithErrors ? $"{Name}: mislukt om {End:HH:mm}"
+        : WithErrors ? Texts.T.Format("code.background-task.failed-at", Name, End)
         : $"{Name}: klaar om {End:HH:mm}";
 }

@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Analysis;
 using Moss365.Core.Inventory;
 using Moss365.Core.Storage;
@@ -16,12 +17,12 @@ public sealed partial class ManagementState
         {
             if (CaBackup.Save(ca, Files, DateTime.Now) is { } path)
             {
-                p.Report($"Back-up van Conditional Access bewaard ({path[(path.LastIndexOf('/') + 1)..]}).");
+                p.Report(Texts.T.Format("state.cabackup", path[(path.LastIndexOf('/') + 1)..]));
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            p.Report("Back-up van Conditional Access niet bewaard: " + ex.Message);
+            p.Report((Texts.T["code.management-state-ca.backup-of-conditional-access-not"] + " ") + ex.Message);
             Log.Warning("Back-up van Conditional Access mislukt: {Fout}", ex.Message);
         }
     }

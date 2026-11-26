@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Helpdesk;
 
 namespace Moss365.UI.Services;
@@ -55,7 +56,7 @@ public sealed partial class ManagementState
     {
         if (!HasMicrosoft365 || _factory?.Exchange(EffectiveSettings) is not { } exchange)
         {
-            throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
+            throw new InvalidOperationException(Texts.T["code.management-state-helpdesk.exchange-online-is-not-available"]);
         }
 
         var rows = new List<MessageTraceRow>();

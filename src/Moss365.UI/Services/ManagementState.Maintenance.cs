@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Moss365.Core.Inventory;
 using Moss365.Core.Scripts;
@@ -26,27 +27,27 @@ public sealed partial class ManagementState
 
         var daily = Math.Max(1, r.SnapshotsDailyDays);
         output.Add(new(CleanupPart.Snapshots, Database.SnapshotsToThin(now, daily).Count, now.AddDays(-daily),
-            $"Ouder dan {daily} dagen: enkel de laatste momentopname van elke maand blijft. Elke datum die blijft, toont exact dezelfde stand."));
+            Texts.T.Format("code.management-state-maintenance.older-than-days-only-the", daily)));
 
         var changeLog = Retention.Limit(now, Config.ChangeLogSaveYears);
         output.Add(new(CleanupPart.ChangeLog, Database.CountLog(changeLog), changeLog,
-            $"Ouder dan {Math.Max(1, Config.ChangeLogSaveYears)} jaar. Eerst naar een CSV in {ArchiveFolder}, pas daarna uit de databank."));
+            Texts.T.Format("code.management-state-maintenance.older-than-year-s-first", Math.Max(1, Config.ChangeLogSaveYears), ArchiveFolder)));
 
         var access = now.AddYears(-Math.Max(1, r.AccessLogYears));
         output.Add(new(CleanupPart.AccessLog, Database.CountAccess(access), access,
-            $"Ouder dan {Math.Max(1, r.AccessLogYears)} jaar. Eerst naar een CSV, pas daarna uit de databank."));
+            Texts.T.Format("code.management-state-maintenance.older-than-year-s-first-2", Math.Max(1, r.AccessLogYears))));
 
         var technical = now.AddDays(-Math.Max(1, r.TechnicalLogDays));
         output.Add(new(CleanupPart.TechnicalLog, Database.CountTechnicalLog(technical), technical,
-            $"Ouder dan {Math.Max(1, r.TechnicalLogDays)} dagen (gebeurt ook vanzelf bij het starten)."));
+            Texts.T.Format("code.management-state-maintenance.older-than-days-also-happens", Math.Max(1, r.TechnicalLogDays))));
 
         var runs = now.AddDays(-Math.Max(1, r.ScriptRunDays));
         output.Add(new(CleanupPart.ScriptRuns, ScriptRuns.Items(ScriptFolders).Count(x => x.Start < runs), runs,
-            $"Ouder dan {Math.Max(1, r.ScriptRunDays)} dagen, met hun bestanden (gebeurt ook vanzelf bij het starten)."));
+            Texts.T.Format("code.management-state-maintenance.older-than-days-with-their", Math.Max(1, r.ScriptRunDays))));
 
         var copies = now.AddDays(-Math.Max(1, r.MigrationCopyDays));
         output.Add(new(CleanupPart.MigrationCopies, Database.OldMigrationCopies(copies).Count, copies,
-            $"Kopieën van voor een update van de databank, ouder dan {Math.Max(1, r.MigrationCopyDays)} dagen; de nieuwste blijft altijd."));
+            Texts.T.Format("code.management-state-maintenance.copies-from-before-an-update", Math.Max(1, r.MigrationCopyDays))));
         return output;
     }
 
@@ -58,7 +59,7 @@ public sealed partial class ManagementState
     {
         if (IsHistoric)
         {
-            throw new InvalidOperationException("Je bekijkt een stand uit het verleden: ga eerst terug naar nu.");
+            throw new InvalidOperationException(Texts.T["code.management-state-library.you-are-looking-at-a"]);
         }
 
         var r = Config.Retention;

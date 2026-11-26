@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Globalization;
 using Moss365.Core.Inventory;
 using Moss365.Core.Changes;
@@ -99,7 +100,7 @@ public sealed partial class ManagementState
         };
         var liveOn = LiveOn;
         var live = share.Where(liveOn.ContainsKey).Select(d => $"{d} live om {liveOn[d]:HH:mm}").ToList();
-        return live.Count > 0 ? string.Join(", ", live) : "uit de inventaris" + (InventoryDate(file) is { } dt ? $" van {dt:dd/MM HH:mm}" : string.Empty);
+        return live.Count > 0 ? string.Join(", ", live) : Texts.T["code.connections.from-the-inventory"] + (InventoryDate(file) is { } dt ? (" " + Texts.T.Format("code.management-state-tasks.of", dt)) : string.Empty);
     }
 
     /// <summary>Date of the inventory folder a file was loaded from (the name contains yyyyMMdd-HHmm).</summary>
@@ -157,7 +158,7 @@ public sealed partial class ManagementState
             {
                 steps.Add(new("AD lezen", "AD", async (p, ct) =>
                 {
-                    var ad = _factory.Ad(EffectiveSettings, AdPassword) ?? throw new InvalidOperationException("AD is hier niet beschikbaar.");
+                    var ad = _factory.Ad(EffectiveSettings, AdPassword) ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.ad-is-not-available-here"]);
                     var read = await ad.ReadAsync(AdBaseForQuick(), p, ct);
                     UpdateData(d => LiveLoader.Merge(d, read, null));
                     RememberSnapshot(read);
@@ -170,7 +171,7 @@ public sealed partial class ManagementState
             {
                 steps.Add(new("Entra lezen", "Entra", async (p, ct) =>
                 {
-                    var graph = Graph() ?? throw new InvalidOperationException("Entra is niet ingesteld.");
+                    var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up"]);
                     var read = await graph.ReadAsync(GraphBaseForQuick(), p, ct);
                     UpdateData(d => LiveLoader.Merge(d, null, read));
                     RememberDelta(read);
@@ -178,9 +179,9 @@ public sealed partial class ManagementState
                     WasRead(InventoryComponent.Entra);
                 }));
 
-                steps.Add(new("Beveiliging lezen (MFA en beheerrollen)", "Entra", async (p, ct) =>
+                steps.Add(new(Texts.T["code.management-state-tasks.read-security-mfa-and-admin"], "Entra", async (p, ct) =>
                 {
-                    var graph = Graph() ?? throw new InvalidOperationException("Entra is niet ingesteld.");
+                    var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up"]);
                     if (await graph.ReadSecurityAsync(p, ct) is not { } security)
                     {
                         p.Report("Niet beschikbaar in deze omgeving.");
@@ -197,7 +198,7 @@ public sealed partial class ManagementState
 
                 steps.Add(new("Conditional Access lezen", "Entra", async (p, ct) =>
                 {
-                    var graph = Graph() ?? throw new InvalidOperationException("Entra is niet ingesteld.");
+                    var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up"]);
                     if (await graph.ReadConditionalAccessAsync(p, ct) is not { } ca)
                     {
                         p.Report("Niet beschikbaar in deze omgeving.");
@@ -216,7 +217,7 @@ public sealed partial class ManagementState
 
             if (steps.Count == 0)
             {
-                Error = "Vul eerst de AD- en/of Entra-gegevens in (scherm Verbindingen).";
+                Error = Texts.T["code.management-state-tasks.fill-in-the-ad-and"];
                 Changed?.Invoke();
                 return false;
             }
@@ -225,9 +226,9 @@ public sealed partial class ManagementState
         if (kind == LoadKind.Everything && HasMicrosoft365)
         {
             // Rooms and mailboxes in one Exchange session: sign in once and load the module once
-            steps.Add(new("Rooms, postvakken en groepen lezen (Exchange)", "Exchange", async (p, ct) =>
+            steps.Add(new(Texts.T["code.management-state-tasks.read-rooms-mailboxes-and-groups"], "Exchange", async (p, ct) =>
             {
-                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
+                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException(Texts.T["code.management-state-helpdesk.exchange-online-is-not-available"]);
                 var reading = await exchange.ReadAllAsync(p, ct);
                 if (reading.Rooms is { } rooms)
                 {
@@ -256,7 +257,7 @@ public sealed partial class ManagementState
         {
             steps.Add(new("Rooms lezen (Exchange)", "Exchange", async (p, ct) =>
             {
-                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
+                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException(Texts.T["code.management-state-helpdesk.exchange-online-is-not-available"]);
                 var rooms = await exchange.ReadRoomsAsync(p, ct);
                 UpdateData(d => LiveLoader.WithRooms(d, rooms));
                 Live("Rooms", ObjectKind.Room);
@@ -266,9 +267,9 @@ public sealed partial class ManagementState
 
         if (kind == LoadKind.Mailboxes && HasMicrosoft365)
         {
-            steps.Add(new("Postvakken en groepen lezen (Exchange)", "Exchange", async (p, ct) =>
+            steps.Add(new(Texts.T["code.management-state-tasks.read-mailboxes-and-groups-exchange"], "Exchange", async (p, ct) =>
             {
-                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
+                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException(Texts.T["code.management-state-helpdesk.exchange-online-is-not-available"]);
                 var data = await exchange.ReadMailboxesAsync(p, ct);
                 UpdateData(d => LiveLoader.WithExchange(d, data));
                 Live("Postvakken", ObjectKind.Mailbox, ObjectKind.Group);
@@ -291,7 +292,7 @@ public sealed partial class ManagementState
 
         var name = kind switch
         {
-            LoadKind.AdAndEntra => "Live laden (AD en Entra)",
+            LoadKind.AdAndEntra => Texts.T["code.management-state-tasks.load-live-ad-and-entra"],
             LoadKind.Rooms => "Rooms laden",
             LoadKind.Mailboxes => "Postvakken laden",
             _ => "Alles live laden",
@@ -319,7 +320,7 @@ public sealed partial class ManagementState
         {
             steps.Add(new($"AD ({targets.AdUsers.Count + targets.AdGroups.Count})", "AD", async (p, ct) =>
             {
-                var ad = _factory.Ad(EffectiveSettings, AdPassword) ?? throw new InvalidOperationException("AD is niet ingesteld (scherm Verbindingen).");
+                var ad = _factory.Ad(EffectiveSettings, AdPassword) ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.ad-is-not-set-up"]);
                 foreach (var sam in targets.AdUsers)
                 {
                     p.Report($"gebruiker {sam}");
@@ -340,7 +341,7 @@ public sealed partial class ManagementState
         {
             steps.Add(new($"Entra ({targets.EntraUsers.Count + targets.CloudGroups.Count})", "Entra", async (p, ct) =>
             {
-                var graph = Graph() ?? throw new InvalidOperationException("Entra is niet ingesteld (scherm Verbindingen).");
+                var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up-2"]);
                 foreach (var id in targets.EntraUsers)
                 {
                     p.Report($"gebruiker {id}");
@@ -361,7 +362,7 @@ public sealed partial class ManagementState
         {
             steps.Add(new("Conditional Access", "Entra", async (p, ct) =>
             {
-                var graph = Graph() ?? throw new InvalidOperationException("Entra is niet ingesteld (scherm Verbindingen).");
+                var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up-2"]);
                 if (await graph.ReadConditionalAccessAsync(p, ct) is { Message: null } ca)
                 {
                     UpdateData(d => LiveLoader.WithConditionalAccess(d, ca));
@@ -374,7 +375,7 @@ public sealed partial class ManagementState
         {
             steps.Add(new($"Exchange ({targets.ExchangeAddresses.Count})", "Exchange", async (p, ct) =>
             {
-                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException("Exchange Online is hier niet beschikbaar.");
+                var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException(Texts.T["code.management-state-helpdesk.exchange-online-is-not-available"]);
                 p.Report(string.Join(", ", targets.ExchangeAddresses));
                 var objects = await exchange.ReadObjectsAsync(targets.ExchangeAddresses.ToList(), ct);
                 UpdateData(d => ObjectRefresher.WithExchange(d, objects));
@@ -461,7 +462,7 @@ public sealed partial class ManagementState
         }
         catch (Exception ex)
         {
-            task.Write("Afronden mislukt: " + ex.Message);
+            task.Write((Texts.T["code.management-state-tasks.finishing-failed"] + " ") + ex.Message);
         }
 
         task.End = DateTime.Now;

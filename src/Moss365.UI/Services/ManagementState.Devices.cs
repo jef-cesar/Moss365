@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Devices;
 
 namespace Moss365.UI.Services;
@@ -25,7 +26,7 @@ public sealed partial class ManagementState
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                notes.Add("Computers in AD niet gelezen: " + ex.Message);
+                notes.Add((Texts.T["code.management-state-devices.computers-in-ad-not-read"] + " ") + ex.Message);
             }
         }
 
@@ -36,12 +37,12 @@ public sealed partial class ManagementState
                 IntuneDevices = await graph.ReadIntuneDevicesAsync(cancel);
                 if (IntuneDevices is null)
                 {
-                    notes.Add("Intune is niet leesbaar (licentie of recht DeviceManagementManagedDevices.Read.All; voer Tenant inrichten opnieuw uit).");
+                    notes.Add(Texts.T["code.management-state-devices.intune-cannot-be-read-licence"]);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                notes.Add("Intune niet gelezen: " + ex.Message);
+                notes.Add((Texts.T["code.management-state-devices.intune-not-read"] + " ") + ex.Message);
             }
         }
 
@@ -60,7 +61,7 @@ public sealed partial class ManagementState
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                DevicesNote = "Teams en SharePoint niet gelezen: " + ex.Message;
+                DevicesNote = (Texts.T["code.management-state-devices.teams-and-sharepoint-not-read"] + " ") + ex.Message;
             }
         }
 

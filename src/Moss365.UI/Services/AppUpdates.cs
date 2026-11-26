@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Moss365.Core.Storage;
 
@@ -56,17 +57,17 @@ public sealed class AppUpdates(IAppUpdater? updater, TenantHub hub)
         {
             if (s.TaskBusy)
             {
-                output.Add($"{s.Tenant.Name}: er loopt een taak.");
+                output.Add(Texts.T.Format("code.app-updates.a-task-is-running", s.Tenant.Name));
             }
 
             if (s.ScriptBusy)
             {
-                output.Add($"{s.Tenant.Name}: er loopt een script.");
+                output.Add(Texts.T.Format("code.app-updates.a-script-is-running", s.Tenant.Name));
             }
 
             if (s.Pending.Everything.Count > 0)
             {
-                output.Add($"{s.Tenant.Name}: er staat nog iets open ({s.Pending.Everything.Count}): een plan, een formulier of iets dat niet bewaard is.");
+                output.Add(Texts.T.Format("code.app-updates.something-is-still-open-a", s.Tenant.Name, s.Pending.Everything.Count));
             }
         }
 
@@ -79,7 +80,7 @@ public sealed class AppUpdates(IAppUpdater? updater, TenantHub hub)
         Found = null;
         if (!CanUpdate)
         {
-            Message = "Deze kopie is niet geïnstalleerd met Setup.exe: download een nieuwe versie bij de releases.";
+            Message = Texts.T["code.app-updates.this-copy-was-not-installed"];
             return null;
         }
 
@@ -89,7 +90,7 @@ public sealed class AppUpdates(IAppUpdater? updater, TenantHub hub)
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Message = "Zoeken mislukt: " + ex.Message;
+            Message = (Texts.T["code.app-updates.search-failed"] + " ") + ex.Message;
         }
 
         return Found;
@@ -103,7 +104,7 @@ public sealed class AppUpdates(IAppUpdater? updater, TenantHub hub)
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Message = "De vorige versies lezen mislukt: " + ex.Message;
+            Message = (Texts.T["code.app-updates.reading-the-previous-versions-failed"] + " ") + ex.Message;
             return Array.Empty<string>();
         }
     }
@@ -115,7 +116,7 @@ public sealed class AppUpdates(IAppUpdater? updater, TenantHub hub)
         try
         {
             Found = CanUpdate ? await updater!.FindAsync(Settings, version, cancel) : null;
-            Message = Found is null ? $"Versie {version} staat niet in dit kanaal." : null;
+            Message = Found is null ? Texts.T.Format("code.app-updates.version-is-not-in-this", version) : null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -133,7 +134,7 @@ public sealed class AppUpdates(IAppUpdater? updater, TenantHub hub)
     {
         if (Found is not { } version || updater is null)
         {
-            return "Zoek eerst naar een versie.";
+            return Texts.T["code.app-updates.search-for-a-version-first"];
         }
 
         if (Blockers() is { Count: > 0 } blockers)
@@ -147,7 +148,7 @@ public sealed class AppUpdates(IAppUpdater? updater, TenantHub hub)
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return "Downloaden mislukt (er werd niets gewijzigd): " + ex.Message;
+            return (Texts.T["code.app-updates.download-failed-nothing-was-changed"] + " ") + ex.Message;
         }
 
         // Checked once more: something may have started during the download

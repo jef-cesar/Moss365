@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Moss365.Core.LogonScripts;
 
@@ -14,7 +15,7 @@ public sealed partial class ManagementState
     {
         if (LogonScriptShare() is not { } share)
         {
-            return (Array.Empty<LogonScriptFile>(), "NETLOGON is niet bereikbaar: vul bij Verbindingen de domeincontroller in (enkel in de Windows-app).");
+            return (Array.Empty<LogonScriptFile>(), Texts.T["code.management-state-logon-scripts.netlogon-cannot-be-reached-fill"]);
         }
 
         try
@@ -23,7 +24,7 @@ public sealed partial class ManagementState
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            return (Array.Empty<LogonScriptFile>(), $"{share.Location} is niet leesbaar: {ex.Message}");
+            return (Array.Empty<LogonScriptFile>(), Texts.T.Format("code.management-state-logon-scripts.cannot-be-read", share.Location, ex.Message));
         }
     }
 

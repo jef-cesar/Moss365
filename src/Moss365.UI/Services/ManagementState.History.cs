@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Globalization;
 using Moss365.Core.Analysis;
 using Moss365.Core.Changes;
@@ -95,23 +96,23 @@ public sealed partial class ManagementState
 
     /// <summary>The organisation as it was at a moment (the last snapshot before it); null when there is none.</summary>
     public InventoryData? DataAt(DateTimeOffset moment)
-        => Database.SnapshotAt(moment) is { } s ? Snapshots.Data(Database.TablesAt(s.Id), $"Stand van {s.Time.LocalDateTime:dd/MM/yyyy HH:mm}") : null;
+        => Database.SnapshotAt(moment) is { } s ? Snapshots.Data(Database.TablesAt(s.Id), Texts.T.Format("code.management-state-history.state-of", s.Time.LocalDateTime)) : null;
 
     /// <summary>Shows the organisation as it was at a moment, read only. Returns an error, or null.</summary>
     public string? ShowAsOf(DateTimeOffset moment)
     {
         if (TaskBusy || ScriptBusy)
         {
-            return "Wacht tot de taak klaar is.";
+            return Texts.T["code.management-state-history.wait-until-the-task-is"];
         }
 
         if (Database.SnapshotAt(moment) is not { } s)
         {
-            return "Er is geen momentopname van voor die datum.";
+            return Texts.T["code.management-state-history.there-is-no-snapshot-from"];
         }
 
         _presentData ??= _data;
-        Data = Snapshots.Data(Database.TablesAt(s.Id), $"Stand van {s.Time.LocalDateTime:dd/MM/yyyy HH:mm}");
+        Data = Snapshots.Data(Database.TablesAt(s.Id), Texts.T.Format("code.management-state-history.state-of", s.Time.LocalDateTime));
         AsOf = s;
         Access("Stand uit het verleden bekeken", s.Time.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
         Changed?.Invoke();
@@ -198,7 +199,7 @@ public sealed partial class ManagementState
     {
         if (IsHistoric)
         {
-            return PlanOutcome.Error("Ga eerst terug naar nu: een plan maakt de app enkel op de huidige gegevens.");
+            return PlanOutcome.Error(Texts.T["code.management-state-history.go-back-to-now-first"]);
         }
 
         var row = version.Content;
@@ -227,7 +228,7 @@ public sealed partial class ManagementState
             {
                 if (Data.Index.Find(dn) is not { Kind: ObjectKind.Group } r || Data.Index.Group(r.Key) is not { } g)
                 {
-                    errors.Add($"Groep {DnHelp.Name(dn)} bestaat niet meer.");
+                    errors.Add(Texts.T.Format("code.management-state-history.group-no-longer-exists", DnHelp.Name(dn)));
                     continue;
                 }
 
@@ -237,7 +238,7 @@ public sealed partial class ManagementState
             }
         }
 
-        return plan.Count == 0 && errors.Count == 0 ? PlanOutcome.Error("Er is niets terug te zetten: alles is zoals in die versie.") : new PlanOutcome(plan, errors);
+        return plan.Count == 0 && errors.Count == 0 ? PlanOutcome.Error(Texts.T["code.management-state-history.there-is-nothing-to-put"]) : new PlanOutcome(plan, errors);
     }
 }
 

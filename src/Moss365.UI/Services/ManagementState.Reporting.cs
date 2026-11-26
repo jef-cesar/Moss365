@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Moss365.Core.Reporting;
 using Moss365.Core.Security;
@@ -16,7 +17,7 @@ public sealed partial class ManagementState
         ServiceHealthNote = null;
         if (!HasMicrosoft365 || Graph() is not { } graph)
         {
-            ServiceHealthNote = "Meld je eerst aan bij Microsoft 365 (Verbindingen).";
+            ServiceHealthNote = Texts.T["code.management-state-reporting.sign-in-to-microsoft-365"];
         }
         else
         {
@@ -25,12 +26,12 @@ public sealed partial class ManagementState
                 ServiceHealthStatus = await graph.ReadServiceHealthAsync(cancel);
                 if (ServiceHealthStatus is null)
                 {
-                    ServiceHealthNote = "De servicestatus is niet leesbaar (recht ServiceHealth.Read.All; voer Tenant inrichten opnieuw uit).";
+                    ServiceHealthNote = Texts.T["code.management-state-reporting.the-service-status-cannot-be"];
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                ServiceHealthNote = "Servicestatus niet gelezen: " + ex.Message;
+                ServiceHealthNote = (Texts.T["code.management-state-reporting.service-status-not-read"] + " ") + ex.Message;
             }
         }
 
@@ -74,7 +75,7 @@ public sealed partial class ManagementState
     {
         if (IsHistoric)
         {
-            throw new InvalidOperationException("Je bekijkt het verleden: niets wordt bewaard.");
+            throw new InvalidOperationException(Texts.T["code.management-state-reporting.you-are-looking-at-the"]);
         }
 
         Database.SaveDocument(GuestRenewal.Document, GuestRenewal.Write(reviews));
@@ -89,7 +90,7 @@ public sealed partial class ManagementState
     {
         if (IsHistoric)
         {
-            throw new InvalidOperationException("Je bekijkt het verleden: niets wordt bewaard.");
+            throw new InvalidOperationException(Texts.T["code.management-state-reporting.you-are-looking-at-the"]);
         }
 
         Database.SaveDocument(StaffRequests.Document, StaffRequests.Write(StaffRequests.Add(Requests(), request with { RequestedBy = User, Created = DateTimeOffset.Now, Status = RequestStatus.Open })));
@@ -101,7 +102,7 @@ public sealed partial class ManagementState
     {
         if (IsHistoric || !Can(Core.Permissions.Permission.Actions))
         {
-            throw new InvalidOperationException("Je mag aanvragen niet goedkeuren of weigeren.");
+            throw new InvalidOperationException(Texts.T["code.management-state-reporting.you-may-not-approve-or"]);
         }
 
         var now = DateTimeOffset.Now;

@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Moss365.Core.Scripts;
 
@@ -19,7 +20,7 @@ public sealed partial class ManagementState
     /// <summary>Compares the index of the library with this tenant (nothing is downloaded or changed).</summary>
     public async Task<IReadOnlyList<LibraryChange>> CheckLibraryAsync(string? folder, CancellationToken cancel = default)
     {
-        _librarySource = _factory?.ScriptLibrary(folder) ?? throw new InvalidOperationException("Bijwerken kan enkel in de Windows-app.");
+        _librarySource = _factory?.ScriptLibrary(folder) ?? throw new InvalidOperationException(Texts.T["update-panel.updating-is-only-possible-in"]);
         _downloaded.Clear();
         var index = ScriptIndex.Parse(await _librarySource.IndexAsync(cancel));
         return LibraryUpdate.Compare(index, LibraryUpdate.Installed(ScriptFolders), AppVersion);
@@ -39,7 +40,7 @@ public sealed partial class ManagementState
     {
         if (IsHistoric)
         {
-            throw new InvalidOperationException("Je bekijkt een stand uit het verleden: ga eerst terug naar nu.");
+            throw new InvalidOperationException(Texts.T["code.management-state-library.you-are-looking-at-a"]);
         }
 
         var errors = new List<string>();
@@ -83,10 +84,10 @@ public sealed partial class ManagementState
             return known;
         }
 
-        var bytes = await (_librarySource ?? throw new InvalidOperationException("Kijk de bibliotheek eerst na.")).FileAsync(entry.Path, cancel);
+        var bytes = await (_librarySource ?? throw new InvalidOperationException(Texts.T["code.management-state-library.check-the-library-first"])).FileAsync(entry.Path, cancel);
         if (!ScriptIndex.Matches(entry, bytes))
         {
-            throw new InvalidDataException("de vingerafdruk klopt niet met de index; geweigerd.");
+            throw new InvalidDataException(Texts.T["code.management-state-library.the-fingerprint-does-not-match"]);
         }
 
         _downloaded[entry.Path] = bytes;

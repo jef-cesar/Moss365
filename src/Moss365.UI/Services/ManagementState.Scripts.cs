@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Scripts;
 using Moss365.Core.Changes;
 
@@ -82,17 +83,17 @@ public sealed partial class ManagementState
     {
         if (ScriptBusy)
         {
-            return (null, "Er draait al een script. Wacht tot het klaar is, of annuleer het.");
+            return (null, Texts.T["code.management-state-scripts.a-script-is-already-running"]);
         }
 
         if (_factory?.Scripts(EffectiveSettings, AdPassword) is not { } executor)
         {
-            return (null, "Scripts kunnen hier niet draaien (enkel in de Windows-app).");
+            return (null, Texts.T["code.management-state-scripts.scripts-cannot-run-here-only"]);
         }
 
         if (oneTimeText is null && ScriptLibrary.IsChangedOutsideApp(ScriptFolders, script))
         {
-            return (null, "Dit script werd buiten de app gewijzigd. Bekijk het en keur het goed (Bewerken > Opslaan) voor het mag draaien.");
+            return (null, Texts.T["code.management-state-scripts.this-script-was-changed-outside"]);
         }
 
         var errors = ScriptValues.Check(script.Header, values);
@@ -222,7 +223,7 @@ public sealed partial class ManagementState
 
         ChangeLog.Write(new LogEntry(DateTimeOffset.Now, User, oneTimeText is null ? "Script" : "Eenmalig script", "Script",
             preview ? "ScriptVoorbeeld" : "ScriptUitvoeren", status.Run.Key, status.Run.Name,
-            (preview ? "Voorbeeld (-WhatIf) van " : "Script ") + status.Run.Name + " (kan niet automatisch ongedaan gemaakt worden)",
+            (preview ? (Texts.T["code.management-state-scripts.preview-whatif-of"] + " ") : "Script ") + status.Run.Name + (" " + Texts.T["code.management-state-scripts.cannot-be-undone-automatically"]),
             parameters, result is RunResult.Succeeded or RunResult.Warnings ? nameof(ResultStatus.Succeeded) : result == RunResult.Cancelled ? nameof(ResultStatus.Skipped) : nameof(ResultStatus.Failed), message));
 
         // A scheduled script: after a real run, schedule the next time (or remove it)

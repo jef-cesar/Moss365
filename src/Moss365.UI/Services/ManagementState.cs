@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Text.Json;
 using Moss365.Core.Analysis;
 using Moss365.Core.Configuration;
@@ -76,7 +77,7 @@ public sealed partial class ManagementState
         TenantFolder = tenant is null ? environment.Root : TenantFolders.Folder(environment.Root, tenant.Id);
         Database = new Database(Path.Combine(TenantFolder, TenantFolders.DatabaseName), databaseKey);
         Files = new DatabaseFileStore(Database);
-        Migrated = Database.BackupBeforeMigration is { } copy ? new[] { $"Kopie voor de migratie van de databank: {Path.GetFileName(copy)}" } : Array.Empty<string>();
+        Migrated = Database.BackupBeforeMigration is { } copy ? new[] { Texts.T.Format("code.management-state.copy-before-the-migration-of", Path.GetFileName(copy)) } : Array.Empty<string>();
         StartLog();
         Log.Information("Moss365 {Versie} gestart; databank versie {Schema}", AppVersion, Database.Version);
         foreach (var m in Migrated)
@@ -239,17 +240,17 @@ public sealed partial class ManagementState
         var errors = new List<string>();
         foreach (var doubleValue in config.Departments.GroupBy(d => OrganisationConfig.Normalise(d.Department)).Where(g => g.Count() > 1))
         {
-            errors.Add($"De dienst \"{doubleValue.First().Department.Trim()}\" staat {doubleValue.Count()} keer in de lijst.");
+            errors.Add(Texts.T.Format("code.management-state.the-department-is-times-in", doubleValue.First().Department.Trim(), doubleValue.Count()));
         }
 
         if (config.Departments.Any(d => string.IsNullOrWhiteSpace(d.Department)))
         {
-            errors.Add("Een dienst heeft geen naam.");
+            errors.Add(Texts.T["code.management-state.a-department-has-no-name"]);
         }
 
         foreach (var doubleValue in config.Divisions.GroupBy(a => OrganisationConfig.Normalise(a.Name)).Where(g => g.Count() > 1))
         {
-            errors.Add($"De afdeling \"{doubleValue.First().Name}\" staat {doubleValue.Count()} keer in de lijst.");
+            errors.Add(Texts.T.Format("code.management-state.the-division-is-times-in", doubleValue.First().Name, doubleValue.Count()));
         }
 
         return errors;
@@ -271,7 +272,7 @@ public sealed partial class ManagementState
 
         if (SettingsChanged)
         {
-            yield return new OpenItem("verbindingen", OpenKind.Settings, "Niet bewaard: de verbindingsinstellingen zijn aangepast")
+            yield return new OpenItem("verbindingen", OpenKind.Settings, Texts.T["code.management-state.not-saved-the-connection-settings"])
             {
                 Count = 1,
                 Screen = "Verbindingen",
@@ -356,8 +357,8 @@ public sealed partial class ManagementState
     {
         RolesMode.Off => null,
         _ when Graph()?.AppRoles is { Count: > 0 } r && PermissionTable.FromClaims(r) != Role.No => null,
-        RolesMode.Required => Graph()?.AppRoles is null ? "Nog niet aangemeld: enkel lezen tot je aanmeldt." : "Geen rol in Moss365: enkel lezen.",
-        _ => "Rollen nog niet verplicht: iedereen mag alles.",
+        RolesMode.Required => Graph()?.AppRoles is null ? Texts.T["code.management-state.not-signed-in-yet-read"] : "Geen rol in Moss365: enkel lezen.",
+        _ => Texts.T["code.management-state.roles-not-required-yet-everyone"],
     };
 
     /// <summary>
@@ -366,7 +367,7 @@ public sealed partial class ManagementState
     /// </summary>
     public string? RolesModeRefusal(RolesMode mode)
         => mode == RolesMode.Required && !PermissionTable.Can(PermissionTable.Determine(Graph()?.AppRoles, RolesMode.Required), Permission.Settings)
-            ? "Rollen verplichten kan pas als jij zelf een rol met Instellingen hebt (Beheerder of Appbeheer), anders kan je dit niet meer terugzetten. Meld je aan met zo'n rol."
+            ? Texts.T["code.management-state.requiring-roles-is-only-possible"]
             : null;
 
     /// <summary>The tenant has its own organisation (saved in its database), not (only) the bundled one.</summary>
@@ -417,7 +418,7 @@ public sealed partial class ManagementState
         folder = folder.Trim().Trim('"');
         if (folder.Length == 0 || !Directory.Exists(folder))
         {
-            return "Die map bestaat niet.";
+            return Texts.T["code.management-state.that-folder-does-not-exist"];
         }
 
         try
@@ -432,7 +433,7 @@ public sealed partial class ManagementState
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return "Inlezen mislukt: " + ex.Message;
+            return (Texts.T["code.management-state.reading-failed"] + " ") + ex.Message;
         }
     }
 
@@ -460,7 +461,7 @@ public sealed partial class ManagementState
         }
         catch (Exception ex)
         {
-            Error = "Inventaris laden mislukt: " + ex.Message;
+            Error = (Texts.T["code.management-state.loading-the-inventory-failed"] + " ") + ex.Message;
         }
 
         Changed?.Invoke();
@@ -479,7 +480,7 @@ public sealed partial class ManagementState
         {
             Config = new OrganisationConfig();
             ConfigSource = null;
-            ConfigWarning = "Organisatie laden mislukt: " + ex.Message;
+            ConfigWarning = (Texts.T["code.management-state.loading-the-organisation-failed"] + " ") + ex.Message;
         }
 
         ConfigModifications = 0;
@@ -586,7 +587,7 @@ public sealed partial class ManagementState
     {
         if (Graph() is not { } graph)
         {
-            return (null, "Graph is niet ingesteld (Verbindingen).");
+            return (null, Texts.T["code.manage-ca.graph-is-not-set-up"]);
         }
 
         Access("Agenda bekeken", $"room {room.Smtp}, {start:dd/MM/yyyy} tot {until.AddDays(-1):dd/MM/yyyy}");
@@ -596,9 +597,7 @@ public sealed partial class ManagementState
         }
         catch (NoPermissionError ex)
         {
-            return (null, "Je account mag de agenda van deze room niet lezen. Geef jezelf minstens het recht Reviewer (of LimitedDetails) "
-                + "op de agenda: bij Wijzigen > Agendarechten op deze pagina, of in Exchange met Add-MailboxFolderPermission "
-                + $"\"{room.Smtp}:\\Calendar\". Daarna opnieuw laden. ({ex.Message})");
+            return (null, Texts.T.Format("state.calendar.denied", room.Smtp, ex.Message));
         }
     }
 
@@ -620,15 +619,13 @@ public sealed partial class ManagementState
 
         if (Graph() is not { } graph)
         {
-            throw new InvalidOperationException("Vul eerst de Entra-gegevens in (scherm Verbindingen).");
+            throw new InvalidOperationException(Texts.T["code.security-card.fill-in-the-entra-details"]);
         }
 
         Access("Aanmeldingen bekeken", $"effect Conditional Access, alle gebruikers, {days} dagen");
         var signIns = await graph.ReadSignInsAsync(days, CaEffectMax, cancel);
         CaEffect = Core.Analysis.CaEffect.Compute(signIns, ca);
-        CaEffectExplanation = $"{signIns.Count} aanmeldingen van de laatste {days} dagen"
-                         + (signIns.Count >= CaEffectMax ? $" (de nieuwste {CaEffectMax}; er zijn er meer)" : string.Empty)
-                         + $", gelezen om {DateTime.Now:HH:mm}.";
+        CaEffectExplanation = Texts.T.Format("state.caeffect", signIns.Count, days, signIns.Count >= CaEffectMax ? Texts.T.Format("state.caeffect.more", CaEffectMax) : string.Empty, DateTime.Now);
         Changed?.Invoke();
     }
 
@@ -648,12 +645,12 @@ public sealed partial class ManagementState
     {
         if (_factory is null)
         {
-            throw new InvalidOperationException("Wijzigingen uitvoeren is niet beschikbaar in deze omgeving.");
+            throw new InvalidOperationException(Texts.T["code.management-state.running-changes-is-not-available"]);
         }
 
         if (IsHistoric)
         {
-            throw new InvalidOperationException("Je bekijkt een stand uit het verleden: ga eerst terug naar nu.");
+            throw new InvalidOperationException(Texts.T["code.management-state-library.you-are-looking-at-a"]);
         }
 
         var executors = new List<IExecutor>();
@@ -707,14 +704,14 @@ public sealed partial class ManagementState
     public async Task<string> CompleteFollowUpAsync(Guid taskId, IProgress<string>? progress, CancellationToken cancel = default)
     {
         var tasks = FollowUp.Read();
-        var task = tasks.FirstOrDefault(t => t.Id == taskId) ?? throw new InvalidOperationException("Taak niet gevonden.");
-        var graph = Graph() ?? throw new InvalidOperationException("Vul eerst de Entra-gegevens in (scherm Verbindingen).");
+        var task = tasks.FirstOrDefault(t => t.Id == taskId) ?? throw new InvalidOperationException(Texts.T["code.management-state.task-not-found"]);
+        var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.security-card.fill-in-the-entra-details"]);
 
         task.LastChecked = DateTimeOffset.Now;
         var id = await graph.FindUserIdAsync(task.Upn, cancel);
         if (id is null)
         {
-            task.LastMessage = "Nog niet in Entra. Entra Connect synchroniseert standaard om de 30 minuten.";
+            task.LastMessage = Texts.T["code.management-state.not-in-entra-yet-entra"];
         }
         else
         {
@@ -728,7 +725,7 @@ public sealed partial class ManagementState
             task.Changes.RemoveAll(w => succeeded.Contains(w.Id));
             task.LastMessage = task.Changes.Count == 0
                 ? "Alles afgewerkt."
-                : $"{succeeded.Count} gelukt, {task.Changes.Count} nog open: " + string.Join("; ", results.Where(r => r.Status != ResultStatus.Succeeded).Select(r => r.Message).Distinct());
+                : (Texts.T.Format("code.management-state.succeeded-still-open", succeeded.Count, task.Changes.Count) + " ") + string.Join("; ", results.Where(r => r.Status != ResultStatus.Succeeded).Select(r => r.Message).Distinct());
         }
 
         var message = task.LastMessage;

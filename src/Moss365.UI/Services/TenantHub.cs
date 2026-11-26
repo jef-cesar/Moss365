@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Configuration;
 using Moss365.Core.Storage;
 
@@ -39,13 +40,13 @@ public sealed partial class TenantHub : IDisposable
                 App = new AppDatabase(Path.Combine(environment.Root, AppDatabase.FileName));
                 App.SaveTenant(tenant);
                 App.SetSetting(CurrentKey, tenant.Id);
-                messages.Add($"De gegevens van de vorige versie zijn nu de tenant \"{tenant.Name}\"" + (m.Count > 0 ? ": " + string.Join(", ", m) + "." : "."));
+                messages.Add(Texts.T.Format("code.tenant-hub.the-data-of-the-previous", tenant.Name) + (m.Count > 0 ? ": " + string.Join(", ", m) + "." : "."));
                 messages.Add($"De oude bestanden staan in {Path.Combine(environment.Root, "old-0.11")}; je kan ze verwijderen als alles werkt.");
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
         {
-            messages.Add("De gegevens van de vorige versie overzetten is mislukt: " + ex.Message + " Er werd niets verwijderd.");
+            messages.Add((Texts.T["code.tenant-hub.moving-the-data-of-the"] + " ") + ex.Message + " Er werd niets verwijderd.");
         }
 
         App ??= new AppDatabase(Path.Combine(environment.Root, AppDatabase.FileName));
@@ -140,12 +141,12 @@ public sealed partial class TenantHub : IDisposable
         name = name.Trim();
         if (name.Length == 0)
         {
-            throw new ArgumentException("Geef de tenant een naam.", nameof(name));
+            throw new ArgumentException(Texts.T["code.tenant-hub.give-the-tenant-a-name"], nameof(name));
         }
 
         if (App.Tenants().Any(t => string.Equals(t.Name, name, StringComparison.CurrentCultureIgnoreCase)))
         {
-            throw new ArgumentException($"Er is al een tenant \"{name}\".", nameof(name));
+            throw new ArgumentException(Texts.T.Format("code.tenant-hub.there-is-already-a-tenant", name), nameof(name));
         }
 
         var used = App.Tenants().Select(t => t.Colour).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -165,7 +166,7 @@ public sealed partial class TenantHub : IDisposable
     {
         if (App.Tenants().Any(t => t.Id != tenant.Id && string.Equals(t.Name, tenant.Name.Trim(), StringComparison.CurrentCultureIgnoreCase)))
         {
-            throw new ArgumentException($"Er is al een tenant \"{tenant.Name}\".", nameof(tenant));
+            throw new ArgumentException(Texts.T.Format("code.tenant-hub.there-is-already-a-tenant", tenant.Name), nameof(tenant));
         }
 
         tenant = tenant with { Name = tenant.Name.Trim() };
@@ -186,7 +187,7 @@ public sealed partial class TenantHub : IDisposable
     {
         if (id == CurrentTenant.Id)
         {
-            throw new InvalidOperationException("Open eerst een andere tenant.");
+            throw new InvalidOperationException(Texts.T["code.tenant-hub.open-another-tenant-first"]);
         }
 
         lock (_lock)
@@ -221,7 +222,7 @@ public sealed partial class TenantHub : IDisposable
     {
         if (!File.Exists(backupFile))
         {
-            throw new FileNotFoundException("Back-up niet gevonden.", backupFile);
+            throw new FileNotFoundException(Texts.T["code.tenant-hub.backup-not-found"], backupFile);
         }
 
         // An encrypted backup opens with the recovery key only; the restored tenant gets its own protection
@@ -230,11 +231,11 @@ public sealed partial class TenantHub : IDisposable
         if (Database.NeedsKey(backupFile))
         {
             key = TenantKeys.FromRecoveryKey(recoveryKey) ?? throw new InvalidDataException(string.IsNullOrWhiteSpace(recoveryKey)
-                ? "Deze back-up is versleuteld: geef de herstelsleutel van de tenant."
-                : "Dit is geen geldige herstelsleutel (tikfout?).");
+                ? Texts.T["code.tenant-hub.this-backup-is-encrypted-give"]
+                : Texts.T["code.tenant-hub.this-is-not-a-valid"]);
             if (!Database.Opens(backupFile, key))
             {
-                throw new InvalidDataException("De herstelsleutel past niet bij deze back-up.");
+                throw new InvalidDataException(Texts.T["code.tenant-hub.the-recovery-key-does-not"]);
             }
 
             protection = CanProtect(EncryptionMethod.WindowsAccount)
@@ -252,7 +253,7 @@ public sealed partial class TenantHub : IDisposable
         {
             if (new Database(path, key).IntegrityCheck() is var check && check != "ok")
             {
-                throw new InvalidDataException("De back-up is beschadigd: " + check);
+                throw new InvalidDataException((Texts.T["code.tenant-hub.the-backup-is-damaged"] + " ") + check);
             }
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or InvalidDataException)
@@ -260,7 +261,7 @@ public sealed partial class TenantHub : IDisposable
             App.RemoveTenant(tenant.Id);
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             TenantFolders.Remove(_environment.Root, tenant.Id);
-            throw new InvalidDataException(ex is InvalidDataException ? ex.Message : "Dit is geen back-up van Moss365: " + ex.Message, ex);
+            throw new InvalidDataException(ex is InvalidDataException ? ex.Message : (Texts.T["code.tenant-hub.this-is-not-a-backup"] + " ") + ex.Message, ex);
         }
 
         if (key is not null)
