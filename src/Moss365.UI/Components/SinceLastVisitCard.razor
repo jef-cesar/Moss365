@@ -1,0 +1,57 @@
+@using Moss365.Core.Security
+@* Since your last visit (R18): what changed outside Moss365 since this tenant was last opened, from the snapshots and
+   the logs kept locally (so also from a read without a window during the night). *@
+@inject ManagementState State
+
+@if (State.PreviousVisit is { } since && changes is not null)
+{
+    <section class="kb-kaart" id="sinds-bezoek">
+        <h2>@T.Format("visit.title", since.LocalDateTime.ToString("g", T.Culture))</h2>
+        @if (changes.Count == 0)
+        {
+            <p class="kb-zacht">@T["visit.nothing"]</p>
+        }
+        else
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>@T["visit.col.kind"]</th><th>@T["service-health-card.what"]</th><th>@T["script-result.who"]</th><th>@T["local-logs.col.time"]</th></tr></thead>
+                <tbody>
+                    @foreach (var c in changes.Take(Shown))
+                    {
+                        <tr>
+                            <td><span class="kb-label @(c.Kind is "admin" or "emergency" ? "kb-fout" : "kb-let")">@T[$"visit.kind.{c.Kind}"]</span></td>
+                            <td>@c.What</td>
+                            <td>@c.Who</td>
+                            <td>@(c.Time?.LocalDateTime.ToString("g", T.Culture) ?? T["visit.from-snapshots"])</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (changes.Count > Shown)
+            {
+                <p class="kb-zacht">@T.Format("visit.more", changes.Count - Shown) <a href="bewaarde-logboeken">@T["menu.bewaarde-logboeken"]</a></p>
+            }
+        }
+        @if (!State.Config.Retention.KeepLocalLogs && State.HasMicrosoft365)
+        {
+            <p class="kb-zacht">@T["visit.no-logs"]</p>
+        }
+        <p class="kb-zacht">@T["visit.help"]</p>
+    </section>
+}
+
+@code {
+    private const int Shown = 25;
+    private IReadOnlyList<VisitChange>? changes;
+    private object? data;
+
+    protected override void OnParametersSet()
+    {
+        // Again when the data changed (a read finished), not on every redraw
+        if (!ReferenceEquals(data, State.Data))
+        {
+            data = State.Data;
+            changes = State.ChangesSinceLastVisit()?.Where(c => c.Kind != "emergency" || State.Can(Moss365.Core.Permissions.Permission.SignIns)).ToList();
+        }
+    }
+}

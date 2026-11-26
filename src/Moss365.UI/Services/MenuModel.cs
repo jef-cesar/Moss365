@@ -30,6 +30,7 @@ public static class MenuModel
         new MenuGroup("Beveiliging", new MenuItem[]
         {
             new("beveiliging", "Overzicht beveiliging"), new("controles", "Beveiligingscontroles"), new("conditional-access", "Conditional Access"),
+            new("bewaarde-logboeken", "Bewaarde logboeken"), new("toegangsreviews", "Toegangsreviews"),
         }),
         new MenuGroup("Inzicht", new MenuItem[]
         {
@@ -47,8 +48,9 @@ public static class MenuModel
         new MenuGroup("Deze tenant", new MenuItem[]
         {
             new("organisatie", "Organisatie"), new("verbindingen", "Verbindingen"), new("inrichten", "Tenant inrichten"), new("databank", "Databank en versleuteling"),
+            new("lezen-zonder-venster", "Lezen zonder venster"), new("inventaris", "Inventaris"),
         }),
-        new MenuGroup("Alle tenants", new MenuItem[] { new("tenants", "Tenants"), new("tenantvergelijking", "Tenants vergelijken") }),
+        new MenuGroup("Alle tenants", new MenuItem[] { new("tenants", "Tenants"), new("alle-tenants", "Alle tenants samen"), new("tenantvergelijking", "Tenants vergelijken") }),
         new MenuGroup("Deze pc en de app", new MenuItem[] { new("controle", "Controle van deze pc"), new("taal", "Taal"), new("updates", "Versie en updates") }),
     };
 

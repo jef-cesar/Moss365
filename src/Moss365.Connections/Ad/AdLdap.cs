@@ -201,10 +201,13 @@ public sealed class AdLdap : IAdConnection, IExecutor
             .Select(r => r.TryGetValue("sAMAccountName", out var v) && v.Length > 0 ? v[0]?.ToString() ?? string.Empty : string.Empty)
             .Where(n => n.Length > 0 && !n.Equals("krbtgt", StringComparison.OrdinalIgnoreCase)).ToList();
 
-        var old = Find(baseline, "(&(objectCategory=computer)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(|(operatingSystem=*XP*)(operatingSystem=*Vista*)(operatingSystem=*Windows 7*)(operatingSystem=*Windows 8*)(operatingSystem=*2003*)(operatingSystem=*2008*)(operatingSystem=*2012*)))",
-                new[] { "cn", "operatingSystem" }, cancel)
+        // Every enabled computer with its system and version; the life cycle data in Core says which are no longer
+        // supported (R17), so that a new end date needs no change here
+        var old = Find(baseline, "(&(objectCategory=computer)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(operatingSystem=*))",
+                new[] { "cn", "operatingSystem", "operatingSystemVersion" }, cancel)
             .Select(r => (Name: r.TryGetValue("cn", out var c) && c.Length > 0 ? c[0]?.ToString() ?? string.Empty : string.Empty,
-                          Os: r.TryGetValue("operatingSystem", out var o) && o.Length > 0 ? o[0]?.ToString() ?? string.Empty : string.Empty))
+                          Os: ((r.TryGetValue("operatingSystem", out var o) && o.Length > 0 ? o[0]?.ToString() ?? string.Empty : string.Empty) + " "
+                              + (r.TryGetValue("operatingSystemVersion", out var v) && v.Length > 0 ? v[0]?.ToString() ?? string.Empty : string.Empty)).Trim()))
             .ToList();
         return new Core.Security.AdSecurityReading(spn, delegation, notRequired, reversible, krbtgt, orphans, old);
     }, cancel);
@@ -361,6 +364,22 @@ public sealed class AdLdap : IAdConnection, IExecutor
                     using var item = Item(w.Target);
                     var uac = Convert.ToInt32(item.Properties["userAccountControl"].Value);
                     item.Properties["userAccountControl"].Value = uac | AdLdapMapper.UacDisabled;
+                    item.CommitChanges();
+                    return ChangeResult.Ok(w);
+                }
+
+                case ChangeAction.AdSetAccountFlag:
+                {
+                    // Only the flags that the security advice may change (R16); anything else is refused
+                    if (!Core.Security.SecurityAdvice.AccountFlags.TryGetValue(w.P("vlag"), out var flag))
+                    {
+                        return ChangeResult.Error(w, Texts.T["advice.solve.unknown-flag"]);
+                    }
+
+                    using var item = Item(w.Target);
+                    var uac = Convert.ToInt32(item.Properties["userAccountControl"].Value);
+                    var on = string.Equals(w.P("aan"), "True", StringComparison.OrdinalIgnoreCase);
+                    item.Properties["userAccountControl"].Value = on ? uac | flag : uac & ~flag;
                     item.CommitChanges();
                     return ChangeResult.Ok(w);
                 }

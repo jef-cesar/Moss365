@@ -1,0 +1,26 @@
+{
+  "updated": "2026-11-26",
+  "note": "End of support per system (Microsoft lifecycle). The first line that fits wins. Per Windows 11 build the date of Enterprise and Education is used (the latest), so that nothing is marked too early; Home and Pro end a year earlier. The long-term editions (LTSC, LTSB) of Windows 10 have their own dates. Comes with every update of Moss365.",
+  "systems": [
+    { "match": "Windows XP", "end": "2014-04-08" },
+    { "match": "Windows Vista", "end": "2017-04-11" },
+    { "match": "Windows 7", "end": "2020-01-14" },
+    { "match": "Windows 8", "end": "2023-01-10" },
+    { "match": "Windows 10", "edition": "LTS", "build": "14393", "end": "2026-10-13" },
+    { "match": "Windows 10", "edition": "LTS", "build": "17763", "end": "2029-01-09" },
+    { "match": "Windows 10", "edition": "LTS", "build": "19044", "end": "2027-01-12" },
+    { "match": "Windows 10", "edition": "LTS" },
+    { "match": "Windows 10", "end": "2025-10-14" },
+    { "match": "Windows 11", "build": "22000", "end": "2024-10-08" },
+    { "match": "Windows 11", "build": "22621", "end": "2025-10-14" },
+    { "match": "Windows 11", "build": "22631", "end": "2026-11-10" },
+    { "match": "Windows 11", "build": "26100", "end": "2027-10-12" },
+    { "match": "Windows Server 2003", "end": "2015-07-14" },
+    { "match": "Windows Server 2008", "end": "2020-01-14" },
+    { "match": "Windows Server 2012", "end": "2023-10-10" },
+    { "match": "Windows Server 2016", "end": "2027-01-12" },
+    { "match": "Windows Server 2019", "end": "2029-01-09" },
+    { "match": "Windows Server 2022", "end": "2031-10-14" },
+    { "match": "Windows Server 2025", "end": "2034-10-10" }
+  ]
+}

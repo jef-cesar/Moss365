@@ -13,10 +13,25 @@ public enum CheckStatus
     Unknown,
 }
 
-public sealed record CheckRow(string Object, string Detail, CheckStatus Status, string? Href = null);
+public sealed record CheckRow(string Object, string Detail, CheckStatus Status, string? Href = null)
+{
+    /// <summary>The risk of this line is accepted until this date (R16).</summary>
+    public DateOnly? AcceptedUntil { get; init; }
+
+    /// <summary>What solves this line as a plan (R16): a flag of <see cref="SecurityAdvice.AccountFlags"/> to turn off.</summary>
+    public string? Fix { get; init; }
+}
 
 public sealed record SecurityCheck(string Key, string Title, CheckStatus Status, string Summary, IReadOnlyList<CheckRow> Rows)
 {
+    /// <summary>When the check ran (R16: the last result is kept in the tenant database).</summary>
+    public DateTimeOffset? Time { get; init; }
+
+    /// <summary>The risk of the whole check is accepted until this date (R16), with who and why.</summary>
+    public DateOnly? AcceptedUntil { get; init; }
+
+    public string? AcceptedNote { get; init; }
+
     public static SecurityCheck Unknown(string key, string title, string why) => new(key, title, CheckStatus.Unknown, why, Array.Empty<CheckRow>());
 
     public string StatusText => Status switch
@@ -63,6 +78,13 @@ public static class SecurityChecks
 {
     private static CheckStatus Worst(IEnumerable<CheckRow> rows)
         => rows.Select(r => r.Status).Where(s => s != CheckStatus.Ok).DefaultIfEmpty(CheckStatus.Ok).Max();
+
+    /// <summary>
+    /// A link that comes from read data (such as the actions of Secure Score) only as an absolute http or https address;
+    /// anything else (javascript:, file:, a protocol of another app) gives no link, so that a click never starts it.
+    /// </summary>
+    public static string? WebLink(string? url)
+        => Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) ? url : null;
 
     /// <summary>Forwarding to an address outside the own domains (mailboxes and inbox rules).</summary>
     public static SecurityCheck Forwarding(IReadOnlyList<ForwardingRule>? rules, IReadOnlyCollection<string> ownDomains)
@@ -153,10 +175,12 @@ public static class SecurityChecks
         var rows = new List<CheckRow>();
         rows.AddRange(r.SpnUsers.Select(u => new CheckRow(u, Texts.T["code.security-checks.user-account-with-an-spn"], CheckStatus.Attention)));
         rows.AddRange(r.UnconstrainedDelegation.Select(u => new CheckRow(u, Texts.T["code.security-checks.unconstrained-kerberos-delegation"], CheckStatus.Problem)));
-        rows.AddRange(r.PasswordNotRequired.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-not-required-is-on"], CheckStatus.Problem)));
-        rows.AddRange(r.ReversibleEncryption.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-with-reversible-encryption"], CheckStatus.Problem)));
+        rows.AddRange(r.PasswordNotRequired.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-not-required-is-on"], CheckStatus.Problem) { Fix = "PasswordNotRequired" }));
+        rows.AddRange(r.ReversibleEncryption.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-with-reversible-encryption"], CheckStatus.Problem) { Fix = "ReversibleEncryption" }));
         rows.AddRange(r.AdminCountOrphans.Select(u => new CheckRow(u, Texts.T["code.security-checks.admincount-1-but-not-any"], CheckStatus.Attention)));
-        rows.AddRange(r.OldSystems.Select(c => new CheckRow(c.Name, Texts.T.Format("code.security-checks.outdated-operating-system", c.OperatingSystem), CheckStatus.Problem)));
+        // The connection gives the systems of the enabled computers; the life cycle data says which are no longer supported
+        rows.AddRange(r.OldSystems.Where(c => Devices.Lifecycle.Of(c.OperatingSystem, string.Empty, now).Status == Devices.SupportStatus.Ended)
+            .Select(c => new CheckRow(c.Name, Texts.T.Format("code.security-checks.outdated-operating-system", c.OperatingSystem), CheckStatus.Problem)));
         if (r.KrbtgtPasswordSet is { } k)
         {
             var days = (now - k).TotalDays;
@@ -212,7 +236,7 @@ public static class SecurityChecks
         var first = r.History.OrderBy(h => h.Date).First();
         var percent = last.Max > 0 ? last.Score / last.Max * 100 : 0;
         var rows = r.Actions.OrderByDescending(a => a.MaxScore).Take(10)
-            .Select(a => new CheckRow(a.Title, Texts.T.Format("security.score.points", a.MaxScore), CheckStatus.Attention, a.Url)).ToList();
+            .Select(a => new CheckRow(a.Title, Texts.T.Format("security.score.points", a.MaxScore), CheckStatus.Attention, WebLink(a.Url))).ToList();
         var trend = last.Score - first.Score;
         return new SecurityCheck("secure-score", title, percent >= 70 ? CheckStatus.Ok : percent >= 40 ? CheckStatus.Attention : CheckStatus.Problem,
             Texts.T.Format("security.score", last.Score, last.Max, percent, trend >= 0 ? "+" : string.Empty, trend, first.Date.LocalDateTime),
@@ -317,17 +341,31 @@ public static class SecurityChecks
             }
         }
 
+        // Looked up by name and id instead of searching the whole earlier list per account (linear, not quadratic);
+        // the first account with a name wins, as before
+        var adBefore = new Dictionary<string, AdUser>(StringComparer.OrdinalIgnoreCase);
+        foreach (var b in before.AdUsers)
+        {
+            adBefore.TryAdd(b.SamAccountName ?? string.Empty, b);
+        }
+
         foreach (var a in now.AdUsers.Where(a => a.Enabled))
         {
-            if (before.AdUsers.FirstOrDefault(b => string.Equals(b.SamAccountName, a.SamAccountName, StringComparison.OrdinalIgnoreCase)) is { Enabled: false })
+            if (adBefore.GetValueOrDefault(a.SamAccountName ?? string.Empty) is { Enabled: false })
             {
                 rows.Add(new CheckRow(a.SamAccountName, Texts.T["code.security-checks.disabled-account-enabled-again-ad"], CheckStatus.Attention));
             }
         }
 
+        var entraBefore = new Dictionary<string, EntraUser>(StringComparer.Ordinal);
+        foreach (var b in before.EntraUsers)
+        {
+            entraBefore.TryAdd(b.Id ?? string.Empty, b);
+        }
+
         foreach (var e in now.EntraUsers.Where(e => e.AccountEnabled && !e.OnPremisesSyncEnabled))
         {
-            if (before.EntraUsers.FirstOrDefault(b => b.Id == e.Id) is { AccountEnabled: false })
+            if (entraBefore.GetValueOrDefault(e.Id ?? string.Empty) is { AccountEnabled: false })
             {
                 rows.Add(new CheckRow(e.UserPrincipalName, Texts.T["code.security-checks.disabled-account-enabled-again-entra"], CheckStatus.Attention));
             }

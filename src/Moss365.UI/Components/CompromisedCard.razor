@@ -1,0 +1,60 @@
+@using Moss365.Core.Security
+@* A compromised account (R16): one plan that blocks the account in AD and Entra, sets a new random password, revokes
+   every sign-in session and removes it from privileged groups; next to it what to check afterwards. Nothing is
+   deleted; the plan is shown first, as always. *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>@T["compromised.title"]</h2>
+    <p class="kb-zacht">@T["compromised.intro"]</p>
+    <button class="kb-knop kb-gevaar" @onclick="Make">@T["compromised.make"]</button>
+    @if (outcome is not null && findings is not null)
+    {
+        @foreach (var e in outcome.Errors) { <div class="kb-melding kb-fout">@e</div> }
+        @if (outcome.Plan.Count > 0)
+        {
+            <PlanView Plan="outcome.Plan" Context="@T.Format("compromised.context", Person.Name)" Title="@T["compromised.title"]" />
+        }
+        <h3>@T["compromised.check"]</h3>
+        <ul>
+            <li>@(findings.MfaMethods.Count > 0 ? T.Format("compromised.mfa", string.Join(", ", findings.MfaMethods)) : T["compromised.mfa.none"])</li>
+            @if (findings.AdminRoles.Count > 0)
+            {
+                <li>@T.Format("compromised.roles", string.Join(", ", findings.AdminRoles))</li>
+            }
+            @if (findings.Synced)
+            {
+                <li>@T["compromised.synced"]</li>
+            }
+            @foreach (var f in Forwarding)
+            {
+                <li>@T.Format("compromised.forwarding", f)</li>
+            }
+            <li>@T["compromised.rules"]</li>
+            <li>@T["compromised.signins"]</li>
+        </ul>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = default!;
+
+    private Moss365.Core.Changes.PlanOutcome? outcome;
+    private CompromisedFindings? findings;
+
+    private void Make()
+    {
+        outcome = CompromisedAccount.Plan(State.Data, Person, Moss365.Core.Changes.NameRules.InitialPassword());
+        findings = CompromisedAccount.Findings(State.Data, Person);
+    }
+
+    // Forwarding of this mailbox that the last check found (Beveiligingscontroles, Forwarding outside the organisation)
+    private IEnumerable<string> Forwarding
+    {
+        get
+        {
+            var addresses = new[] { Person.Entra?.UserPrincipalName, Person.Entra?.Mail }.Where(a => !string.IsNullOrEmpty(a)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return State.SecurityCheckResults.GetValueOrDefault("doorsturen")?.Rows.Where(r => addresses.Contains(r.Object)).Select(r => r.Detail) ?? Enumerable.Empty<string>();
+        }
+    }
+}

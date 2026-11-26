@@ -58,6 +58,66 @@ public sealed class GraphClient
         return output;
     }
 
+    /// <summary>The most requests Graph takes in one <c>$batch</c>.</summary>
+    public const int BatchSize = 20;
+
+    /// <summary>
+    /// Several GET requests in one call (<c>$batch</c>, at most <see cref="BatchSize"/>). Per request the first page of
+    /// its answer, or null when that request did not succeed in the batch (throttled, an error), or the batch as a whole
+    /// did not: the caller then reads that one on its own, as before.
+    /// </summary>
+    public async Task<IReadOnlyList<JsonElement?>> BatchGetAsync(IReadOnlyList<string> paths, CancellationToken cancel)
+    {
+        if (paths.Count is 0 or > BatchSize)
+        {
+            throw new ArgumentOutOfRangeException(nameof(paths));
+        }
+
+        var output = new JsonElement?[paths.Count];
+        JsonElement answer;
+        try
+        {
+            var body = new { requests = paths.Select((p, i) => new { id = (i + 1).ToString(System.Globalization.CultureInfo.InvariantCulture), method = "GET", url = p }).ToList() };
+            answer = await PostWithResponseAsync("/$batch", body, cancel);
+        }
+        catch (Exception ex) when (ex is GraphError or HttpRequestException or JsonException)
+        {
+            return output;
+        }
+
+        if (answer.TryGetProperty("responses", out var responses) && responses.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var r in responses.EnumerateArray())
+            {
+                if (r.TryGetProperty("id", out var idValue) && int.TryParse(idValue.GetString(), out var id) && id >= 1 && id <= paths.Count
+                    && r.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.Number && status.GetInt32() == 200
+                    && r.TryGetProperty("body", out var body) && body.ValueKind == JsonValueKind.Object)
+                {
+                    output[id - 1] = body.Clone();
+                }
+            }
+        }
+
+        return output;
+    }
+
+    /// <summary>All items of a list whose first page is already there (for example from a batch).</summary>
+    public async Task<List<JsonElement>> AllPagesAsync(JsonElement first, CancellationToken cancel)
+    {
+        var output = new List<JsonElement>();
+        if (first.TryGetProperty("value", out var values) && values.ValueKind == JsonValueKind.Array)
+        {
+            output.AddRange(values.EnumerateArray().Select(e => e.Clone()));
+        }
+
+        if (first.TryGetProperty("@odata.nextLink", out var link) && link.GetString() is { Length: > 0 } next)
+        {
+            output.AddRange(await GetAllAsync(next, cancel));
+        }
+
+        return output;
+    }
+
     public async Task PostAsync(string path, object? content, CancellationToken cancel)
     {
         using var _ = await SendAsync(HttpMethod.Post, path, content, cancel);

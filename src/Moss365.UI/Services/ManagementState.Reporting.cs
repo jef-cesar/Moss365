@@ -61,9 +61,10 @@ public sealed partial class ManagementState
 
     public async Task RunAllSecurityChecksAsync(CancellationToken cancel = default)
     {
+        var round = new SecurityCheckRound();
         foreach (var (key, _) in SecurityCheckList())
         {
-            await RunSecurityCheckAsync(key, cancel: cancel);
+            await RunSecurityCheckAsync(key, cancel: cancel, round: round);
         }
     }
 

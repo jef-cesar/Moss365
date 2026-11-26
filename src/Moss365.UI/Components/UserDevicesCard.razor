@@ -1,0 +1,46 @@
+@using Moss365.Core.Devices
+@* The devices of a person in Intune (R17), from the last read on Toestellen; the actions are on Toestellen. *@
+@inject ManagementState State
+
+<section class="kb-kaart">
+    <h2>@T["user-devices.title"]</h2>
+    @if (State.IntuneDevices is null)
+    {
+        <p class="kb-zacht">@T["user-devices.read-first"] <a href="toestellen">@T["menu.toestellen"]</a></p>
+    }
+    else if (Mine.Count == 0)
+    {
+        <p class="kb-zacht">@T["user-devices.none"]</p>
+    }
+    else
+    {
+        <table class="kb-tabel">
+            <thead><tr><th>@T["keys.device"]</th><th>@T["plan.system"]</th><th>@T["device.info.compliance"]</th><th>@T["device.info.ownership"]</th><th>@T["keys.last-seen"]</th></tr></thead>
+            <tbody>
+                @foreach (var d in Mine)
+                {
+                    <tr>
+                        <td><a href="toestellen#een-lijst">@d.Name</a></td>
+                        <td>@d.OperatingSystem @d.Version</td>
+                        <td>@d.Compliance</td>
+                        <td>@(d.Personal ? T["device.info.personal"] : T["device.info.company"])</td>
+                        <td>@(d.LastSync?.LocalDateTime.ToString("dd/MM/yyyy") ?? T["word.never"])</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = default!;
+
+    private IReadOnlyList<IntuneDevice> Mine
+    {
+        get
+        {
+            var names = new[] { Person.Entra?.UserPrincipalName, Person.Entra?.Mail, Person.Ad?.UserPrincipalName }.Where(n => !string.IsNullOrEmpty(n)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return (State.IntuneDevices ?? Array.Empty<IntuneDevice>()).Where(d => names.Contains(d.Owner)).OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+        }
+    }
+}

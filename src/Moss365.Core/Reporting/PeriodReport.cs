@@ -139,14 +139,25 @@ public sealed record PeriodReport(
     /// <summary>A self-contained HTML page (no scripts, no outside files) that prints well as PDF.</summary>
     public string ToHtml()
     {
+        var b = new StringBuilder();
+        b.Append("<!doctype html><html lang=\"").Append(Texts.T.Language.Code).Append("\"><head><meta charset=\"utf-8\"><title>").Append(E(Texts.T.Format("report.title.tenant", Tenant, Period.Name)))
+            .Append("</title><style>").Append(Style).Append("</style></head><body>");
+        AppendBody(b);
+        b.Append("</body></html>");
+        return b.ToString();
+    }
+
+    /// <summary>The style of the reports: no scripts, no outside files, prints well as PDF.</summary>
+    internal const string Style = "body{font-family:Segoe UI,Arial,sans-serif;margin:2em;color:#222}h1{font-size:1.6em}h2{margin-top:1.6em;border-bottom:1px solid #ccc}"
+        + "table{border-collapse:collapse;width:100%;margin:.5em 0}th,td{border-bottom:1px solid #e3e3e3;padding:.3em .5em;text-align:left}"
+        + "td.n,th.n{text-align:right}.zacht{color:#666}.probleem{color:#b00020;font-weight:600}.aandacht{color:#a15c00}.ok{color:#1b6e2a}"
+        + "@media print{body{margin:0}}";
+
+    /// <summary>The report itself, for this page and for the board summary (R19).</summary>
+    internal void AppendBody(StringBuilder b)
+    {
         var t = Texts.T;
         string H(string key) => E(t[key]);
-        var b = new StringBuilder();
-        b.Append("<!doctype html><html lang=\"").Append(t.Language.Code).Append("\"><head><meta charset=\"utf-8\"><title>").Append(E(t.Format("report.title.tenant", Tenant, Period.Name))).Append("</title><style>")
-            .Append("body{font-family:Segoe UI,Arial,sans-serif;margin:2em;color:#222}h1{font-size:1.6em}h2{margin-top:1.6em;border-bottom:1px solid #ccc}")
-            .Append("table{border-collapse:collapse;width:100%;margin:.5em 0}th,td{border-bottom:1px solid #e3e3e3;padding:.3em .5em;text-align:left}")
-            .Append("td.n,th.n{text-align:right}.zacht{color:#666}.probleem{color:#b00020;font-weight:600}.aandacht{color:#a15c00}.ok{color:#1b6e2a}")
-            .Append("@media print{body{margin:0}}</style></head><body>");
         b.Append("<h1>").Append(E(t.Format("report.title", Period.Name))).Append("</h1><p class=\"zacht\">").Append(E(t.Format("report.made", Tenant, Period.From.ToDateTime(TimeOnly.MinValue), Period.To.ToDateTime(TimeOnly.MinValue), Made.LocalDateTime, MadeBy))).Append("</p>");
         foreach (var n in Notes)
         {
@@ -197,8 +208,7 @@ public sealed record PeriodReport(
                 .Append("</td><td class=\"").Append(StatusClass(s.Status)).Append("\">").Append(E(status)).Append("</td><td class=\"zacht\">").Append(E(s.Control.Evidence)).Append("</td></tr>");
         }
 
-        b.Append("</table></body></html>");
-        return b.ToString();
+        b.Append("</table>");
     }
 
     /// <summary>The same as CSV (semicolons, for Excel in Dutch and other European settings).</summary>

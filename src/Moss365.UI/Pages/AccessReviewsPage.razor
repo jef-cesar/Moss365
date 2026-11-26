@@ -1,0 +1,167 @@
+@page "/toegangsreviews"
+@inherits RefreshingPage
+@using Moss365.Core.Security
+@* Light access reviews (R20): the owner or a reviewer you choose confirms, every quarter by default, who is in the
+   privileged AD groups and the admin roles and who has access to the shared mailboxes. Asking is a plan of mails,
+   removing is a plan, every decision is a line in the change log. *@
+
+<h1>@T["menu.toegangsreviews"]</h1>
+
+<p class="kb-zacht">@T["access-reviews.intro"]</p>
+
+<section class="kb-kaart" id="reviews">
+    <h2>@T.Format("access-reviews.overdue", due.Count(r => r.Overdue))</h2>
+    <table class="kb-tabel">
+        <thead>
+            <tr>
+                <th></th><th>@T["visit.col.kind"]</th><th>@T["access-reviews.col.subject"]</th><th class="kb-getal">@T["access-reviews.col.members"]</th>
+                <th>@T["access-reviews.col.reviewer"]</th><th>@T["access-reviews.col.interval"]</th><th>@T["access-reviews.col.last"]</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in due)
+            {
+                var id = r.Subject.Id;
+                <tr class="@(r.Overdue ? "kb-verschil" : null)">
+                    <td><input type="checkbox" checked="@chosen.Contains(id)" aria-label="@r.Subject.Name" @onchange="e => Toggle(id, e.Value is true)" /></td>
+                    <td>@T[$"access-reviews.kind.{r.Subject.Kind}"]</td>
+                    <td>@r.Subject.Name</td>
+                    <td class="kb-getal">@r.Subject.Members.Count</td>
+                    <td><input class="kb-invoer" value="@r.Setting.Reviewer" disabled="@(!CanEdit)" aria-label="@T.Format("access-reviews.reviewer-of", r.Subject.Name)" @onchange="e => SetReviewer(r, e.Value?.ToString())" /></td>
+                    <td>
+                        <select class="kb-invoer" value="@r.Setting.Months" disabled="@(!CanEdit)" aria-label="@T.Format("access-reviews.interval-of", r.Subject.Name)" @onchange="e => SetMonths(r, e.Value?.ToString())">
+                            @foreach (var m in AccessReviews.Intervals)
+                            {
+                                <option value="@m">@T[$"access-reviews.every.{m}"]</option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        @(r.Setting.Reviewed is { } t ? t.LocalDateTime.ToString("d", T.Culture) : T["word.never"])
+                        @if (r.Overdue)
+                        {
+                            <span class="kb-label kb-let">@T["access-reviews.due"]</span>
+                        }
+                    </td>
+                    <td>
+                        @if (CanEdit)
+                        {
+                            <button class="kb-knop kb-klein" @onclick="() => Open(r)">@T["access-reviews.review"]</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (CanEdit)
+    {
+        <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="Ask">@T.Format("access-reviews.mail-reviewers", chosen.Count)</button>
+    }
+</section>
+
+@if (open is { } subject)
+{
+    <section class="kb-kaart" id="review">
+        <h2>@T.Format("access-reviews.review-of", subject.Name)</h2>
+        <p class="kb-zacht">@T["access-reviews.review.help"]</p>
+        <table class="kb-tabel">
+            <thead><tr><th>@T["access-reviews.col.member"]</th><th>@T["access-reviews.col.detail"]</th><th>@T["access-reviews.col.decision"]</th></tr></thead>
+            <tbody>
+                @foreach (var m in subject.Members)
+                {
+                    var key = m.Key;
+                    <tr>
+                        <td>@m.Name</td>
+                        <td class="kb-zacht">@m.Detail</td>
+                        <td>
+                            <label><input type="radio" name="@($"besluit-{key}")" checked="@Keeps(key)" aria-label="@T.Format("access-reviews.keep-of", m.Name)" @onchange="() => keep[key] = true" /> @T["access-reviews.keep"]</label>
+                            <label><input type="radio" name="@($"besluit-{key}")" checked="@(!Keeps(key))" aria-label="@T.Format("access-reviews.remove-of", m.Name)" @onchange="() => keep[key] = false" /> @T["access-reviews.remove"]</label>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <button class="kb-knop kb-primair" disabled="@(finished is not null)" @onclick="Finish">@T["access-reviews.finish"]</button>
+        @if (finished is not null)
+        {
+            <div class="kb-melding" role="status">@finished</div>
+        }
+    </section>
+}
+
+@if (outcome is not null)
+{
+    @foreach (var e in outcome.Errors)
+    {
+        <div class="kb-melding">@e</div>
+    }
+    @if (outcome.Plan.Count > 0)
+    {
+        <PlanView Plan="outcome.Plan" Context="@T["menu.toegangsreviews"]" Title="@title" />
+    }
+}
+
+@code {
+    private IReadOnlyList<ReviewDue> due = Array.Empty<ReviewDue>();
+    private readonly HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
+    private ReviewSubject? open;
+    private readonly Dictionary<string, bool> keep = new(StringComparer.OrdinalIgnoreCase);
+    private Moss365.Core.Changes.PlanOutcome? outcome;
+    private string title = string.Empty;
+    private string? finished;
+
+    private bool CanEdit => State.Can(Permission.Manage) && !State.IsHistoric;
+
+    private bool Keeps(string key) => keep.GetValueOrDefault(key, true);
+
+    protected override void OnParametersSet() => due = State.AccessReviewsDue();
+
+    private void Toggle(string id, bool on)
+    {
+        if (on) { chosen.Add(id); } else { chosen.Remove(id); }
+        outcome = null;
+    }
+
+    private void SetReviewer(ReviewDue r, string? reviewer)
+    {
+        State.SaveReviewSetting(r.Setting with { Reviewer = reviewer ?? string.Empty });
+        due = State.AccessReviewsDue();
+    }
+
+    private void SetMonths(ReviewDue r, string? months)
+    {
+        if (int.TryParse(months, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var m))
+        {
+            State.SaveReviewSetting(r.Setting with { Months = m });
+            due = State.AccessReviewsDue();
+        }
+    }
+
+    private void Open(ReviewDue r)
+    {
+        open = r.Subject;
+        keep.Clear();
+        finished = null;
+        outcome = null;
+    }
+
+    private void Finish()
+    {
+        if (open is not { } s)
+        {
+            return;
+        }
+
+        var decisions = s.Members.Select(m => new ReviewDecision(m.Key, Keeps(m.Key))).ToList();
+        title = T.Format("access-reviews.removals", s.Name);
+        outcome = State.FinishReview(s, decisions);
+        finished = T.Format("access-reviews.finished", decisions.Count(d => d.Keep), decisions.Count(d => !d.Keep));
+        due = State.AccessReviewsDue();
+    }
+
+    private void Ask()
+    {
+        title = T["access-reviews.mail-title"];
+        outcome = AccessReviews.AskReviewers(due.Where(r => chosen.Contains(r.Subject.Id)), AccessReviews.DefaultQuestion);
+    }
+}

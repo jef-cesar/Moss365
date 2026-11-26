@@ -1,0 +1,149 @@
+@page "/lezen-zonder-venster"
+@layout SettingsLayout
+@inherits RefreshingPage
+@using Moss365.Core.Scheduling
+@using Moss365.Core.Storage
+@inject IServiceProvider Services
+@* Reading without a window (R18, U19): a task in the Windows Task Scheduler reads this tenant every day at an hour you
+   choose. It only reads; it runs under your own Windows account while you are signed in to Windows. *@
+
+<h1>@T["menu.lezen-zonder-venster"]</h1>
+
+<p class="kb-zacht">@T["unattended.intro"]</p>
+
+<section class="kb-kaart">
+    <h2>@T["unattended.what"]</h2>
+    <ul>
+        <li>@T["unattended.what.reads"]</li>
+        <li>@T["unattended.what.never-writes"]</li>
+        <li>@T["unattended.what.account"]</li>
+        <li>@T["unattended.what.open"]</li>
+    </ul>
+</section>
+
+<section class="kb-kaart" id="voorwaarden">
+    <h2>@T["unattended.check"]</h2>
+    @if (check.CanRun)
+    {
+        <p class="kb-ok">✓ @PartsText</p>
+    }
+    else
+    {
+        <div class="kb-melding kb-fout">@T["unattended.cannot"]</div>
+    }
+    @foreach (var note in check.Notes)
+    {
+        <p class="kb-zacht">@note</p>
+    }
+</section>
+
+<section class="kb-kaart" id="taak">
+    <h2>@T["unattended.task"]</h2>
+    @if (Scheduler is not { } scheduler)
+    {
+        <p class="kb-zacht">@T["unattended.only-windows"]</p>
+    }
+    else
+    {
+        <p>@(planned is { } h ? T.Format("unattended.planned", h.ToString("00", T.Culture)) : T["unattended.not-planned"])</p>
+        @if (State.Can(Permission.Settings) && !State.IsHistoric)
+        {
+            <div class="kb-filters">
+                <label>
+                    @T["unattended.hour"]
+                    <select class="kb-invoer" @bind="hour" aria-label="@T["unattended.hour"]">
+                        @for (var i = 0; i < 24; i++)
+                        {
+                            var value = i;
+                            <option value="@value">@value.ToString("00", T.Culture):00</option>
+                        }
+                    </select>
+                </label>
+                <button class="kb-knop kb-primair" disabled="@(!check.CanRun)" @onclick="() => Plan(scheduler)">@(planned is null ? T["unattended.plan"] : T["unattended.replan"])</button>
+                @if (planned is not null)
+                {
+                    <button class="kb-knop" @onclick="() => Remove(scheduler)">@T["unattended.remove"]</button>
+                }
+            </div>
+        }
+        @if (message is not null)
+        {
+            <div class="kb-melding" role="status">@message</div>
+        }
+    }
+</section>
+
+<section class="kb-kaart" id="laatste">
+    <h2>@T["unattended.last"]</h2>
+    @if (State.UnattendedLast is { } last)
+    {
+        <p>@T.Format("unattended.last.text", last.Start.LocalDateTime.ToString("g", T.Culture), T[$"unattended.result.{last.Result}"], Math.Max(1, (int)Math.Round((last.End - last.Start).TotalMinutes)))</p>
+        @foreach (var note in last.Notes)
+        {
+            <p class="kb-zacht">@note</p>
+        }
+    }
+    else
+    {
+        <p class="kb-zacht">@T["unattended.last.none"]</p>
+    }
+</section>
+
+@code {
+    private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
+
+    private IUnattendedScheduler? Scheduler => State.AppEnvironment.Scheduler;
+
+    private EncryptionMethod Encryption => Hub?.Encryption(State.Tenant.Id)?.Method ?? (State.Database.Encrypted ? EncryptionMethod.WindowsAccount : EncryptionMethod.None);
+
+    private UnattendedCheck check = new(false, false, false, Array.Empty<string>());
+    private int hour = Unattended.DefaultHour;
+    private int? planned;
+    private string? message;
+
+    private string PartsText => (check.ReadsAd, check.ReadsMicrosoft365) switch
+    {
+        (true, true) => T["unattended.reads.both"],
+        (true, false) => T["unattended.reads.ad"],
+        _ => T["unattended.reads.m365"],
+    };
+
+    protected override void OnInitialized()
+    {
+        check = State.CheckUnattended(Encryption);
+        hour = State.UnattendedSettings.Hour;
+        planned = Scheduler?.PlannedHour(State.Tenant.Id);
+        if (planned is { } h)
+        {
+            hour = h;
+        }
+    }
+
+    private void Plan(IUnattendedScheduler scheduler)
+    {
+        if (scheduler.Plan(State.Tenant.Id, hour) is { } error)
+        {
+            message = T.Format("unattended.plan-failed", error);
+            return;
+        }
+
+        State.SaveUnattended(new UnattendedSettings(true, hour));
+        planned = scheduler.PlannedHour(State.Tenant.Id) ?? hour;
+        message = T.Format("unattended.planned-ok", hour.ToString("00", T.Culture));
+        State.Log.Information("Lezen zonder venster gepland om {Uur} uur", hour);
+    }
+
+    private void Remove(IUnattendedScheduler scheduler)
+    {
+        if (scheduler.Remove(State.Tenant.Id) is { } error)
+        {
+            message = T.Format("unattended.remove-failed", error);
+            return;
+        }
+
+        State.SaveUnattended(new UnattendedSettings(false, hour));
+        planned = null;
+        message = T["unattended.removed"];
+        State.Log.Information("Lezen zonder venster uitgezet");
+    }
+}

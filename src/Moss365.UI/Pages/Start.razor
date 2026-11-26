@@ -1,5 +1,6 @@
 @page "/"
 @inherits RefreshingPage
+@using Moss365.Core.Reporting
 
 <div class="kb-banner">
     <img src="_content/Moss365.UI/moss365-logo.webp" alt="Moss365 - Have you tried turning the user off and on again?" />
@@ -13,55 +14,80 @@
 
 <p>@T["start.current"] <strong>@State.Data.Origin</strong>@if (State.LoadedOn is { } t) { @T.Format("start.loadedat", t) }</p>
 
-@if (State.HasMicrosoft365)
+@if (State.Can(Permission.Security))
 {
-    <ServiceHealthCard />
+    <SinceLastVisitCard />
 }
 
-<section class="kb-kaart">
-    <h2>@T["start.inventory"]</h2>
-    @if (State.Folders.Count == 0 && State.PreferenceFolder is null)
+<div class="kb-filters" id="periode">
+    <span>@T["overview.compare-with"]</span>
+    @foreach (var p in Overview.Periods)
     {
-        <div class="kb-melding">
-            @Html("start.noinventory")
-        </div>
+        var value = p;
+        <button class="kb-knop kb-klein" aria-pressed="@(days == value ? "true" : "false")" @onclick="() => days = value">@T.Format("overview.days-ago", value)</button>
     }
-
-    <div class="kb-rij">
-        <label>@T["start.priority"]</label>
-        <select class="kb-invoer" @onchange="ChooseFolder">
-            <option value="" selected="@(State.PreferenceFolder is null)">@T["start.automatic"]</option>
-            @foreach (var m in State.Folders)
-            {
-                <option value="@m" selected="@(m == State.PreferenceFolder)">@m[(m.LastIndexOf('/') + 1)..]</option>
-            }
-        </select>
-        <button class="kb-knop" @onclick="State.LoadInventory">@T["action.reload"]</button>
-    </div>
-    <div class="kb-rij">
-        <label>@T["start.readfolder"]</label>
-        <input class="kb-invoer" placeholder="@T["start.folder.placeholder"]" @bind="otherFolder" />
-        <button class="kb-knop" @onclick="Import">@T.Format("start.readinto", State.Tenant.Name)</button>
-    </div>
-    @if (importMessage is not null)
+    <button class="kb-knop kb-klein" aria-expanded="@(arranging ? "true" : "false")" @onclick="() => arranging = !arranging">@T["overview.arrange"]</button>
+    @if (State.Can(Permission.Export))
     {
-        <p class="kb-zacht">@importMessage</p>
+        <button class="kb-knop kb-klein" @onclick="SaveBoard">@T["board.save"]</button>
     }
+</div>
+@if (board is not null)
+{
+    <div class="kb-melding" role="status">
+        @T.Format("board.saved", board)
+        <button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(board)">@T["kb-table.show-in-explorer"]</button>
+    </div>
+}
 
-    <table class="kb-tabel">
-        <thead><tr><th>@T["start.file"]</th><th>@T["start.fromfolder"]</th><th class="kb-getal">@T["start.rows"]</th></tr></thead>
-        <tbody>
-            @foreach (var b in State.Data.Sources)
+@if (arranging)
+{
+    <section class="kb-kaart" id="indeling">
+        <h2>@T["overview.arrange"]</h2>
+        <p class="kb-zacht">@T["overview.arrange.help"]</p>
+        <ul>
+            @foreach (var (block, i) in Layout.Order.Select((b, i) => (b, i)))
             {
-                <tr class="@(b.Folder is null ? "kb-ontbreekt" : null)">
-                    <td><code>@b.File</code></td>
-                    <td>@(b.Folder is null ? T["start.notfound"] : b.Folder[(b.Folder.LastIndexOf('/') + 1)..])</td>
-                    <td class="kb-getal">@b.Rows</td>
-                </tr>
+                var b = block;
+                <li>
+                    <label><input type="checkbox" checked="@(!Layout.Hidden.Contains(b))" @onchange="() => State.SaveOverviewLayout(Overview.Toggle(Layout, b))" /> @T[$"overview.block.{b}"]</label>
+                    <button class="kb-knop kb-klein" disabled="@(i == 0)" aria-label="@T.Format("overview.up", T[$"overview.block.{b}"])" @onclick="() => State.SaveOverviewLayout(Overview.Move(Layout, b, -1))">&uarr;</button>
+                    <button class="kb-knop kb-klein" disabled="@(i == Layout.Order.Count - 1)" aria-label="@T.Format("overview.down", T[$"overview.block.{b}"])" @onclick="() => State.SaveOverviewLayout(Overview.Move(Layout, b, 1))">&darr;</button>
+                </li>
             }
-        </tbody>
-    </table>
-</section>
+        </ul>
+        <button class="kb-knop kb-klein" @onclick="() => State.SaveOverviewLayout(null)">@T["overview.arrange.default"]</button>
+    </section>
+}
+
+@foreach (var block in Layout.Order.Where(b => !Layout.Hidden.Contains(b)))
+{
+    var tiles = Tiles.Where(t => t.Block == block).ToList();
+    <section class="kb-kaart" id="@($"blok-{block.ToString().ToLowerInvariant()}")">
+        <h2>@T[$"overview.block.{block}"]</h2>
+        @if (tiles.Count == 0)
+        {
+            <p class="kb-zacht">@T["overview.block.empty"]</p>
+        }
+        else
+        {
+            <div class="kb-tegels">
+                @foreach (var tile in tiles)
+                {
+                    <OverviewTileView Tile="tile" Days="days" />
+                }
+            </div>
+        }
+        @if (block == OverviewBlock.Devices && State.IntuneDevices is null && State.AdComputers is null)
+        {
+            <p class="kb-zacht">@T["overview.devices.read"] <a href="toestellen">@T["menu.toestellen"]</a></p>
+        }
+        @if (block == OverviewBlock.Work && State.HasMicrosoft365)
+        {
+            <ServiceHealthCard />
+        }
+    </section>
+}
 
 <section class="kb-kaart">
     <h2>@T["start.accounts"]</h2>
@@ -103,10 +129,30 @@
         _ => T["start.systems.cloud"],
     };
 
-    private string otherFolder = string.Empty;
-    private string? importMessage;
+    // The overview (R19): the tiles once per data and period, not at every redraw
+    private int days = 30;
+    private bool arranging;
+    private (object Data, int Days, IReadOnlyList<OverviewTile> Tiles)? computed;
 
-    private void Import() => importMessage = State.ImportInventory(otherFolder);
+    private OverviewLayout Layout => State.OverviewLayout;
 
-    private void ChooseFolder(ChangeEventArgs e) => State.ChooseFolder(e.Value?.ToString());
+    private string? board;
+
+    private void SaveBoard() => board = State.SaveBoardSummary(days);
+
+    private IReadOnlyList<OverviewTile> Tiles
+    {
+        get
+        {
+            if (computed is not { } c || !ReferenceEquals(c.Data, State.Data) || c.Days != days)
+            {
+                computed = c = (State.Data, days, State.OverviewTiles(days));
+            }
+
+            return c.Tiles;
+        }
+    }
+
+    // The start screen marks the visit (R18), once per session; the card shows what changed since the one before
+    protected override void OnInitialized() => State.BeginVisit();
 }

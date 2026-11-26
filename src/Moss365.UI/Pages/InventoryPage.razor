@@ -1,0 +1,63 @@
+@page "/inventaris"
+@layout SettingsLayout
+@inherits RefreshingPage
+@* The inventory of this tenant (moved from the start screen in R19): which folder has priority, reading a folder of
+   Export-Inventaris.ps1, and which files the data comes from. *@
+
+<h1>@T["menu.inventaris"]</h1>
+
+<p>@T["start.current"] <strong>@State.Data.Origin</strong>@if (State.LoadedOn is { } t) { @T.Format("start.loadedat", t) }</p>
+
+<section class="kb-kaart">
+    <h2>@T["start.inventory"]</h2>
+    @if (State.Folders.Count == 0 && State.PreferenceFolder is null)
+    {
+        <div class="kb-melding">
+            @Html("start.noinventory")
+        </div>
+    }
+
+    <div class="kb-rij">
+        <label>@T["start.priority"]</label>
+        <select class="kb-invoer" @onchange="ChooseFolder">
+            <option value="" selected="@(State.PreferenceFolder is null)">@T["start.automatic"]</option>
+            @foreach (var m in State.Folders)
+            {
+                <option value="@m" selected="@(m == State.PreferenceFolder)">@m[(m.LastIndexOf('/') + 1)..]</option>
+            }
+        </select>
+        <button class="kb-knop" @onclick="State.LoadInventory">@T["action.reload"]</button>
+    </div>
+    <div class="kb-rij">
+        <label>@T["start.readfolder"]</label>
+        <input class="kb-invoer" placeholder="@T["start.folder.placeholder"]" @bind="otherFolder" />
+        <button class="kb-knop" @onclick="Import">@T.Format("start.readinto", State.Tenant.Name)</button>
+    </div>
+    @if (importMessage is not null)
+    {
+        <p class="kb-zacht">@importMessage</p>
+    }
+
+    <table class="kb-tabel">
+        <thead><tr><th>@T["start.file"]</th><th>@T["start.fromfolder"]</th><th class="kb-getal">@T["start.rows"]</th></tr></thead>
+        <tbody>
+            @foreach (var b in State.Data.Sources)
+            {
+                <tr class="@(b.Folder is null ? "kb-ontbreekt" : null)">
+                    <td><code>@b.File</code></td>
+                    <td>@(b.Folder is null ? T["start.notfound"] : b.Folder[(b.Folder.LastIndexOf('/') + 1)..])</td>
+                    <td class="kb-getal">@b.Rows</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+@code {
+    private string otherFolder = string.Empty;
+    private string? importMessage;
+
+    private void Import() => importMessage = State.ImportInventory(otherFolder);
+
+    private void ChooseFolder(ChangeEventArgs e) => State.ChooseFolder(e.Value?.ToString());
+}

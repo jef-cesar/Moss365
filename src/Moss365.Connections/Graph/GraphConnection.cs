@@ -214,33 +214,41 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         var membership = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var counter = 0;
+
+        // The members of 20 groups per $batch call instead of a call per group (issue 40); a group whose answer is not
+        // there (throttled, an error) is read on its own, as before, and further pages are followed
+        static string MembersPath(string id) => $"/groups/{id}/members/microsoft.graph.user?$select=id&$top=999";
         using var brake = new SemaphoreSlim(4);
-        var tasks = rawGroups.Select(async g =>
+        var tasks = rawGroups.Select(g => S(g, "id")).Chunk(GraphClient.BatchSize).Select(async ids =>
         {
-            var id = S(g, "id");
             await brake.WaitAsync(cancel);
             try
             {
-                var members = await _client.GetAllAsync($"/groups/{id}/members/microsoft.graph.user?$select=id&$top=999", cancel);
-                lock (membership)
+                var firstPages = await _client.BatchGetAsync(ids.Select(MembersPath).ToList(), cancel);
+                for (var i = 0; i < ids.Length; i++)
                 {
-                    counts[id] = members.Count;
-                    foreach (var member in members)
+                    var id = ids[i];
+                    var members = firstPages[i] is { } first ? await _client.AllPagesAsync(first, cancel) : await _client.GetAllAsync(MembersPath(id), cancel);
+                    lock (membership)
                     {
-                        var memberId = S(member, "id");
-                        if (!membership.TryGetValue(memberId, out var set))
+                        counts[id] = members.Count;
+                        foreach (var member in members)
                         {
-                            set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                            membership[memberId] = set;
+                            var memberId = S(member, "id");
+                            if (!membership.TryGetValue(memberId, out var set))
+                            {
+                                set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                                membership[memberId] = set;
+                            }
+
+                            set.Add(id);
                         }
 
-                        set.Add(id);
-                    }
-
-                    counter++;
-                    if (counter % 50 == 0)
-                    {
-                        progress?.Report($"Entra: groepsleden {counter}/{rawGroups.Count}...");
+                        counter++;
+                        if (counter % 50 == 0)
+                        {
+                            progress?.Report($"Entra: groepsleden {counter}/{rawGroups.Count}...");
+                        }
                     }
                 }
             }
@@ -433,14 +441,39 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
     // ------------------------------------------------------------------ devices, Teams and SharePoint (0.36)
 
+    public async Task<IReadOnlyList<Core.Devices.EntraDevice>?> ReadEntraDevicesAsync(CancellationToken cancel)
+    {
+        try
+        {
+            const string select = "id,deviceId,displayName,operatingSystem,operatingSystemVersion,accountEnabled,approximateLastSignInDateTime,trustType";
+            return (await _client.GetAllAsync($"/devices?$select={select}&$top=999", cancel))
+                .Select(d => new Core.Devices.EntraDevice(S(d, "id"), S(d, "deviceId"), S(d, "displayName"), S(d, "operatingSystem"), S(d, "operatingSystemVersion"),
+                    !d.TryGetProperty("accountEnabled", out var on) || on.ValueKind != JsonValueKind.False, Date(d, "approximateLastSignInDateTime"), S(d, "trustType")))
+                .ToList();
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
+        {
+            return null;
+        }
+    }
+
     public async Task<IReadOnlyList<Core.Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel)
     {
         try
         {
-            const string select = "id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managedDeviceOwnerType";
+            const string select = "id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managedDeviceOwnerType,"
+                + "serialNumber,model,manufacturer,isEncrypted,enrolledDateTime,azureADDeviceId";
             return (await _client.GetAllAsync($"/deviceManagement/managedDevices?$select={select}&$top=999", cancel))
                 .Select(d => new Core.Devices.IntuneDevice(S(d, "id"), S(d, "deviceName"), S(d, "userPrincipalName"), S(d, "operatingSystem"), S(d, "osVersion"),
-                    S(d, "complianceState"), Date(d, "lastSyncDateTime"), S(d, "managedDeviceOwnerType")))
+                    S(d, "complianceState"), Date(d, "lastSyncDateTime"), S(d, "managedDeviceOwnerType"))
+                {
+                    Serial = S(d, "serialNumber"),
+                    Model = S(d, "model"),
+                    Manufacturer = S(d, "manufacturer"),
+                    Encrypted = d.TryGetProperty("isEncrypted", out var enc) && enc.ValueKind is JsonValueKind.True or JsonValueKind.False ? enc.GetBoolean() : null,
+                    Enrolled = Date(d, "enrolledDateTime"),
+                    EntraDeviceId = S(d, "azureADDeviceId"),
+                })
                 .ToList();
         }
         catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
@@ -905,7 +938,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
 
         return new SignInEvent(time, S(a, "userId"), S(a, "userPrincipalName"), S(a, "userDisplayName"), S(a, "appDisplayName"),
-            S(a, "ipAddress"), location, code, code == 0 ? string.Empty : reason, S(a, "clientAppUsed"), ca);
+            S(a, "ipAddress"), location, code, code == 0 ? string.Empty : reason, S(a, "clientAppUsed"), ca, S(a, "id"), S(a, "riskLevelDuringSignIn"));
     }
 
     internal static EntraUser ToUser(JsonElement u, IReadOnlyDictionary<string, string> skuName)
@@ -1079,6 +1112,91 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
     }
 
+    // ------------------------------------------------------------------ logs kept locally (R18)
+
+    private static string Iso(DateTimeOffset t) => t.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+
+    public async Task<IReadOnlyList<SignInEvent>> ReadSignInsToKeepAsync(DateTimeOffset since, IReadOnlyCollection<string> userIds, int max, CancellationToken cancel)
+    {
+        var after = $"createdDateTime gt {Iso(since)}";
+        var output = new List<SignInEvent>();
+        try
+        {
+            output.AddRange(await SignInPagesAsync($"{after} and status/errorCode ne 0", max, cancel));
+
+            // Administrators and emergency accounts: 15 per request, so that the filter stays short
+            foreach (var chunk in userIds.Where(i => i.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Chunk(15))
+            {
+                var users = string.Join(" or ", chunk.Select(i => $"userId eq '{i.Replace("'", "''", StringComparison.Ordinal)}'"));
+                output.AddRange(await SignInPagesAsync($"{after} and ({users})", max, cancel));
+            }
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
+        {
+            throw new NoPermissionError(ex.Message);
+        }
+
+        try
+        {
+            // Risky sign-ins need Entra ID P2: without it Graph answers with an error, which only skips this part
+            output.AddRange(await SignInPagesAsync($"{after} and riskState eq 'atRisk'", max, cancel));
+        }
+        catch (GraphError)
+        {
+        }
+
+        return output.Where(e => e.Id.Length > 0).DistinctBy(e => e.Id, StringComparer.OrdinalIgnoreCase).OrderByDescending(e => e.Time).ToList();
+    }
+
+    private async Task<List<SignInEvent>> SignInPagesAsync(string filter, int max, CancellationToken cancel)
+    {
+        var output = new List<SignInEvent>();
+        string? next = $"/auditLogs/signIns?$filter={Uri.EscapeDataString(filter)}&$top=999";
+        while (next is not null && output.Count < max)
+        {
+            var currentPage = await _client.GetAsync(next, cancel);
+            if (currentPage.TryGetProperty("value", out var values))
+            {
+                output.AddRange(values.EnumerateArray().Select(ToSignIn));
+            }
+
+            next = currentPage.TryGetProperty("@odata.nextLink", out var nl) ? nl.GetString() : null;
+        }
+
+        return output.Count > max ? output.GetRange(0, max) : output;
+    }
+
+    public async Task<IReadOnlyList<Core.Security.AuditEvent>> ReadDirectoryAuditsAsync(DateTimeOffset since, int max, CancellationToken cancel)
+    {
+        var output = new List<Core.Security.AuditEvent>();
+        string? next = $"/auditLogs/directoryAudits?$filter={Uri.EscapeDataString($"activityDateTime gt {Iso(since)}")}&$top=500";
+        try
+        {
+            while (next is not null && output.Count < max)
+            {
+                var currentPage = await _client.GetAsync(next, cancel);
+                if (currentPage.TryGetProperty("value", out var values))
+                {
+                    output.AddRange(values.EnumerateArray().Select(ToAudit));
+                }
+
+                next = currentPage.TryGetProperty("@odata.nextLink", out var nl) ? nl.GetString() : null;
+            }
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
+        {
+            throw new NoPermissionError(ex.Message);
+        }
+
+        return output.Count > max ? output.GetRange(0, max) : output;
+    }
+
+    internal static Core.Security.AuditEvent ToAudit(JsonElement a)
+    {
+        var ca = ToCaAudit(a);
+        return new Core.Security.AuditEvent(S(a, "id"), ca.Time, ca.Activity, S(a, "category"), S(a, "loggedByService"), ca.Who, ca.TargetId, ca.TargetName, ca.Result);
+    }
+
     internal static CaAuditEntry ToCaAudit(JsonElement a)
     {
         var who = a.TryGetProperty("initiatedBy", out var i)
@@ -1167,6 +1285,41 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         return ChangeResult.Ok(w, Texts.T.Format("code.graph-connection.created-id", id));
     }
 
+    /// <summary>
+    /// An action on an Intune device (R17). Wipe and fresh start ask Intune again whether the device is personal and
+    /// refuse it then, also when the plan said otherwise; some actions only exist in the beta of Graph.
+    /// </summary>
+    private async Task<ChangeResult> RunDeviceAsync(Change w, CancellationToken cancel)
+    {
+        const string beta = "https://graph.microsoft.com/beta";
+        var path = $"/deviceManagement/managedDevices/{Uri.EscapeDataString(w.Target)}";
+        var action = w.P("actie");
+        if (action is "wipe" or "freshStart")
+        {
+            var device = await _client.GetAsync($"{path}?$select=managedDeviceOwnerType", cancel);
+            if (!string.Equals(S(device, "managedDeviceOwnerType"), "company", StringComparison.OrdinalIgnoreCase))
+            {
+                return ChangeResult.Error(w, Texts.T["device.safety.personal"]);
+            }
+        }
+
+        switch (action)
+        {
+            case "sync": await _client.PostAsync($"{path}/syncDevice", null, cancel); break;
+            case "reboot": await _client.PostAsync($"{path}/rebootNow", null, cancel); break;
+            case "rotateLaps": await _client.PostAsync($"{beta}{path}/rotateLocalAdminPassword", null, cancel); break;
+            case "rotateBitLocker": await _client.PostAsync($"{beta}{path}/rotateBitLockerKeys", null, cancel); break;
+            case "defenderScan": await _client.PostAsync($"{path}/windowsDefenderScan", new Dictionary<string, object> { ["quickScan"] = true }, cancel); break;
+            case "rename": await _client.PostAsync($"{beta}{path}/setDeviceName", new Dictionary<string, object> { ["deviceName"] = w.P("naam") }, cancel); break;
+            case "retire": await _client.PostAsync($"{path}/retire", null, cancel); break;
+            case "wipe": await _client.PostAsync($"{path}/wipe", new Dictionary<string, object> { ["keepEnrollmentData"] = false, ["keepUserData"] = false }, cancel); break;
+            case "freshStart": await _client.PostAsync($"{path}/cleanWindowsDevice", new Dictionary<string, object> { ["keepUserData"] = false }, cancel); break;
+            default: return ChangeResult.Error(w, Texts.T["device.action.unknown"]);
+        }
+
+        return ChangeResult.Ok(w, Texts.T["device.action.sent"]);
+    }
+
     private async Task<ChangeResult> RunAsync(Change w, CancellationToken cancel)
     {
         try
@@ -1232,6 +1385,11 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             if (w.ChangeAction == ChangeAction.GraphCreateGroup)
             {
                 return await CreateGroupAsync(w, cancel);
+            }
+
+            if (w.ChangeAction == ChangeAction.IntuneDeviceAction)
+            {
+                return await RunDeviceAsync(w, cancel);
             }
 
             if (w.ChangeAction is ChangeAction.GraphCreateCaPolicy or ChangeAction.GraphUpdateCaPolicy or ChangeAction.GraphCreateCaLocation or ChangeAction.GraphUpdateCaLocation)

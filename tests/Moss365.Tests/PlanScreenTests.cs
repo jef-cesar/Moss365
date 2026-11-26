@@ -500,7 +500,7 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
         WaitOnTask();
 
         var task = State.Job!;
-        Assert.Equal(new[] { "AD lezen", "Entra lezen", "Beveiliging lezen (MFA en beheerrollen)", "Conditional Access lezen", "Rooms, postvakken en groepen lezen (Exchange)", "Bewaren als inventaris" },
+        Assert.Equal(new[] { "AD lezen", "Entra lezen", "Beveiliging lezen (MFA en beheerrollen)", "Conditional Access lezen", "Aanmeldingen en auditlogboek lokaal bewaren", "Rooms, postvakken en groepen lezen (Exchange)", "Bewaren als inventaris" },
             task.Steps.Select(s => s.Name));
         Assert.All(task.Steps, s => Assert.Equal(StepStatus.Done, s.Status));
         Assert.Contains(task.Log, r => r.Contains("AD gelezen"));
@@ -684,6 +684,10 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
         public bool CalendarNoPermission { get; set; }
         public List<(string Address, DateTime Of, DateTime Until)> CalendarRead { get; } = new();
         public List<SignInEvent> SignIns { get; } = new();
+
+        /// <summary>The directory audit log (R18); with AuditNoPermission reading fails as with a 403.</summary>
+        public List<Core.Security.AuditEvent> Audits { get; } = new();
+        public bool AuditNoPermission { get; set; }
         public CaData? Ca { get; set; }
         public FakeScripts FakeScripts { get; } = new();
 
@@ -798,9 +802,18 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
         public Task<IReadOnlyList<Core.Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Devices.IntuneDevice>?>(new[]
             {
-                new Core.Devices.IntuneDevice("d1", "LAPTOP-1", "an@test.be", "Windows", "10.0.22631", "compliant", DateTimeOffset.Now.AddDays(-1), "company"),
-                new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal"),
+                new Core.Devices.IntuneDevice("d1", "LAPTOP-1", "an.peeters@test.be", "Windows", "10.0.22631", "compliant", DateTimeOffset.Now.AddDays(-1), "company") { EntraDeviceId = "e-dev-1", Serial = "SN-0001", Model = "Latitude 5440", Encrypted = true },
+                new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal") { EntraDeviceId = "e-dev-2" },
                 new Core.Devices.IntuneDevice("d3", "LAPTOP-OUD", "cas@test.be", "Windows", "10.0.19045", "compliant", DateTimeOffset.Now.AddDays(-60), "company"),
+            });
+
+        public Task<IReadOnlyList<Core.Devices.EntraDevice>?> ReadEntraDevicesAsync(CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Devices.EntraDevice>?>(new[]
+            {
+                new Core.Devices.EntraDevice("o1", "e-dev-1", "LAPTOP-1", "Windows", "10.0.22631", true, DateTimeOffset.Now.AddDays(-1), "AzureAd"),
+                new Core.Devices.EntraDevice("o2", "e-dev-2", "GSM-BO", "iOS", "16.1", true, DateTimeOffset.Now.AddDays(-3), "Workplace"),
+                new Core.Devices.EntraDevice("o3", "e-dev-3", "PC-NIEUW", "Windows", "10.0.22631", true, DateTimeOffset.Now.AddDays(-2), "ServerAd"),
+                new Core.Devices.EntraDevice("o4", "e-dev-4", "TABLET-X", "Windows", "10.0.26100", true, DateTimeOffset.Now.AddDays(-5), "AzureAd"),
             });
 
         public Task<Core.Devices.CollaborationReading?> ReadCollaborationAsync(CancellationToken cancel)
@@ -811,10 +824,13 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
                 "externalUserAndGuestSharing", null));
 
         public Task<Core.Security.AppsReading?> ReadAppsAsync(CancellationToken cancel)
-            => Task.FromResult<Core.Security.AppsReading?>(new Core.Security.AppsReading(
+        {
+            f.Read("apps");
+            return Task.FromResult<Core.Security.AppsReading?>(new Core.Security.AppsReading(
                 new[] { new Core.Security.AppCredential("Koppeling HR", "app-1", "geheim", DateTimeOffset.Now.AddDays(-2)), new Core.Security.AppCredential("Scanner", "app-2", "certificaat", DateTimeOffset.Now.AddDays(300)) },
                 new[] { new Core.Security.AppPermission("Koppeling HR", "app-1", "Mail.ReadWrite", "Application", "AllPrincipals", null),
                         new Core.Security.AppPermission("Gratis PDF", "app-3", "Mail.Send", "Delegated", "Principal", "e-bo") }));
+        }
 
         public Task<Core.Security.SecureScoreReading?> ReadSecureScoreAsync(CancellationToken cancel)
             => Task.FromResult<Core.Security.SecureScoreReading?>(new Core.Security.SecureScoreReading(
@@ -854,6 +870,14 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public Task<IReadOnlyList<SignInEvent>> ReadSignInsAsync(int days, int max, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<SignInEvent>>(f.SignIns.Take(max).ToList());
+
+        public Task<IReadOnlyList<SignInEvent>> ReadSignInsToKeepAsync(DateTimeOffset since, IReadOnlyCollection<string> userIds, int max, CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<SignInEvent>>(f.SignIns.Where(a => a.Time > since && (!a.Succeeded || a.Risky || userIds.Contains(a.UserId))).Take(max).ToList());
+
+        public Task<IReadOnlyList<Core.Security.AuditEvent>> ReadDirectoryAuditsAsync(DateTimeOffset since, int max, CancellationToken cancel)
+            => f.AuditNoPermission
+                ? throw new NoPermissionError("Forbidden")
+                : Task.FromResult<IReadOnlyList<Core.Security.AuditEvent>>(f.Audits.Where(a => a.Time > since).Take(max).ToList());
 
         public Task<CaData?> ReadConditionalAccessAsync(IProgress<string>? progress, CancellationToken cancel) => Task.FromResult(f.Ca);
 

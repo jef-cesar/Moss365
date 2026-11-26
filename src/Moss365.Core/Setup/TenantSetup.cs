@@ -32,6 +32,7 @@ public static class AppManifest
         "SecurityEvents.Read.All", "RoleManagement.Read.Directory", "IdentityRiskyUser.Read.All",
         "DeviceManagementManagedDevices.Read.All", "Reports.Read.All", "SharePointTenantSettings.Read.All",
         "ServiceHealth.Read.All", "ServiceMessage.Read.All",
+        "DeviceManagementManagedDevices.PrivilegedOperations.All", "DeviceManagementManagedDevices.ReadWrite.All",
     };
 
     /// <summary>Exchange Online: so that Exchange uses the same sign-in as Graph.</summary>

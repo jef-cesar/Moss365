@@ -202,15 +202,16 @@ public static class InventoryWriter
 public static class CsvWriter
 {
     /// <param name="forExcel">
-    /// Values that start with = + - @ get an apostrophe, so that Excel does not run them as a formula (for exports; the
-    /// app reads the inventory back itself and it stays unchanged).
+    /// Values that start with = + - @ (or a tab or carriage return, which Excel skips before such a sign) get an
+    /// apostrophe, so that Excel does not run them as a formula (for exports; the app reads the inventory back itself
+    /// and it stays unchanged).
     /// </param>
     public static string Text(IEnumerable<string> columns, IEnumerable<IEnumerable<string?>> rows, bool forExcel = false)
     {
         string Q(string? w)
         {
             w ??= string.Empty;
-            if (forExcel && w.Length > 0 && w[0] is '=' or '+' or '-' or '@' && !double.TryParse(w, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+            if (forExcel && w.Length > 0 && w[0] is '=' or '+' or '-' or '@' or '\t' or '\r' && !double.TryParse(w, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
             {
                 w = "'" + w;
             }

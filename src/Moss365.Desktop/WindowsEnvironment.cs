@@ -32,6 +32,9 @@ public sealed class WindowsEnvironment : IAppEnvironment
 
     public string Root => Local;
 
+    /// <summary>Reading without a window (R18): the task in the Windows Task Scheduler.</summary>
+    public IUnattendedScheduler? Scheduler { get; } = new WindowsTaskScheduler();
+
     public string ConfigDefaultPath { get; } = DefaultConfig();
 
     public string ExportFolder { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Moss365");

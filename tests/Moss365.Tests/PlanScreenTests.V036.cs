@@ -104,6 +104,21 @@ public sealed partial class PlanScreenTests
     }
 
     [Fact]
+    public void TheDevicesScreenShowsOneList()
+    {
+        EntraFilled();
+        var cut = RenderComponent<DevicesPage>();
+        cut.FindAll("button").First(b => b.TextContent == "Toestellen lezen").Click();
+        cut.WaitForAssertion(() => Assert.Contains("Eén lijst over AD, Entra en Intune", cut.Markup, StringComparison.Ordinal), TimeSpan.FromSeconds(5));
+        Assert.Contains("hybride gekoppeld", cut.Markup, StringComparison.Ordinal);
+
+        // LAPTOP-OUD is in Intune without a record in Entra
+        cut.FindAll("#een-lijst button").First(b => b.TextContent.StartsWith("in Intune, niet in Entra", StringComparison.Ordinal)).Click();
+        var row = Assert.Single(cut.FindAll("#een-lijst tbody tr"));
+        Assert.Contains("LAPTOP-OUD", row.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheCollaborationScreenShowsOwnersAndSharing()
     {
         EntraFilled();

@@ -37,7 +37,7 @@ public static class Undo
     {
         ChangeAction.AdSetAttributes, ChangeAction.GraphSetAttributes, ChangeAction.GraphSetGroupAttributes,
         ChangeAction.ExchangeUpdateGroup, ChangeAction.ExchangeUpdateMailbox, ChangeAction.ExchangeAutoReply, ChangeAction.GraphSetManager,
-        ChangeAction.GraphUpdateCaPolicy, ChangeAction.GraphUpdateCaLocation,
+        ChangeAction.GraphUpdateCaPolicy, ChangeAction.GraphUpdateCaLocation, ChangeAction.AdSetAccountFlag, ChangeAction.IntuneDeviceAction,
     };
 
     /// <summary>Can this entry be undone? If not, why not.</summary>
@@ -66,6 +66,11 @@ public static class Undo
         if (action == ChangeAction.AdWriteLogonScript)
         {
             return r.Previous?.ContainsKey("inhoud") == true ? null : Texts.T["code.undo.the-app-does-not-delete"];
+        }
+
+        if (action == ChangeAction.IntuneDeviceAction && r.Previous is not { Count: > 0 })
+        {
+            return Texts.T["device.undo.not"];
         }
 
         if (Attributes.Contains(action))
@@ -245,7 +250,7 @@ public static class Undo
     private static TargetSystem SystemOf(ChangeAction a) => a.ToString() switch
     {
         var t when t.StartsWith("Ad", StringComparison.Ordinal) => TargetSystem.ActiveDirectory,
-        var t when t.StartsWith("Graph", StringComparison.Ordinal) => TargetSystem.Graph,
+        var t when t.StartsWith("Graph", StringComparison.Ordinal) || t.StartsWith("Intune", StringComparison.Ordinal) => TargetSystem.Graph,
         _ => TargetSystem.Exchange,
     };
 

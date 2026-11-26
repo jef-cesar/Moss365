@@ -2,6 +2,94 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.39.0
+
+.NET 10 and the first fixes from the security review of 26 November 2026 (decisions U22 and U23 of the
+[roadmap](docs/roadmap-1.0.md)).
+
+- **.NET 10** instead of .NET 8: .NET 8 gets no security updates since 10 November 2026, and Moss365 ships the runtime
+  itself, so this update also brings a supported runtime (until November 2028). The packages moved along (SQLite,
+  ASP.NET Core components, the WebView, MSAL, the directory and protection libraries). Nothing changes in how you work.
+- **Security advice** (R16, first part), on *Beveiligingscontroles*:
+  - every check has an **ⓘ**: what it is, why it matters, what you do about it and what can go wrong, with the attack
+    technique (MITRE ATT&CK) and a link to Microsoft Learn;
+  - a risk can be **accepted** for a whole check or for one line, with a reason and an end date (at most a year); it
+    goes to the change log as evidence, and after that date the advice is back;
+  - the last result of every check is **kept** in the tenant database, with the date it was checked;
+  - a **hardening score** of Moss365's own, over AD and Microsoft 365 together and weighted per check, with the score
+    of an earlier day next to it.
+- **Solving advice as a plan** (R16, U16): in *AD-beveiliging*, *Oplossen als plan* turns off "password not required"
+  and "reversible encryption" on the accounts found, with preview, confirmation and undo from the change log. The
+  engine only changes these flags.
+- **Compromised account** (R16), on the page of a user: *Blokkeerplan maken* makes one plan that disables the account
+  in AD (and a cloud account in Entra), sets a new random password (kept and shown nowhere), revokes every sign-in
+  session and removes the account from privileged AD groups; next to it what to check afterwards (MFA methods, admin
+  roles, forwarding, sign-ins, devices). Nothing is deleted; the plan is shown first, as always.
+- **Devices and Intune** (R17), on *Toestellen*:
+  - the **life cycle of systems** is data that comes with the updates: Windows 10 (support ended on 14 October 2025)
+    and the builds of Windows 11 whose support ended are marked, and "support ends <date>" half a year ahead;
+  - **one list over AD, Entra and Intune**: which device is where, hybrid joins that fail, devices in Intune without a
+    record in Entra, duplicate records and records not seen for 90 days;
+  - **a panel per device** (click its name): user, system, compliance, company or personal, model, serial number,
+    encryption, enrolment and last sync, and the records in AD and Entra;
+  - **actions as a plan** (U17): sync, restart, a new LAPS password or BitLocker key and a Defender quick scan (also for
+    the Helpdesk); rename (with undo) and retire (Administrator); wipe and fresh start (Administrator, only for a
+    company device, after typing the device name, one device per plan). The engine checks the same, and asks Intune
+    again whether the device is personal right before wiping it;
+  - the page of a user shows the **devices in Intune** of that person.
+  - The app registration needs two new permissions for these actions: `DeviceManagementManagedDevices.PrivilegedOperations.All`
+    and, only because Microsoft asks it for a new BitLocker key, `DeviceManagementManagedDevices.ReadWrite.All`. The
+    wizard (*Tenant instellen*) adds them; until then the actions fail with a message, reading works as before.
+- **Own data** (R18):
+  - the **sign-in and audit logs are kept locally** (U19), on by default: after every read of Entra, the failed and
+    risky sign-ins, those of administrators and emergency accounts, and the whole directory audit log go to the tenant
+    database, for a year (*Databank en versleuteling*, next to the other retention periods; cleaning up shows a preview
+    first, as always). Microsoft itself keeps them 7 to 30 days. The new screen *Bewaarde logboeken* (under
+    Beveiliging) is for whoever may see sign-ins, and viewing it goes to the access log. Sign-in logs need Entra ID P1;
+    without it the screen says so and the audit log is still kept.
+  - **Since your last visit**, on the start screen: what changed outside Moss365 since you last opened the tenant: new
+    administrators (privileged AD groups, from the snapshots; admin roles, from the audit log), changes to Conditional
+    Access, new app consents and sign-ins of emergency accounts. What Moss365 did itself is in the change log and is
+    left out.
+  - **Reading without a window** (U19), under *Instellingen*, *Lezen zonder venster*: a task in the Windows Task
+    Scheduler reads the tenant every day at the hour you choose, without opening Moss365: AD and Entra into a snapshot,
+    and the sign-in and audit logs. It only reads (never a write, scheduled actions keep waiting), runs under your own
+    Windows account while you are signed in to Windows, runs later when the PC was off, and leaves the reading to the
+    app when Moss365 is open. Microsoft 365 needs *Aangemeld blijven*; AD with a separate account (whose password is
+    only typed in the app) and a tenant encrypted with a password wait for the app. The page says what it can read
+    and how the last read went.
+- **Access reviews** (R20), under Beveiliging, *Toegangsreviews*: every quarter (or every month, half year or year,
+  per subject) the owner or a reviewer you choose confirms who is in the privileged AD groups and the admin roles, and
+  who has access to the shared mailboxes. Mailing the reviewers is a plan; per member you decide to keep or remove, and
+  every decision is a line in the change log (evidence for NIS2 and the CIS Controls, without an Entra ID Governance
+  licence). Removing from an AD group or a mailbox is a plan as always; admin roles are removed in Entra itself, because
+  Moss365 deliberately has no permission to change roles. Only an administrator records a review; the auditor sees
+  everything.
+- **The overview** (R19) is the start screen of a tenant, in four blocks: **security** (hardening score, open advice,
+  accounts without MFA, administrators, since your last visit), **devices** (not compliant, not seen, systems no longer
+  supported, not encrypted), **hygiene and costs** (inactive accounts, guests to confirm, euros a month on licences that
+  bring nothing, data quality) and **work** (access reviews due, requests, scheduled actions waiting, follow-up, app
+  secrets, failed changes, the status of Microsoft 365). Every tile clicks through to the list behind it and shows its
+  trend against 7, 30 or 90 days ago ("−3 in 30 days, better"); the counts are kept per day after every read (only
+  counts, never names). The order of the blocks follows the role (the helpdesk sees the work first) and can be changed
+  per person. The inventory (folders and files) moved to the settings, *Inventaris*.
+- **All tenants together** (U20), under the settings: per tenant only scores and counts, side by side, read when the page
+  opens from each tenant's own database (locked tenants stay locked). Nothing is stored or exported together, no tenant
+  is opened for it, and no name of a person or object leaves a tenant (a test checks every file stays the same).
+- **Board summary**, on the overview: one page (HTML, prints as PDF) with the four blocks and their trends, the hardening
+  score over time and the report of the last quarter; only numbers, and the access log notes who saved it.
+- **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
+  address; anything else (such as a script link or a file share) is no longer clickable.
+- **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.
+- **Faster**: the tiles keep their count until something changes (the change log tiles no longer read 2,000 lines
+  every time), the organisation on a date is built once per snapshot, a full read of Entra asks the members of 20
+  groups in one call, the alerts from the snapshots no longer slow down with many accounts, and *Alles nakijken* reads
+  the app registrations once instead of twice.
+- **A new tenant is encrypted** with your Windows account by default (U24): *Tenants*, *Tenant toevoegen* first shows
+  the recovery key, and the tenant is made once you typed its last group. Not encrypting stays a choice. Existing
+  tenants stay as they are; *Databank en versleuteling* encrypts them.
+- **Releases** now wait for the maintainer's approval before they are published and offered as an update (U23).
+
 ## 0.38.6
 
 Languages (R15), seventh part: the last Dutch names, and texts the scanner did not see.

@@ -51,7 +51,12 @@ public sealed record SignInEvent(
     int ErrorCode,
     string Reason,
     string Client,
-    IReadOnlyList<CaApplication>? Ca = null)
+    IReadOnlyList<CaApplication>? Ca = null,
+    string Id = "",
+    string Risk = "")
 {
     public bool Succeeded => ErrorCode == 0;
+
+    /// <summary>Entra saw a risk in this sign-in (riskLevelDuringSignIn low, medium or high; Entra ID P2).</summary>
+    public bool Risky => Risk is "low" or "medium" or "high";
 }

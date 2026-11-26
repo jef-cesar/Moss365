@@ -1,14 +1,40 @@
 @page "/controles"
 @inject ManagementState State
 @using Moss365.Core.Security
+@using CheckStatus = Moss365.Core.Security.CheckStatus
 @* The security checks of R11 (0.34): each says OK, attention or problem, and "unknown" when the data is not enough.
-   Everything reads only; changing is done in the screens for that (plans as always). *@
+   R16: every check has its explanation (what, why, what to do, what can go wrong, links), a risk can be accepted with
+   a reason and an end date (in the change log), the last results are kept and give a hardening score of our own.
+   The checks only read; changing is done in the screens for that (plans as always). *@
 
 <h1>@T["menu.controles"]</h1>
 
 <p class="kb-zacht">
     @T["security-checks.what-an-attacker-looks-for"]
 </p>
+
+<section class="kb-kaart">
+    <h2>
+        @T["advice.score"]
+        <button class="kb-knop kb-klein" title="@T["advice.info"]" aria-label="@T["advice.info"]" aria-expanded="@(scoreInfo ? "true" : "false")" @onclick="() => scoreInfo = !scoreInfo">ⓘ</button>
+    </h2>
+    @if (State.HardeningScore is { } score)
+    {
+        <div class="kb-tegel-getal">@T.Format("advice.score.value", score)</div>
+        @if (Previous is { } p)
+        {
+            <p class="kb-zacht">@T.Format("advice.score.was", p.Score, p.Date.ToString("d", T.Culture))</p>
+        }
+    }
+    else
+    {
+        <p class="kb-zacht">@T["advice.score.none"]</p>
+    }
+    @if (scoreInfo)
+    {
+        <p class="kb-zacht">@T["advice.score.help"]</p>
+    }
+</section>
 
 <div class="kb-filters">
     <button class="kb-knop kb-primair" disabled="@busy" @onclick="All">@T["security-checks.check-everything"]</button>
@@ -19,6 +45,11 @@
     @if (busy) { <span class="kb-zacht">@T.Format("security-checks.busy-0", running)</span> }
 </div>
 
+@if (error is not null)
+{
+    <div class="kb-melding kb-fout">@error</div>
+}
+
 <table class="kb-tabel">
     <thead><tr><th>@T["security-checks.check"]</th><th>@T["service-health-card.status"]</th><th>@T["security-checks.summary"]</th><th></th></tr></thead>
     <tbody>
@@ -26,26 +57,128 @@
         {
             var c = State.SecurityCheckResults.GetValueOrDefault(key);
             <tr>
-                <td><strong>@title</strong></td>
-                <td>@if (c is not null) { <span class="kb-label kb-controle-@c.Status.ToString().ToLowerInvariant()">@c.StatusText</span> } else { <span class="kb-zacht">@T["security-checks.not-yet"]</span> }</td>
-                <td class="kb-zacht">@c?.Summary</td>
+                <td>
+                    <strong>@title</strong>
+                    @if (SecurityAdvice.Info(key) is not null)
+                    {
+                        <button class="kb-knop kb-klein" title="@T["advice.info"]" aria-label="@T["advice.info"]" aria-expanded="@(info == key ? "true" : "false")" @onclick="() => info = info == key ? null : key">ⓘ</button>
+                    }
+                </td>
+                <td>
+                    @if (c is null)
+                    {
+                        <span class="kb-zacht">@T["security-checks.not-yet"]</span>
+                    }
+                    else if (c.AcceptedUntil is { } u)
+                    {
+                        <span class="kb-label">@T.Format("advice.accepted-until", u.ToString("d", T.Culture))</span>
+                    }
+                    else
+                    {
+                        <span class="kb-label kb-controle-@c.Status.ToString().ToLowerInvariant()">@c.StatusText</span>
+                    }
+                </td>
+                <td class="kb-zacht">
+                    @c?.Summary
+                    @if (c?.Time is { } t)
+                    {
+                        <br /><span>@T.Format("advice.last-checked", t.LocalDateTime.ToString("g", T.Culture))</span>
+                    }
+                </td>
                 <td><span class="kb-filters">
                     <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => Run(key)">@T["library-panel.check"]</button>
                     @if (c is { Rows.Count: > 0 }) { <button class="kb-knop kb-klein" @onclick="() => open = open == key ? null : key">@(open == key ? T["word.hide"] : $"Details ({c.Rows.Count})")</button> }
+                    @if (MayAccept && c is not null && SecurityAdvice.Solvable(c).Count is > 0 and var solvable)
+                    {
+                        <button class="kb-knop kb-klein kb-primair" @onclick="() => Solve(c)">@T.Format("advice.solve", solvable)</button>
+                    }
+                    @if (MayAccept && c is { AcceptedUntil: null, Status: CheckStatus.Attention or CheckStatus.Problem })
+                    {
+                        <button class="kb-knop kb-klein" @onclick="() => StartAccept(key, string.Empty)">@T["advice.exception"]</button>
+                    }
                 </span></td>
             </tr>
+            @if (solving is { } s && s.Key == key)
+            {
+                <tr><td colspan="4">
+                    @foreach (var e in s.Outcome.Errors) { <div class="kb-melding kb-fout">@e</div> }
+                    @if (s.Outcome.Plan.Count > 0)
+                    {
+                        <PlanView Plan="s.Outcome.Plan" Context="@T.Format("advice.solve.context", title)" Title="@T["advice.solve.title"]" />
+                    }
+                </td></tr>
+            }
+            @if (info == key && SecurityAdvice.Info(key) is { } a)
+            {
+                <tr><td colspan="4">
+                    <dl>
+                        <dt><strong>@T["advice.what"]</strong></dt><dd>@a.What</dd>
+                        <dt><strong>@T["advice.why"]</strong></dt><dd>@a.Why</dd>
+                        <dt><strong>@T["advice.fix"]</strong></dt><dd>@a.Fix</dd>
+                        <dt><strong>@T["advice.risk"]</strong></dt><dd>@a.Risk</dd>
+                    </dl>
+                    <p class="kb-zacht">
+                        @if (a.TechniqueLink is { } technique)
+                        {
+                            <a href="@technique" target="_blank" rel="noopener">@T.Format("advice.technique", a.Technique)</a>
+                        }
+                        @for (var i = 0; i < a.Links.Count; i++)
+                        {
+                            var link = a.Links[i];
+                            <span> · </span><a href="@link" target="_blank" rel="noopener">@T.Format("advice.read-more", i + 1)</a>
+                        }
+                    </p>
+                </td></tr>
+            }
+            @if (c?.AcceptedNote is { } note)
+            {
+                <tr><td colspan="4">
+                    <span class="kb-zacht">@note</span>
+                    @if (MayAccept && ExceptionFor(key, string.Empty) is { } whole)
+                    {
+                        <button class="kb-knop kb-klein" @onclick="() => Lift(whole)">@T["advice.exception.lift"]</button>
+                    }
+                </td></tr>
+            }
+            @if (accepting is { } acc && acc.Key == key && acc.Object.Length == 0)
+            {
+                <tr><td colspan="4">@AcceptForm</td></tr>
+            }
             @if (open == key && c is not null)
             {
                 <tr><td colspan="4">
                     <table class="kb-tabel">
                         <tbody>
-                            @foreach (var r in c.Rows.OrderByDescending(r => r.Status == Moss365.Core.Security.CheckStatus.Problem).ThenByDescending(r => r.Status == Moss365.Core.Security.CheckStatus.Attention))
+                            @foreach (var r in c.Rows.OrderByDescending(r => r.AcceptedUntil is null && r.Status == CheckStatus.Problem).ThenByDescending(r => r.AcceptedUntil is null && r.Status == CheckStatus.Attention))
                             {
                                 <tr>
-                                    <td><span class="kb-label kb-controle-@r.Status.ToString().ToLowerInvariant()">@StatusText(r.Status)</span></td>
+                                    <td>
+                                        @if (r.AcceptedUntil is { } ru)
+                                        {
+                                            <span class="kb-label">@T.Format("advice.accepted-until", ru.ToString("d", T.Culture))</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="kb-label kb-controle-@r.Status.ToString().ToLowerInvariant()">@StatusText(r.Status)</span>
+                                        }
+                                    </td>
                                     <td>@r.Object</td>
                                     <td>@if (r.Href is { Length: > 0 } href) { <a href="@href" target="_blank" rel="noopener">@r.Detail</a> } else { @r.Detail }</td>
+                                    <td>
+                                        @if (MayAccept && r.AcceptedUntil is null && r.Status is CheckStatus.Attention or CheckStatus.Problem && c.AcceptedUntil is null)
+                                        {
+                                            <button class="kb-knop kb-klein" @onclick="() => StartAccept(key, r.Object)">@T["advice.exception"]</button>
+                                        }
+                                        else if (MayAccept && r.AcceptedUntil is not null && ExceptionFor(key, r.Object) is { } line)
+                                        {
+                                            <button class="kb-knop kb-klein" title="@line.Reason" @onclick="() => Lift(line)">@T["advice.exception.lift"]</button>
+                                        }
+                                    </td>
                                 </tr>
+                                @if (accepting is { } rowAcc && rowAcc.Key == key && rowAcc.Object.Length > 0 && string.Equals(rowAcc.Object, r.Object, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <tr><td colspan="4">@AcceptForm</td></tr>
+                                }
                             }
                         </tbody>
                     </table>
@@ -65,17 +198,87 @@
     private bool rules;
     private int days = 7;
     private string? open;
+    private string? info;
+    private bool scoreInfo;
     private string running = string.Empty;
+    private string? error;
+
+    // Accepting a risk (R16): for a whole check (empty object) or one line of it
+    private (string Key, string Object)? accepting;
+    private string reason = string.Empty;
+    private DateOnly until = DateOnly.FromDateTime(DateTime.Today.AddDays(90));
+
+    private bool MayAccept => State.Can(Permission.Manage) && !State.IsHistoric;
+
+    // Solving advice as a plan (R16, U16): the lines with a fix of one check; shown, confirmed and run as every plan
+    private (string Key, Moss365.Core.Changes.PlanOutcome Outcome)? solving;
+
+    private void Solve(SecurityCheck check) => solving = (check.Key, SecurityAdvice.Solve(State.Data, check));
+
+    private ScorePoint? Previous => State.HardeningScores.LastOrDefault(p => p.Date < DateOnly.FromDateTime(DateTime.Today));
 
     private string? HealthScript => State.ReadScripts().FirstOrDefault(s => string.Equals(s.Key, "Get-AdHealth", StringComparison.OrdinalIgnoreCase))?.Key;
 
-    private async Task Run(string key)
+    private AdviceException? ExceptionFor(string key, string obj)
+        => State.AcceptedRisks.FirstOrDefault(e => string.Equals(e.CheckKey, key, StringComparison.OrdinalIgnoreCase) && string.Equals(e.Object, obj, StringComparison.OrdinalIgnoreCase));
+
+    private RenderFragment AcceptForm => @<div class="kb-melding">
+        <p class="kb-zacht">@T["advice.exception.help"]</p>
+        <div class="kb-rij">
+            <label>@T["advice.exception.reason"] <input class="kb-invoer" @bind="reason" @bind:event="oninput" aria-label="@T["advice.exception.reason"]" /></label>
+            <label>@T["advice.exception.until"] <input class="kb-invoer" type="date" @bind="until" aria-label="@T["advice.exception.until"]" /></label>
+            <button class="kb-knop kb-primair" disabled="@(reason.Trim().Length == 0)" @onclick="Accept">@T["advice.exception.save"]</button>
+            <button class="kb-knop" @onclick="() => accepting = null">@T["action.cancel"]</button>
+        </div>
+    </div>;
+
+    private void StartAccept(string key, string obj)
+    {
+        accepting = (key, obj);
+        reason = string.Empty;
+        until = DateOnly.FromDateTime(DateTime.Today.AddDays(90));
+        error = null;
+    }
+
+    private void Accept()
+    {
+        if (accepting is not { } a)
+        {
+            return;
+        }
+
+        try
+        {
+            State.AcceptRisk(a.Key, a.Object, reason, until);
+            accepting = null;
+            error = null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            error = ex.Message.Split(" (Parameter")[0];
+        }
+    }
+
+    private void Lift(AdviceException exception)
+    {
+        try
+        {
+            State.LiftRisk(exception);
+            error = null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private async Task Run(string key, SecurityCheckRound? round = null)
     {
         busy = true;
         running = State.SecurityCheckList().FirstOrDefault(c => c.Key == key).Title ?? key;
         try
         {
-            await State.RunSecurityCheckAsync(key, days, rules);
+            await State.RunSecurityCheckAsync(key, days, rules, round: round);
         }
         finally
         {
@@ -83,13 +286,15 @@
         }
     }
 
+    // One round: what more than one check reads (the app registrations) is read once
     private async Task All()
     {
+        var round = new SecurityCheckRound();
         foreach (var (key, _) in State.SecurityCheckList())
         {
-            await Run(key);
+            await Run(key, round);
         }
     }
 
-    private static string StatusText(Moss365.Core.Security.CheckStatus status) => new SecurityCheck("", "", status, "", Array.Empty<CheckRow>()).StatusText;
+    private static string StatusText(CheckStatus status) => new SecurityCheck("", "", status, "", Array.Empty<CheckRow>()).StatusText;
 }
