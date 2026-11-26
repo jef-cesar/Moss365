@@ -34,7 +34,7 @@
 </div>
 
 <KbTable Id="@($"opkuis-{choice.Kind.ToString().ToLowerInvariant()}")" ExportName="@($"Opkuis-{choice.Kind}-{choice.Days}d")" Items="candidates" Columns="columns"
-         DefaultSorting="aanmelding" CountText="@($"{candidates.Count} accounts niet aangemeld in {choice.Days} {(choice.Days == 1 ? "dag" : "dagen")}")"
+         DefaultSorting="aanmelding" CountText="@T.Format("count.cleanup", candidates.Count, choice.Days, choice.Days == 1 ? T["word.day"] : T["word.days"])"
          Selectable KeyOf="k => k.Person.Key" Selected="choice.Selected" SelectionChanged="_ => plan = null" />
 
 @foreach (var f in errors)

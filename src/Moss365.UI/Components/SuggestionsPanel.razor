@@ -79,18 +79,18 @@
 
     private static string KindText(SuggestionKind k) => k switch
     {
-        SuggestionKind.AdDomain => "AD-domein",
-        SuggestionKind.SynchronisedOu => "Gesynchroniseerde OU",
-        SuggestionKind.Department => "Dienst",
-        SuggestionKind.Office => "Kantoor",
-        SuggestionKind.GroupPrefix => "Groepsvoorvoegsel",
-        SuggestionKind.EmergencyAccount => "Noodaccount",
-        SuggestionKind.Company => "Bedrijf",
-        SuggestionKind.NewUsersOu => "OU nieuwe gebruikers",
+        SuggestionKind.AdDomain => T["word.ad-domain"],
+        SuggestionKind.SynchronisedOu => T["word.synchronised-ou"],
+        SuggestionKind.Department => T["service-health-card.service"],
+        SuggestionKind.Office => T["bulk-tasks.office"],
+        SuggestionKind.GroupPrefix => T["word.group-prefix"],
+        SuggestionKind.EmergencyAccount => T["word.emergency-account"],
+        SuggestionKind.Company => T["organisation.company"],
+        SuggestionKind.NewUsersOu => T["word.ou-new-users"],
         SuggestionKind.OffboardingOu => T["code.suggestions-panel.ou-on-offboarding"],
-        SuggestionKind.GroupsOu => "OU nieuwe groepen",
-        SuggestionKind.LocalPart => "Accountnaam",
-        SuggestionKind.DisplayName => "Weergavenaam",
-        _ => "Licentienaam",
+        SuggestionKind.GroupsOu => T["word.ou-new-groups"],
+        SuggestionKind.LocalPart => T["organisation.account-name"],
+        SuggestionKind.DisplayName => T["edit-user.display-name"],
+        _ => T["word.licence-name"],
     };
 }

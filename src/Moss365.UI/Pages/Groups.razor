@@ -37,7 +37,7 @@
     <input class="kb-invoer kb-breed" placeholder="@(State.HasAd ? "Zoek op naam, adres of sAMAccountName" : "Zoek op naam of adres")" @bind="z.Find" @bind:event="oninput" aria-label="@T["nav.search"]" />
 </div>
 
-<KbTable Id="groepen" Items="Items" Columns="columns" Selectable KeyOf="g => g.Key" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@($"{Items.Count} groepen")" />
+<KbTable Id="groepen" Items="Items" Columns="columns" Selectable KeyOf="g => g.Key" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@T.Format("count.groups", Items.Count)" />
 
 <BulkTasks Items="groepen" Count="CountSelected" />
 
@@ -93,7 +93,7 @@
     private IEnumerable<(string Label, int Count, string Filter)> Tiles()
     {
         var all = State.Data.Index.Groups.ToList();
-        foreach (var (label, filter) in new[] { ("Alleen AD", "ad"), ("AD, gesynchroniseerd", "ad-sync"), ("Microsoft 365", "m365"), ("Mailgroepen", "mail"), ("Cloudbeveiliging", "cloud"), ("Dynamisch", "dynamisch") })
+        foreach (var (label, filter) in new[] { (T["users.only-ad"], "ad"), (T["groups.tile.adsync"], "ad-sync"), ("Microsoft 365", "m365"), (T["groups.tile.mail"], "mail"), (T["groups.tile.cloud"], "cloud"), (T["groups.tile.dynamic"], "dynamisch") })
         {
             // Tiles of a system the tenant does not have are left out (0.21.1)
             var fits = filter switch { "ad" => State.HasAd, "ad-sync" => State.HasAd && State.HasMicrosoft365, _ => State.HasMicrosoft365 };

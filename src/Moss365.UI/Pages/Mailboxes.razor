@@ -14,7 +14,7 @@
 
 
 <div class="kb-tegels">
-    @foreach (var (label, filter) in new[] { ("Alleen via groep", "groep"), (T["code.mailboxes.group-and-direct"], "beide"), ("Alleen rechtstreeks", "direct"), ("Zonder rechten", "geen") })
+    @foreach (var (label, filter) in new[] { (T["mailboxes.filter.group"], "groep"), (T["code.mailboxes.group-and-direct"], "beide"), (T["mailboxes.filter.direct"], "direct"), (T["mailboxes.filter.none"], "geen") })
     {
         <button class="kb-tegel @(z.Model == filter ? "kb-actief" : null)" @onclick="() => { z.Kpi = null; z.Model = z.Model == filter ? null : filter; }">
             <div class="kb-tegel-getal">@All.Count(p => Model(p) == filter)</div><div>@label</div>
@@ -34,7 +34,7 @@
     <label><input type="checkbox" @bind="z.AlsoPlanning" /> @T["mailboxes.also-scheduling-mailboxes"]</label>
 </div>
 
-<KbTable Id="postvakken" Items="Items" Columns="columns" Selectable KeyOf="p => p.Smtp" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@($"{Items.Count} postvakken")"
+<KbTable Id="postvakken" Items="Items" Columns="columns" Selectable KeyOf="p => p.Smtp" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@T.Format("count.mailboxes", Items.Count)"
          RowClass="@(p => Direct(p) > 0 ? "kb-verschil" : null)" />
 
 <BulkTasks Items="postvakken" Count="CountSelected" />

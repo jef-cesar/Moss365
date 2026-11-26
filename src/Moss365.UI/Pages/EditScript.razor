@@ -135,7 +135,7 @@
         }
         else
         {
-            text = ScriptLibrary.NewScript(once ? "Eenmalig" : "Nieuw script");
+            text = ScriptLibrary.NewScript(once ? T["edit-script.once"] : T["edit-script.new"]);
         }
 
         header = ScriptText.Read(text, path ?? "script.ps1");

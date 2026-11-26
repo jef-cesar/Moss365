@@ -61,7 +61,7 @@
 }
 
 @code {
-    private static readonly (string, string)[] Filters = { ("eigenaar", "Geen eigenaar"), ("gasten", "Met gasten"), ("ongebruikt", "Niet gebruikt") };
+    private static (string, string)[] Filters => new[] { ("eigenaar", T["collaboration.filter.noowner"]), ("gasten", T["collaboration.filter.guests"]), ("ongebruikt", T["collaboration.filter.unused"]) };
 
     private bool busy;
     private string? filter;

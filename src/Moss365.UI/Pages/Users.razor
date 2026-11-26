@@ -31,7 +31,7 @@
     }
 </div>
 
-<KbTable Id="gebruikers" Items="Filtered" Columns="columns" Selectable KeyOf="p => p.Key" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@($"{Filtered.Count} gevonden")" />
+<KbTable Id="gebruikers" Items="Filtered" Columns="columns" Selectable KeyOf="p => p.Key" SelectionChanged="_ => { }" DefaultSorting="naam" CountText="@T.Format("count.found", Filtered.Count)" />
 
 <BulkTasks Items="gebruikers" Count="CountSelected" />
 

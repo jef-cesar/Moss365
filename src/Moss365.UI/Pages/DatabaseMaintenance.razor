@@ -179,11 +179,11 @@
 
     private static string PartText(CleanupPart p) => p switch
     {
-        CleanupPart.Snapshots => "Momentopnamen",
-        CleanupPart.ChangeLog => "Logboek",
-        CleanupPart.AccessLog => "Toegangslog",
-        CleanupPart.TechnicalLog => "Technisch log",
-        CleanupPart.ScriptRuns => "Scriptruns",
+        CleanupPart.Snapshots => T["organisation-history.snapshots"],
+        CleanupPart.ChangeLog => T["menu.logboek"],
+        CleanupPart.AccessLog => T["change-log.access-log"],
+        CleanupPart.TechnicalLog => T["word.technical-log"],
+        CleanupPart.ScriptRuns => T["word.script-runs"],
         _ => T["code.database-maintenance.copies-before-an-update"],
     };
 

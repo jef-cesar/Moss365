@@ -109,7 +109,7 @@ else
                             <td><ObjectLink Object="r.Who" /></td>
                             <td>@r.Who.KindText</td>
                             <td>@r.Permission</td>
-                            <td>@(r.Direct ? "rechtstreeks" : "via groep")</td>
+                            <td>@(r.Direct ? T["user-detail.direct"] : T["mailbox-detail.viagroup"])</td>
                         </tr>
                     }
                 </tbody>

@@ -53,7 +53,7 @@
     </div>
 }
 
-<KbTable Id="gasten" Items="Items" Columns="columns" DefaultSorting="naam" CountText="@($"{Items.Count} gasten")"
+<KbTable Id="gasten" Items="Items" Columns="columns" DefaultSorting="naam" CountText="@T.Format("count.guests", Items.Count)"
          Selectable KeyOf="p => p.Key" Selected="selected" SelectionChanged="_ => { }"
          RowClass="@(p => Inactive(p) ? "kb-verschil" : null)" />
 

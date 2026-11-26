@@ -269,28 +269,28 @@ else
 
         yield return R("sAMAccountName", a?.SamAccountName, e?.OnPremisesSamAccountName);
         yield return R("UPN", a?.UserPrincipalName, e?.UserPrincipalName);
-        yield return R("Weergavenaam", a?.DisplayName, e?.DisplayName);
-        yield return R("Voornaam", a?.GivenName, e?.GivenName);
-        yield return R("Achternaam", a?.Surname, e?.Surname);
-        yield return R("E-mail", a?.EmailAddress, e?.Mail);
-        yield return R("Dienst (Department)", a?.Department, e?.Department);
-        yield return R("Afdeling (afgeleid)", State.Config.DivisionFor(a?.Department)?.Name, State.Config.DivisionFor(e?.Department)?.Name);
-        yield return R("Functie", a?.Title, e?.JobTitle);
-        yield return R("Bedrijf", a?.Company, e?.CompanyName);
-        yield return R("Kantoor", a?.Office, e?.OfficeLocation);
-        yield return R("Stad", a?.City, e?.City);
-        yield return R("Telefoon", a?.Phone, e?.Phone);
-        yield return R("Gsm", a?.Mobile, e?.Mobile);
-        yield return R("Manager", a is null ? null : ManagerName(a.Manager, null), e is null ? null : ManagerName(null, e.ManagerId));
-        yield return R("Omschrijving", a?.Description, null, compare: false);
+        yield return R(T["edit-user.display-name"], a?.DisplayName, e?.DisplayName);
+        yield return R(T["edit-user.first-name"], a?.GivenName, e?.GivenName);
+        yield return R(T["edit-user.last-name"], a?.Surname, e?.Surname);
+        yield return R(T["users.e-mail"], a?.EmailAddress, e?.Mail);
+        yield return R(T["organisation.department"], a?.Department, e?.Department);
+        yield return R(T["word.division-derived"], State.Config.DivisionFor(a?.Department)?.Name, State.Config.DivisionFor(e?.Department)?.Name);
+        yield return R(T["bulk-tasks.job-title"], a?.Title, e?.JobTitle);
+        yield return R(T["organisation.company"], a?.Company, e?.CompanyName);
+        yield return R(T["bulk-tasks.office"], a?.Office, e?.OfficeLocation);
+        yield return R(T["bulk-tasks.city"], a?.City, e?.City);
+        yield return R(T["edit-user.phone"], a?.Phone, e?.Phone);
+        yield return R(T["edit-user.mobile"], a?.Mobile, e?.Mobile);
+        yield return R(T["reports.manager"], a is null ? null : ManagerName(a.Manager, null), e is null ? null : ManagerName(null, e.ManagerId));
+        yield return R(T["edit-user.description"], a?.Description, null, compare: false);
         yield return R("OU", a?.OuPath, e is null ? null : DnHelp.OuPathOfObject(e.OnPremisesDistinguishedName), compare: false);
-        yield return R("Ingeschakeld", a is null ? null : (a.Enabled ? "ja" : "nee"), e is null ? null : (e.AccountEnabled ? "ja" : "nee"));
-        yield return R("Laatste aanmelding", a?.LastLogonDate, e?.LastSignIn, compare: false);
-        yield return R("Aangemaakt", a?.WhenCreated, e?.CreatedDateTime, compare: false);
-        yield return R("Wachtwoord verloopt nooit", a is null ? null : (a.PasswordNeverExpires ? "ja" : "nee"), null, compare: false);
-        yield return R("Logonscript", a?.ScriptPath, null, compare: false);
-        yield return R("Licenties", null, e is null ? null : string.Join(", ", e.Licences), compare: false);
-        yield return R("Soort account", null, e?.UserType, compare: false);
+        yield return R(T["word.enabled-2"], a is null ? null : (a.Enabled ? "ja" : "nee"), e is null ? null : (e.AccountEnabled ? "ja" : "nee"));
+        yield return R(T["statistics.last-sign-in"], a?.LastLogonDate, e?.LastSignIn, compare: false);
+        yield return R(T["cleanup.created"], a?.WhenCreated, e?.CreatedDateTime, compare: false);
+        yield return R(T["word.password-never-expires"], a is null ? null : (a.PasswordNeverExpires ? "ja" : "nee"), null, compare: false);
+        yield return R(T["edit-user.logon-script"], a?.ScriptPath, null, compare: false);
+        yield return R(T["job-profile-editor.licences"], null, e is null ? null : string.Join(", ", e.Licences), compare: false);
+        yield return R(T["word.kind-of-account"], null, e?.UserType, compare: false);
     }
 
     private string? ManagerName(string? dn, string? id)
