@@ -25,7 +25,27 @@ public enum KpiList
 public sealed record Kpi(string Key, string Dutch, KpiList Items, bool Attention = false)
 {
     /// <summary>The name in the language of the interface (R15): the dictionary by key, else the Dutch name.</summary>
-    public string Label => Localization.Texts.T.Text("kpi." + Key, Dutch);
+    public string Label
+    {
+        get
+        {
+            var t = Localization.Texts.T;
+            if (t.Has("kpi." + Key))
+            {
+                return t["kpi." + Key];
+            }
+
+            // KPIs with a parameter (R15): "kpi.<prefix>:*" holds the text with {0} for the value
+            var colon = Key.IndexOf(':');
+            if (colon < 0 || Key.Contains('|', StringComparison.Ordinal))
+            {
+                return Dutch;
+            }
+
+            var pattern = "kpi." + Key[..(colon + 1)] + "*";
+            return t.Has(pattern) ? t.Format(pattern, Kpis.Display(Value)) : Kpis.Display(Value) is var v && v != Value ? v : Dutch;
+        }
+    }
 
     public string Page => Items switch
     {
@@ -173,6 +193,23 @@ public static class Kpis
 
     public const string NoOffice = "(geen kantoor)";
 
+    /// <summary>A value that the app makes itself (no office, no division, unknown, the permission models) in the
+    /// language of the interface; every other value (from AD or Microsoft 365) as it is.</summary>
+    public static string Display(string value) => value switch
+    {
+        NoOffice => Localization.Texts.T["kpi.value.no-office"],
+        Statistic.NoDivision => Localization.Texts.T["kpi.value.no-division"],
+        Unknown => Localization.Texts.T["kpi.value.unknown"],
+        "Alleen via groep" => Localization.Texts.T["kpi.value.via-group"],
+        "Groep en rechtstreeks" => Localization.Texts.T["kpi.value.group-and-direct"],
+        "Alleen rechtstreeks" => Localization.Texts.T["kpi.value.direct"],
+        "Zonder rechten" => Localization.Texts.T["kpi.value.no-permissions"],
+        _ => value,
+    };
+
+    /// <summary>The domain of a guest that cannot be found.</summary>
+    public const string Unknown = "(onbekend)";
+
     public static string OfficeOf(Person p)
         => p.Ad?.Office is { Length: > 0 } o ? o.Trim() : p.Entra?.OfficeLocation is { Length: > 0 } e ? e.Trim() : NoOffice;
 
@@ -192,7 +229,7 @@ public static class Kpis
             return upn[(dash + 1)..ext].ToLowerInvariant();
         }
 
-        return "(onbekend)";
+        return Unknown;
     }
 
     private static DateTime? Date(string? text)

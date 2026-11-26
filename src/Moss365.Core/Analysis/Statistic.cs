@@ -76,13 +76,13 @@ public sealed record Statistic(
             Licences: d.Licences.Where(l => l.Total > 0)
                 .OrderByDescending(l => l.Total).Select(l => new Bar(l.SkuPartNumber, l.Assigned, l.Total, Kpis.Licence(l.SkuPartNumber).Link)).ToList(),
             PerDivision: active.GroupBy(p => config.DivisionFor(p.Department)?.Name ?? NoDivision)
-                .Select(g => new Bar(g.Key, g.Count(), Link: Kpis.Division(g.Key).Link)).OrderByDescending(s => s.Count).ToList(),
+                .Select(g => new Bar(Kpis.Display(g.Key), g.Count(), Link: Kpis.Division(g.Key).Link)).OrderByDescending(s => s.Count).ToList(),
             Groups: groups.Count,
             EmptyGroups: groups.Count(g => !g.Dynamic && (g.Cloud?.CountMembers ?? g.Exo?.CountMembers ?? g.Ad?.CountMembers) == 0),
             DynamicGroups: groups.Count(g => g.Dynamic),
             GroupsPerKind: groups.GroupBy(g => g.KindText).Select(g => new Bar(g.Key, g.Count(), Link: Kpis.GroupKind(g.Key).Link)).OrderByDescending(s => s.Count).ToList(),
             SharedMailboxes: shared.Count,
-            PermissionModel: Kpis.PermissionModels.Select(m => new Bar(m, model.Count(x => x == m), shared.Count, Kpis.PermissionModel(m).Link)).ToList(),
+            PermissionModel: Kpis.PermissionModels.Select(m => new Bar(Kpis.Display(m), model.Count(x => x == m), shared.Count, Kpis.PermissionModel(m).Link)).ToList(),
             DirectPermissions: index.Permissions.Count(r => r.Direct),
             WithoutAccessGroup: shared.Count(p => index.AccessGroupOf(p) is null),
             Rooms: d.Rooms.Count,
