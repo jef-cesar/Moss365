@@ -73,6 +73,13 @@ internal sealed class FakeGraph : HttpMessageHandler
 
     public List<(HttpMethod Method, string Url, string? Content)> Requests { get; } = new();
 
+    /// <summary>An answer that is made per request (for example throttled the first time).</summary>
+    public FakeGraph Op(HttpMethod method, string pathBegin, Func<HttpRequestMessage, HttpResponseMessage> answer)
+    {
+        _rules.Add((method, pathBegin, answer));
+        return this;
+    }
+
     public FakeGraph Op(HttpMethod method, string pathBegin, object answer, HttpStatusCode status = HttpStatusCode.OK)
     {
         _rules.Add((method, pathBegin, _ => new HttpResponseMessage(status)
@@ -82,11 +89,29 @@ internal sealed class FakeGraph : HttpMessageHandler
         return this;
     }
 
+    /// <summary>Answer $batch calls as Graph does: every request through the rules, with its own status.</summary>
+    public bool Batches { get; set; } = true;
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
     {
         var url = request.RequestUri!.ToString();
-        Requests.Add((request.Method, url, request.Content is null ? null : await request.Content.ReadAsStringAsync(cancel)));
+        var content = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancel);
+        Requests.Add((request.Method, url, content));
         var path = url.Replace(GraphClient.Base, string.Empty);
+        if (Batches && request.Method == HttpMethod.Post && path == "/$batch" && content is not null)
+        {
+            var responses = new List<object>();
+            foreach (var r in JsonDocument.Parse(content).RootElement.GetProperty("requests").EnumerateArray())
+            {
+                using var single = new HttpRequestMessage(new HttpMethod(r.GetProperty("method").GetString()!), GraphClient.Base + r.GetProperty("url").GetString());
+                using var answer = await SendAsync(single, cancel);
+                var text = await answer.Content.ReadAsStringAsync(cancel);
+                responses.Add(new { id = r.GetProperty("id").GetString(), status = (int)answer.StatusCode, body = JsonDocument.Parse(text.Length > 0 ? text : "{}").RootElement });
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(new { responses }), Encoding.UTF8, "application/json") };
+        }
+
         var rule = _rules.LastOrDefault(r => r.Method == request.Method && path.StartsWith(r.FilePath, StringComparison.Ordinal));
         return rule.Answer?.Invoke(request) ?? new HttpResponseMessage(HttpStatusCode.NotFound)
         {
@@ -100,6 +125,32 @@ public class GraphConnectionTests
     private static GraphConnection Make(FakeGraph fake) => new(new GraphClient(new HttpClient(fake), _ => Task.FromResult("token")));
 
     private static object Items(params object[] items) => new { value = items };
+
+    [Fact]
+    public async Task GroupMembersAreReadTwentyGroupsPerBatch()
+    {
+        var groups = Enumerable.Range(1, 25).Select(i => (object)new { id = $"g{i:00}", displayName = $"Groep {i}", mailEnabled = false, securityEnabled = true, groupTypes = Array.Empty<string>() }).ToArray();
+        var throttled = 0;
+        var fake = new FakeGraph()
+            .Op(HttpMethod.Get, "/subscribedSkus", Items())
+            .Op(HttpMethod.Get, "/users?", Items(new { id = "u1", userPrincipalName = "an@test.be", displayName = "An", accountEnabled = true, userType = "Member" }))
+            .Op(HttpMethod.Get, "/groups?", Items(groups))
+            .Op(HttpMethod.Get, "/groups/g", Items(new { id = "u1" }))
+            .Op(HttpMethod.Get, "/groups/g07/members", new Dictionary<string, object> { ["value"] = new object[] { new { id = "u1" } }, ["@odata.nextLink"] = GraphClient.Base + "/leden-g07-pagina2" })
+            .Op(HttpMethod.Get, "/leden-g07-pagina2", Items(new { id = "u2" }))
+            .Op(HttpMethod.Get, "/groups/g13/members", _ => throttled++ == 0
+                ? new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StringContent("{\"error\":{\"code\":\"TooManyRequests\",\"message\":\"te veel\"}}") }
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(Items(new { id = "u1" }))) });
+
+        var d = await Make(fake).ReadAsync(null, CancellationToken.None);
+
+        Assert.Equal(25, d.Groups.Count);
+        Assert.Equal(2, fake.Requests.Count(r => r.Method == HttpMethod.Post && r.Url.EndsWith("/$batch", StringComparison.Ordinal))); // 20 + 5
+        Assert.Equal(2, d.Groups.Single(g => g.Id == "g07").CountMembers); // the next page is followed
+        Assert.Equal(1, d.Groups.Single(g => g.Id == "g13").CountMembers); // throttled in the batch: read on its own
+        Assert.Equal(2, fake.Requests.Count(r => r.Method == HttpMethod.Get && r.Url.Contains("/groups/g13/members", StringComparison.Ordinal)));
+        Assert.Equal(1, fake.Requests.Count(r => r.Method == HttpMethod.Get && r.Url.Contains("/groups/g01/members", StringComparison.Ordinal)));
+    }
 
     [Fact]
     public async Task ReadsUsersGroupsMembersAndLicencesWithPaging()
@@ -142,7 +193,11 @@ public class GraphConnectionTests
         Assert.Equal(2, d.Groups[1].CountMembers);
         Assert.Equal(new[] { "g1", "g2" }, d.Membership["u1"].OrderBy(x => x));
         Assert.Equal(163, Assert.Single(d.Licences).Total);
-        Assert.All(fake.Requests, v => Assert.Equal(HttpMethod.Get, v.Method));
+
+        // Reading only reads: every request is a GET, or a $batch that holds only GET requests
+        Assert.All(fake.Requests, v => Assert.True(v.Method == HttpMethod.Get || (v.Method == HttpMethod.Post && v.Url.EndsWith("/$batch", StringComparison.Ordinal)), $"{v.Method} {v.Url}"));
+        Assert.All(fake.Requests.Where(v => v.Method == HttpMethod.Post), v =>
+            Assert.All(JsonDocument.Parse(v.Content!).RootElement.GetProperty("requests").EnumerateArray(), r => Assert.Equal("GET", r.GetProperty("method").GetString())));
     }
 
     [Fact]

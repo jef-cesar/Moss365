@@ -57,7 +57,25 @@ public sealed partial class ManagementState
             .ToList();
     }
 
-    public int KpiCount(Kpi k) => Kpis.Count(k, KpiSource, k.Items == KpiList.ChangeLog ? ChangeLogForKpi() : null);
+    // The counts of the tiles, kept as long as the KPI source (issue 40): a tile no longer counts its list again at every
+    // render, and the change log tiles no longer read 2,000 lines each time. A new source (other data or configuration,
+    // or after 5 minutes) or an executed plan starts over.
+    private (KpiSource Source, System.Collections.Concurrent.ConcurrentDictionary<string, int> Counts)? _kpiCounts;
+
+    public int KpiCount(Kpi k)
+    {
+        var source = KpiSource;
+        if (_kpiCounts is not { } kept || !ReferenceEquals(kept.Source, source))
+        {
+            kept = (source, new System.Collections.Concurrent.ConcurrentDictionary<string, int>(StringComparer.Ordinal));
+            _kpiCounts = kept;
+        }
+
+        return kept.Counts.GetOrAdd(k.Key, _ => Kpis.Count(k, source, k.Items == KpiList.ChangeLog ? ChangeLogForKpi() : null));
+    }
+
+    /// <summary>The kept KPI counts no longer hold (after a plan: the change log and often the data changed).</summary>
+    private void ForgetKpiCounts() => _kpiCounts = null;
 
     /// <summary>
     /// A page opens with <c>?kpi=...</c>. When you came via a tile (not with Back or Forward), the filters of the page

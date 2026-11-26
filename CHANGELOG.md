@@ -13,8 +13,10 @@ Every version becomes a release on GitHub; the section under the version is the 
 - **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
   address; anything else (such as a script link or a file share) is no longer clickable.
 - **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.
-- **Faster**: the alerts from the snapshots no longer slow down with many accounts, and *Alles nakijken* reads the app
-  registrations once instead of twice.
+- **Faster**: the tiles keep their count until something changes (the change log tiles no longer read 2,000 lines
+  every time), the organisation on a date is built once per snapshot, a full read of Entra asks the members of 20
+  groups in one call, the alerts from the snapshots no longer slow down with many accounts, and *Alles nakijken* reads
+  the app registrations once instead of twice.
 - **A new tenant is encrypted** with your Windows account by default (U24): *Tenants*, *Tenant toevoegen* first shows
   the recovery key, and the tenant is made once you typed its last group. Not encrypting stays a choice. Existing
   tenants stay as they are; *Databank en versleuteling* encrypts them.

@@ -699,6 +699,7 @@ public sealed partial class ManagementState
             results.Count(r => r.Status == ResultStatus.Succeeded), results.Count(r => r.Status == ResultStatus.Failed),
             results.Count(r => r.Status == ResultStatus.Skipped), string.Join(", ", plan.Where(w => w.Selected).Select(w => w.ChangeAction).Distinct()));
         AfterExecute(plan, results);
+        ForgetKpiCounts();
         Changed?.Invoke();
         return results;
     }

@@ -95,8 +95,26 @@ public sealed partial class ManagementState
     }
 
     /// <summary>The organisation as it was at a moment (the last snapshot before it); null when there is none.</summary>
+    // The organisation at the last snapshot asked, kept (issue 40): the alerts and the past ask it more than once, and a
+    // snapshot that exists never changes (thinning out keeps every remaining date exact)
+    private (long Snapshot, InventoryData Data)? _dataAt;
+
     public InventoryData? DataAt(DateTimeOffset moment)
-        => Database.SnapshotAt(moment) is { } s ? Snapshots.Data(Database.TablesAt(s.Id), Texts.T.Format("code.management-state-history.state-of", s.Time.LocalDateTime)) : null;
+    {
+        if (Database.SnapshotAt(moment) is not { } s)
+        {
+            return null;
+        }
+
+        if (_dataAt is { } kept && kept.Snapshot == s.Id)
+        {
+            return kept.Data;
+        }
+
+        var data = Snapshots.Data(Database.TablesAt(s.Id), Texts.T.Format("code.management-state-history.state-of", s.Time.LocalDateTime));
+        _dataAt = (s.Id, data);
+        return data;
+    }
 
     /// <summary>Shows the organisation as it was at a moment, read only. Returns an error, or null.</summary>
     public string? ShowAsOf(DateTimeOffset moment)

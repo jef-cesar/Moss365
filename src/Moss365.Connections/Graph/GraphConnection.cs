@@ -214,33 +214,41 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         var membership = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var counter = 0;
+
+        // The members of 20 groups per $batch call instead of a call per group (issue 40); a group whose answer is not
+        // there (throttled, an error) is read on its own, as before, and further pages are followed
+        static string MembersPath(string id) => $"/groups/{id}/members/microsoft.graph.user?$select=id&$top=999";
         using var brake = new SemaphoreSlim(4);
-        var tasks = rawGroups.Select(async g =>
+        var tasks = rawGroups.Select(g => S(g, "id")).Chunk(GraphClient.BatchSize).Select(async ids =>
         {
-            var id = S(g, "id");
             await brake.WaitAsync(cancel);
             try
             {
-                var members = await _client.GetAllAsync($"/groups/{id}/members/microsoft.graph.user?$select=id&$top=999", cancel);
-                lock (membership)
+                var firstPages = await _client.BatchGetAsync(ids.Select(MembersPath).ToList(), cancel);
+                for (var i = 0; i < ids.Length; i++)
                 {
-                    counts[id] = members.Count;
-                    foreach (var member in members)
+                    var id = ids[i];
+                    var members = firstPages[i] is { } first ? await _client.AllPagesAsync(first, cancel) : await _client.GetAllAsync(MembersPath(id), cancel);
+                    lock (membership)
                     {
-                        var memberId = S(member, "id");
-                        if (!membership.TryGetValue(memberId, out var set))
+                        counts[id] = members.Count;
+                        foreach (var member in members)
                         {
-                            set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                            membership[memberId] = set;
+                            var memberId = S(member, "id");
+                            if (!membership.TryGetValue(memberId, out var set))
+                            {
+                                set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                                membership[memberId] = set;
+                            }
+
+                            set.Add(id);
                         }
 
-                        set.Add(id);
-                    }
-
-                    counter++;
-                    if (counter % 50 == 0)
-                    {
-                        progress?.Report($"Entra: groepsleden {counter}/{rawGroups.Count}...");
+                        counter++;
+                        if (counter % 50 == 0)
+                        {
+                            progress?.Report($"Entra: groepsleden {counter}/{rawGroups.Count}...");
+                        }
                     }
                 }
             }

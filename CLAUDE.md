@@ -32,7 +32,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   of two tenants in one database, list, plan, export or log; never loose files next to a tenant database.
 - Snapshots (`Storage/Snapshots.cs`, R4): every read becomes a snapshot (tables Snapshot, Object, Version); only
   changed rows are stored. `ManagementState.AsOf`/`IsHistoric` shows the past read only: `Can` refuses writes and
-  `ExecuteAsync` throws, so every new write path must go through those.
+  `ExecuteAsync` throws, so every new write path must go through those. `DataAt` keeps the last snapshot it built;
+  `KpiCount` keeps the counts per `KpiSource` and `ExecuteAsync` clears them. A full Graph read asks group members in
+  `$batch` calls of 20 (`GraphClient.BatchGetAsync`), with a request of its own for what the batch did not answer.
 - Set-up (`Core/Setup`, R5): `TenantSetup.Assess` compares what the wizard read with `AppManifest` and plans only the
   difference; `TenantSetupConnection` runs it with the Graph PowerShell client. Keep `AppManifest` and
   `tools/Register-App.ps1` the same (permissions, app role ids).
