@@ -19,6 +19,7 @@ public static class Access
             "postvakken" => p == "postvakken/nieuw" ? Permission.Manage : Permission.View,
             "beveiliging" or "conditional-access" or "controles" => Permission.Security,
             "bewaarde-logboeken" => Permission.SignIns,
+            "toegangsreviews" => Permission.Security,
             "spiegel" or "functieprofielen" => Permission.CompareMirror,
             "nieuw" or "uitstroom" or "gepland" or "opvolging" => Permission.Actions,
             "opkuis" => Permission.Manage,

@@ -58,6 +58,13 @@ Every version becomes a release on GitHub; the section under the version is the 
     app when Moss365 is open. Microsoft 365 needs *Aangemeld blijven*; AD with a separate account (whose password is
     only typed in the app) and a tenant encrypted with a password wait for the app. The page says what it can read
     and how the last read went.
+- **Access reviews** (R20), under Beveiliging, *Toegangsreviews*: every quarter (or every month, half year or year,
+  per subject) the owner or a reviewer you choose confirms who is in the privileged AD groups and the admin roles, and
+  who has access to the shared mailboxes. Mailing the reviewers is a plan; per member you decide to keep or remove, and
+  every decision is a line in the change log (evidence for NIS2 and the CIS Controls, without an Entra ID Governance
+  licence). Removing from an AD group or a mailbox is a plan as always; admin roles are removed in Entra itself, because
+  Moss365 deliberately has no permission to change roles. Only an administrator records a review; the auditor sees
+  everything.
 - **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
   address; anything else (such as a script link or a file share) is no longer clickable.
 - **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.

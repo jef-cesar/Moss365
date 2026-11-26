@@ -103,6 +103,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   (`Desktop/Headless.cs`: skips while the app is open, never a sign-in link, `ConnectionFactory(withoutWindow: true)`),
   `ManagementState.RunUnattendedAsync` (AD and Entra only, never a write), `IAppEnvironment.Scheduler` (schtasks in
   `Desktop/WindowsTaskScheduler.cs`), page `lezen-zonder-venster`.
+  Access reviews (R20): `Security/AccessReviews.cs` (privileged AD groups, admin roles, shared mailboxes; reviewer and
+  interval per subject in document `toegangsreviews`; each decision a change log line with action `Review`; removals
+  as plans, admin roles never: no permission to change roles), page `toegangsreviews` (Security to see, Manage to record).
   Reporting (0.37, `Reporting/`): `PeriodReport` (from `ReadKpiSnapshot` and the change log; `ToHtml`/`ToCsv`, CSV never
   starts a cell with a formula), `DataQuality`, `Standards` (checks mapped to NIS2/CIS), `GuestRenewal` (document
   `gastenverlenging`), `StaffRequests` (document `aanvragen`; decisions are change log lines with action `Request`),

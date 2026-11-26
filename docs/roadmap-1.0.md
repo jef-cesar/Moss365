@@ -542,6 +542,10 @@ The inventory part of today's start screen (folders and files) moves to the sett
 | --- | --- |
 | **Light access reviews**, like Gasten verlengen (R14): every quarter (adjustable) the owner, or a reviewer you choose, confirms the members of privileged groups (AD and Entra), the access to shared mailboxes and the app permissions. Asking is a plan of mails, removing is a plan, every decision is a change log line, and overdue reviews show on the overview | Evidence for NIS2 and the CIS Controls, without an Entra ID Governance licence |
 
+Done in 0.39.0: privileged AD groups, admin roles and shared mailboxes, with the reviewer and the interval per subject,
+the decisions in the change log and the removals as plans (admin roles in Entra itself: Moss365 has no permission to
+change roles). Still to come: privileged groups in Entra and the app permissions.
+
 ## 11. Open source, with room for paid support
 
 Moss365 is **open source**: anyone can read, use, change and improve the code. Later it must be possible to ask for
