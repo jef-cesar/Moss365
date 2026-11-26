@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
 
@@ -14,9 +15,9 @@ public sealed record Difference(Person Person, DifferenceKind Kind, string Attri
 {
     public string KindText => Kind switch
     {
-        DifferenceKind.MissingInEntra => "Ontbreekt in Entra",
-        DifferenceKind.StatusDiffers => "Status verschilt",
-        _ => "Kenmerk verschilt",
+        DifferenceKind.MissingInEntra => Texts.T["code.ad-entra-comparison.missing-in-entra"],
+        DifferenceKind.StatusDiffers => Texts.T["code.ad-entra-comparison.status-differs"],
+        _ => Texts.T["code.ad-entra-comparison.attribute-differs"],
     };
 }
 
@@ -63,8 +64,8 @@ public static class AdEntraComparison
 
             if (!p.Ad.Enabled && p.Entra.AccountEnabled)
             {
-                output.Add(new Difference(p, DifferenceKind.StatusDiffers, "Ingeschakeld", "uitgeschakeld", "ingeschakeld",
-                    "Uitgeschakeld in AD maar nog actief in Entra (wacht op de volgende synchronisatie?)"));
+                output.Add(new Difference(p, DifferenceKind.StatusDiffers, Texts.T["word.enabled-2"], "uitgeschakeld", "ingeschakeld",
+                    Texts.T["code.ad-entra-comparison.disabled-in-ad-but-still"]));
             }
 
             foreach (var (attribute, adValue, entraValue) in Attributes)
@@ -78,7 +79,7 @@ public static class AdEntraComparison
                 }
 
                 var explanation = string.Equals(a.Trim(), e.Trim(), StringComparison.OrdinalIgnoreCase)
-                    ? "Alleen hoofdletters verschillen"
+                    ? Texts.T["code.ad-entra-comparison.only-upper-and-lower-case"]
                     : string.Empty;
                 output.Add(new Difference(p, DifferenceKind.AttributeDiffers, attribute, a, e, explanation));
             }
@@ -96,18 +97,18 @@ public static class AdEntraComparison
         var domain = ad.UserPrincipalName.Contains('@') ? ad.UserPrincipalName[(ad.UserPrincipalName.IndexOf('@') + 1)..] : string.Empty;
         if (domain.Length == 0)
         {
-            reasons.Add("geen UPN");
+            reasons.Add(Texts.T["code.ad-entra-comparison.no-upn"]);
         }
         else if (domain.EndsWith(".internal", StringComparison.OrdinalIgnoreCase) || domain.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
         {
-            reasons.Add($"UPN-domein {domain} is niet routeerbaar");
+            reasons.Add(Texts.T.Format("code.ad-entra-comparison.upn-domain-is-not-routable", domain));
         }
 
         if (string.IsNullOrWhiteSpace(ad.LastLogonDate))
         {
-            reasons.Add("nooit aangemeld");
+            reasons.Add(Texts.T["code.ad-entra-comparison.never-signed-in"]);
         }
 
-        return reasons.Count == 0 ? "Oorzaak onbekend (synchronisatiefilter, recent aangemaakt?)" : string.Join("; ", reasons);
+        return reasons.Count == 0 ? Texts.T["code.ad-entra-comparison.cause-unknown-synchronisation-filter-created"] : string.Join("; ", reasons);
     }
 }

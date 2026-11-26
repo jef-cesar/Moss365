@@ -2,6 +2,7 @@ using Moss365.Core.Analysis;
 using Moss365.Core.Changes;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Licences;
 
@@ -25,10 +26,10 @@ public sealed record WastedLicence(Person Person, WasteKind Kind, IReadOnlyList<
 {
     public string KindText => Kind switch
     {
-        WasteKind.Disabled => "uitgeschakeld account",
-        WasteKind.SharedMailbox => "gedeeld postvak",
+        WasteKind.Disabled => Texts.T["code.licence-analysis.disabled-account"],
+        WasteKind.SharedMailbox => Texts.T["code.licence-analysis.shared-mailbox"],
         WasteKind.Duplicate => "dubbel plan",
-        _ => "niet gebruikt",
+        _ => Texts.T["code.licence-analysis.not-used"],
     };
 }
 
@@ -70,13 +71,13 @@ public static class LicenceAnalysis
             var licences = p.Entra!.Licences;
             if (shared.Contains(p.Entra.Mail) || shared.Contains(p.Entra.UserPrincipalName))
             {
-                output.Add(new WastedLicence(p, WasteKind.SharedMailbox, licences, "Een gedeeld postvak tot 50 GB heeft geen licentie nodig (behalve voor een archief of bewaring)."));
+                output.Add(new WastedLicence(p, WasteKind.SharedMailbox, licences, Texts.T["code.licence-analysis.a-shared-mailbox-up-to"]));
                 continue;
             }
 
             if (!p.Enabled)
             {
-                output.Add(new WastedLicence(p, WasteKind.Disabled, licences, "Uitgeschakeld, maar de licentie loopt door. Zet het postvak eerst om naar een gedeeld postvak als het moet blijven."));
+                output.Add(new WastedLicence(p, WasteKind.Disabled, licences, Texts.T["code.licence-analysis.disabled-but-the-licence-keeps"]));
                 continue;
             }
 
@@ -91,7 +92,7 @@ public static class LicenceAnalysis
             var last = Statistic.LastSignIn(p);
             if (last is null || last < now.AddDays(-unusedDays))
             {
-                output.Add(new WastedLicence(p, WasteKind.Unused, licences, last is null ? "Nooit aangemeld (of onbekend)." : $"Laatst aangemeld op {last:dd/MM/yyyy}."));
+                output.Add(new WastedLicence(p, WasteKind.Unused, licences, last is null ? Texts.T["code.licence-analysis.never-signed-in-or-unknown"] : Texts.T.Format("code.licence-analysis.last-signed-in-on", last)));
             }
         }
 
@@ -105,7 +106,7 @@ public static class LicenceAnalysis
     /// <summary>The cost per month of a group of people (department, division), most expensive first.</summary>
     public static IReadOnlyList<CostRow> CostPer(InventoryData d, OrganisationConfig c, Func<Person, string> key)
         => d.Persons.Where(p => p.Entra is { Licences.Count: > 0 } && !p.IsGuest)
-            .GroupBy(p => key(p) is { Length: > 0 } k ? k : "(geen)")
+            .GroupBy(p => key(p) is { Length: > 0 } k ? k : Texts.T["plan.none"])
             .Select(g => new CostRow(g.Key, g.Count(), g.Sum(p => MonthlyCost(p, c))))
             .OrderByDescending(r => r.Cost).ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
@@ -156,7 +157,7 @@ public static class LicenceAnalysis
             var ids = skus.Select(s => d.Licences.FirstOrDefault(l => string.Equals(l.SkuPartNumber, s, StringComparison.OrdinalIgnoreCase))?.SkuId).ToList();
             if (onlyDuplicates && ids.Any(i => string.IsNullOrEmpty(i)))
             {
-                errors.Add($"{p.Name}: de id van {string.Join(", ", skus)} is niet geladen; laad Entra live.");
+                errors.Add(Texts.T.Format("licence.id-not-loaded", p.Name, string.Join(", ", skus)));
                 continue;
             }
 
@@ -167,10 +168,10 @@ public static class LicenceAnalysis
                 Target = e.Id,
                 TargetName = p.Name,
                 Parameters = onlyDuplicates ? new(StringComparer.OrdinalIgnoreCase) { ["skuIds"] = string.Join(',', ids) } : new(StringComparer.OrdinalIgnoreCase),
-                Description = onlyDuplicates ? $"Dubbele licentie verwijderen: {string.Join(", ", skus)}" : "Alle licenties verwijderen: " + string.Join(", ", skus),
+                Description = Texts.T.Format(onlyDuplicates ? "licence.remove-duplicate" : "code.plan-builder.remove-all-licences", string.Join(", ", skus)),
                 CurrentValue = string.Join(", ", e.Licences),
                 Warning = !onlyDuplicates && e.Mail.Length > 0 && g.Any(w => w.Kind == WasteKind.Disabled)
-                    ? "Zonder licentie verdwijnt het postvak na 30 dagen, tenzij het eerst naar een gedeeld postvak wordt omgezet." : null,
+                    ? Texts.T["code.plan-builder.without-a-licence-the-mailbox"] : null,
             });
         }
 

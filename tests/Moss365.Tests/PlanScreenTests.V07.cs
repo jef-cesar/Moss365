@@ -112,7 +112,7 @@ public sealed partial class PlanScreenTests
         cut.WaitForAssertion(() => Assert.Contains("Opgeslagen als Agenda-export.ps1", cut.Markup));
 
         var script = State.SearchScript("Agenda-export")!;
-        Assert.Equal(new[] { "Postvak", "Van" }, script.Header.Variables.Select(v => v.Name));
+        Assert.Equal(new[] { "Mailbox", "Van" }, script.Header.Variables.Select(v => v.Name));
         Assert.Equal("@werkjaar.van", script.Header.Variables[1].Default);
         var text = ScriptLibrary.Text(State.ScriptFolders, script);
         Assert.Contains("[datetime]$Van", text);

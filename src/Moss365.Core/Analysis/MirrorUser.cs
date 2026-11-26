@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
 
@@ -24,11 +25,11 @@ public sealed record MirrorRule(string Layer, string GroupId, string Group, stri
 {
     public string StatusText => Status switch
     {
-        MirrorStatus.Add => "Toevoegen",
-        MirrorStatus.AlreadyMember => "Reeds lid",
-        MirrorStatus.OnlyAtTarget => "Alleen bij doel",
-        MirrorStatus.Automatic => "Automatisch",
-        _ => "Niet kopiëren",
+        MirrorStatus.Add => Texts.T["tenants.add"],
+        MirrorStatus.AlreadyMember => Texts.T["code.mirror-user.already-a-member"],
+        MirrorStatus.OnlyAtTarget => Texts.T["code.mirror-user.only-at-the-target"],
+        MirrorStatus.Automatic => Texts.T["code.mirror-user.automatic"],
+        _ => Texts.T["code.mirror-user.do-not-copy"],
     };
 
     public string RouteText => Route switch
@@ -80,7 +81,7 @@ public static class MirrorUser
             var type = AdType(g);
             if (IsPrivileged(g))
             {
-                yield return new MirrorRule(layer, g.DistinguishedName, g.Name, type, MirrorStatus.DoNotCopy, WriteRoute.No, "Bevoorrechte groep: nooit via een spiegel");
+                yield return new MirrorRule(layer, g.DistinguishedName, g.Name, type, MirrorStatus.DoNotCopy, WriteRoute.No, Texts.T["code.mirror-user.privileged-group-never-through-a"]);
             }
             else if (ofTarget.ContainsKey(g.DistinguishedName))
             {
@@ -88,7 +89,7 @@ public static class MirrorUser
             }
             else if (target.Ad is null)
             {
-                yield return new MirrorRule(layer, g.DistinguishedName, g.Name, type, MirrorStatus.DoNotCopy, WriteRoute.No, "Doelgebruiker heeft geen AD-account");
+                yield return new MirrorRule(layer, g.DistinguishedName, g.Name, type, MirrorStatus.DoNotCopy, WriteRoute.No, Texts.T["code.mirror-user.the-target-user-has-no"]);
             }
             else
             {
@@ -99,7 +100,7 @@ public static class MirrorUser
         foreach (var g in ofTarget.Values.Where(g => !ofRef.ContainsKey(g.DistinguishedName)))
         {
             yield return new MirrorRule(layer, g.DistinguishedName, g.Name, AdType(g), MirrorStatus.OnlyAtTarget, WriteRoute.No,
-                IsPrivileged(g) ? "Bevoorrechte groep" : string.Empty);
+                IsPrivileged(g) ? Texts.T["code.mirror-user.privileged-group"] : string.Empty);
         }
     }
 
@@ -116,7 +117,7 @@ public static class MirrorUser
                 var rule = g.MembershipRule.Length > 0 ? g.MembershipRule : config.DynamicRules.FirstOrDefault(r => r.Group == g.DisplayName)?.Rule ?? string.Empty;
                 var status = ofTarget.ContainsKey(g.Id) ? MirrorStatus.AlreadyMember : MirrorStatus.Automatic;
                 yield return new MirrorRule(layer, g.Id, g.DisplayName, g.TypeText, status, WriteRoute.No,
-                    $"Dynamische groep: volgt uit de kenmerken ({rule})");
+                    Texts.T.Format("code.mirror-user.dynamic-group-follows-from-the", rule));
             }
             else if (ofTarget.ContainsKey(g.Id))
             {
@@ -125,12 +126,12 @@ public static class MirrorUser
             else if (target.Entra is null)
             {
                 yield return new MirrorRule(layer, g.Id, g.DisplayName, g.TypeText, MirrorStatus.DoNotCopy, WriteRoute.No,
-                    "Doelgebruiker bestaat (nog) niet in Entra");
+                    Texts.T["code.mirror-user.the-target-user-does-not"]);
             }
             else if (g.FromAd)
             {
                 yield return new MirrorRule(layer, g.Id, g.DisplayName, g.TypeText, MirrorStatus.Add, WriteRoute.ActiveDirectory,
-                    "Gesynchroniseerde groep: lidmaatschap wijzigen in AD");
+                    Texts.T["code.mirror-user.synchronised-group-change-the-membership"]);
             }
             else
             {
@@ -141,7 +142,7 @@ public static class MirrorUser
         foreach (var g in ofTarget.Values.Where(g => !ofRef.ContainsKey(g.Id)))
         {
             yield return new MirrorRule(layer, g.Id, g.DisplayName, g.TypeText, MirrorStatus.OnlyAtTarget, WriteRoute.No,
-                g.Dynamic ? "Dynamische groep" : string.Empty);
+                g.Dynamic ? Texts.T["code.mirror-user.dynamic-group"] : string.Empty);
         }
     }
 
@@ -164,17 +165,17 @@ public static class MirrorUser
         var remarks = new List<string>();
         if (g.DisplayName.StartsWith("SG-SM-", StringComparison.OrdinalIgnoreCase))
         {
-            remarks.Add("Toegang tot een gedeeld postvak (FullAccess en SendAs)");
+            remarks.Add(Texts.T["code.mirror-user.access-to-a-shared-mailbox"]);
         }
 
         if (config.Divisions.Any(a => string.Equals(a.Group, g.DisplayName, StringComparison.OrdinalIgnoreCase)))
         {
-            remarks.Add("Afdelingsgroep: hoort te volgen uit de dienst");
+            remarks.Add(Texts.T["code.mirror-user.division-group-should-follow-from"]);
         }
 
         if (g.GroupLicence)
         {
-            remarks.Add("Kent een licentie toe");
+            remarks.Add(Texts.T["code.mirror-user.assigns-a-licence"]);
         }
 
         return string.Join("; ", remarks);

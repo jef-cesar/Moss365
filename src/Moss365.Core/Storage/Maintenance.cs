@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Data.Sqlite;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Storage;
 
@@ -60,18 +61,18 @@ public sealed partial class Database
                 }
             }
 
-            Add("Momentopnamen", "SELECT (SELECT COUNT(*) FROM Snapshot), (SELECT COALESCE(SUM(length(Content)), 0) FROM Version);");
-            Add("Logboek", "SELECT COUNT(*), COALESCE(SUM(length(Json)), 0) FROM Logboek;");
-            Add("Toegangslog", "SELECT COUNT(*), COALESCE(SUM(length(Wat) + length(Details) + length(Gebruiker)), 0) FROM Toegang;");
-            Add("Technisch log", "SELECT COUNT(*), COALESCE(SUM(length(Message)), 0) FROM TechnicalLog;");
-            foreach (var (part, prefix) in new[] { ("Scriptruns", "runs/"), ("Inventarissen", "inventory/"), ("Back-ups Conditional Access", "ca-backup/"), ("Scripts", "scripts/") })
+            Add(Texts.T["maintenance.part.snapshots"], "SELECT (SELECT COUNT(*) FROM Snapshot), (SELECT COALESCE(SUM(length(Content)), 0) FROM Version);");
+            Add(Texts.T["maintenance.part.change-log"], "SELECT COUNT(*), COALESCE(SUM(length(Json)), 0) FROM Logboek;");
+            Add(Texts.T["maintenance.part.access-log"], "SELECT COUNT(*), COALESCE(SUM(length(Wat) + length(Details) + length(Gebruiker)), 0) FROM Toegang;");
+            Add(Texts.T["maintenance.part.technical-log"], "SELECT COUNT(*), COALESCE(SUM(length(Message)), 0) FROM TechnicalLog;");
+            foreach (var (part, prefix) in new[] { (Texts.T["maintenance.part.script-runs"], "runs/"), (Texts.T["maintenance.part.inventories"], "inventory/"), (Texts.T["maintenance.part.ca-backups"], "ca-backup/"), (Texts.T["maintenance.part.scripts"], "scripts/") })
             {
                 Add(part, $"SELECT COUNT(*), COALESCE(SUM(length(Content)), 0) FROM File WHERE Path LIKE '{prefix}%';");
             }
 
-            Add("Andere bestanden", "SELECT COUNT(*), COALESCE(SUM(length(Content)), 0) FROM File WHERE Path NOT LIKE 'runs/%' AND Path NOT LIKE 'inventory/%' AND Path NOT LIKE 'ca-backup/%' AND Path NOT LIKE 'scripts/%';");
-            Add("Instellingen en lijsten", "SELECT COUNT(*), COALESCE(SUM(length(Json)), 0) FROM Document;");
-            Add("KPI per dag", "SELECT COUNT(*), COUNT(*) * 24 FROM KpiStand;");
+            Add(Texts.T["maintenance.part.other-files"], "SELECT COUNT(*), COALESCE(SUM(length(Content)), 0) FROM File WHERE Path NOT LIKE 'runs/%' AND Path NOT LIKE 'inventory/%' AND Path NOT LIKE 'ca-backup/%' AND Path NOT LIKE 'scripts/%';");
+            Add(Texts.T["maintenance.part.settings"], "SELECT COUNT(*), COALESCE(SUM(length(Json)), 0) FROM Document;");
+            Add(Texts.T["maintenance.part.kpi"], "SELECT COUNT(*), COUNT(*) * 24 FROM KpiStand;");
             return output;
         }
     }
@@ -207,7 +208,7 @@ public sealed partial class Database
             var kept = all.Where(s => !gone.Contains(s.Id)).Select(s => s.Id).ToArray();
             if (kept.Length == 0)
             {
-                throw new InvalidOperationException("Minstens één momentopname blijft.");
+                throw new InvalidOperationException(Texts.T["code.maintenance.at-least-one-snapshot-stays"]);
             }
 
             // The first kept snapshot from an id on (null: none after it)

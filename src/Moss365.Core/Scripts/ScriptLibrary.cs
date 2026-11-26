@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Scripts;
 
@@ -198,7 +199,7 @@ public static class ScriptLibrary
     {
         if (script.BuiltIn || !IsOwn(script.FilePath))
         {
-            throw new InvalidOperationException("Een ingebouwd script kan je niet verwijderen.");
+            throw new InvalidOperationException(Texts.T["code.script-library.you-cannot-delete-a-built"]);
         }
 
         folders.Store.Delete(script.FilePath);
@@ -254,9 +255,9 @@ public static class ScriptLibrary
     public static string NewScript(string name) => ScriptText.Write(new ScriptHeader
     {
         Name = name,
-        Description = "Wat dit script doet.",
+        Description = "What this script does.",
         Connection = ScriptConnection.Exchange,
-        Variables = new[] { new ScriptVariable("Postvak", VariableKind.Mailbox, true, "Welk postvak?") },
+        Variables = new[] { new ScriptVariable("Mailbox", VariableKind.Mailbox, true, "Which mailbox?") },
     }, """
 
 $ErrorActionPreference = 'Stop'
@@ -362,7 +363,7 @@ public static class ScriptValues
             {
                 if (v.Required)
                 {
-                    errors.Add($"{v.Label}: verplicht.");
+                    errors.Add(Texts.T.Format("code.script-library.required", v.Label));
                 }
 
                 continue;
@@ -371,13 +372,13 @@ public static class ScriptValues
             switch (v.Kind)
             {
                 case VariableKind.Number when !int.TryParse(w, NumberStyles.Integer, CultureInfo.InvariantCulture, out _):
-                    errors.Add($"{v.Label}: geen geheel getal.");
+                    errors.Add(Texts.T.Format("code.script-library.not-a-whole-number", v.Label));
                     break;
                 case VariableKind.Date when !DateTime.TryParseExact(Loose(w, DateTime.Now), new[] { "yyyy-MM-dd", "d/M/yyyy" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out _):
-                    errors.Add($"{v.Label}: geen datum (dd/mm/jjjj).");
+                    errors.Add(Texts.T.Format("code.script-library.not-a-date-dd-mm", v.Label));
                     break;
                 case VariableKind.Choice when v.Options is { Count: > 0 } o && !o.Contains(w, StringComparer.OrdinalIgnoreCase):
-                    errors.Add($"{v.Label}: kies een van {string.Join(", ", o)}.");
+                    errors.Add(Texts.T.Format("script.choose-one", v.Label, string.Join(", ", o)));
                     break;
             }
         }
@@ -432,13 +433,13 @@ public sealed record ScriptRun
 
     public TimeSpan? Duration => End - Start;
 
-    public string ResultText => (Preview ? "voorbeeld: " : string.Empty) + Result switch
+    public string ResultText => (Preview ? Texts.T["script.result.preview"] : string.Empty) + Result switch
     {
-        RunResult.Busy => "bezig",
-        RunResult.Succeeded => "gelukt",
-        RunResult.Warnings => "gelukt, met waarschuwingen",
-        RunResult.Error => "mislukt",
-        _ => "geannuleerd",
+        RunResult.Busy => Texts.T["script.result.busy"],
+        RunResult.Succeeded => Texts.T["script.result.succeeded"],
+        RunResult.Warnings => Texts.T["script.result.warnings"],
+        RunResult.Error => Texts.T["script.result.error"],
+        _ => Texts.T["script.result.cancelled"],
     };
 }
 
