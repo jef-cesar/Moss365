@@ -3,8 +3,8 @@
 
 @if (mailbox is null)
 {
-    <h1>Postvak niet gevonden</h1>
-    <p><a href="postvakken">Terug naar de postvakken</a></p>
+    <h1>@T["mailbox-detail.mailbox-not-found"]</h1>
+    <p><a href="postvakken">@T["mailbox-detail.back-to-the-mailboxes"]</a></p>
 }
 else
 {
@@ -12,45 +12,45 @@ else
     <ObjectStatus Object="State.Data.Index.Ref(mailbox.Smtp)" />
     <p class="kb-zacht">
         @mailbox.TypeText &middot; @mailbox.Smtp
-        @if (mailbox.Hidden) { <span class="kb-label">verborgen in de adreslijst</span> }
+        @if (mailbox.Hidden) { <span class="kb-label">@T["room-detail.hidden-in-the-address-list"]</span> }
         @if (mailbox.Forwarding.Length > 0) { <span class="kb-label">doorsturen: @mailbox.Forwarding</span> }
     </p>
 
     <section class="kb-kaart">
-        <h2>Aanmelden met het account</h2>
+        <h2>@T["mailbox-detail.signing-in-with-the-account"]</h2>
         @if (State.Data.Index.AccountOf(mailbox.Smtp, mailbox.Alias) is not { } account)
         {
-            <p class="kb-zacht">Het account van dit postvak staat niet in de geladen gegevens (AD of Entra).</p>
+            <p class="kb-zacht">@T["mailbox-detail.the-account-of-this-mailbox"]</p>
         }
         else
         {
             <table class="kb-tabel kb-naast">
                 <tbody>
                     <tr>
-                        <th>Kan aanmelden</th>
+                        <th>@T["mailbox-detail.can-sign-in"]</th>
                         <td>
                             @if (account.Enabled)
                             {
-                                <span class="kb-label kb-label-let">⚠ ja</span> <span class="kb-zacht">niemand hoort zich met een gedeeld postvak aan te melden</span>
+                                <span class="kb-label kb-label-let">@T["mailbox-detail.yes"]</span> <span class="kb-zacht">@T["mailbox-detail.nobody-should-sign-in-with"]</span>
                             }
                             else
                             {
-                                <span class="kb-label kb-label-goed">✓ nee, geblokkeerd</span> <span class="kb-zacht">het postvak werkt gewoon</span>
+                                <span class="kb-label kb-label-goed">@T["mailbox-detail.no-blocked"]</span> <span class="kb-zacht">@T["mailbox-detail.the-mailbox-simply-works"]</span>
                             }
                         </td>
                     </tr>
-                    <tr><th>Account</th><td><ObjectLink Object="State.Data.Index.Ref(account)" /> <span class="kb-zacht">@account.Source</span></td></tr>
-                    <tr><th>Laatste aanmelding</th><td>@(Statistic.LastSignIn(account)?.ToString("dd/MM/yyyy HH:mm") ?? "nooit (of onbekend)")</td></tr>
+                    <tr><th>@T["security.account"]</th><td><ObjectLink Object="State.Data.Index.Ref(account)" /> <span class="kb-zacht">@account.Source</span></td></tr>
+                    <tr><th>@T["statistics.last-sign-in"]</th><td>@(Statistic.LastSignIn(account)?.ToString("dd/MM/yyyy HH:mm") ?? "nooit (of onbekend)")</td></tr>
                 </tbody>
             </table>
             <div class="kb-filters" hidden="@(!State.Can(Permission.Manage))">
                 @if (account.Enabled)
                 {
-                    <button class="kb-knop kb-primair" @onclick="@(() => Plan(MailboxPlans.SignIn(State.Data, mailbox, false), "Aanmelden blokkeren"))">Aanmelden blokkeren</button>
+                    <button class="kb-knop kb-primair" @onclick="@(() => Plan(MailboxPlans.SignIn(State.Data, mailbox, false), "Aanmelden blokkeren"))">@T["mailbox-detail.block-sign-in"]</button>
                 }
                 else
                 {
-                    <button class="kb-knop" @onclick="@(() => Plan(MailboxPlans.SignIn(State.Data, mailbox, true), "Aanmelden toestaan"))">Aanmelden toestaan</button>
+                    <button class="kb-knop" @onclick="@(() => Plan(MailboxPlans.SignIn(State.Data, mailbox, true), "Aanmelden toestaan"))">@T["mailbox-detail.allow-sign-in"]</button>
                 }
             </div>
         }
@@ -58,22 +58,22 @@ else
 
     <div class="kb-kolommen">
         <section class="kb-kaart">
-            <h2>Toegang</h2>
+            <h2>@T["mailbox-detail.access"]</h2>
             @if (groupValue is null)
             {
-                <div class="kb-melding">Er is geen toegangsgroep. Volgens de afspraak heet die <code>@ObjectIndex.ExpectedAccessGroup(mailbox)</code>.</div>
+                <div class="kb-melding">@Html("mailbox-detail.nogroup", ObjectIndex.ExpectedAccessGroup(mailbox))</div>
                 <div class="kb-filters">
-                    <button class="kb-knop kb-primair" @onclick="@(() => Plan(MailboxPlans.CreateAccessGroup(State.Data, mailbox), "Toegangsgroep aanmaken"))">Toegangsgroep aanmaken</button>
+                    <button class="kb-knop kb-primair" @onclick="@(() => Plan(MailboxPlans.CreateAccessGroup(State.Data, mailbox), "Toegangsgroep aanmaken"))">@T["mailbox-detail.create-access-group"]</button>
                 </div>
             }
             else
             {
-                <p>Via <ObjectLink Object="groupValue.Ref" /> (@groupMembers.Count leden)</p>
+                <p>@T["mirror.via"] <ObjectLink Object="groupValue.Ref" /> (@groupMembers.Count leden)</p>
                 <ul class="kb-lijst-plat">
                     @foreach (var l in groupMembers)
                     {
                         <li><ObjectLink Object="l.Object" />
-                            <button class="kb-knop kb-klein" @onclick="@(() => Plan(GroupPlans.RemoveMember(State.Data, groupValue, l.Object), "Toegang intrekken"))">weghalen</button></li>
+                            <button class="kb-knop kb-klein" @onclick="@(() => Plan(GroupPlans.RemoveMember(State.Data, groupValue, l.Object), "Toegang intrekken"))">@T["group-detail.remove"]</button></li>
                     }
                 </ul>
                 <ObjectPicker Label="Toegang geven aan" Kinds="Persons" Selected="@(r => Plan(GroupPlans.AddMember(State.Data, groupValue, r), "Toegang geven"))" />
@@ -82,7 +82,7 @@ else
 
         <section class="kb-kaart">
             <h2>Lid van (@groups.Count)</h2>
-            @if (groups.Count == 0) { <p class="kb-zacht">Geen groepen.</p> }
+            @if (groups.Count == 0) { <p class="kb-zacht">@T["mailbox-detail.no-groups"]</p> }
             <ul class="kb-lijst-plat">
                 @foreach (var g in groups)
                 {
@@ -96,12 +96,12 @@ else
         <h2>Rechten (@permissions.Count)</h2>
         @if (permissions.Count == 0)
         {
-            <p class="kb-zacht">Geen expliciete rechten gekend.</p>
+            <p class="kb-zacht">@T["mailbox-detail.no-explicit-permissions-known"]</p>
         }
         else
         {
             <table class="kb-tabel">
-                <thead><tr><th>Wie</th><th>Soort</th><th>Recht</th><th>Hoe</th></tr></thead>
+                <thead><tr><th>@T["script-result.who"]</th><th>@T["nested-groups.kind"]</th><th>@T["room-detail.permission"]</th><th>@T["mailbox-detail.how"]</th></tr></thead>
                 <tbody>
                     @foreach (var r in permissions)
                     {
@@ -118,12 +118,10 @@ else
         @if (permissions.Any(r => r.Direct))
         {
             <p class="kb-zacht">
-                Opruimen: wie rechtstreeks een recht heeft, wordt lid van de toegangsgroep en verliest het rechtstreekse recht. De groep krijgt
-                eerst zelf FullAccess en SendAs als die ontbreken. Onbekende rechthebbenden (bv. verwijderde accounts) staan in het plan maar
-                zijn niet aangevinkt.
+                @T["mailbox-detail.clean-up-whoever-has-a"]
             </p>
             <div class="kb-filters">
-                <button class="kb-knop kb-primair" @onclick="@(() => Plan(MailboxPlans.CleanupDirectPermissions(State.Data, mailbox), "Rechtstreekse rechten naar de groep"))">Rechtstreekse rechten opruimen</button>
+                <button class="kb-knop kb-primair" @onclick="@(() => Plan(MailboxPlans.CleanupDirectPermissions(State.Data, mailbox), "Rechtstreekse rechten naar de groep"))">@T["mailbox-detail.clean-up-direct-permissions"]</button>
             </div>
         }
     </section>
@@ -131,34 +129,34 @@ else
     @if (State.Can(Permission.Manage))
     {
     <section class="kb-kaart">
-        <h2>Instellingen</h2>
+        <h2>@T["nav.settings"]</h2>
         @if (mailbox.AutoReply.Length == 0)
         {
-            <p class="kb-zacht">Doorsturen en automatisch antwoord zijn niet live geladen; de huidige waarde is dan onbekend. <a href="verbindingen">Postvakken laden uit Exchange</a></p>
+            <p class="kb-zacht">@T["mailbox-detail.forwarding-and-automatic-reply-are"] <a href="verbindingen">@T["mailbox-detail.load-mailboxes-from-exchange"]</a></p>
         }
         <div class="kb-raster">
-            <label>Weergavenaam <input class="kb-invoer" @bind="desired.DisplayName" /></label>
-            <label>Verbergen in de adreslijst <YesNo @bind-Value="desired.Hidden" /></label>
-            <label>Doorsturen naar (leeg = uit) <input class="kb-invoer" placeholder="@(mailbox.ForwardingTo.Length > 0 ? mailbox.ForwardingTo : "(niet wijzigen)")" @bind="extra.Forwarding" /></label>
-            <label>Ook bewaren bij doorsturen <YesNo @bind-Value="desired.SaveForwardingAnd" /></label>
-            <label>Automatisch antwoord
+            <label>@T["edit-user.display-name"] <input class="kb-invoer" @bind="desired.DisplayName" /></label>
+            <label>@T["bulk-tasks.hide-in-the-address-list"] <YesNo @bind-Value="desired.Hidden" /></label>
+            <label>@T["mailbox-detail.forward-to-empty-off"] <input class="kb-invoer" placeholder="@(mailbox.ForwardingTo.Length > 0 ? mailbox.ForwardingTo : "(niet wijzigen)")" @bind="extra.Forwarding" /></label>
+            <label>@T["mailbox-detail.also-keep-when-forwarding"] <YesNo @bind-Value="desired.SaveForwardingAnd" /></label>
+            <label>@T["absence-card.automatic-reply"]
                 <select class="kb-invoer" @bind="extra.AutoReply">
-                    <option value="">(niet wijzigen)</option>
-                    <option value="Enabled">aan</option>
-                    <option value="Disabled">uit</option>
+                    <option value="">@T["yesno.nochange"]</option>
+                    <option value="Enabled">@T["mailbox-detail.on"]</option>
+                    <option value="Disabled">@T["mailbox-detail.off"]</option>
                 </select>
             </label>
         </div>
-        <label><input type="checkbox" @bind="extra.DisableForwarding" /> Doorsturen uitzetten</label>
+        <label><input type="checkbox" @bind="extra.DisableForwarding" /> @T["mailbox-detail.turn-off-forwarding"]</label>
         @if (extra.AutoReply == "Enabled")
         {
             <div class="kb-raster kb-breed-raster">
-                <label>Tekst intern <textarea class="kb-invoer" rows="3" @bind="desired.AutoReplyInternal"></textarea></label>
-                <label>Tekst extern <textarea class="kb-invoer" rows="3" @bind="desired.AutoReplyExternal"></textarea></label>
+                <label>@T["mailbox-detail.internal-text"] <textarea class="kb-invoer" rows="3" @bind="desired.AutoReplyInternal"></textarea></label>
+                <label>@T["mailbox-detail.external-text"] <textarea class="kb-invoer" rows="3" @bind="desired.AutoReplyExternal"></textarea></label>
             </div>
         }
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" @onclick="SettingsPlan">Plan maken</button>
+            <button class="kb-knop kb-primair" @onclick="SettingsPlan">@T["bulk-tasks.make-plan"]</button>
         </div>
     </section>
     }

@@ -5,43 +5,39 @@
    plan with a preview and goes to the change log. *@
 @inherits RefreshingPage
 
-<h1>Tenant inrichten</h1>
+<h1>@T["menu.inrichten"]</h1>
 
 <p class="kb-zacht">
-    De app zoekt zelf wat ze kan vinden en toont wat er ontbreekt. Wat ze in Entra moet maken of wijzigen (de
-    app-registratie <strong>@AppManifest.Name</strong>, toestemming, de profielen en hun groepen) staat eerst als plan
-    hieronder; er gebeurt pas iets na bevestiging, en alles komt in het logboek van <strong>@State.Tenant.Name</strong>.
+    @Html("setup.intro", AppManifest.Name, State.Tenant.Name)
 </p>
 
 @if (State.IsHistoric)
 {
-    <div class="kb-melding">Je bekijkt een stand uit het verleden. Ga terug naar nu om de tenant in te richten.</div>
+    <div class="kb-melding">@T["set-up-tenant.you-are-looking-at-a"]</div>
     return;
 }
 
 <section class="kb-kaart">
-    <h2>1. Tenant</h2>
+    <h2>@T["set-up-tenant.1-tenant"]</h2>
     <div class="kb-rij">
-        <label>Domein of tenant ID <input class="kb-invoer" @bind="domain" placeholder="contoso.com" aria-label="Domein of tenant ID" /></label>
-        <button class="kb-knop kb-primair" disabled="@busy" @onclick="Find">Opzoeken</button>
+        <label>@T["set-up-tenant.domain-or-tenant-id"] <input class="kb-invoer" @bind="domain" placeholder="@T["set-up-tenant.contoso-com"]" aria-label="@T["set-up-tenant.domain-or-tenant-id"]" /></label>
+        <button class="kb-knop kb-primair" disabled="@busy" @onclick="Find">@T["message-trace-card.look-up"]</button>
     </div>
     @if (State.Settings.TenantId.Length > 0)
     {
-        <p>Tenant ID <code>@State.Settings.TenantId</code></p>
+        <p>@T["set-up-tenant.tenant-id"] <code>@State.Settings.TenantId</code></p>
     }
     else
     {
-        <p class="kb-zacht">Microsoft zegt welke tenant bij een domein hoort; daarvoor hoef je niet aangemeld te zijn.</p>
+        <p class="kb-zacht">@T["set-up-tenant.microsoft-says-which-tenant-belongs"]</p>
     }
     @if (findError is not null) { <div class="kb-melding kb-fout">@findError</div> }
 </section>
 
 <section class="kb-kaart">
-    <h2>2. Aanmelden en nakijken</h2>
+    <h2>@T["set-up-tenant.2-sign-in-and-check"]</h2>
     <p class="kb-zacht">
-        Meld aan met een beheerder van deze tenant (rol Application Administrator of Global Administrator, één keer). De
-        aanmeldlink verschijnt bovenaan; de wizard gebruikt Microsoft Graph PowerShell, want de app-registratie van Moss365
-        bestaat misschien nog niet.
+        @T["set-up-tenant.sign-in-with-an-administrator"]
     </p>
     <div class="kb-rij">
         <button class="kb-knop kb-primair" disabled="@(busy || !State.SetupAvailable)" @onclick="Read">@(State.SetupReading is null ? "Aanmelden en nakijken" : "Opnieuw nakijken")</button>
@@ -50,7 +46,7 @@
     </div>
     @if (!State.SetupAvailable && State.Settings.TenantId.Length > 0)
     {
-        <div class="kb-melding">De wizard werkt enkel in de Windows-app.</div>
+        <div class="kb-melding">@T["set-up-tenant.the-wizard-only-works-in"]</div>
     }
     @if (readError is not null) { <div class="kb-melding kb-fout">@readError</div> }
 </section>
@@ -58,9 +54,9 @@
 @if (State.SetupAssessment is { } a)
 {
     <section class="kb-kaart">
-        <h2>3. App-registratie, rechten en profielen</h2>
+        <h2>@T["set-up-tenant.3-app-registration-permissions-and"]</h2>
         <table class="kb-tabel">
-            <thead><tr><th></th><th>Onderdeel</th><th>Wat</th><th>Gevonden</th></tr></thead>
+            <thead><tr><th></th><th>@T["tenant-compare.area"]</th><th>@T["service-health-card.what"]</th><th>@T["this-computer.found"]</th></tr></thead>
             <tbody>
                 @foreach (var i in a.Items)
                 {
@@ -74,28 +70,28 @@
             </tbody>
         </table>
         <label><input type="checkbox" checked="@State.SetupChoices.CreateGroups" @onchange="e => Choose(c => c with { CreateGroups = e.Value is true })" />
-            Een groep per profiel maken (GG-Moss365-...): wie in de groep zit, krijgt het profiel</label>
+            @T["set-up-tenant.make-a-group-per-profile"]</label>
         <label><input type="checkbox" checked="@State.SetupChoices.AssignSignedIn" @onchange="e => Choose(c => c with { AssignSignedIn = e.Value is true })" />
-            Mezelf de profielen Beheerder en Appbeheer geven</label>
+            @T["set-up-tenant.give-myself-the-profiles-administrator"]</label>
         @if (a.Plan.Count > 0)
         {
             <PlanView @key="planKey" Plan="a.Plan" Title="Wat de wizard in Entra doet" Context="@($"Tenant inrichten {State.Tenant.Name}")" Run="(p, c, r) => State.ExecuteSetupAsync(p, c, r)" Executed="AfterPlan" />
         }
         else
         {
-            <p class="kb-ok">De app-registratie is in orde.</p>
+            <p class="kb-ok">@T["set-up-tenant.the-app-registration-is-in"]</p>
         }
         @if (a.ClientId is { } clientId)
         {
             <p>
-                Client ID <code>@clientId</code>
+                @T["set-up-tenant.client-id"] <code>@clientId</code>
                 @if (!string.Equals(State.Settings.ClientId.Trim(), clientId, StringComparison.OrdinalIgnoreCase))
                 {
-                    <button class="kb-knop kb-klein kb-primair" @onclick="() => State.TakeOverClientId()">Overnemen in Verbindingen</button>
+                    <button class="kb-knop kb-klein kb-primair" @onclick="() => State.TakeOverClientId()">@T["set-up-tenant.take-over-in-connections"]</button>
                 }
                 else
                 {
-                    <span class="kb-zacht">staat in Verbindingen.</span>
+                    <span class="kb-zacht">@T["setup.inconnections"]</span>
                 }
             </p>
         }
@@ -103,38 +99,36 @@
 }
 
 <section class="kb-kaart">
-    <h2>4. Active Directory</h2>
+    <h2>@T["set-up-tenant.4-active-directory"]</h2>
     @if (State.LocalDomain is { } d)
     {
-        <p>Deze pc hoort bij het domein <strong>@d.Domain</strong>@(d.Controller is { } dc ? $", aangemeld via {dc}" : string.Empty).</p>
+        <p>@Html("setup.domain", d.Domain, d.Controller is { } dc ? T.Format("setup.via", dc) : string.Empty)</p>
         @if (d.Controller is not null && !string.Equals(State.Settings.AdServer.Trim(), d.Controller, StringComparison.OrdinalIgnoreCase))
         {
-            <button class="kb-knop kb-primair" @onclick="() => State.TakeOverLocalDomain(d)">Overnemen</button>
+            <button class="kb-knop kb-primair" @onclick="() => State.TakeOverLocalDomain(d)">@T["set-up-tenant.take-over"]</button>
             @if (State.Settings.AdServer.Length > 0) { <span class="kb-zacht">Nu ingevuld: @State.Settings.AdServer</span> }
         }
         else if (State.Settings.AdFilled)
         {
-            <p class="kb-ok">Domeincontroller @State.Settings.AdServer staat in Verbindingen.</p>
+            <p class="kb-ok">@T.Format("setup.dcset", State.Settings.AdServer)</p>
         }
     }
     else
     {
         <p class="kb-zacht">
-            Deze pc hoort niet bij een domein (of dit is niet de Windows-app). Een tenant zonder AD (enkel cloud) werkt ook; vul
-            anders de domeincontroller in bij <a href="verbindingen">Verbindingen</a>.
+            @Html("setup.nodomain")
         </p>
     }
     @if (State.SetupReading is { SyncEnabled: true } && State.LocalDomain is null && !State.Settings.AdFilled)
     {
-        <div class="kb-melding">De tenant synchroniseert met AD: zonder verbinding met AD kan de app gesynchroniseerde accounts niet wijzigen.</div>
+        <div class="kb-melding">@T["set-up-tenant.the-tenant-synchronises-with-ad"]</div>
     }
 </section>
 
 <section class="kb-kaart">
-    <h2>5. Exchange Online</h2>
+    <h2>@T["set-up-tenant.5-exchange-online"]</h2>
     <p class="kb-zacht">
-        Exchange gebruikt dezelfde aanmelding als de app (recht Exchange.Manage). De module ExchangeOnlineManagement kijk je na
-        bij <a href="controle">Controle van deze pc</a>.
+        @Html("setup.exchange")
     </p>
     @if (State.SetupReading?.SignedIn.Upn is { Length: > 0 } upn && State.Settings.ManagementUpn.Trim().Length == 0)
     {
@@ -147,10 +141,10 @@
 </section>
 
 <section class="kb-kaart">
-    <h2>6. Eerste lezing</h2>
-    <p class="kb-zacht">Leest AD, Entra, rooms en postvakken: de eerste momentopname. Daarna doet de wizard voorstellen voor de organisatie.</p>
-    <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="Load">Alles live laden</button>
-    @if (!State.CanConnect) { <span class="kb-zacht">Vul eerst de client ID in (stap 3).</span> }
+    <h2>@T["set-up-tenant.6-first-read"]</h2>
+    <p class="kb-zacht">@T["set-up-tenant.reads-ad-entra-rooms-and"]</p>
+    <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="Load">@T["set-up-tenant.load-everything-live"]</button>
+    @if (!State.CanConnect) { <span class="kb-zacht">@T["set-up-tenant.fill-in-the-client-id"]</span> }
 </section>
 
 @if (State.Data.Persons.Count > 0)

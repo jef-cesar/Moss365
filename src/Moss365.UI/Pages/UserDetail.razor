@@ -3,8 +3,8 @@
 
 @if (person is null)
 {
-    <h1>Gebruiker niet gevonden</h1>
-    <p><a href="gebruikers">Terug naar de lijst</a></p>
+    <h1>@T["user-detail.user-not-found"]</h1>
+    <p><a href="gebruikers">@T["logon-scripts.back-to-the-list"]</a></p>
 }
 else
 {
@@ -12,15 +12,15 @@ else
     <ObjectStatus Object="State.Data.Index.Ref(person)" />
     <p class="kb-zacht">
         @person.Source &middot; @(person.Enabled ? "ingeschakeld" : "uitgeschakeld")
-        @if (person.Ad?.LockedOut == true) { <span class="kb-label kb-rood">vergrendeld</span> }
-        &middot; <a href="@($"spiegel?referentie={Uri.EscapeDataString(person.Key)}")">als spiegel gebruiken</a>
-        &middot; <a href="@($"spiegel?doel={Uri.EscapeDataString(person.Key)}")">als doel gebruiken</a>
-        @if (State.Can(Permission.Actions)) { <text> &middot; <a href="@($"uitstroom/{Uri.EscapeDataString(person.Key)}")">uitstroom</a></text> }
+        @if (person.Ad?.LockedOut == true) { <span class="kb-label kb-rood">@T["helpdesk.locked"]</span> }
+        &middot; <a href="@($"spiegel?referentie={Uri.EscapeDataString(person.Key)}")">@T["user-detail.asmirror"]</a>
+        &middot; <a href="@($"spiegel?doel={Uri.EscapeDataString(person.Key)}")">@T["user-detail.astarget"]</a>
+        @if (State.Can(Permission.Actions)) { <text> &middot; <a href="@($"uitstroom/{Uri.EscapeDataString(person.Key)}")">@T["user-detail.offboarding"]</a></text> }
     </p>
     @if (ProfileOf(person) is { } jp)
     {
         <p class="kb-zacht">
-            Functieprofiel <a href="@($"functieprofielen?profiel={Uri.EscapeDataString(jp.Profile.Id)}&gebruiker={Uri.EscapeDataString(person.Key)}")">@jp.Profile.Name</a>
+            @T["requests.job-profile"] <a href="@($"functieprofielen?profiel={Uri.EscapeDataString(jp.Profile.Id)}&gebruiker={Uri.EscapeDataString(person.Key)}")">@jp.Profile.Name</a>
             (@jp.How)@(jp.Missing > 0 ? $": {jp.Missing} ontbreekt" : null)@(jp.Extra > 0 ? $", {jp.Extra} meer dan het profiel" : null).
         </p>
     }
@@ -35,9 +35,9 @@ else
     }
 
     <section class="kb-kaart">
-        <h2>Kenmerken</h2>
+        <h2>@T["user-detail.attributes"]</h2>
         <table class="kb-tabel kb-naast">
-            <thead><tr><th>Kenmerk</th>@if (State.HasAd) { <th>On-prem AD</th> }@if (State.HasMicrosoft365) { <th>Entra ID</th> }</tr></thead>
+            <thead><tr><th>@T["bulk-tasks.attribute"]</th>@if (State.HasAd) { <th>@T["user-detail.on-premises-ad"]</th> }@if (State.HasMicrosoft365) { <th>@T["user-detail.entra-id"]</th> }</tr></thead>
             <tbody>
                 @foreach (var r in Rows().Where(r => (State.HasAd && r.Ad.Length > 0) || (State.HasMicrosoft365 && r.Entra.Length > 0) || (State.HasAd && State.HasMicrosoft365)))
                 {
@@ -51,7 +51,7 @@ else
         </table>
         @if (State.HasAd && State.HasMicrosoft365)
         {
-            <p class="kb-zacht">Gemarkeerde rijen verschillen tussen AD en Entra (spaties vooraan of achteraan tellen niet mee).</p>
+            <p class="kb-zacht">@T["user-detail.marked-rows-differ-between-ad"]</p>
         }
     </section>
 
@@ -74,17 +74,17 @@ else
             <h2>AD-groepen (@adGroups.Count)</h2>
             @if (person.Ad is null)
             {
-                <p class="kb-zacht">Geen AD-account.</p>
+                <p class="kb-zacht">@T["user-detail.no-ad-account"]</p>
             }
             else
             {
                 <table class="kb-tabel">
-                    <thead><tr><th>Groep</th><th>Soort</th><th>OU</th></tr></thead>
+                    <thead><tr><th>@T["nested-groups.group"]</th><th>@T["nested-groups.kind"]</th><th>@T["devices.ou"]</th></tr></thead>
                     <tbody>
                         @foreach (var g in adGroups)
                         {
                             <tr>
-                                <td><ObjectLink Id="@g.DistinguishedName" Text="@g.Name" /> @if (MirrorUser.IsPrivileged(g)) { <span class="kb-label kb-rood">bevoorrecht</span> }</td>
+                                <td><ObjectLink Id="@g.DistinguishedName" Text="@g.Name" /> @if (MirrorUser.IsPrivileged(g)) { <span class="kb-label kb-rood">@T["group-detail.privileged"]</span> }</td>
                                 <td>@g.Scope</td>
                                 <td>@g.OuPath</td>
                             </tr>
@@ -100,17 +100,17 @@ else
             <h2>Cloudgroepen (@cloudGroups.Count)</h2>
             @if (person.Entra is null)
             {
-                <p class="kb-zacht">Geen Entra-account.</p>
+                <p class="kb-zacht">@T["user-detail.no-entra-account"]</p>
             }
             else
             {
                 <table class="kb-tabel">
-                    <thead><tr><th>Groep</th><th>Soort</th></tr></thead>
+                    <thead><tr><th>@T["nested-groups.group"]</th><th>@T["nested-groups.kind"]</th></tr></thead>
                     <tbody>
                         @foreach (var g in cloudGroups)
                         {
                             <tr>
-                                <td><ObjectLink Id="@g.Id" Text="@g.DisplayName" /> @if (g.Dynamic) { <span class="kb-label" title="@g.MembershipRule">automatisch</span> }</td>
+                                <td><ObjectLink Id="@g.Id" Text="@g.DisplayName" /> @if (g.Dynamic) { <span class="kb-label" title="@g.MembershipRule">@T["user-detail.automatic"]</span> }</td>
                                 <td>@g.TypeText</td>
                             </tr>
                         }
@@ -126,7 +126,7 @@ else
     <div class="kb-kolommen">
         <section class="kb-kaart">
             <h2>Alleen in Exchange (@exoGroups.Count)</h2>
-            @if (exoGroups.Count == 0) { <p class="kb-zacht">Geen groepen die enkel in Exchange bestaan; mailgroepen uit Entra staan bij de cloudgroepen.</p> }
+            @if (exoGroups.Count == 0) { <p class="kb-zacht">@T["user-detail.no-groups-that-exist-only"]</p> }
             <ul class="kb-lijst-plat">
                 @foreach (var g in exoGroups)
                 {
@@ -136,7 +136,7 @@ else
         </section>
         <section class="kb-kaart">
             <h2>Gedeelde postvakken (@mailboxPermissions.Select(r => r.Mailbox).Distinct().Count())</h2>
-            @if (mailboxPermissions.Count == 0) { <p class="kb-zacht">Geen rechten op gedeelde postvakken.</p> }
+            @if (mailboxPermissions.Count == 0) { <p class="kb-zacht">@T["user-detail.no-permissions-on-shared-mailboxes"]</p> }
             <table class="kb-tabel">
                 <tbody>
                     @foreach (var r in mailboxPermissions)
@@ -144,7 +144,7 @@ else
                         <tr class="@(r.ViaGroup is null ? "kb-verschil" : null)">
                             <td><ObjectLink Id="@r.Mailbox.Smtp" /></td>
                             <td>@r.Permission</td>
-                            <td>@if (r.ViaGroup is { } via) { <text>via </text><ObjectLink Object="via" /> } else { <span>rechtstreeks</span> }</td>
+                            <td>@if (r.ViaGroup is { } via) { @T["user-detail.via"] <ObjectLink Object="via" /> } else { <span>@T["user-detail.direct"]</span> }</td>
                         </tr>
                     }
                 </tbody>
@@ -154,20 +154,20 @@ else
     }
 
     <section class="kb-kaart">
-        <h2>Tijdlijn</h2>
+        <h2>@T["user-detail.timeline"]</h2>
         @if (!showTimeline)
         {
-            <button class="kb-knop" @onclick="LoadTimeline">Tijdlijn tonen</button>
-            <span class="kb-zacht">Wat er veranderde aan dit account volgens de momentopnamen, met de wijzigingen via Moss365 ernaast.</span>
+            <button class="kb-knop" @onclick="LoadTimeline">@T["user-detail.show-timeline"]</button>
+            <span class="kb-zacht">@T["user-detail.what-changed-in-this-account"]</span>
         }
         else if (timeline.Count == 0)
         {
-            <p class="kb-zacht">Nog geen momentopnamen van dit account.</p>
+            <p class="kb-zacht">@T["user-detail.no-snapshots-of-this-account"]</p>
         }
         else
         {
             <table class="kb-tabel">
-                <thead><tr><th>Wanneer</th><th>Wat</th><th>Veranderd</th><th></th></tr></thead>
+                <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["service-health-card.what"]</th><th>@T["organisation-history.changed"]</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var e in timeline)
                     {
@@ -178,14 +178,14 @@ else
                             <td>
                                 @if (e.Version is { } v && e.What == "AD-account" && State.Can(Permission.Actions))
                                 {
-                                    <button class="kb-knop kb-klein" @onclick="() => Restore(v)">Terugzetten zoals toen</button>
+                                    <button class="kb-knop kb-klein" @onclick="() => Restore(v)">@T["user-detail.put-back-as-it-was"]</button>
                                 }
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
-            <p class="kb-zacht">Een verandering zonder regel van Moss365 ernaast gebeurde buiten de app (of in een andere app).</p>
+            <p class="kb-zacht">@T["user-detail.a-change-without-a-line"]</p>
         }
         @if (restoreErrors.Count > 0)
         {

@@ -3,8 +3,8 @@
 
 @if (room is null)
 {
-    <h1>Room niet gevonden</h1>
-    <p><a href="rooms">Terug naar de rooms</a></p>
+    <h1>@T["room-detail.room-not-found"]</h1>
+    <p><a href="rooms">@T["room-detail.back-to-the-rooms"]</a></p>
 }
 else
 {
@@ -12,7 +12,7 @@ else
     <ObjectStatus Object="State.Data.Index.Ref(room.Smtp)" />
     <p class="kb-zacht">
         Vergaderruimte &middot; @room.Smtp
-        @if (room.Hidden) { <span class="kb-label">verborgen in de adreslijst</span> }
+        @if (room.Hidden) { <span class="kb-label">@T["room-detail.hidden-in-the-address-list"]</span> }
     </p>
 
     @if (deviations.Count > 0)
@@ -22,29 +22,29 @@ else
 
     <div class="kb-kolommen">
         <section class="kb-kaart">
-            <h2>Plaats</h2>
+            <h2>@T["sign-in-list.location"]</h2>
             <table class="kb-tabel kb-naast">
                 <tbody>
-                    <tr><th>Gebouw</th><td>@room.Building</td></tr>
-                    <tr><th>Verdieping</th><td>@room.Floor @(room.FloorLabel.Length > 0 ? $"({room.FloorLabel})" : null)</td></tr>
-                    <tr><th>Capaciteit</th><td>@room.Capacity</td></tr>
+                    <tr><th>@T["room-form.building"]</th><td>@room.Building</td></tr>
+                    <tr><th>@T["room-form.floor"]</th><td>@room.Floor @(room.FloorLabel.Length > 0 ? $"({room.FloorLabel})" : null)</td></tr>
+                    <tr><th>@T["room-form.capacity"]</th><td>@room.Capacity</td></tr>
                 </tbody>
             </table>
         </section>
 
         <section class="kb-kaart">
-            <h2>Agendaverwerking</h2>
+            <h2>@T["room-detail.calendar-processing"]</h2>
             <table class="kb-tabel kb-naast">
                 <tbody>
-                    <tr><th>Verwerking</th><td>@room.AutomateProcessing</td></tr>
-                    <tr><th>Boekingsvenster</th><td>@room.BookingWindowInDays dagen</td></tr>
-                    <tr><th>Maximale duur</th><td>@room.MaximumDurationInMinutes minuten</td></tr>
-                    <tr><th>Conflicten toestaan</th><td>@YesNoText(room.AllowConflicts)</td></tr>
-                    <tr><th>Terugkerend</th><td>@YesNoText(room.AllowRecurringMeetings)</td></tr>
-                    <tr><th>Organisator in onderwerp</th><td>@YesNoText(room.AddOrganizerToSubject)</td></tr>
-                    <tr><th>Onderwerp wissen</th><td>@YesNoText(room.DeleteSubject)</td></tr>
-                    <tr><th>Iedereen mag boeken</th><td>@YesNoText(room.AllBookInPolicy)</td></tr>
-                    <tr><th>Iedereen mag aanvragen</th><td>@YesNoText(room.AllRequestInPolicy)</td></tr>
+                    <tr><th>@T["room-form.processing"]</th><td>@room.AutomateProcessing</td></tr>
+                    <tr><th>@T["room-detail.booking-window"]</th><td>@room.BookingWindowInDays dagen</td></tr>
+                    <tr><th>@T["room-detail.maximum-duration"]</th><td>@room.MaximumDurationInMinutes minuten</td></tr>
+                    <tr><th>@T["room-form.allow-conflicts"]</th><td>@YesNoText(room.AllowConflicts)</td></tr>
+                    <tr><th>@T["room-detail.recurring"]</th><td>@YesNoText(room.AllowRecurringMeetings)</td></tr>
+                    <tr><th>@T["room-form.organiser-in-subject"]</th><td>@YesNoText(room.AddOrganizerToSubject)</td></tr>
+                    <tr><th>@T["room-form.clear-subject"]</th><td>@YesNoText(room.DeleteSubject)</td></tr>
+                    <tr><th>@T["room-detail.everyone-may-book"]</th><td>@YesNoText(room.AllBookInPolicy)</td></tr>
+                    <tr><th>@T["room-detail.everyone-may-request"]</th><td>@YesNoText(room.AllRequestInPolicy)</td></tr>
                 </tbody>
             </table>
         </section>
@@ -52,24 +52,24 @@ else
 
     <div class="kb-kolommen">
         <section class="kb-kaart">
-            <h2>Gedelegeerden en boekers</h2>
-            <p class="kb-zacht">Gedelegeerden keuren aanvragen goed; "mag boeken" geldt als niet iedereen mag boeken.</p>
+            <h2>@T["room-detail.delegates-and-bookers"]</h2>
+            <p class="kb-zacht">@T["room-detail.delegates-approve-requests-may-book"]</p>
             <ul class="kb-lijst-plat">
                 @foreach (var d in Items(room.ResourceDelegates))
                 {
-                    <li><ObjectLink Id="@d" ShowKind="true" /> <span class="kb-zacht">(gedelegeerde)</span></li>
+                    <li><ObjectLink Id="@d" ShowKind="true" /> <span class="kb-zacht">@T["room-detail.delegate"]</span></li>
                 }
                 @foreach (var d in Items(room.BookInPolicy))
                 {
-                    <li><ObjectLink Id="@d" ShowKind="true" /> <span class="kb-zacht">(mag boeken)</span></li>
+                    <li><ObjectLink Id="@d" ShowKind="true" /> <span class="kb-zacht">@T["room-detail.may-book"]</span></li>
                 }
             </ul>
         </section>
 
         <section class="kb-kaart">
-            <h2>Agendarechten</h2>
+            <h2>@T["room-detail.calendar-permissions"]</h2>
             <table class="kb-tabel">
-                <thead><tr><th>Wie</th><th>Recht</th></tr></thead>
+                <thead><tr><th>@T["script-result.who"]</th><th>@T["room-detail.permission"]</th></tr></thead>
                 <tbody>
                     @foreach (var (who, permission) in Permissions(room.CalendarPermissions))
                     {
@@ -80,8 +80,8 @@ else
         </section>
 
         <section class="kb-kaart">
-            <h2>Lid van</h2>
-            @if (groups.Count == 0) { <p class="kb-zacht">Geen room list of groep.</p> }
+            <h2>@T["room-detail.member-of"]</h2>
+            @if (groups.Count == 0) { <p class="kb-zacht">@T["room-detail.no-room-list-or-group"]</p> }
             <ul class="kb-lijst-plat">
                 @foreach (var g in groups)
                 {
@@ -92,13 +92,12 @@ else
     </div>
 
     <section class="kb-kaart">
-        <h2>Agenda</h2>
+        <h2>@T["room-detail.calendar"]</h2>
         <p class="kb-zacht">
-            Live uit Exchange (via Graph), enkel lezen. Je eigen account heeft minstens leesrecht (Reviewer of LimitedDetails) op de
-            agenda van de room nodig. Wat je bekijkt, komt in het toegangslog.
+            @T["room-detail.live-from-exchange-via-graph"]
         </p>
         <div class="kb-filters">
-            <span class="kb-segment" role="group" aria-label="Periode">
+            <span class="kb-segment" role="group" aria-label="@T["security.period"]">
                 @foreach (var (k, text) in new[] { (CalendarChoice.ThisWeek, "Deze week"), (CalendarChoice.NextWeek, "Volgende week"), (CalendarChoice.Selected, "Gekozen periode") })
                 {
                     <button class="kb-knop @(calendarChoice == k ? "kb-primair" : null)" @onclick="() => calendarChoice = k">@text</button>
@@ -106,11 +105,11 @@ else
             </span>
             @if (calendarChoice == CalendarChoice.Selected)
             {
-                <label>Van <input type="date" class="kb-invoer" @bind="calendarOf" /></label>
-                <label>Tot en met <input type="date" class="kb-invoer" @bind="calendarUntil" /></label>
+                <label>@T["absence-card.from"] <input type="date" class="kb-invoer" @bind="calendarOf" /></label>
+                <label>@T["manage-ca.up-to-and-including"] <input type="date" class="kb-invoer" @bind="calendarUntil" /></label>
             }
-            <button class="kb-knop" disabled="@calendarBusy" @onclick="LoadCalendar">Agenda laden</button>
-            @if (calendarBusy) { <span class="kb-zacht">bezig...</span> }
+            <button class="kb-knop" disabled="@calendarBusy" @onclick="LoadCalendar">@T["room-detail.load-calendar"]</button>
+            @if (calendarBusy) { <span class="kb-zacht">@T["message-trace-card.busy"]</span> }
         </div>
         @if (calendarMessage is not null)
         {
@@ -127,15 +126,15 @@ else
     @if (State.Can(Permission.Manage))
     {
     <section class="kb-kaart">
-        <h2>Wijzigen</h2>
-        <p class="kb-zacht">Leeg laten = niet wijzigen. Alleen wat verschilt met de huidige waarde komt in het plan.</p>
+        <h2>@T["manage-ca.change"]</h2>
+        <p class="kb-zacht">@T["rooms.leave-empty-do-not-change"]</p>
         <div class="kb-filters">
-            <button class="kb-knop" @onclick="() => { desired = RoomDesired.FromDefault(State.Config.Rooms.Default); plan = null; }">Standaard invullen</button>
-            <button class="kb-knop" @onclick="() => { desired = new(); plan = null; }">Leegmaken</button>
+            <button class="kb-knop" @onclick="() => { desired = RoomDesired.FromDefault(State.Config.Rooms.Default); plan = null; }">@T["rooms.fill-in-the-standard"]</button>
+            <button class="kb-knop" @onclick="() => { desired = new(); plan = null; }">@T["rooms.clear"]</button>
         </div>
         <RoomForm Desired="desired" />
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" @onclick="() => plan = PlanBuilder.Room(room, RoomForm.Cleaned(desired))">Plan maken</button>
+            <button class="kb-knop kb-primair" @onclick="() => plan = PlanBuilder.Room(room, RoomForm.Cleaned(desired))">@T["bulk-tasks.make-plan"]</button>
         </div>
     </section>
     }
