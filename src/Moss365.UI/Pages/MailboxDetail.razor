@@ -81,7 +81,7 @@ else
         </section>
 
         <section class="kb-kaart">
-            <h2>Lid van (@groups.Count)</h2>
+            <h2>@T.Format("group-detail.member-of-0", groups.Count)</h2>
             @if (groups.Count == 0) { <p class="kb-zacht">@T["mailbox-detail.no-groups"]</p> }
             <ul class="kb-lijst-plat">
                 @foreach (var g in groups)

@@ -11,12 +11,12 @@
     }
     @if (session.CountActive > 0)
     {
-        <span class="kb-label kb-label-let">@session.CountActive @(session.CountActive == 1 ? "filter" : "filters"): @filtered.Count van @all.Count</span>
+        <span class="kb-label kb-label-let">@Tx.Format("kb-table.0-1-2-of-3", session.CountActive, session.CountActive == 1 ? "filter" : "filters", filtered.Count, all.Count)</span>
         <button class="kb-knop kb-klein" @onclick="ClearFilters">@Tx["kb-table.clear-filters"]</button>
     }
     @if (Selectable && SelectedSet.Count > 0)
     {
-        <span class="kb-label">@SelectedSet.Count gekozen</span>
+        <span class="kb-label">@Tx.Format("kb-table.0-chosen", SelectedSet.Count)</span>
         <button class="kb-knop kb-klein" @onclick="ClearSelection">@Tx["kb-table.clear-selection"]</button>
     }
     <span class="kb-tabel-knoppen">
@@ -34,7 +34,7 @@
     <div class="kb-melding kb-export" role="status">
         @if (export.Error is null)
         {
-            <span>@export.Count rijen geëxporteerd naar <code>@export.FilePath</code></span>
+            <span>@Tx.Format("kb-table.0-rows-exported-to", export.Count) <code>@export.FilePath</code></span>
             <button class="kb-knop kb-klein" @onclick="() => State.AppEnvironment.ShowFile(export.FilePath)">@Tx["kb-table.show-in-explorer"]</button>
         }
         else
@@ -68,7 +68,7 @@
 @if (Selectable && AllOnPageSelected && SelectedSet.Count < filtered.Count(CanSelect))
 {
     <div class="kb-melding">
-        De @currentPage.Count rijen op deze pagina zijn gekozen.
+        @Tx.Format("kb-table.the-0-rows-on-this", currentPage.Count)
         <button class="kb-link" @onclick="ChooseAll">Alle @filtered.Count(CanSelect)@(session.CountActive > 0 ? " gefilterde" : string.Empty) rijen kiezen</button>
     </div>
 }
@@ -174,7 +174,7 @@
     @if (PerPage > 0 && filtered.Count > PerPage)
     {
         <button class="kb-knop kb-klein" disabled="@(session.Page == 0)" @onclick="() => ToPage(session.Page - 1)">@Tx["kb-table.previous"]</button>
-        <span>@(session.Page * PerPage + 1)–@Math.Min(filtered.Count, (session.Page + 1) * PerPage) van @filtered.Count.ToString("N0")</span>
+        <span>@Tx.Format("kb-table.0-1-of-2", session.Page * PerPage + 1, Math.Min(filtered.Count, (session.Page + 1) * PerPage), filtered.Count.ToString("N0"))</span>
         <button class="kb-knop kb-klein" disabled="@((session.Page + 1) * PerPage >= filtered.Count)" @onclick="() => ToPage(session.Page + 1)">@Tx["kb-table.next"]</button>
     }
     @if (filtered.Count > 250 || view.PerPage is not null)

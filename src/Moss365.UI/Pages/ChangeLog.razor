@@ -41,7 +41,7 @@ else
                     <option value="@pl.Id">@pl.Text</option>
                 }
             </select>
-            <button class="kb-knop kb-primair" disabled="@(selected.Count == 0)" @onclick="MakeUndoPlan">Gekozen wijzigingen ongedaan maken (@selected.Count)</button>
+            <button class="kb-knop kb-primair" disabled="@(selected.Count == 0)" @onclick="MakeUndoPlan">@T.Format("change-log.undo-chosen-changes-0", selected.Count)</button>
             @if (selected.Count > 0)
             {
                 <button class="kb-knop" @onclick="() => { selected.Clear(); reverse = null; }">@T["change-log.clear-choice"]</button>
@@ -54,7 +54,7 @@ else
     {
         @foreach (var n in reverse.NotReversible)
         {
-            <div class="kb-melding">Niet terug te draaien: @n</div>
+            <div class="kb-melding">@T.Format("change-log.cannot-be-undone-0", n)</div>
         }
 
         @if (reverse.Plan.Count > 0)
@@ -67,7 +67,7 @@ else
              Selectable="State.Can(Permission.Manage)" KeyOf="Key" Selected="selected" SelectionChanged="_ => reverse = null"
              CanChoose="r => Undo.WhyNot(r) is null" WhyNot="WhyNotBack"
              RowClass="@(r => r.Failed ? "kb-ontbreekt" : null)" />
-    <p class="kb-zacht">De laatste @rules.Count regels, nieuwste eerst.</p>
+    <p class="kb-zacht">@T.Format("change-log.the-last-0-lines-newest", rules.Count)</p>
 }
 
 @if (State.Can(Permission.ChangeLogAll))
@@ -95,7 +95,7 @@ else
         </p>
         @if (tooOld == 0)
         {
-            <p>Geen regels ouder dan @Limit.ToString("dd/MM/yyyy").</p>
+            <p>@T.Format("change-log.no-lines-older-than-0", Limit.ToString("dd/MM/yyyy"))</p>
         }
         else
         {
@@ -111,7 +111,7 @@ else
                     }
                     else
                     {
-                        <span>@tooOld regels definitief uit de databank halen?</span>
+                        <span>@T.Format("change-log.remove-0-lines-from-the", tooOld)</span>
                         <button class="kb-knop kb-gevaar" @onclick="TakeAway">@T["change-log.yes-remove"]</button>
                         <button class="kb-knop" @onclick="() => removeConfirm = false">@T["action.cancel"]</button>
                     }
@@ -161,14 +161,14 @@ else
         columns = new List<Column<LogEntry>>
         {
             // Time as the sort key: newest first is the default (the list already comes in that way)
-            new() { Key = "tijd", Title = "Tijd", Cell = r => @<text>@r.Time.ToString("yyyy-MM-dd HH:mm:ss")</text>, SortBy = r => -r.Time.UtcTicks, Text = r => r.Time.ToString("yyyy-MM-dd HH:mm:ss") },
-            new() { Key = "door", Title = "Door", Cell = r => @<text>@r.User</text>, SortBy = r => r.User },
+            new() { Key = "tijd", Title = T["sign-in-list.time"], Cell = r => @<text>@r.Time.ToString("yyyy-MM-dd HH:mm:ss")</text>, SortBy = r => -r.Time.UtcTicks, Text = r => r.Time.ToString("yyyy-MM-dd HH:mm:ss") },
+            new() { Key = "door", Title = T["logon-scripts.by"], Cell = r => @<text>@r.User</text>, SortBy = r => r.User },
             new() { Key = "context", Title = "Context", Cell = r => @<text>@r.Context</text>, SortBy = r => r.Context },
-            new() { Key = "systeem", Title = "Systeem", Cell = r => @<text>@r.TargetSystem</text>, SortBy = r => r.TargetSystem },
-            new() { Key = "wijziging", Title = "Wijziging", Cell = r => @<text>@r.Description</text>, SortBy = r => r.Description },
-            new() { Key = "object", Title = "Object", Cell = r => @<ObjectLink Id="@r.Target" Text="@(r.TargetName.Length > 0 ? r.TargetName : null)" />, SortBy = r => r.TargetName, Text = r => r.TargetName.Length > 0 ? r.TargetName : r.Target },
-            new() { Key = "resultaat", Title = "Resultaat", Cell = r => @<text>@r.Status <span class="kb-zacht">@r.Message</span></text>, SortBy = r => r.Status, Text = r => r.Message.Length > 0 ? $"{r.Status}: {r.Message}" : r.Status },
-            new() { Key = "actie", Title = "Actie (technisch)", Hidden = true, Cell = r => @<code>@r.ChangeAction</code>, SortBy = r => r.ChangeAction },
+            new() { Key = "systeem", Title = T["plan.system"], Cell = r => @<text>@r.TargetSystem</text>, SortBy = r => r.TargetSystem },
+            new() { Key = "wijziging", Title = T["plan.change"], Cell = r => @<text>@r.Description</text>, SortBy = r => r.Description },
+            new() { Key = "object", Title = T["plan.object"], Cell = r => @<ObjectLink Id="@r.Target" Text="@(r.TargetName.Length > 0 ? r.TargetName : null)" />, SortBy = r => r.TargetName, Text = r => r.TargetName.Length > 0 ? r.TargetName : r.Target },
+            new() { Key = "resultaat", Title = T["plan.result"], Cell = r => @<text>@r.Status <span class="kb-zacht">@r.Message</span></text>, SortBy = r => r.Status, Text = r => r.Message.Length > 0 ? $"{r.Status}: {r.Message}" : r.Status },
+            new() { Key = "actie", Title = T["change-log.action-technical"], Hidden = true, Cell = r => @<code>@r.ChangeAction</code>, SortBy = r => r.ChangeAction },
         };
         Read();
     }
@@ -246,10 +246,10 @@ else
     private IReadOnlyList<Moss365.Core.Storage.AccessEntry> access = Array.Empty<Moss365.Core.Storage.AccessEntry>();
     private readonly IReadOnlyList<Column<Moss365.Core.Storage.AccessEntry>> accessColumns = new List<Column<Moss365.Core.Storage.AccessEntry>>
     {
-        new() { Key = "tijd", Title = "Tijd", Cell = r => b => b.AddContent(0, r.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")), SortBy = r => r.Time },
-        new() { Key = "wie", Title = "Wie", Cell = r => b => b.AddContent(0, r.User), SortBy = r => r.User },
-        new() { Key = "wat", Title = "Wat", Cell = r => b => b.AddContent(0, r.What), SortBy = r => r.What },
-        new() { Key = "details", Title = "Details", Cell = r => b => b.AddContent(0, r.Details), SortBy = r => r.Details },
+        new() { Key = "tijd", Title = T["sign-in-list.time"], Cell = r => b => b.AddContent(0, r.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")), SortBy = r => r.Time },
+        new() { Key = "wie", Title = T["script-result.who"], Cell = r => b => b.AddContent(0, r.User), SortBy = r => r.User },
+        new() { Key = "wat", Title = T["service-health-card.what"], Cell = r => b => b.AddContent(0, r.What), SortBy = r => r.What },
+        new() { Key = "details", Title = T["script-result.details"], Cell = r => b => b.AddContent(0, r.Details), SortBy = r => r.Details },
     };
 
     private int tooOld;

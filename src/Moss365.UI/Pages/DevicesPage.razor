@@ -75,11 +75,11 @@
         <h2>Toestellen in Intune (@devices.Count)</h2>
         <div class="kb-kolommen">
             <div>
-                <h3>Niet in orde (@DeviceAnalysis.NotCompliant(devices).Count)</h3>
+                <h3>@T.Format("devices.not-compliant-0", DeviceAnalysis.NotCompliant(devices).Count)</h3>
                 @DeviceTable(DeviceAnalysis.NotCompliant(devices))
             </div>
             <div>
-                <h3>Niet gezien in 30 dagen (@DeviceAnalysis.NotSeen(devices, DateTimeOffset.Now).Count)</h3>
+                <h3>@T.Format("devices.not-seen-in-30-days", DeviceAnalysis.NotSeen(devices, DateTimeOffset.Now).Count)</h3>
                 @DeviceTable(DeviceAnalysis.NotSeen(devices, DateTimeOffset.Now))
             </div>
         </div>
@@ -127,7 +127,7 @@
     private static RenderFragment DeviceTable(IReadOnlyList<IntuneDevice> list) => __builder =>
     {
         <table class="kb-tabel">
-            <thead><tr><th>Toestel</th><th>Gebruiker</th><th>Systeem</th><th>Status</th><th>Laatst gezien</th></tr></thead>
+            <thead><tr><th>@T["keys.device"]</th><th>@T["sign-in-list.user"]</th><th>@T["plan.system"]</th><th>Status</th><th>@T["keys.last-seen"]</th></tr></thead>
             <tbody>
                 @foreach (var d in list.Take(100))
                 {

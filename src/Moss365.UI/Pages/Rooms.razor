@@ -71,18 +71,18 @@ else
 
     protected override void OnInitialized() => columns = new List<Column<Room>>
     {
-        new() { Key = "naam", Title = "Room", Cell = r => @<text><ObjectLink Id="@r.Smtp" /><div class="kb-zacht">@r.Smtp</div></text>, SortBy = r => r.DisplayName, Text = r => $"{r.DisplayName} ({r.Smtp})" },
-        new() { Key = "gebouw", Title = "Gebouw", Cell = r => @<text>@r.Building</text>, SortBy = r => r.Building },
-        new() { Key = "verdieping", Title = "Verd.", Cell = r => @<text>@r.Floor</text>, SortBy = r => r.Floor },
-        new() { Key = "capaciteit", Title = "Cap.", Number = true, Cell = r => @<text>@r.Capacity</text>, SortBy = r => r.Capacity },
-        new() { Key = "verwerking", Title = "Verwerking", Cell = r => @<text>@r.AutomateProcessing</text>, SortBy = r => r.AutomateProcessing },
-        new() { Key = "venster", Title = "Venster", Number = true, Cell = r => @<text>@r.BookingWindowInDays</text>, SortBy = r => r.BookingWindowInDays },
-        new() { Key = "recht", Title = "Standaardrecht", Cell = r => @<text>@r.DefaultCalendarPermission</text>, SortBy = r => r.DefaultCalendarPermission },
-        new() { Key = "afwijkingen", Title = "Afwijkingen", Cell = r => @<span class="kb-zacht">@string.Join("; ", Deviations(r))</span>, SortBy = r => Deviations(r).Count, Text = r => string.Join("; ", Deviations(r)) },
-        new() { Key = "duur", Title = "Max. duur", Hidden = true, Number = true, Cell = r => @<text>@r.MaximumDurationInMinutes</text>, SortBy = r => r.MaximumDurationInMinutes },
-        new() { Key = "gedelegeerden", Title = "Gedelegeerden", Hidden = true, Cell = r => @<text>@r.ResourceDelegates.Replace("|", ", ")</text>, SortBy = r => r.ResourceDelegates, Text = r => r.ResourceDelegates.Replace("|", ", ") },
-        new() { Key = "verborgen", Title = "Verborgen", Hidden = true, Cell = r => @<text>@(r.Hidden ? "ja" : "")</text>, SortBy = r => r.Hidden ? "ja" : "" },
-        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = r => @<code>@(State.Data.Index.AccountOf(r.Smtp, r.Alias)?.Entra?.Id)</code>, SortBy = r => State.Data.Index.AccountOf(r.Smtp, r.Alias)?.Entra?.Id },
+        new() { Key = "naam", Title = T["rooms.room"], Cell = r => @<text><ObjectLink Id="@r.Smtp" /><div class="kb-zacht">@r.Smtp</div></text>, SortBy = r => r.DisplayName, Text = r => $"{r.DisplayName} ({r.Smtp})" },
+        new() { Key = "gebouw", Title = T["room-form.building"], Cell = r => @<text>@r.Building</text>, SortBy = r => r.Building },
+        new() { Key = "verdieping", Title = T["rooms.floor"], Cell = r => @<text>@r.Floor</text>, SortBy = r => r.Floor },
+        new() { Key = "capaciteit", Title = T["rooms.cap"], Number = true, Cell = r => @<text>@r.Capacity</text>, SortBy = r => r.Capacity },
+        new() { Key = "verwerking", Title = T["room-form.processing"], Cell = r => @<text>@r.AutomateProcessing</text>, SortBy = r => r.AutomateProcessing },
+        new() { Key = "venster", Title = T["rooms.window"], Number = true, Cell = r => @<text>@r.BookingWindowInDays</text>, SortBy = r => r.BookingWindowInDays },
+        new() { Key = "recht", Title = T["rooms.default-permission"], Cell = r => @<text>@r.DefaultCalendarPermission</text>, SortBy = r => r.DefaultCalendarPermission },
+        new() { Key = "afwijkingen", Title = T["rooms.deviations"], Cell = r => @<span class="kb-zacht">@string.Join("; ", Deviations(r))</span>, SortBy = r => Deviations(r).Count, Text = r => string.Join("; ", Deviations(r)) },
+        new() { Key = "duur", Title = T["rooms.max-duration"], Hidden = true, Number = true, Cell = r => @<text>@r.MaximumDurationInMinutes</text>, SortBy = r => r.MaximumDurationInMinutes },
+        new() { Key = "gedelegeerden", Title = T["rooms.delegates"], Hidden = true, Cell = r => @<text>@r.ResourceDelegates.Replace("|", ", ")</text>, SortBy = r => r.ResourceDelegates, Text = r => r.ResourceDelegates.Replace("|", ", ") },
+        new() { Key = "verborgen", Title = T["mailboxes.hidden"], Hidden = true, Cell = r => @<text>@(r.Hidden ? "ja" : "")</text>, SortBy = r => r.Hidden ? "ja" : "" },
+        new() { Key = "entraid", Title = T["object-status.entra-id"], Hidden = true, Cell = r => @<code>@(State.Data.Index.AccountOf(r.Smtp, r.Alias)?.Entra?.Id)</code>, SortBy = r => State.Data.Index.AccountOf(r.Smtp, r.Alias)?.Entra?.Id },
     };
 
     private IReadOnlyList<string> Deviations(Room r) => PlanBuilder.RoomDeviations(r, State.Config.Rooms.Default);

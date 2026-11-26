@@ -2,6 +2,20 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.38.3
+
+Languages (R15), fourth part.
+
+- A correction to 0.38.2: the count of "zero hard-coded texts" did not see text that sits next to a value in the same
+  sentence (such as "Lid van (12)" or "Wachtwoord laatst ingesteld: ..."). Those 70 sentences are now in the
+  dictionaries too, as one text with holes per language.
+- The messages that the screens build in code (errors, confirmations, button texts that change, column titles of
+  tables, plan titles): about 300 texts moved to the dictionaries.
+- Core and the screens share one language (`Localization/Texts`), so that the texts Core builds can follow next.
+- A test refuses an attribute written as `title=T[...]` without `@` (it would show the code instead of the text).
+- Still Dutch for now: short words in code (such as "ingeschakeld", "nooit"), the texts that Core builds (plan
+  descriptions, check results, KPI names) and the messages of the connections. They follow in the next versions.
+
 ## 0.38.2
 
 Languages (R15), third part: **every screen** now takes its text from the dictionaries in five languages (English,

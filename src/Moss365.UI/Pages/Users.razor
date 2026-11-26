@@ -78,21 +78,21 @@
 
     protected override void OnInitialized() => columns = new List<Column<Person>>
     {
-        new() { Key = "naam", Title = "Naam", Cell = p => @<a href="@Searcher.Link(p)">@p.Name</a>, SortBy = p => p.Name },
+        new() { Key = "naam", Title = T["variables-editor.name"], Cell = p => @<a href="@Searcher.Link(p)">@p.Name</a>, SortBy = p => p.Name },
         new() { Key = "upn", Title = "UPN", Cell = p => @<text>@p.Upn</text>, SortBy = p => p.Upn },
-        new() { Key = "bron", Title = "Bron", Cell = p => @<text>@p.Source</text>, SortBy = p => p.Source },
+        new() { Key = "bron", Title = T["organisation-history.source"], Cell = p => @<text>@p.Source</text>, SortBy = p => p.Source },
         new() { Key = "ou", Title = "OU", Cell = p => @<text>@p.Ad?.OuPath</text>, SortBy = p => p.Ad?.OuPath },
-        new() { Key = "dienst", Title = "Dienst", Cell = p => @<text>@p.Department</text>, SortBy = p => p.Department },
-        new() { Key = "afdeling", Title = "Afdeling", Cell = p => @<text>@(State.Config.DivisionFor(p.Department)?.Name)</text>, SortBy = p => State.Config.DivisionFor(p.Department)?.Name },
+        new() { Key = "dienst", Title = T["service-health-card.service"], Cell = p => @<text>@p.Department</text>, SortBy = p => p.Department },
+        new() { Key = "afdeling", Title = T["statistics.division"], Cell = p => @<text>@(State.Config.DivisionFor(p.Department)?.Name)</text>, SortBy = p => State.Config.DivisionFor(p.Department)?.Name },
         new() { Key = "status", Title = "Status", Cell = p => @<text>@(p.Enabled ? "ingeschakeld" : "uitgeschakeld")</text>, SortBy = p => p.Enabled ? "ingeschakeld" : "uitgeschakeld" },
-        new() { Key = "sam", Title = "sAMAccountName", Hidden = true, Cell = p => @<text>@p.Ad?.SamAccountName</text>, SortBy = p => p.Ad?.SamAccountName },
-        new() { Key = "mail", Title = "E-mail", Hidden = true, Cell = p => @<text>@(p.Entra?.Mail ?? p.Ad?.EmailAddress)</text>, SortBy = p => p.Entra?.Mail ?? p.Ad?.EmailAddress },
-        new() { Key = "functie", Title = "Functie", Hidden = true, Cell = p => @<text>@(p.Ad?.Title ?? p.Entra?.JobTitle)</text>, SortBy = p => p.Ad?.Title ?? p.Entra?.JobTitle },
-        new() { Key = "kantoor", Title = "Kantoor", Hidden = true, Cell = p => @<text>@(p.Ad?.Office ?? p.Entra?.OfficeLocation)</text>, SortBy = p => p.Ad?.Office ?? p.Entra?.OfficeLocation },
-        new() { Key = "aanmelding", Title = "Laatste aanmelding", Hidden = true, Cell = p => @<text>@LastSignIn(p)</text>, SortBy = p => LastSignIn(p) },
-        new() { Key = "licenties", Title = "Licenties", Hidden = true, Cell = p => @<text>@(p.Entra is null ? null : string.Join(", ", p.Entra.Licences))</text>, SortBy = p => p.Entra is null ? null : string.Join(", ", p.Entra.Licences) },
-        new() { Key = "aangemaakt", Title = "Aangemaakt", Hidden = true, Cell = p => @<text>@(p.Ad?.WhenCreated ?? p.Entra?.CreatedDateTime)</text>, SortBy = p => p.Ad?.WhenCreated ?? p.Entra?.CreatedDateTime },
-        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = p => @<code>@(p.Entra?.Id)</code>, SortBy = p => p.Entra?.Id },
+        new() { Key = "sam", Title = T["group-detail.samaccountname"], Hidden = true, Cell = p => @<text>@p.Ad?.SamAccountName</text>, SortBy = p => p.Ad?.SamAccountName },
+        new() { Key = "mail", Title = T["users.e-mail"], Hidden = true, Cell = p => @<text>@(p.Entra?.Mail ?? p.Ad?.EmailAddress)</text>, SortBy = p => p.Entra?.Mail ?? p.Ad?.EmailAddress },
+        new() { Key = "functie", Title = T["bulk-tasks.job-title"], Hidden = true, Cell = p => @<text>@(p.Ad?.Title ?? p.Entra?.JobTitle)</text>, SortBy = p => p.Ad?.Title ?? p.Entra?.JobTitle },
+        new() { Key = "kantoor", Title = T["bulk-tasks.office"], Hidden = true, Cell = p => @<text>@(p.Ad?.Office ?? p.Entra?.OfficeLocation)</text>, SortBy = p => p.Ad?.Office ?? p.Entra?.OfficeLocation },
+        new() { Key = "aanmelding", Title = T["statistics.last-sign-in"], Hidden = true, Cell = p => @<text>@LastSignIn(p)</text>, SortBy = p => LastSignIn(p) },
+        new() { Key = "licenties", Title = T["job-profile-editor.licences"], Hidden = true, Cell = p => @<text>@(p.Entra is null ? null : string.Join(", ", p.Entra.Licences))</text>, SortBy = p => p.Entra is null ? null : string.Join(", ", p.Entra.Licences) },
+        new() { Key = "aangemaakt", Title = T["cleanup.created"], Hidden = true, Cell = p => @<text>@(p.Ad?.WhenCreated ?? p.Entra?.CreatedDateTime)</text>, SortBy = p => p.Ad?.WhenCreated ?? p.Entra?.CreatedDateTime },
+        new() { Key = "entraid", Title = T["object-status.entra-id"], Hidden = true, Cell = p => @<code>@(p.Entra?.Id)</code>, SortBy = p => p.Entra?.Id },
     }.Where(c => Fits(c.Key)).ToList();
 
     /// <summary>Columns of a system the tenant does not have are left out (0.21.1).</summary>

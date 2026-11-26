@@ -10,8 +10,7 @@
 <h1>@T["menu.tenantvergelijking"]</h1>
 
 <p class="kb-zacht">
-    Dezelfde Conditional Access-basis en instellingen in elke tenant? Hier zie je de verschillen tussen @State.Tenant.Name en een andere tenant:
-    beleiden op naam (status en de belangrijkste instellingen, zonder gebruikers of groepen) en de instellingen van Moss365. Er wordt niets bewaard.
+    @T.Format("tenant-compare.the-same-conditional-access-baseline", State.Tenant.Name)
 </p>
 
 @if (Hub is null || Others.Count == 0)

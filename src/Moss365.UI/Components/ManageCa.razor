@@ -11,7 +11,7 @@
     </p>
     @if (EmergencyError is { } emergencyError)
     {
-        <div class="kb-melding kb-fout">@emergencyError Een nieuw beleid maken en een beleid aanzetten kan pas als dat in orde is.</div>
+        <div class="kb-melding kb-fout">@T.Format("manage-ca.0-making-a-new-policy", emergencyError)</div>
     }
     else
     {
@@ -79,7 +79,7 @@
             </div>
             @if (ExclusionPolicy is { } selected)
             {
-                <h3>Rechtstreeks uitgezonderd van "@selected.Name" (@selected.UsersOff.Count)</h3>
+                <h3>@T.Format("manage-ca.directly-excluded-from-0-1", selected.Name, selected.UsersOff.Count)</h3>
                 <ul class="kb-lijst-plat">
                     @foreach (var id in selected.UsersOff)
                     {
@@ -163,7 +163,7 @@
                     <label><input type="radio" name="locsoort" checked="@(!locIp)" @onchange="() => locIp = false" /> @T["manage-ca.countries"]</label>
                 }
                 @if (locIp) { <label><input type="checkbox" @bind="locTrusted" /> @T["manage-ca.trusted-location-office"]</label> }
-                <label>@(locIp ? "IP-bereiken" : "Landen"), één per regel <textarea class="kb-invoer" rows="5" @bind="locValues"></textarea></label>
+                <label>@T.Format("manage-ca.0-one-per-line", locIp ? "IP-bereiken" : "Landen") <textarea class="kb-invoer" rows="5" @bind="locValues"></textarea></label>
                 <div class="kb-filters">
                     <button class="kb-knop kb-primair" @onclick="LocationPlan">@T["bulk-tasks.make-plan"]</button>
                     @if (location is not null) { <button class="kb-knop" @onclick="() => Edit(null)">@T["manage-ca.new-location"]</button> }
@@ -291,11 +291,11 @@
 
     private static readonly IReadOnlyList<Column<CaAuditEntry>> auditColumns = new List<Column<CaAuditEntry>>
     {
-        new() { Key = "tijd", Title = "Tijd", Cell = a => b => b.AddContent(0, a.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")), SortBy = a => -a.Time.UtcTicks, Text = a => a.Time.LocalDateTime.ToString("yyyy-MM-dd HH:mm") },
-        new() { Key = "wie", Title = "Wie", Cell = a => b => b.AddContent(0, a.Who), SortBy = a => a.Who },
-        new() { Key = "wat", Title = "Wat", Cell = a => b => b.AddContent(0, a.Activity), SortBy = a => a.Activity },
-        new() { Key = "doel", Title = "Beleid of locatie", Cell = a => b => b.AddContent(0, a.TargetName), SortBy = a => a.TargetName },
-        new() { Key = "resultaat", Title = "Resultaat", Cell = a => b => b.AddContent(0, a.Result), SortBy = a => a.Result },
+        new() { Key = "tijd", Title = T["sign-in-list.time"], Cell = a => b => b.AddContent(0, a.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")), SortBy = a => -a.Time.UtcTicks, Text = a => a.Time.LocalDateTime.ToString("yyyy-MM-dd HH:mm") },
+        new() { Key = "wie", Title = T["script-result.who"], Cell = a => b => b.AddContent(0, a.Who), SortBy = a => a.Who },
+        new() { Key = "wat", Title = T["service-health-card.what"], Cell = a => b => b.AddContent(0, a.Activity), SortBy = a => a.Activity },
+        new() { Key = "doel", Title = T["manage-ca.policy-or-location"], Cell = a => b => b.AddContent(0, a.TargetName), SortBy = a => a.TargetName },
+        new() { Key = "resultaat", Title = T["plan.result"], Cell = a => b => b.AddContent(0, a.Result), SortBy = a => a.Result },
     };
 
     private (IReadOnlyList<Person> Accounts, string? Error) EmergencyInfo => CaSafety.EmergencyAccounts(State.Data, State.Config);

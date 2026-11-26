@@ -50,7 +50,7 @@
 <section class="kb-kaart">
     <h2>@T["organisation.naming-of-new-accounts"]</h2>
     <div class="kb-raster">
-        <label>Accountnaam (voor de @@)
+        <label>@T["organisation.account-name-before-the"]
             <select class="kb-invoer" aria-label="@T["organisation.account-name"]" @onchange="e => Set(() => State.Config.Naming.LocalPart = Enum.Parse<LocalPartPattern>(e.Value?.ToString() ?? nameof(LocalPartPattern.GivenDotSurname)))">
                 @foreach (var p in Enum.GetValues<LocalPartPattern>())
                 {
@@ -98,8 +98,7 @@
 <section class="kb-kaart">
     <h2>@T["menu.organisatie.diensten"]</h2>
     <p class="kb-zacht">
-        Department bevat de dienst; de app leidt de afdeling af uit deze koppeling.
-        @Unlinked van de @State.Config.Departments.Count diensten hebben nog geen afdeling.
+        @T.Format("organisation.department-holds-the-department-the", Unlinked, State.Config.Departments.Count)
     </p>
     <div class="kb-filters">
         <label><input type="checkbox" @bind="onlyUnlinked" /> @T["organisation.only-departments-without-a-division"]</label>
@@ -262,7 +261,7 @@
         }
     </div>
     @if (rolesError is not null) { <div class="kb-melding kb-fout">@rolesError</div> }
-    <p class="kb-zacht">Nu: @(State.ProfileMessage ?? (State.Config.RolesModeEffective == RolesMode.Off ? T["code.organisation.without-roles-everyone-may-do"] : (T["code.organisation.according-to-your-role"] + " ") + PermissionTable.Text(State.Roles, "en") + ".")) Vergeet niet te bewaren.</p>
+    <p class="kb-zacht">@T.Format("organisation.now-0-do-not-forget", State.ProfileMessage ?? (State.Config.RolesModeEffective == RolesMode.Off ? T["code.organisation.without-roles-everyone-may-do"] : (T["code.organisation.according-to-your-role"] + " ") + PermissionTable.Text(State.Roles, "en") + "."))</p>
 </section>
 }
 

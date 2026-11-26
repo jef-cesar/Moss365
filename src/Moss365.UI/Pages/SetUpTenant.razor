@@ -42,7 +42,7 @@
     <div class="kb-rij">
         <button class="kb-knop kb-primair" disabled="@(busy || !State.SetupAvailable)" @onclick="Read">@(State.SetupReading is null ? T["code.set-up-tenant.sign-in-and-check"] : "Opnieuw nakijken")</button>
         @if (busy && progress is not null) { <span class="kb-zacht">@progress</span> }
-        @if (State.SetupSignedInAs is { } who) { <span class="kb-zacht">Aangemeld als @who</span> }
+        @if (State.SetupSignedInAs is { } who) { <span class="kb-zacht">@T.Format("set-up-tenant.signed-in-as-0", who)</span> }
     </div>
     @if (!State.SetupAvailable && State.Settings.TenantId.Length > 0)
     {
@@ -132,7 +132,7 @@
     </p>
     @if (State.SetupReading?.SignedIn.Upn is { Length: > 0 } upn && State.Settings.ManagementUpn.Trim().Length == 0)
     {
-        <button class="kb-knop" @onclick="() => State.TakeOverManagementUpn()">@upn als beheeraccount voor Exchange gebruiken</button>
+        <button class="kb-knop" @onclick="() => State.TakeOverManagementUpn()">@T.Format("set-up-tenant.use-0-as-the-admin", upn)</button>
     }
     else if (State.Settings.ManagementUpn.Length > 0)
     {

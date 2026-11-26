@@ -70,16 +70,16 @@
 
     protected override void OnInitialized() => columns = new List<Column<Group>>
     {
-        new() { Key = "naam", Title = "Groep", Cell = g => @<ObjectLink Object="g.Ref" />, SortBy = g => g.Name },
-        new() { Key = "soort", Title = "Soort", Cell = g => @<text>@g.KindText</text>, SortBy = g => g.KindText },
-        new() { Key = "waar", Title = "Waar", Cell = g => @<text>@g.Layers</text>, SortBy = g => g.Layers },
-        new() { Key = "mail", Title = "E-mailadres", Cell = g => @<text>@g.Mail</text>, SortBy = g => g.Mail },
-        new() { Key = "leden", Title = "Leden", Number = true, Cell = g => @<text>@Members(g)</text>, SortBy = g => Members(g) },
-        new() { Key = "omschrijving", Title = "Omschrijving", Cell = g => @<span class="kb-zacht">@g.Description</span>, SortBy = g => g.Description },
-        new() { Key = "sam", Title = "sAMAccountName", Hidden = true, Cell = g => @<text>@g.Ad?.SamAccountName</text>, SortBy = g => g.Ad?.SamAccountName },
+        new() { Key = "naam", Title = T["nested-groups.group"], Cell = g => @<ObjectLink Object="g.Ref" />, SortBy = g => g.Name },
+        new() { Key = "soort", Title = T["nested-groups.kind"], Cell = g => @<text>@g.KindText</text>, SortBy = g => g.KindText },
+        new() { Key = "waar", Title = T["group-detail.where"], Cell = g => @<text>@g.Layers</text>, SortBy = g => g.Layers },
+        new() { Key = "mail", Title = T["guests.e-mail-address"], Cell = g => @<text>@g.Mail</text>, SortBy = g => g.Mail },
+        new() { Key = "leden", Title = T["collaboration.members"], Number = true, Cell = g => @<text>@Members(g)</text>, SortBy = g => Members(g) },
+        new() { Key = "omschrijving", Title = T["edit-user.description"], Cell = g => @<span class="kb-zacht">@g.Description</span>, SortBy = g => g.Description },
+        new() { Key = "sam", Title = T["group-detail.samaccountname"], Hidden = true, Cell = g => @<text>@g.Ad?.SamAccountName</text>, SortBy = g => g.Ad?.SamAccountName },
         new() { Key = "ou", Title = "OU", Hidden = true, Cell = g => @<text>@g.Ad?.OuPath</text>, SortBy = g => g.Ad?.OuPath },
-        new() { Key = "weg", Title = "Wijzigen via", Hidden = true, Cell = g => @<text>@g.Route</text>, SortBy = g => g.Route.ToString() },
-        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = g => @<code>@(g.Cloud?.Id)</code>, SortBy = g => g.Cloud?.Id },
+        new() { Key = "weg", Title = T["groups.change-through"], Hidden = true, Cell = g => @<text>@g.Route</text>, SortBy = g => g.Route.ToString() },
+        new() { Key = "entraid", Title = T["object-status.entra-id"], Hidden = true, Cell = g => @<code>@(g.Cloud?.Id)</code>, SortBy = g => g.Cloud?.Id },
     }.Where(c => c.Key switch { "sam" or "ou" => State.HasAd, "entraid" => State.HasMicrosoft365, "waar" => State.HasAd && State.HasMicrosoft365, _ => true }).ToList();
 
     private static int? Members(Group g) => g.Cloud?.CountMembers ?? g.Exo?.CountMembers ?? g.Ad?.CountMembers;

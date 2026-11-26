@@ -140,12 +140,12 @@ else
     {
         columns = new List<Column<(Person Person, CaAnswer Answer)>>
         {
-            new() { Key = "naam", Title = "Naam", Cell = x => @<ObjectLink Object="State.Data.Index.Ref(x.Person)" />, SortBy = x => x.Person.Name },
+            new() { Key = "naam", Title = T["variables-editor.name"], Cell = x => @<ObjectLink Object="State.Data.Index.Ref(x.Person)" />, SortBy = x => x.Person.Name },
             new() { Key = "upn", Title = "UPN", Cell = x => @<text>@x.Person.Upn</text>, SortBy = x => x.Person.Upn },
-            new() { Key = "bron", Title = "Bron", Cell = x => @<text>@x.Person.Source</text>, SortBy = x => x.Person.Source },
-            new() { Key = "geldt", Title = "Geldt", Cell = x => @<CaLabel Applies="x.Answer.Applies" />, SortBy = x => (int)x.Answer.Applies, Text = x => x.Answer.Applies == CaApplies.Yes ? "ja" : "misschien" },
-            new() { Key = "reden", Title = "Waarom", Cell = x => @<text>@x.Answer.Reason</text>, SortBy = x => x.Answer.Reason },
-            new() { Key = "staat", Title = "Account", Cell = x => @<text>@(x.Person.Enabled ? "ingeschakeld" : "uitgeschakeld")</text>, SortBy = x => x.Person.Enabled, Text = x => x.Person.Enabled ? "ingeschakeld" : "uitgeschakeld" },
+            new() { Key = "bron", Title = T["organisation-history.source"], Cell = x => @<text>@x.Person.Source</text>, SortBy = x => x.Person.Source },
+            new() { Key = "geldt", Title = T["what-if-table.applies"], Cell = x => @<CaLabel Applies="x.Answer.Applies" />, SortBy = x => (int)x.Answer.Applies, Text = x => x.Answer.Applies == CaApplies.Yes ? "ja" : "misschien" },
+            new() { Key = "reden", Title = T["nested-groups.why"], Cell = x => @<text>@x.Answer.Reason</text>, SortBy = x => x.Answer.Reason },
+            new() { Key = "staat", Title = T["security.account"], Cell = x => @<text>@(x.Person.Enabled ? "ingeschakeld" : "uitgeschakeld")</text>, SortBy = x => x.Person.Enabled, Text = x => x.Person.Enabled ? "ingeschakeld" : "uitgeschakeld" },
         };
     }
 

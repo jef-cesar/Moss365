@@ -107,7 +107,7 @@ else
             @if (!groupValue.Dynamic && State.Can(Permission.GroupMembers))
             {
                 <div class="kb-filters">
-                    <button class="kb-knop" disabled="@(selected.Count == 0)" @onclick="RemoveSelected">Gekozen leden verwijderen (@selected.Count)</button>
+                    <button class="kb-knop" disabled="@(selected.Count == 0)" @onclick="RemoveSelected">@T.Format("group-detail.remove-chosen-members-0", selected.Count)</button>
                 </div>
             }
         }
@@ -115,7 +115,7 @@ else
 
     <div class="kb-kolommen">
         <section class="kb-kaart">
-            <h2>Lid van (@memberOf.Count)</h2>
+            <h2>@T.Format("group-detail.member-of-0", memberOf.Count)</h2>
             @if (memberOf.Count == 0) { <p class="kb-zacht">@T["group-detail.this-group-is-not-a"]</p> }
             <ul class="kb-lijst-plat">
                 @foreach (var o in memberOf)
@@ -125,7 +125,7 @@ else
             </ul>
         </section>
         <section class="kb-kaart">
-            <h2>Rechten op postvakken (@permissions.Count)</h2>
+            <h2>@T.Format("group-detail.permissions-on-mailboxes-0", permissions.Count)</h2>
             @if (permissions.Count == 0) { <p class="kb-zacht">@T["group-detail.no-fullaccess-or-sendas-on"]</p> }
             <ul class="kb-lijst-plat">
                 @foreach (var r in permissions)

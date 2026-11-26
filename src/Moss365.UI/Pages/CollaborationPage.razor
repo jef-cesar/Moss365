@@ -18,7 +18,7 @@
     var groups = DeviceAnalysis.Groups(State.Data, State.Collaboration, DateTimeOffset.Now);
 }
 <section class="kb-kaart">
-    <h2>Groepen en Teams (@groups.Count)</h2>
+    <h2>@T.Format("collaboration.groups-and-teams-0", groups.Count)</h2>
     <div class="kb-filters">
         @foreach (var (key, text) in Filters)
         {
@@ -83,7 +83,7 @@
     private static RenderFragment SiteTable(IReadOnlyList<SiteUsage> sites) => __builder =>
     {
         <table class="kb-tabel">
-            <thead><tr><th>Site</th><th>Eigenaar</th><th class="kb-getal">Opslag</th><th class="kb-getal">Bestanden</th><th>Laatste activiteit</th></tr></thead>
+            <thead><tr><th>Site</th><th>@T["collaboration.owner"]</th><th class="kb-getal">@T["collaboration.storage-2"]</th><th class="kb-getal">@T["collaboration.files"]</th><th>@T["collaboration.last-activity"]</th></tr></thead>
             <tbody>
                 @foreach (var s in sites.Take(50))
                 {

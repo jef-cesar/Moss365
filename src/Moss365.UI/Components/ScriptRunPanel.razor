@@ -13,7 +13,7 @@
 
     @if (State.ScriptBusy && !IsMyRun)
     {
-        <div class="kb-melding">Er draait al een ander script (@State.ScriptRun!.Run.Name). <a href="@RunLink(State.ScriptRun.Run)">@T["script-run-panel.view"]</a></div>
+        <div class="kb-melding">@T.Format("script-run-panel.another-script-is-already-running", State.ScriptRun!.Run.Name) <a href="@RunLink(State.ScriptRun.Run)">@T["script-run-panel.view"]</a></div>
     }
 
     <div class="kb-filters">

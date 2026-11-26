@@ -72,7 +72,7 @@ else
 {
     @if (!selected.IsDue(DateTimeOffset.Now))
     {
-        <div class="kb-melding">Het geplande moment (@selected.When.ToString("dd/MM/yyyy HH:mm")) is nog niet voorbij. Je kan het plan nu al bekijken, of vervroegd uitvoeren.</div>
+        <div class="kb-melding">@T.Format("scheduled.the-scheduled-moment-0-has", selected.When.ToString("dd/MM/yyyy HH:mm"))</div>
     }
 
     @foreach (var f in outcome.Errors)

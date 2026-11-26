@@ -58,7 +58,7 @@
 
             @if (checkedOnce && u.Found is null && u.Message is null)
             {
-                <p class="kb-ok">Dit is de nieuwste versie in dit kanaal (@ManagementState.AppVersion).</p>
+                <p class="kb-ok">@T.Format("update-panel.this-is-the-newest-version", ManagementState.AppVersion)</p>
             }
 
             @if (u.Found is { } found)

@@ -110,7 +110,7 @@ else
     </section>
 
     <section class="kb-kaart">
-        <h2>Gebruikers met dit script (@Users.Count)</h2>
+        <h2>@T.Format("logon-scripts.users-with-this-script-0", Users.Count)</h2>
         @if (Users.Count > 0)
         {
             <ul class="kb-lijst-plat">
@@ -125,7 +125,7 @@ else
             <PersonPicker Label="@T["code.logon-scripts.add-user-to-the-selection"]" Selected="null" SelectedChanged="p => { if (p is not null) { extra.Add(p); chosen.Add(p.Key); } }" />
             @if (extra.Count > 0) { <p>Ook: @string.Join(", ", extra.Select(p => p.Name))</p> }
             <div class="kb-rij">
-                <label>Logonscript van de gekozen gebruikers (@chosen.Count)
+                <label>@T.Format("logon-scripts.logon-script-of-the-chosen", chosen.Count)
                     <select class="kb-invoer" @bind="assignTo" aria-label="@T["logon-scripts.new-logon-script"]">
                         <option value="@selected">@selected</option>
                         @foreach (var f in files.Where(f => !string.Equals(f.Name, selected, StringComparison.OrdinalIgnoreCase))) { <option value="@f.Name">@f.Name</option> }

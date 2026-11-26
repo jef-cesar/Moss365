@@ -81,7 +81,7 @@ else
     @if (ByProfile.Count > 0)
     {
         <section class="kb-kaart">
-            <h2>Volgens het functieprofiel (@ByProfile.Count)</h2>
+            <h2>@T.Format("licences.according-to-the-job-profile", ByProfile.Count)</h2>
             <table class="kb-tabel">
                 <thead><tr><th>@T["security.account"]</th><th>@T["nav.profile"]</th><th>@T["job-profiles.missing"]</th><th>@T["licences.more-than-the-profile"]</th></tr></thead>
                 <tbody>
@@ -152,7 +152,7 @@ else
     private RenderFragment CostTable(IReadOnlyList<CostRow> rows) => __builder =>
     {
         <table class="kb-tabel">
-            <thead><tr><th>Naam</th><th class="kb-getal">Mensen</th><th class="kb-getal">Per maand</th></tr></thead>
+            <thead><tr><th>@T["variables-editor.name"]</th><th class="kb-getal">@T["group.mensen"]</th><th class="kb-getal">@T["licences.per-month"]</th></tr></thead>
             <tbody>@foreach (var r in rows.Take(25)) { <tr><td>@r.Name</td><td class="kb-getal">@r.People</td><td class="kb-getal">@Money(r.Cost)</td></tr> }</tbody>
         </table>
     };

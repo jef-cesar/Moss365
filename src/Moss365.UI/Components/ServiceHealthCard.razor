@@ -6,7 +6,7 @@
     <h2>@T["service-health-card.microsoft-365-status"]</h2>
     @if (State.ServiceHealthStatus is { } h)
     {
-        <p><strong>@ServiceHealth.Summary(h)</strong> <span class="kb-zacht">gelezen om @read?.ToString("HH:mm")</span></p>
+        <p><strong>@ServiceHealth.Summary(h)</strong> <span class="kb-zacht">@T.Format("service-health-card.read-at-0", read?.ToString("HH:mm"))</span></p>
         @if (h.Issues.Count > 0)
         {
             <table class="kb-tabel">
@@ -23,7 +23,7 @@
         @if (ServiceHealth.ActionRequired(h, DateTimeOffset.Now) is { Count: > 0 } actions)
         {
             <h3>@T["service-health-card.message-center-action-needed"]</h3>
-            <ul>@foreach (var m in actions.Take(10)) { <li>@m.Title <span class="kb-zacht">voor @m.ActionRequiredBy?.LocalDateTime.ToString("dd/MM/yyyy")</span></li> }</ul>
+            <ul>@foreach (var m in actions.Take(10)) { <li>@m.Title <span class="kb-zacht">@T.Format("service-health-card.before-0", m.ActionRequiredBy?.LocalDateTime.ToString("dd/MM/yyyy"))</span></li> }</ul>
         }
         @if (h.Note is { } n) { <p class="kb-zacht">@n</p> }
     }

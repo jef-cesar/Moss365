@@ -17,7 +17,7 @@ else
 
     @if (deviations.Count > 0)
     {
-        <div class="kb-melding">Wijkt af van de standaard: @string.Join("; ", deviations)</div>
+        <div class="kb-melding">@T.Format("room-detail.differs-from-the-standard-0", string.Join("; ", deviations))</div>
     }
 
     <div class="kb-kolommen">
@@ -117,7 +117,7 @@ else
         }
         else if (appointments is not null)
         {
-            <p class="kb-zacht">@appointments.Count afspraken van @calendarPeriod.</p>
+            <p class="kb-zacht">@T.Format("room-detail.0-appointments-from-1", appointments.Count, calendarPeriod)</p>
             <KbTable Id="room-agenda" ExportName="@($"Agenda-{room.Alias}")" Items="appointments" Columns="calendarColumns" DefaultSorting="begin"
                      RowClass="@(a => a.Cancelled ? "kb-zacht" : null)" />
         }
@@ -166,12 +166,12 @@ else
 
     private static readonly IReadOnlyList<Column<Appointment>> calendarColumns = new List<Column<Appointment>>
     {
-        new() { Key = "begin", Title = "Begin", Cell = a => b => b.AddContent(0, a.WholeDay ? a.Begin.ToString("ddd dd/MM/yyyy") : a.Begin.ToString("ddd dd/MM/yyyy HH:mm")), SortBy = a => a.Begin, Text = a => a.Begin.ToString("yyyy-MM-dd HH:mm") },
-        new() { Key = "einde", Title = "Einde", Cell = a => b => b.AddContent(0, a.WholeDay ? "hele dag" : a.End.Date == a.Begin.Date ? a.End.ToString("HH:mm") : a.End.ToString("dd/MM HH:mm")), SortBy = a => a.End, Text = a => a.End.ToString("yyyy-MM-dd HH:mm") },
-        new() { Key = "onderwerp", Title = "Onderwerp", Cell = a => b => b.AddContent(0, a.SubjectText + (a.Cancelled ? " (geannuleerd)" : string.Empty)), SortBy = a => a.SubjectText },
-        new() { Key = "organisator", Title = "Organisator", Cell = a => b => b.AddContent(0, a.Organiser), SortBy = a => a.Organiser },
+        new() { Key = "begin", Title = T["reports.start"], Cell = a => b => b.AddContent(0, a.WholeDay ? a.Begin.ToString("ddd dd/MM/yyyy") : a.Begin.ToString("ddd dd/MM/yyyy HH:mm")), SortBy = a => a.Begin, Text = a => a.Begin.ToString("yyyy-MM-dd HH:mm") },
+        new() { Key = "einde", Title = T["reports.end"], Cell = a => b => b.AddContent(0, a.WholeDay ? "hele dag" : a.End.Date == a.Begin.Date ? a.End.ToString("HH:mm") : a.End.ToString("dd/MM HH:mm")), SortBy = a => a.End, Text = a => a.End.ToString("yyyy-MM-dd HH:mm") },
+        new() { Key = "onderwerp", Title = T["message-trace-card.subject"], Cell = a => b => b.AddContent(0, a.SubjectText + (a.Cancelled ? " (geannuleerd)" : string.Empty)), SortBy = a => a.SubjectText },
+        new() { Key = "organisator", Title = T["room-detail.organiser"], Cell = a => b => b.AddContent(0, a.Organiser), SortBy = a => a.Organiser },
         new() { Key = "status", Title = "Status", Cell = a => b => b.AddContent(0, a.StatusText), SortBy = a => a.StatusText },
-        new() { Key = "adres", Title = "Adres organisator", Hidden = true, Cell = a => b => b.AddContent(0, a.OrganiserAddress), SortBy = a => a.OrganiserAddress },
+        new() { Key = "adres", Title = T["room-detail.address-of-the-organiser"], Hidden = true, Cell = a => b => b.AddContent(0, a.OrganiserAddress), SortBy = a => a.OrganiserAddress },
     };
 
     private async Task LoadCalendar()

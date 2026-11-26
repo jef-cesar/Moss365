@@ -3,7 +3,7 @@
 @inject ManagementState State
 
 <section class="kb-kaart">
-    <h2>Alle groepen, ook via andere groepen (@Paths.Count)</h2>
+    <h2>@T.Format("nested-groups.all-groups-also-through-other", Paths.Count)</h2>
     @if (Paths.Count(p => p.Via.Count > 0) == 0)
     {
         <p class="kb-zacht">@T["nested-groups.only-direct-memberships-no-groups"]</p>

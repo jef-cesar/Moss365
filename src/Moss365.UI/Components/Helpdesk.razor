@@ -16,7 +16,7 @@
         <p>
             @if (ad.LockedOut) { <span class="kb-label kb-rood">@T["helpdesk.locked"]</span> }
             @if (!ad.Enabled) { <span class="kb-label">@T["helpdesk.disabled"]</span> }
-            <span class="kb-zacht">Wachtwoord laatst ingesteld: @(string.IsNullOrEmpty(ad.PasswordLastSet) ? "onbekend" : ad.PasswordLastSet)</span>
+            <span class="kb-zacht">@T.Format("helpdesk.password-last-set-0", string.IsNullOrEmpty(ad.PasswordLastSet) ? "onbekend" : ad.PasswordLastSet)</span>
         </p>
         <div class="kb-filters">
             <button class="kb-knop" @onclick="NewPassword">@T["helpdesk.reset-password"]</button>
@@ -35,7 +35,7 @@
                     <CopyField Value="@password" Label="Voorgesteld wachtwoord" Secret="true" />
                 </div>
                 <label class="kb-veld">
-                    <span>Of zelf kiezen (minstens @HelpdeskPlans.MinimumLength tekens)</span>
+                    <span>@T.Format("helpdesk.or-choose-yourself-at-least", HelpdeskPlans.MinimumLength)</span>
                     <input class="kb-invoer" type="password" autocomplete="new-password" @bind="own" @bind:event="oninput" />
                 </label>
             </div>
@@ -88,7 +88,7 @@
     @if (pass is not null)
     {
         <section class="kb-kaart kb-geheim">
-            <h3>@passTitle voor @Person.Name</h3>
+            <h3>@T.Format("helpdesk.0-for-1", passTitle, Person.Name)</h3>
             <CopyField Value="@pass" Label="@passTitle" Secret="true" />
         </section>
     }

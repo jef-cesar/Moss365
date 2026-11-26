@@ -11,7 +11,7 @@
     <h2>@T["new-mailbox.details"]</h2>
     <div class="kb-raster">
         <label>@T["edit-user.display-name"] <input class="kb-invoer" placeholder="@T["new-mailbox.e-g-youth-service"]" @bind="request.DisplayName" @bind:after="Clear" /></label>
-        <label>Adres (voor de @@) <input class="kb-invoer" placeholder="@T["new-mailbox.e-g-youthservice"]" @bind="request.LocalPart" @bind:after="Clear" /></label>
+        <label>@T["new-mailbox.address-before-the"] <input class="kb-invoer" placeholder="@T["new-mailbox.e-g-youthservice"]" @bind="request.LocalPart" @bind:after="Clear" /></label>
         <label>@T["new-mailbox.domain"]
             <select class="kb-invoer" @bind="request.Domain" @bind:after="Clear">
                 @foreach (var d in Domains)

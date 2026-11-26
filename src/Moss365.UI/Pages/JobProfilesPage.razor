@@ -33,7 +33,7 @@ else
             <h2>Wie heeft @profile.Name (@holders.Count)</h2>
             @if (holders.Count == 0)
             {
-                <p class="kb-zacht">Nog niemand: niemand kreeg dit profiel via de app@(string.IsNullOrWhiteSpace(profile.JobTitle) ? null : T.Format("code.job-profiles.and-nobody-has-the-job", profile.JobTitle)).</p>
+                <p class="kb-zacht">@T.Format("job-profiles.nobody-yet-nobody-received-this", string.IsNullOrWhiteSpace(profile.JobTitle) ? null : T.Format("code.job-profiles.and-nobody-has-the-job", profile.JobTitle))</p>
             }
             else
             {

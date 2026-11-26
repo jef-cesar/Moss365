@@ -43,7 +43,7 @@
 
 <div class="kb-filters kb-plak">
     <input class="kb-invoer kb-breed" placeholder="@T["mailboxes.search-by-name-or-address"]" @bind="input.Find" @bind:event="oninput" aria-label="@T["nav.search"]" />
-    <button class="kb-knop" hidden="@(!State.Can(Permission.Manage))" disabled="@(selected.Count == 0)" @onclick="Delete">Gekozen gasten verwijderen (@selected.Count)</button>
+    <button class="kb-knop" hidden="@(!State.Can(Permission.Manage))" disabled="@(selected.Count == 0)" @onclick="Delete">@T.Format("guests.delete-chosen-guests-0", selected.Count)</button>
 </div>
 @if (selected.Count > 0 && State.Can(Permission.GroupMembers))
 {
@@ -92,15 +92,15 @@
 
     protected override void OnInitialized() => columns = new List<Column<Person>>
     {
-        new() { Key = "naam", Title = "Naam", Cell = p => @<ObjectLink Object="State.Data.Index.Ref(p)" />, SortBy = p => p.Name },
-        new() { Key = "mail", Title = "E-mailadres", Cell = p => @<text>@p.Entra?.Mail</text>, SortBy = p => p.Entra?.Mail },
-        new() { Key = "domein", Title = "Domein", Cell = p => @<text>@Domain(p)</text>, SortBy = p => Domain(p) },
+        new() { Key = "naam", Title = T["variables-editor.name"], Cell = p => @<ObjectLink Object="State.Data.Index.Ref(p)" />, SortBy = p => p.Name },
+        new() { Key = "mail", Title = T["guests.e-mail-address"], Cell = p => @<text>@p.Entra?.Mail</text>, SortBy = p => p.Entra?.Mail },
+        new() { Key = "domein", Title = T["new-mailbox.domain"], Cell = p => @<text>@Domain(p)</text>, SortBy = p => Domain(p) },
         new() { Key = "status", Title = "Status", Cell = p => @<text>@(p.Enabled ? "actief" : "geblokkeerd")</text>, SortBy = p => p.Enabled ? "actief" : "geblokkeerd" },
-        new() { Key = "aangemaakt", Title = "Uitgenodigd", Cell = p => @<text>@Date(p.Entra?.CreatedDateTime)</text>, SortBy = p => p.Entra?.CreatedDateTime },
-        new() { Key = "aanmelding", Title = "Laatste aanmelding", Cell = p => @<text>@Date(p.Entra?.LastSignIn)</text>, SortBy = p => p.Entra?.LastSignIn },
-        new() { Key = "groepen", Title = "Groepen", Number = true, Cell = p => @<text>@State.Data.CloudGroupsOf(p).Count()</text>, SortBy = p => State.Data.CloudGroupsOf(p).Count() },
+        new() { Key = "aangemaakt", Title = T["guests.invited"], Cell = p => @<text>@Date(p.Entra?.CreatedDateTime)</text>, SortBy = p => p.Entra?.CreatedDateTime },
+        new() { Key = "aanmelding", Title = T["statistics.last-sign-in"], Cell = p => @<text>@Date(p.Entra?.LastSignIn)</text>, SortBy = p => p.Entra?.LastSignIn },
+        new() { Key = "groepen", Title = T["menu.groepen"], Number = true, Cell = p => @<text>@State.Data.CloudGroupsOf(p).Count()</text>, SortBy = p => State.Data.CloudGroupsOf(p).Count() },
         new() { Key = "upn", Title = "UPN", Hidden = true, Cell = p => @<text>@p.Upn</text>, SortBy = p => p.Upn },
-        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = p => @<code>@(p.Entra?.Id)</code>, SortBy = p => p.Entra?.Id },
+        new() { Key = "entraid", Title = T["object-status.entra-id"], Hidden = true, Cell = p => @<code>@(p.Entra?.Id)</code>, SortBy = p => p.Entra?.Id },
     };
 
     private static string Domain(Person p) => p.Entra?.Mail is { } m && m.Contains('@') ? m[(m.IndexOf('@') + 1)..] : string.Empty;

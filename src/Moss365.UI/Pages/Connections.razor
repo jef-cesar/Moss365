@@ -117,8 +117,7 @@
     <input type="checkbox" @bind="State.Settings.QuickLoad" @bind:after="State.SaveSettings" />
     @T["connections.quick-load-only-what-changed"]
     <span class="kb-zacht">
-        (AD: @(State.AdCanQuick ? "kan" : T["code.connections.everything-next-time"]); Entra-groepen: @(State.EntraCanQuick ? "kan" : T["code.connections.everything-next-time"]).
-        Gebruikers in Entra en Exchange lezen altijd alles; minstens één keer per week leest de app alles.)
+        @T.Format("connections.ad-0-entra-groups-1", State.AdCanQuick ? "kan" : T["code.connections.everything-next-time"], State.EntraCanQuick ? "kan" : T["code.connections.everything-next-time"])
     </span>
 </label>
 @if (State.Error is not null) { <div class="kb-melding kb-fout">@State.Error</div> }
@@ -128,13 +127,13 @@
 
 <section class="kb-kaart">
     <h2>@T["connections.current-data"]</h2>
-    <p>Aangemeld als: @State.User</p>
+    <p>@T.Format("connections.signed-in-as-0", State.User)</p>
     <ul class="kb-lijst-plat">
         @foreach (var part in new[] { "AD", "Entra", "Rooms", "Postvakken" })
         {
             <li><strong>@part</strong>: @(State.LiveOn.TryGetValue(part, out var t) ? $"live geladen om {t:HH:mm}" : T["code.connections.from-the-inventory"])</li>
         }
-        @if (State.SavedInventory is { } folder) { <li class="kb-zacht">Laatst bewaard als inventaris: @System.IO.Path.GetFileName(folder)</li> }
+        @if (State.SavedInventory is { } folder) { <li class="kb-zacht">@T.Format("connections.last-saved-as-inventory-0", System.IO.Path.GetFileName(folder))</li> }
     </ul>
     <table class="kb-tabel">
         <thead><tr><th>@T["organisation-history.source"]</th><th>@T["connections.from"]</th><th class="kb-getal">@T["start.rows"]</th></tr></thead>

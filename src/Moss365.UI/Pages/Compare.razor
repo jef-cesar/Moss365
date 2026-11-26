@@ -10,8 +10,7 @@
 else
 {
     <p class="kb-zacht">
-        Gesynchroniseerde OU's: @string.Join(", ", State.Config.SynchronisedOus).
-        Verschillen in spaties vooraan of achteraan worden genegeerd: Entra schrapt die bij de synchronisatie.
+        @T.Format("compare.synchronised-ous-0-differences-in", string.Join(", ", State.Config.SynchronisedOus))
     </p>
 
     <div class="kb-tegels">
@@ -52,13 +51,13 @@ else
         differences = AdEntraComparison.Compare(State.Data, State.Config);
         columns = new List<Column<Difference>>
         {
-            new() { Key = "gebruiker", Title = "Gebruiker", Cell = v => @<text><a href="@Searcher.Link(v.Person)">@v.Person.Name</a><div class="kb-zacht">@v.Person.Ad?.OuPath</div></text>, SortBy = v => v.Person.Name },
-            new() { Key = "soort", Title = "Soort", Cell = v => @<text>@v.KindText</text>, SortBy = v => v.KindText },
-            new() { Key = "kenmerk", Title = "Kenmerk", Cell = v => @<text>@v.Attribute</text>, SortBy = v => v.Attribute },
+            new() { Key = "gebruiker", Title = T["sign-in-list.user"], Cell = v => @<text><a href="@Searcher.Link(v.Person)">@v.Person.Name</a><div class="kb-zacht">@v.Person.Ad?.OuPath</div></text>, SortBy = v => v.Person.Name },
+            new() { Key = "soort", Title = T["nested-groups.kind"], Cell = v => @<text>@v.KindText</text>, SortBy = v => v.KindText },
+            new() { Key = "kenmerk", Title = T["bulk-tasks.attribute"], Cell = v => @<text>@v.Attribute</text>, SortBy = v => v.Attribute },
             new() { Key = "ad", Title = "AD", Cell = v => @<text>@v.AdValue</text>, SortBy = v => v.AdValue },
             new() { Key = "entra", Title = "Entra", Cell = v => @<text>@v.EntraValue</text>, SortBy = v => v.EntraValue },
-            new() { Key = "toelichting", Title = "Toelichting", Cell = v => @<text>@v.Explanation</text>, SortBy = v => v.Explanation },
-            new() { Key = "rechtzetten", Title = "Rechtzetten", Filter = FilterKind.No, Cell = v => @<text>@if (FixCan(v)) { <button class="kb-knop kb-klein" @onclick="() => Fix(v)" title="@T["code.compare.correct-the-value-in-ad"]">Rechtzetten in AD</button> }</text> },
+            new() { Key = "toelichting", Title = T["compare.explanation"], Cell = v => @<text>@v.Explanation</text>, SortBy = v => v.Explanation },
+            new() { Key = "rechtzetten", Title = T["compare.correct"], Filter = FilterKind.No, Cell = v => @<text>@if (FixCan(v)) { <button class="kb-knop kb-klein" @onclick="() => Fix(v)" title="@T["code.compare.correct-the-value-in-ad"]">@T["compare.correct-in-ad"]</button> }</text> },
             new() { Key = "ou", Title = "OU", Hidden = true, Cell = v => @<text>@v.Person.Ad?.OuPath</text>, SortBy = v => v.Person.Ad?.OuPath },
         };
     }

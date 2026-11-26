@@ -68,18 +68,18 @@
 
     protected override void OnInitialized() => columns = new List<Column<Mailbox>>
     {
-        new() { Key = "naam", Title = "Postvak", Cell = p => @<ObjectLink Id="@p.Smtp" />, SortBy = p => p.DisplayName },
-        new() { Key = "adres", Title = "Adres", Cell = p => @<text>@p.Smtp</text>, SortBy = p => p.Smtp },
-        new() { Key = "groep", Title = "Toegangsgroep", Cell = p => @<text>@if (State.Data.Index.AccessGroupOf(p) is { } g) { <ObjectLink Object="g.Ref" /> } else { <span class="kb-zacht">geen</span> }</text>, SortBy = p => State.Data.Index.AccessGroupOf(p)?.Name },
-        new() { Key = "direct", Title = "Rechtstreeks", Number = true, Cell = p => @<text>@Direct(p)</text>, SortBy = p => Direct(p) },
-        new() { Key = "aanmelden", Title = "Kan aanmelden", Cell = p => CanSignIn(p), SortBy = p => CanSignInText(p), Text = p => CanSignInText(p) },
-        new() { Key = "laatste", Title = "Laatste aanmelding", Cell = p => @<text>@LastSignIn(p)?.ToString("dd/MM/yyyy")</text>, SortBy = p => LastSignIn(p), Text = p => LastSignIn(p)?.ToString("yyyy-MM-dd") },
-        new() { Key = "verborgen", Title = "Verborgen", Cell = p => @<text>@(p.Hidden ? "ja" : "")</text>, SortBy = p => p.Hidden ? "ja" : "" },
-        new() { Key = "doorsturen", Title = "Doorsturen", Cell = p => @<text>@p.Forwarding</text>, SortBy = p => p.Forwarding },
-        new() { Key = "model", Title = "Rechtenmodel", Hidden = true, Cell = p => @<text>@Model(p)</text>, SortBy = p => Model(p) },
-        new() { Key = "soort", Title = "Soort", Hidden = true, Cell = p => @<text>@p.TypeText</text>, SortBy = p => p.TypeText },
-        new() { Key = "aangemaakt", Title = "Aangemaakt", Hidden = true, Cell = p => @<text>@p.WhenCreated</text>, SortBy = p => p.WhenCreated },
-        new() { Key = "entraid", Title = "Entra-ID", Hidden = true, Cell = p => @<code>@(State.Data.Index.AccountOf(p.Smtp, p.Alias)?.Entra?.Id)</code>, SortBy = p => State.Data.Index.AccountOf(p.Smtp, p.Alias)?.Entra?.Id },
+        new() { Key = "naam", Title = T["variables-editor.mailbox"], Cell = p => @<ObjectLink Id="@p.Smtp" />, SortBy = p => p.DisplayName },
+        new() { Key = "adres", Title = T["mailboxes.address"], Cell = p => @<text>@p.Smtp</text>, SortBy = p => p.Smtp },
+        new() { Key = "groep", Title = T["mailboxes.access-group"], Cell = p => @<text>@if (State.Data.Index.AccessGroupOf(p) is { } g) { <ObjectLink Object="g.Ref" /> } else { <span class="kb-zacht">@T["security-card.none"]</span> }</text>, SortBy = p => State.Data.Index.AccessGroupOf(p)?.Name },
+        new() { Key = "direct", Title = T["mailboxes.direct"], Number = true, Cell = p => @<text>@Direct(p)</text>, SortBy = p => Direct(p) },
+        new() { Key = "aanmelden", Title = T["mailbox-detail.can-sign-in"], Cell = p => CanSignIn(p), SortBy = p => CanSignInText(p), Text = p => CanSignInText(p) },
+        new() { Key = "laatste", Title = T["statistics.last-sign-in"], Cell = p => @<text>@LastSignIn(p)?.ToString("dd/MM/yyyy")</text>, SortBy = p => LastSignIn(p), Text = p => LastSignIn(p)?.ToString("yyyy-MM-dd") },
+        new() { Key = "verborgen", Title = T["mailboxes.hidden"], Cell = p => @<text>@(p.Hidden ? "ja" : "")</text>, SortBy = p => p.Hidden ? "ja" : "" },
+        new() { Key = "doorsturen", Title = T["mailboxes.forwarding"], Cell = p => @<text>@p.Forwarding</text>, SortBy = p => p.Forwarding },
+        new() { Key = "model", Title = T["mailboxes.permission-model"], Hidden = true, Cell = p => @<text>@Model(p)</text>, SortBy = p => Model(p) },
+        new() { Key = "soort", Title = T["nested-groups.kind"], Hidden = true, Cell = p => @<text>@p.TypeText</text>, SortBy = p => p.TypeText },
+        new() { Key = "aangemaakt", Title = T["cleanup.created"], Hidden = true, Cell = p => @<text>@p.WhenCreated</text>, SortBy = p => p.WhenCreated },
+        new() { Key = "entraid", Title = T["object-status.entra-id"], Hidden = true, Cell = p => @<code>@(State.Data.Index.AccountOf(p.Smtp, p.Alias)?.Entra?.Id)</code>, SortBy = p => State.Data.Index.AccountOf(p.Smtp, p.Alias)?.Entra?.Id },
     };
 
     private int Direct(Mailbox p) => State.Data.Index.PermissionsOn(p).Count(r => r.Direct);
@@ -119,9 +119,9 @@
 
     private RenderFragment CanSignIn(Mailbox p) => CanSignInText(p) switch
     {
-        "ja" => @<span class="kb-label kb-label-let">⚠ ja</span>,
-        "nee" => @<span class="kb-zacht">nee</span>,
-        _ => @<span class="kb-zacht">onbekend</span>,
+        "ja" => @<span class="kb-label kb-label-let">@T["mailbox-detail.yes"]</span>,
+        "nee" => @<span class="kb-zacht">@T["yesno.no"]</span>,
+        _ => @<span class="kb-zacht">@T["security-card.unknown"]</span>,
     };
 
     private DateTime? LastSignIn(Mailbox p) => Account(p) is { } a ? Statistic.LastSignIn(a) : null;

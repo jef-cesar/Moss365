@@ -75,7 +75,7 @@ else
         @if (MissingEmergency > 0)
         {
             <div class="kb-melding">
-                @MissingEmergency noodaccount(s) staan niet uitgezonderd.
+                @T.Format("ca-policy-editor.0-emergency-account-s-are", MissingEmergency)
                 <button class="kb-knop kb-klein kb-primair" @onclick="() => Set(() => CaEditor.ExcludeEmergencyAccounts(edit, State.Data, State.Config))">@T["ca-policy-editor.exclude-emergency-accounts"]</button>
             </div>
         }
@@ -481,7 +481,7 @@ else
                 }
             </select>
             <input class="kb-invoer" placeholder="@T["code.ca-policy-editor.or-the-app-id-guid"]" @bind="appId" aria-label="App-id" />
-            <button class="kb-knop kb-klein" disabled="@(!Guid.TryParse(appId.Trim(), out _))" @onclick="() => Set(() => { Toggle(list, appId.Trim(), true); appId = string.Empty; })">Toevoegen</button>
+            <button class="kb-knop kb-klein" disabled="@(!Guid.TryParse(appId.Trim(), out _))" @onclick="() => Set(() => { Toggle(list, appId.Trim(), true); appId = string.Empty; })">@T["tenants.add"]</button>
         </div>
     };
 

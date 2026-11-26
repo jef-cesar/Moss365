@@ -71,7 +71,7 @@ else
         @if (State.HasAd)
         {
         <section class="kb-kaart">
-            <h2>AD-groepen (@adGroups.Count)</h2>
+            <h2>@T.Format("user-detail.ad-groups-0", adGroups.Count)</h2>
             @if (person.Ad is null)
             {
                 <p class="kb-zacht">@T["user-detail.no-ad-account"]</p>

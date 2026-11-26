@@ -177,7 +177,7 @@
                     @Html("new-user.scheduled")
                 </p>
                 <Schedule Selected="PlanIn" />
-                @if (scheduled is not null) { <div class="kb-melding kb-goed">Ingepland op @scheduled.Value.ToString("dd/MM/yyyy HH:mm").</div> }
+                @if (scheduled is not null) { <div class="kb-melding kb-goed">@T.Format("new-user.scheduled-on-0", scheduled.Value.ToString("dd/MM/yyyy HH:mm"))</div> }
             </details>
         }
 

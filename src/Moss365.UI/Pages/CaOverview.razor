@@ -106,7 +106,7 @@ else
                 {
                     @if (CaUser.Of(whatIfPerson, State.Data) is not { } g)
                     {
-                        <div class="kb-melding">@whatIfPerson.Name heeft geen Entra-account: Conditional Access geldt niet.</div>
+                        <div class="kb-melding">@T.Format("ca-overview.0-has-no-entra-account", whatIfPerson.Name)</div>
                     }
                     else
                     {
@@ -280,23 +280,23 @@ else
     {
         checkColumns = new List<Column<CaFinding>>
         {
-            new() { Key = "oordeel", Title = "Oordeel", Cell = b => @<CaLabel Verdict="b.Verdict" />, SortBy = b => -(int)b.Verdict, Text = b => b.VerdictText },
-            new() { Key = "onderwerp", Title = "Onderwerp", Cell = b => @<strong>@b.Subject</strong>, SortBy = b => b.Subject },
+            new() { Key = "oordeel", Title = T["ca-overview.verdict"], Cell = b => @<CaLabel Verdict="b.Verdict" />, SortBy = b => -(int)b.Verdict, Text = b => b.VerdictText },
+            new() { Key = "onderwerp", Title = T["message-trace-card.subject"], Cell = b => @<strong>@b.Subject</strong>, SortBy = b => b.Subject },
             new() { Key = "uitleg", Title = T["code.ca-overview.what-the-app-sees"], Cell = b => @<text>@b.Explanation</text>, SortBy = b => b.Explanation },
-            new() { Key = "advies", Title = "Advies", Cell = b => @<span class="kb-zacht">@b.Advice</span>, SortBy = b => b.Advice },
-            new() { Key = "betreft", Title = "Betreft", Cell = b => Concerns(b), Text = b => string.Join(", ", b.Policies.Select(x => x.Name).Concat(b.Persons.Select(p => p.Upn))) },
+            new() { Key = "advies", Title = T["ca-overview.advice"], Cell = b => @<span class="kb-zacht">@b.Advice</span>, SortBy = b => b.Advice },
+            new() { Key = "betreft", Title = T["ca-overview.concerns"], Cell = b => Concerns(b), Text = b => string.Join(", ", b.Policies.Select(x => x.Name).Concat(b.Persons.Select(p => p.Upn))) },
         };
         policyColumns = new List<Column<CaPolicy>>
         {
-            new() { Key = "naam", Title = "Naam", Cell = b => @<a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Name</a>, SortBy = b => b.Name },
-            new() { Key = "staat", Title = "Staat", Cell = b => @<CaLabel Status="b.Status" />, SortBy = b => (int)b.Status, Text = b => CaReader.StatusName(b.Status) },
-            new() { Key = "wie", Title = "Wie", Cell = b => @<text>@string.Join("; ", Explanation(b).Who)</text>, SortBy = b => string.Join("; ", Explanation(b).Who) },
-            new() { Key = "apps", Title = "Apps", Cell = b => @<text>@string.Join("; ", Explanation(b).Apps)</text>, SortBy = b => string.Join("; ", Explanation(b).Apps) },
-            new() { Key = "voorwaarden", Title = "Voorwaarden", Cell = b => @<text>@string.Join("; ", Explanation(b).Conditions)</text>, SortBy = b => string.Join("; ", Explanation(b).Conditions) },
-            new() { Key = "gevolg", Title = "Gevolg", Cell = b => @<text>@Explanation(b).Consequence</text>, SortBy = b => Explanation(b).Consequence },
-            new() { Key = "gewijzigd", Title = "Gewijzigd", Cell = b => @<text>@b.Changed?.LocalDateTime.ToString("dd/MM/yyyy")</text>, SortBy = b => b.Changed, Hidden = true },
-            new() { Key = "toegepast", Title = "Toegepast", Number = true, Cell = b => @<text>@Effect(b)?.Applied</text>, SortBy = b => Effect(b)?.Applied },
-            new() { Key = "tegen", Title = "Tegengehouden / zou tegenhouden", Number = true, Cell = b => @<text>@(Effect(b) is { } e ? (b.Status == CaStatus.Report ? e.WouldBlock : e.Failed) : null)</text>, SortBy = b => Effect(b) is { } e ? (b.Status == CaStatus.Report ? e.WouldBlock : e.Failed) : null },
+            new() { Key = "naam", Title = T["variables-editor.name"], Cell = b => @<a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Name</a>, SortBy = b => b.Name },
+            new() { Key = "staat", Title = T["ca-user-card.state"], Cell = b => @<CaLabel Status="b.Status" />, SortBy = b => (int)b.Status, Text = b => CaReader.StatusName(b.Status) },
+            new() { Key = "wie", Title = T["script-result.who"], Cell = b => @<text>@string.Join("; ", Explanation(b).Who)</text>, SortBy = b => string.Join("; ", Explanation(b).Who) },
+            new() { Key = "apps", Title = T["ca-policy-detail.apps"], Cell = b => @<text>@string.Join("; ", Explanation(b).Apps)</text>, SortBy = b => string.Join("; ", Explanation(b).Apps) },
+            new() { Key = "voorwaarden", Title = T["ca-policy-detail.conditions"], Cell = b => @<text>@string.Join("; ", Explanation(b).Conditions)</text>, SortBy = b => string.Join("; ", Explanation(b).Conditions) },
+            new() { Key = "gevolg", Title = T["what-if-table.effect"], Cell = b => @<text>@Explanation(b).Consequence</text>, SortBy = b => Explanation(b).Consequence },
+            new() { Key = "gewijzigd", Title = T["logon-scripts.changed"], Cell = b => @<text>@b.Changed?.LocalDateTime.ToString("dd/MM/yyyy")</text>, SortBy = b => b.Changed, Hidden = true },
+            new() { Key = "toegepast", Title = T["ca-overview.applied"], Number = true, Cell = b => @<text>@Effect(b)?.Applied</text>, SortBy = b => Effect(b)?.Applied },
+            new() { Key = "tegen", Title = T["ca-overview.blocked-would-block"], Number = true, Cell = b => @<text>@(Effect(b) is { } e ? (b.Status == CaStatus.Report ? e.WouldBlock : e.Failed) : null)</text>, SortBy = b => Effect(b) is { } e ? (b.Status == CaStatus.Report ? e.WouldBlock : e.Failed) : null },
         };
     }
 
@@ -316,7 +316,7 @@ else
         @if (b.Persons.Count > 5)
         {
             <details>
-                <summary>en @(b.Persons.Count - 5) anderen</summary>
+                <summary>@T.Format("ca-overview.and-0-others", b.Persons.Count - 5)</summary>
                 @foreach (var p in b.Persons.Skip(5))
                 {
                     <div><ObjectLink Object="State.Data.Index.Ref(p)" /></div>

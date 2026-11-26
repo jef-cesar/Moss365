@@ -42,7 +42,7 @@
                     @if (State.Can(Permission.Actions))
                     {
                         <details class="kb-later">
-                            <summary>Uitstroom inplannen voor de @Count gekozen gebruikers</summary>
+                            <summary>@T.Format("bulk-tasks.schedule-offboarding-for-the-0", Count)</summary>
                             <p class="kb-zacht">
                                 @Html("bulk.offboarding")
                             </p>
@@ -85,7 +85,7 @@
         {
             <div class="kb-melding">@f</div>
         }
-        @if (errors.Count > 10) { <div class="kb-zacht">en nog @(errors.Count - 10) meldingen.</div> }
+        @if (errors.Count > 10) { <div class="kb-zacht">@T.Format("bulk-tasks.and-0-more-messages", errors.Count - 10)</div> }
     </section>
 
     @if (plan is not null)

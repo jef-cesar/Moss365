@@ -4,8 +4,7 @@
 <h1>@T["group.beveiliging"]</h1>
 
 <p class="kb-zacht">
-    MFA-registraties en beheerrollen uit Entra (@(State.Data.Security is null ? T["code.security.not-loaded"] : State.OriginOf(new ObjectRef(ObjectKind.User, "", "")))),
-    en bevoorrechte AD-groepen. Mislukte aanmeldingen lees je live. Signalen om na te kijken, geen conclusies.
+    @T.Format("security.mfa-registrations-and-admin-roles", State.Data.Security is null ? T["code.security.not-loaded"] : State.OriginOf(new ObjectRef(ObjectKind.User, "", "")))
 </p>
 
 @if (State.Data.Security is not { } b)
@@ -48,7 +47,7 @@ else
     </section>
 
     <section class="kb-kaart">
-        <h2>Bevoorrechte AD-groepen (@AdPrivileged.Count)</h2>
+        <h2>@T.Format("security.privileged-ad-groups-0", AdPrivileged.Count)</h2>
         <ul class="kb-lijst-plat">
             @foreach (var (p, groups) in AdPrivileged)
             {
@@ -75,7 +74,7 @@ else
     }
     else if (failed is not null)
     {
-        <p class="kb-zacht">@failed.Count mislukte aanmeldingen (de nieuwste 500), samengevat per account.</p>
+        <p class="kb-zacht">@T.Format("security.0-failed-sign-ins-the", failed.Count)</p>
         <table class="kb-tabel">
             <thead><tr><th>@T["security.account"]</th><th class="kb-getal">@T["suggestions-panel.number"]</th><th>@T["security.last"]</th><th>@T["security.reason-last"]</th><th>@T["security.locations"]</th></tr></thead>
             <tbody>
@@ -121,18 +120,18 @@ else
         State.Access("Beveiliging bekeken", T["code.security.mfa-admin-roles-and-privileged"]);
         mfaColumns = new List<Column<Person>>
         {
-            new() { Key = "naam", Title = "Naam", Cell = p => @<ObjectLink Object="State.Data.Index.Ref(p)" />, SortBy = p => p.Name },
+            new() { Key = "naam", Title = T["variables-editor.name"], Cell = p => @<ObjectLink Object="State.Data.Index.Ref(p)" />, SortBy = p => p.Name },
             new() { Key = "upn", Title = "UPN", Cell = p => @<text>@p.Upn</text>, SortBy = p => p.Upn },
-            new() { Key = "dienst", Title = "Dienst", Cell = p => @<text>@p.Department</text>, SortBy = p => p.Department },
-            new() { Key = "methodes", Title = "Wel geregistreerd", Cell = p => @<text>@Methods(p)</text>, SortBy = p => Methods(p) },
-            new() { Key = "aanmelding", Title = "Laatste aanmelding", Cell = p => @<text>@Statistic.LastSignIn(p)?.ToString("dd/MM/yyyy")</text>, SortBy = p => Statistic.LastSignIn(p), Text = p => Statistic.LastSignIn(p)?.ToString("yyyy-MM-dd") },
+            new() { Key = "dienst", Title = T["service-health-card.service"], Cell = p => @<text>@p.Department</text>, SortBy = p => p.Department },
+            new() { Key = "methodes", Title = T["security.registered"], Cell = p => @<text>@Methods(p)</text>, SortBy = p => Methods(p) },
+            new() { Key = "aanmelding", Title = T["statistics.last-sign-in"], Cell = p => @<text>@Statistic.LastSignIn(p)?.ToString("dd/MM/yyyy")</text>, SortBy = p => Statistic.LastSignIn(p), Text = p => Statistic.LastSignIn(p)?.ToString("yyyy-MM-dd") },
         };
         roleColumns = new List<Column<RoleMember>>
         {
-            new() { Key = "rol", Title = "Rol", Cell = r => @<text>@r.Role @if (SecurityData.IsCriticalRole(r.Role)) { <span class="kb-label kb-rood">kritiek</span> }</text>, SortBy = r => r.Role },
-            new() { Key = "wie", Title = "Wie", Cell = r => @<ObjectLink Id="@r.MemberId" Text="@(r.MemberName.Length > 0 ? r.MemberName : r.MemberUpn)" />, SortBy = r => r.MemberName, Text = r => r.MemberName },
+            new() { Key = "rol", Title = T["security.role"], Cell = r => @<text>@r.Role @if (SecurityData.IsCriticalRole(r.Role)) { <span class="kb-label kb-rood">@T["security.critical"]</span> }</text>, SortBy = r => r.Role },
+            new() { Key = "wie", Title = T["script-result.who"], Cell = r => @<ObjectLink Id="@r.MemberId" Text="@(r.MemberName.Length > 0 ? r.MemberName : r.MemberUpn)" />, SortBy = r => r.MemberName, Text = r => r.MemberName },
             new() { Key = "upn", Title = "UPN", Cell = r => @<text>@r.MemberUpn</text>, SortBy = r => r.MemberUpn },
-            new() { Key = "soort", Title = "Soort", Cell = r => @<text>@r.MemberKind</text>, SortBy = r => r.MemberKind },
+            new() { Key = "soort", Title = T["nested-groups.kind"], Cell = r => @<text>@r.MemberKind</text>, SortBy = r => r.MemberKind },
             new() { Key = "mfa", Title = "MFA", Cell = r => @<text>@Mfa(r.MemberId)</text>, SortBy = r => Mfa(r.MemberId) },
         };
     }

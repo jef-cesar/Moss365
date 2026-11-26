@@ -5,9 +5,7 @@
 <h1>@T["menu.scripts"]</h1>
 
 <p class="kb-zacht">
-    PowerShell-scripts met de aanmelding van de app: je meldt niet opnieuw aan. Ingebouwde scripts komen met de app mee;
-    eigen scripts blijven op deze pc (delen via Exporteren en Importeren). Elke run wordt @ScriptRuns.SaveDays dagen bewaard
-    en staat in het logboek. Een script dat iets wijzigt, toont altijd eerst een voorbeeld.
+    @T.Format("scripts-overview.powershell-scripts-with-the-sign", ScriptRuns.SaveDays)
 </p>
 
 @if (!State.ScriptsAvailable)
@@ -76,13 +74,13 @@
     {
         columns = new List<Column<ScriptFile>>
         {
-            new() { Key = "naam", Title = "Naam", Cell = s => @<a href="@StartLink(s)">@s.Header.Name</a>, SortBy = s => s.Header.Name },
+            new() { Key = "naam", Title = T["variables-editor.name"], Cell = s => @<a href="@StartLink(s)">@s.Header.Name</a>, SortBy = s => s.Header.Name },
             new() { Key = "omschrijving", Title = T["edit-script.what-it-does"], Cell = s => @<span class="kb-zacht">@s.Header.Description</span>, SortBy = s => s.Header.Description },
-            new() { Key = "verbinding", Title = "Verbinding", Cell = s => @<text>@ScriptText.ConnectionText(s.Header.Connection)</text>, SortBy = s => ScriptText.ConnectionText(s.Header.Connection) },
-            new() { Key = "soort", Title = "Soort", Cell = s => @<span class="kb-label @(s.Header.Writes ? "kb-label-let" : null)">@(s.Header.Writes ? "wijzigt" : "leest")</span>, SortBy = s => s.Header.Writes, Text = s => s.Header.Writes ? "wijzigt" : "leest" },
-            new() { Key = "herkomst", Title = "Herkomst", Cell = s => @<text>@s.Origin<br /><span class="kb-zacht">@s.Folder</span></text>, SortBy = s => s.Origin + s.Folder, Text = s => s.Origin },
-            new() { Key = "laatste", Title = "Laatste run", Cell = s => LastRun(s), SortBy = s => Last(s)?.Start, Text = s => Last(s)?.Start.LocalDateTime.ToString("yyyy-MM-dd HH:mm") },
-            new() { Key = "gepland", Title = "Gepland", Cell = s => @<text>@ScheduledText(s)</text>, SortBy = s => ScheduledText(s), Hidden = false },
+            new() { Key = "verbinding", Title = T["edit-script.connection"], Cell = s => @<text>@ScriptText.ConnectionText(s.Header.Connection)</text>, SortBy = s => ScriptText.ConnectionText(s.Header.Connection) },
+            new() { Key = "soort", Title = T["nested-groups.kind"], Cell = s => @<span class="kb-label @(s.Header.Writes ? "kb-label-let" : null)">@(s.Header.Writes ? "wijzigt" : "leest")</span>, SortBy = s => s.Header.Writes, Text = s => s.Header.Writes ? "wijzigt" : "leest" },
+            new() { Key = "herkomst", Title = T["scripts-overview.origin"], Cell = s => @<text>@s.Origin<br /><span class="kb-zacht">@s.Folder</span></text>, SortBy = s => s.Origin + s.Folder, Text = s => s.Origin },
+            new() { Key = "laatste", Title = T["scripts-overview.last-run"], Cell = s => LastRun(s), SortBy = s => Last(s)?.Start, Text = s => Last(s)?.Start.LocalDateTime.ToString("yyyy-MM-dd HH:mm") },
+            new() { Key = "gepland", Title = T["menu.gepland"], Cell = s => @<text>@ScheduledText(s)</text>, SortBy = s => ScheduledText(s), Hidden = false },
             new() { Key = "acties", Title = "", Cell = s => Actions(s) },
         };
     }
@@ -100,7 +98,7 @@
 
     private RenderFragment LastRun(ScriptFile s) => Last(s) is { } r
         ? @<span><a href="@RunLink(r)">@r.Start.LocalDateTime.ToString("dd/MM HH:mm")</a> <RunLabel Run="r" /></span>
-        : @<span class="kb-zacht">nooit</span>;
+        : @<span class="kb-zacht">@T["ca-policy-editor.never"]</span>;
 
     private string ScheduledText(ScriptFile s)
         => scheduled.Where(a => string.Equals(a.ScriptKey, s.Key, StringComparison.OrdinalIgnoreCase)).OrderBy(a => a.When).FirstOrDefault() is { } a
@@ -108,19 +106,19 @@
             : string.Empty;
 
     private RenderFragment Actions(ScriptFile s) => @<span class="kb-acties-rij">
-        <a class="kb-knop kb-klein" href="@StartLink(s)">Starten</a>
+        <a class="kb-knop kb-klein" href="@StartLink(s)">@T["script-run-panel.start"]</a>
         <a class="kb-knop kb-klein" href="@($"scripts/bewerken?sleutel={Uri.EscapeDataString(s.Key)}")">@(s.BuiltIn ? "Kopie bewerken" : "Bewerken")</a>
-        <button class="kb-knop kb-klein" @onclick="() => Export(s)">Exporteren</button>
+        <button class="kb-knop kb-klein" @onclick="() => Export(s)">@T["kb-table.export"]</button>
         @if (!s.BuiltIn)
         {
             @if (remove == s.FilePath)
             {
-                <button class="kb-knop kb-klein kb-gevaar" @onclick="() => Remove(s)">Ja, verwijderen</button>
-                <button class="kb-knop kb-klein" @onclick="() => remove = null">Nee</button>
+                <button class="kb-knop kb-klein kb-gevaar" @onclick="() => Remove(s)">@T["follow-up.yes-delete"]</button>
+                <button class="kb-knop kb-klein" @onclick="() => remove = null">@T["script-run-panel.no"]</button>
             }
             else
             {
-                <button class="kb-knop kb-klein" @onclick="() => remove = s.FilePath">Verwijderen</button>
+                <button class="kb-knop kb-klein" @onclick="() => remove = s.FilePath">@T["variables-editor.remove"]</button>
             }
         }
     </span>;

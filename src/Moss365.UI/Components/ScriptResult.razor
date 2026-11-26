@@ -62,7 +62,7 @@
                 <p class="kb-zacht">@T["script-result.copied-to"] <code>@opened</code>.</p>
             }
         }
-        <p class="kb-zacht">De bestanden van deze run staan in de databank van @State.Tenant.Name; Openen zet een kopie in de exportmap.</p>
+        <p class="kb-zacht">@T.Format("script-result.the-files-of-this-run", State.Tenant.Name)</p>
         break;
     default:
         <table class="kb-tabel kb-naast">

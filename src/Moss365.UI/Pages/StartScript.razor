@@ -18,7 +18,7 @@ else
 
     @if (Scheduled is { } g && State.Scheduled.Read().FirstOrDefault(a => a.Id == g) is { } action)
     {
-        <div class="kb-melding">Ingepland voor @action.When.ToString("dd/MM/yyyy HH:mm"): de waarden van de planning staan klaar. Na de run plant de app de volgende keer.</div>
+        <div class="kb-melding">@T.Format("start-script.scheduled-for-0-the-values", action.When.ToString("dd/MM/yyyy HH:mm"))</div>
     }
 
     <ScriptRunPanel @key="script.FilePath" Script="script" Scheduled="Scheduled" BeginValues="State.ScriptPrefill" ValuesChanged="w => current = w" />
@@ -51,7 +51,7 @@ else
         <h2>Geschiedenis (@runs.Count)</h2>
         @if (runs.Count == 0)
         {
-            <p class="kb-zacht">Dit script heeft nog niet gedraaid (of niet in de laatste @ScriptRuns.SaveDays dagen).</p>
+            <p class="kb-zacht">@T.Format("start-script.this-script-has-not-run", ScriptRuns.SaveDays)</p>
         }
         else
         {

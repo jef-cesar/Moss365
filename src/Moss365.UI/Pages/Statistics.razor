@@ -5,8 +5,7 @@
 <h1>@T["menu.statistieken"]</h1>
 
 <p class="kb-zacht">
-    Indicatoren uit de geladen gegevens (@State.OriginOf(new ObjectRef(ObjectKind.User, "", ""))). Klik op een tegel, een staaf of
-    een deel van een grafiek voor de lijst met precies de rijen erachter.
+    @T.Format("statistics.indicators-from-the-loaded-data", State.OriginOf(new ObjectRef(ObjectKind.User, "", "")))
 </p>
 
 <section class="kb-kaart">
@@ -63,7 +62,7 @@
         </label>
     </div>
     <p class="kb-zacht">
-        Actieve medewerkers@(Division is null ? "" : (" " + T.Format("code.statistics.of", Division))). De filter geldt voor de grafieken van deze kaart; de tegels hierboven tellen altijd alles.
+        @T.Format("statistics.active-employees-0-the-filter", Division is null ? "" : (" " + T.Format("code.statistics.of", Division)))
     </p>
     <div class="kb-kolommen">
         <div>
@@ -190,7 +189,7 @@
     </section>
     }
     <section class="kb-kaart">
-        <h2>Groepen (@s.Groups)</h2>
+        <h2>@T.Format("job-profile-editor.groups-0", s.Groups)</h2>
         <BarList Bars="s.GroupsPerKind" />
         <div class="kb-tegels">
             <Tile Kpi="Kpis.DynamicGroups" />
