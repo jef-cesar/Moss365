@@ -1,6 +1,7 @@
 using Moss365.Core.Analysis;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -75,12 +76,12 @@ public static class AttributePlans
     {
         if (p.Ad is null && p.Entra is null)
         {
-            return PlanOutcome.Error("Dit account staat niet in de geladen gegevens.");
+            return PlanOutcome.Error(Texts.T["code.attribute-plans.this-account-is-not-in"]);
         }
 
         if (p.IsGuest)
         {
-            return PlanOutcome.Error("Gastgebruikers beheer je in Entra zelf; hun gegevens komen uit hun eigen organisatie.");
+            return PlanOutcome.Error(Texts.T["code.attribute-plans.you-manage-guest-users-in"]);
         }
 
         var current = UserDesired.Of(p, data);
@@ -98,11 +99,12 @@ public static class AttributePlans
         }
         else if (!string.IsNullOrWhiteSpace(desired.Department) && config.Departments.Count > 0)
         {
-            warnings.Add($"De dienst \"{desired.Department.Trim()}\" staat niet in de lijst bij Organisatie.");
+            warnings.Add(Texts.T.Format("code.attribute-plans.the-department-is-not-in", desired.Department.Trim()));
         }
 
-        foreach (var (field, adName, graphName, name) in Fields)
+        foreach (var (field, adName, graphName, dutch) in Fields)
         {
+            var name = Texts.T.Text("attribute." + field.ToLowerInvariant(), dutch);
             var old = Value(current, field) ?? string.Empty;
             var newValue = Value(desired, field);
             if (newValue is null || string.Equals(old, newValue.Trim(), StringComparison.Ordinal))
@@ -113,14 +115,14 @@ public static class AttributePlans
             var key = viaAd ? adName : graphName;
             if (key is null)
             {
-                warnings.Add($"{name} bestaat enkel in AD; dit account komt uit de cloud.");
+                warnings.Add(Texts.T.Format("code.attribute-plans.exists-only-in-ad-this", name));
                 continue;
             }
 
             parameters[key] = newValue.Trim();
             previous[key] = old;
-            now.Add($"{name}: {(old.Length == 0 ? "(leeg)" : old)}");
-            becomes.Add($"{name}: {(newValue.Trim().Length == 0 ? "(leeg)" : newValue.Trim())}");
+            now.Add($"{name}: {(old.Length == 0 ? Texts.T["undo.empty"] : old)}");
+            becomes.Add($"{name}: {(newValue.Trim().Length == 0 ? Texts.T["undo.empty"] : newValue.Trim())}");
         }
 
         // Manager: in AD an attribute (DN), in the cloud a separate command
@@ -131,25 +133,25 @@ public static class AttributePlans
             var newManager = newKey.Length == 0 ? null : data.SearchPerson(newKey);
             if (newKey.Length > 0 && newManager is null)
             {
-                warnings.Add("De gekozen manager staat niet in de geladen gegevens.");
+                warnings.Add(Texts.T["code.attribute-plans.the-chosen-manager-is-not"]);
             }
             else if (viaAd)
             {
                 if (newManager is not null && newManager.Ad is null)
                 {
-                    warnings.Add($"{newManager.Name} heeft geen AD-account en kan in AD geen manager zijn.");
+                    warnings.Add(Texts.T.Format("code.attribute-plans.has-no-ad-account-and", newManager.Name));
                 }
                 else
                 {
                     parameters["manager"] = newManager?.Ad!.DistinguishedName ?? string.Empty;
                     previous["manager"] = p.Ad!.Manager;
-                    now.Add($"Manager: {oldManager?.Name ?? "(geen)"}");
-                    becomes.Add($"Manager: {newManager?.Name ?? "(geen)"}");
+                    now.Add($"Manager: {oldManager?.Name ?? Texts.T["plan.none"]}");
+                    becomes.Add($"Manager: {newManager?.Name ?? Texts.T["plan.none"]}");
                 }
             }
             else if (newManager is not null && newManager.Entra is null)
             {
-                warnings.Add($"{newManager.Name} bestaat niet in Entra en kan geen manager zijn.");
+                warnings.Add(Texts.T.Format("code.attribute-plans.does-not-exist-in-entra", newManager.Name));
             }
             else
             {
@@ -161,16 +163,16 @@ public static class AttributePlans
                     TargetName = p.Name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["managerId"] = newManager?.Entra!.Id ?? string.Empty },
                     Previous = new(StringComparer.OrdinalIgnoreCase) { ["managerId"] = p.Entra.ManagerId },
-                    Description = "Manager zetten in Entra",
-                    CurrentValue = oldManager?.Name ?? "(geen)",
-                    NewValue = newManager?.Name ?? "(geen)",
+                    Description = Texts.T["code.attribute-plans.set-the-manager-in-entra"],
+                    CurrentValue = oldManager?.Name ?? Texts.T["plan.none"],
+                    NewValue = newManager?.Name ?? Texts.T["plan.none"],
                 };
             }
         }
 
         if (parameters.Count == 0 && setManager is null)
         {
-            return new PlanOutcome(Array.Empty<Change>(), new[] { warnings.Count > 0 ? string.Join(" ", warnings) : "Er is niets gewijzigd." });
+            return new PlanOutcome(Array.Empty<Change>(), new[] { warnings.Count > 0 ? string.Join(" ", warnings) : Localization.Texts.T["plan.nothing-changed"] });
         }
 
         var plan = new List<Change>();
@@ -190,8 +192,8 @@ public static class AttributePlans
                 Parameters = parameters,
                 Previous = previous,
                 Description = viaAd
-                    ? $"Gegevens wijzigen in AD ({parameters.Count})" + (p.Entra is not null ? "; Entra volgt na de synchronisatie (± 30 min)" : string.Empty)
-                    : $"Gegevens wijzigen in Entra ({parameters.Count})",
+                    ? Texts.T.Format(p.Entra is not null ? "plan.attributes.ad.sync" : "plan.attributes.ad", parameters.Count)
+                    : Texts.T.Format("code.attribute-plans.change-details-in-entra", parameters.Count),
                 CurrentValue = string.Join("; ", now),
                 NewValue = string.Join("; ", becomes),
                 Warning = warnings.Count == 0 ? null : string.Join(" ", warnings),
@@ -217,13 +219,13 @@ public static class AttributePlans
 
                     if (config.IsDynamicGroup(name) || data.Index.Groups.FirstOrDefault(g => string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase)) is not { } groupValue)
                     {
-                        errors.Add($"{name} volgt vanzelf uit de dienst (dynamisch) of staat niet in de geladen groepen; niets te doen.");
+                        errors.Add(Texts.T.Format("code.attribute-plans.follows-from-the-department-by", name));
                         continue;
                     }
 
                     if (groupValue.Dynamic)
                     {
-                        errors.Add($"{name} is dynamisch en volgt vanzelf uit de dienst.");
+                        errors.Add(Texts.T.Format("code.attribute-plans.is-dynamic-and-follows-from", name));
                         continue;
                     }
 
@@ -245,7 +247,7 @@ public static class AttributePlans
     {
         if (v.Kind != DifferenceKind.AttributeDiffers || v.Person.Ad is null)
         {
-            return PlanOutcome.Error("Enkel een kenmerk van een account in AD kan rechtgezet worden.");
+            return PlanOutcome.Error(Texts.T["code.attribute-plans.only-an-attribute-of-an"]);
         }
 
         // "Dienst (Department)" -> "Dienst"
@@ -256,7 +258,7 @@ public static class AttributePlans
                                               || string.Equals(x.Field, v.Attribute, StringComparison.OrdinalIgnoreCase));
         if (field.Field is null)
         {
-            return PlanOutcome.Error($"{v.Attribute} kan de app niet rechtzetten.");
+            return PlanOutcome.Error(Texts.T.Format("code.attribute-plans.the-app-cannot-correct", v.Attribute));
         }
 
         var value = string.Join(' ', v.AdValue.Split(' ', StringSplitOptions.RemoveEmptyEntries));
@@ -269,7 +271,7 @@ public static class AttributePlans
         typeof(UserDesired).GetProperty(field.Field)!.SetValue(desired, value);
         var output = User(data, config, v.Person, desired);
         return output.Plan.Count == 0
-            ? PlanOutcome.Error($"In AD staat al \"{value}\"; het verschil verdwijnt na de volgende synchronisatie.")
+            ? PlanOutcome.Error(Texts.T.Format("code.attribute-plans.ad-already-has-the-difference", value))
             : output;
     }
 

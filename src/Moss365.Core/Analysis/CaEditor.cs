@@ -405,7 +405,7 @@ public static class CaEditor
         var patch = Patch(current, e);
         if (patch.Length == 0)
         {
-            return PlanOutcome.Error("Er is niets gewijzigd.");
+            return PlanOutcome.Error(Localization.Texts.T["plan.nothing-changed"]);
         }
 
         var after = CaJson.AfterPatch(current, patch);

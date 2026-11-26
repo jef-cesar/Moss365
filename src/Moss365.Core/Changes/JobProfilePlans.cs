@@ -2,6 +2,7 @@ using System.Text.Json;
 using Moss365.Core.Analysis;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -36,19 +37,19 @@ public sealed record ProfileItem(ProfileItemKind Kind, string Name, ProfileStatu
 {
     public string KindText => Kind switch
     {
-        ProfileItemKind.Group => "Groep",
-        ProfileItemKind.Mailbox => "Gedeeld postvak",
-        ProfileItemKind.Licence => "Licentie",
-        _ => "Gegeven",
+        ProfileItemKind.Group => Texts.T["word.group"],
+        ProfileItemKind.Mailbox => Texts.T["code.job-profile-plans.shared-mailbox"],
+        ProfileItemKind.Licence => Texts.T["licences.licence"],
+        _ => Texts.T["code.job-profile-plans.attribute"],
     };
 
     public string StatusText => Status switch
     {
-        ProfileStatus.Has => "In orde",
-        ProfileStatus.Missing => "Ontbreekt",
-        ProfileStatus.Extra => "Meer dan het profiel",
-        ProfileStatus.NotFound => "Niet gevonden",
-        _ => "Niet mogelijk",
+        ProfileStatus.Has => Texts.T["ca-check.verdict.ok"],
+        ProfileStatus.Missing => Texts.T["job-profiles.missing"],
+        ProfileStatus.Extra => Texts.T["licences.more-than-the-profile"],
+        ProfileStatus.NotFound => Texts.T["routes.notfound"],
+        _ => Texts.T["code.job-profile-plans.not-possible"],
     };
 }
 
@@ -87,7 +88,7 @@ public static class JobProfilePlans
             var g = FindGroup(d, name);
             if (g is null)
             {
-                items.Add(new(ProfileItemKind.Group, name, ProfileStatus.NotFound, "Deze groep bestaat niet in de geladen gegevens."));
+                items.Add(new(ProfileItemKind.Group, name, ProfileStatus.NotFound, Texts.T["code.job-profile-plans.this-group-does-not-exist"]));
                 continue;
             }
 
@@ -109,7 +110,7 @@ public static class JobProfilePlans
         foreach (var g in groups.Values.Where(g => !inProfile.Contains(g.Key) && !accessGroups.Contains(g.Key) && !Automatic(config, g))
                      .OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase))
         {
-            items.Add(new(ProfileItemKind.Group, g.Name, ProfileStatus.Extra, g.Ad is { } a && MirrorUser.IsPrivileged(a) ? "bevoorrechte groep" : string.Empty));
+            items.Add(new(ProfileItemKind.Group, g.Name, ProfileStatus.Extra, g.Ad is { } a && MirrorUser.IsPrivileged(a) ? Texts.T["code.job-profile-plans.privileged-group"] : string.Empty));
         }
 
         var mailboxes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -118,7 +119,7 @@ public static class JobProfilePlans
             mailboxes.Add(smtp.Trim());
             if (index.Mailbox(smtp.Trim()) is not { } mb)
             {
-                items.Add(new(ProfileItemKind.Mailbox, smtp, ProfileStatus.NotFound, "Dit postvak bestaat niet in de geladen gegevens."));
+                items.Add(new(ProfileItemKind.Mailbox, smtp, ProfileStatus.NotFound, Texts.T["code.job-profile-plans.this-mailbox-does-not-exist"]));
             }
             else if (access.ContainsKey(mb.Smtp))
             {
@@ -126,7 +127,7 @@ public static class JobProfilePlans
             }
             else if (index.AccessGroupOf(mb) is null)
             {
-                items.Add(new(ProfileItemKind.Mailbox, mb.DisplayName, ProfileStatus.NotPossible, $"Nog geen toegangsgroep ({ObjectIndex.ExpectedAccessGroup(mb)})."));
+                items.Add(new(ProfileItemKind.Mailbox, mb.DisplayName, ProfileStatus.NotPossible, Texts.T.Format("code.job-profile-plans.no-access-group-yet", ObjectIndex.ExpectedAccessGroup(mb))));
             }
             else
             {
@@ -144,7 +145,7 @@ public static class JobProfilePlans
         {
             if (p.Entra is null)
             {
-                items.Add(new(ProfileItemKind.Licence, sku, ProfileStatus.NotPossible, "Geen Entra-account (nog niet gesynchroniseerd)."));
+                items.Add(new(ProfileItemKind.Licence, sku, ProfileStatus.NotPossible, Texts.T["code.job-profile-plans.no-entra-account-not-synchronised"]));
             }
             else if (licences.Contains(sku, StringComparer.OrdinalIgnoreCase))
             {
@@ -158,23 +159,24 @@ public static class JobProfilePlans
 
         foreach (var sku in licences.Where(l => !profile.Licences.Contains(l, StringComparer.OrdinalIgnoreCase)))
         {
-            items.Add(new(ProfileItemKind.Licence, sku, ProfileStatus.Extra, "Weghalen doe je bij de gebruiker."));
+            items.Add(new(ProfileItemKind.Licence, sku, ProfileStatus.Extra, Texts.T["code.job-profile-plans.you-remove-it-at-the"]));
         }
 
         var current = UserDesired.Of(p);
-        foreach (var (name, wanted, now, adOnly) in Attributes(profile, current))
+        foreach (var (field, wanted, now, adOnly) in Attributes(profile, current))
         {
+            var name = Texts.T["attribute." + field.ToLowerInvariant()];
             if (Same(Normalise(wanted), Normalise(now)))
             {
                 items.Add(new(ProfileItemKind.Attribute, $"{name}: {wanted}", ProfileStatus.Has));
             }
             else if (adOnly && !AttributePlans.ViaAd(p))
             {
-                items.Add(new(ProfileItemKind.Attribute, $"{name}: {wanted}", ProfileStatus.NotPossible, "Bestaat enkel in AD."));
+                items.Add(new(ProfileItemKind.Attribute, $"{name}: {wanted}", ProfileStatus.NotPossible, Texts.T["code.job-profile-plans.exists-only-in-ad"]));
             }
             else
             {
-                items.Add(new(ProfileItemKind.Attribute, $"{name}: {wanted}", ProfileStatus.Missing, $"Nu: {(string.IsNullOrWhiteSpace(now) ? "(leeg)" : now)}"));
+                items.Add(new(ProfileItemKind.Attribute, $"{name}: {wanted}", ProfileStatus.Missing, Texts.T.Format("plan.now.value", string.IsNullOrWhiteSpace(now) ? Texts.T["undo.empty"] : now)));
             }
         }
 
@@ -189,7 +191,7 @@ public static class JobProfilePlans
     {
         if (p.IsGuest)
         {
-            return PlanOutcome.Error("Een gastgebruiker krijgt geen functieprofiel.");
+            return PlanOutcome.Error(Texts.T["code.job-profile-plans.a-guest-user-gets-no"]);
         }
 
         var index = d.Index;
@@ -231,7 +233,7 @@ public static class JobProfilePlans
                     TargetName = p.Name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["usageLocation"] = country },
                     Previous = new(StringComparer.OrdinalIgnoreCase) { ["usageLocation"] = string.Empty },
-                    Description = $"Gebruikslocatie op {country} zetten (nodig voor een licentie)",
+                    Description = Texts.T.Format("plan.usage-location", country),
                     NewValue = country,
                 };
                 plan.Add(location);
@@ -247,9 +249,9 @@ public static class JobProfilePlans
                     Target = entra.Id,
                     TargetName = p.Name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["sku"] = sku, ["skuId"] = licence?.SkuId ?? string.Empty },
-                    Description = $"Licentie {sku} toekennen",
+                    Description = Texts.T.Format("code.plan-builder.assign-licence", sku),
                     NewValue = sku,
-                    Warning = licence is { Free: 0 } ? $"Er zijn geen vrije {sku}-licenties ({licence.Assigned}/{licence.Total})." : null,
+                    Warning = licence is { Free: 0 } ? Texts.T.Format("code.job-profile-plans.there-are-no-free-licences", sku, licence.Assigned, licence.Total) : null,
                     DependentOf = location?.Id,
                 });
             }
@@ -268,9 +270,9 @@ public static class JobProfilePlans
             any = true;
             switch (name)
             {
-                case "Functie": desired.JobTitle = wanted; break;
-                case "Dienst": desired.Department = wanted; break;
-                case "Kantoor": desired.Office = wanted; break;
+                case nameof(UserDesired.JobTitle): desired.JobTitle = wanted; break;
+                case nameof(UserDesired.Department): desired.Department = wanted; break;
+                case nameof(UserDesired.Office): desired.Office = wanted; break;
                 default: desired.LogonScript = wanted; break;
             }
         }
@@ -303,7 +305,7 @@ public static class JobProfilePlans
 
         if (plan.Count == 0)
         {
-            return errors.Count > 0 ? PlanOutcome.Of(plan, errors) : PlanOutcome.Error($"{p.Name} heeft al alles van {profile.Name}.");
+            return errors.Count > 0 ? PlanOutcome.Of(plan, errors) : PlanOutcome.Error(Texts.T.Format("code.job-profile-plans.already-has-everything-of", p.Name, profile.Name));
         }
 
         return PlanOutcome.Of(plan, errors);
@@ -319,7 +321,7 @@ public static class JobProfilePlans
         return new JobProfile
         {
             Name = name.Trim(),
-            Description = $"Gemaakt van {p.Name}",
+            Description = Texts.T.Format("code.job-profile-plans.made-from", p.Name),
             Groups = index.GroupsOf(p)
                 .Where(g => !Automatic(config, g) && !accessGroups.Contains(g.Key) && !(g.Ad is { } a && MirrorUser.IsPrivileged(a)))
                 .Select(g => g.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList(),
@@ -367,10 +369,10 @@ public static class JobProfilePlans
 
     private static IEnumerable<(string Name, string Wanted, string? Now, bool AdOnly)> Attributes(JobProfile profile, UserDesired current)
     {
-        if (!string.IsNullOrWhiteSpace(profile.JobTitle)) yield return ("Functie", profile.JobTitle.Trim(), current.JobTitle, false);
-        if (!string.IsNullOrWhiteSpace(profile.Department)) yield return ("Dienst", profile.Department.Trim(), current.Department, false);
-        if (!string.IsNullOrWhiteSpace(profile.Office)) yield return ("Kantoor", profile.Office.Trim(), current.Office, false);
-        if (!string.IsNullOrWhiteSpace(profile.LogonScript)) yield return ("Logonscript", profile.LogonScript.Trim(), current.LogonScript, true);
+        if (!string.IsNullOrWhiteSpace(profile.JobTitle)) yield return (nameof(UserDesired.JobTitle), profile.JobTitle.Trim(), current.JobTitle, false);
+        if (!string.IsNullOrWhiteSpace(profile.Department)) yield return (nameof(UserDesired.Department), profile.Department.Trim(), current.Department, false);
+        if (!string.IsNullOrWhiteSpace(profile.Office)) yield return (nameof(UserDesired.Office), profile.Office.Trim(), current.Office, false);
+        if (!string.IsNullOrWhiteSpace(profile.LogonScript)) yield return (nameof(UserDesired.LogonScript), profile.LogonScript.Trim(), current.LogonScript, true);
     }
 
     /// <summary>Why a group cannot be given to this person, or null.</summary>
@@ -378,25 +380,25 @@ public static class JobProfilePlans
     {
         if (Automatic(config, g))
         {
-            return "Dynamische groep: de leden volgen uit de regel.";
+            return Texts.T["code.job-profile-plans.dynamic-group-the-members-follow"];
         }
 
         if (g.Ad is { } a && MirrorUser.IsPrivileged(a))
         {
-            return "Bevoorrechte groep: leden toevoegen doe je bewust buiten deze app.";
+            return Texts.T["code.job-profile-plans.privileged-group-you-add-members"];
         }
 
         if (g.Route == WriteRoute.ActiveDirectory && p.Ad is null)
         {
-            return "AD-groep, en dit account heeft geen AD-object.";
+            return Texts.T["code.job-profile-plans.ad-group-and-this-account"];
         }
 
         if (g.Route == WriteRoute.Graph && p.Entra is null)
         {
-            return "Cloudgroep, en dit account staat (nog) niet in Entra.";
+            return Texts.T["code.job-profile-plans.cloud-group-and-this-account"];
         }
 
-        return g.Route == WriteRoute.No ? "Voor deze groep is geen schrijfweg bekend." : null;
+        return g.Route == WriteRoute.No ? Texts.T["code.job-profile-plans.no-write-route-is-known"] : null;
     }
 
     /// <summary>Groups whose members follow from a rule: dynamic groups and the division groups.</summary>
@@ -411,7 +413,7 @@ public static class JobProfilePlans
     private static void Collect(PlanOutcome outcome, List<Change> plan, List<string> errors)
     {
         plan.AddRange(outcome.Plan);
-        errors.AddRange(outcome.Errors.Where(e => e != "Er is niets gewijzigd."));
+        errors.AddRange(outcome.Errors.Where(e => e != Texts.T["plan.nothing-changed"]));
     }
 
     private static string Normalise(string? value) => (value ?? string.Empty).Trim();

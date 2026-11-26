@@ -206,7 +206,7 @@ public static class LogonScriptPlans
         var normalised = after.Replace("\r\n", "\n").Replace("\n", "\r\n");
         if (before is not null && before.Replace("\r\n", "\n") == after.Replace("\r\n", "\n"))
         {
-            return PlanOutcome.Error("Er is niets gewijzigd.");
+            return PlanOutcome.Error(Localization.Texts.T["plan.nothing-changed"]);
         }
 
         var diff = before is null ? Array.Empty<string>() : LogonScriptAnalysis.Diff(before, after);
