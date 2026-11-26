@@ -1,3 +1,4 @@
+using Moss365.Core.Security;
 using System.Globalization;
 using System.Net;
 using System.Text;
@@ -57,6 +58,9 @@ public sealed record PeriodReport(
     IReadOnlyList<StandardRow> Standards,
     IReadOnlyList<string> Notes)
 {
+    /// <summary>The access reviews of the period (R20), or null when the tenant has nothing to review.</summary>
+    public ReviewSummary? Reviews { get; init; }
+
     /// <summary>The KPIs shown in a report (the fixed ones, in this order).</summary>
     public static IReadOnlyList<Kpi> ReportKpis => Analysis.Kpis.Fixed.Where(k => k.Items is KpiList.Users or KpiList.Mailboxes or KpiList.Groups or KpiList.CaCheck or KpiList.CaPolicies).ToList();
 
@@ -188,6 +192,12 @@ public sealed record PeriodReport(
             b.Append("<tr><th>").Append(H("report.total")).Append("</th><th class=\"n\">").Append(Changes.Sum(c => c.Succeeded)).Append("</th><th class=\"n\">").Append(Changes.Sum(c => c.Failed)).Append("</th></tr></table>");
         }
 
+        if (Reviews is { } reviews)
+        {
+            b.Append("<h2>").Append(H("menu.toegangsreviews")).Append("</h2><p class=\"").Append(reviews.Due > 0 ? "aandacht" : "zacht").Append("\">")
+                .Append(E(t.Format("report.reviews", reviews.Reviewed, reviews.Kept, reviews.Removed, reviews.Due, reviews.Subjects))).Append("</p>");
+        }
+
         b.Append("<h2>").Append(H("report.quality")).Append("</h2><table><tr><th>").Append(H("attribute.department")).Append("</th><th class=\"n\">").Append(H("report.people"))
             .Append("</th><th class=\"n\">").Append(H("attribute.jobtitle")).Append("</th><th class=\"n\">").Append(H("attribute.office")).Append("</th><th class=\"n\">Manager</th><th class=\"n\">")
             .Append(H("attribute.phone")).Append("</th><th class=\"n\">Score</th></tr>");
@@ -236,6 +246,12 @@ public sealed record PeriodReport(
         Line(t["report.change"], t["report.succeeded"], t["report.failed"]);
         foreach (var c in Changes) Line(c.Action, c.Succeeded, c.Failed);
         Line();
+        if (Reviews is { } reviews)
+        {
+            Line(t["menu.toegangsreviews"], t.Format("report.reviews", reviews.Reviewed, reviews.Kept, reviews.Removed, reviews.Due, reviews.Subjects));
+            Line();
+        }
+
         Line(t["attribute.department"], t["report.people"], t["attribute.jobtitle"] + " %", t["attribute.office"] + " %", "Manager %", t["attribute.phone"] + " %", "Score %");
         foreach (var q in Quality) Line(q.Department, q.People, QualityRow.Percent(q.JobTitle, q.People), QualityRow.Percent(q.Office, q.People), QualityRow.Percent(q.Manager, q.People), QualityRow.Percent(q.Phone, q.People), q.Score);
         Line();

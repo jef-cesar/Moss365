@@ -3558,5 +3558,12 @@
   "board.scores": "Hardening score over time",
   "board.date": "Date",
   "overview.history": "Trend: from {0} on {1:d} to {2} on {3:d}",
-  "overview.passwords-expiring": "passwords that expire within 14 days"
+  "overview.passwords-expiring": "passwords that expire within 14 days",
+  "access-reviews.kind.EntraGroup": "Entra group with an admin role",
+  "access-reviews.kind.AppPermission": "app permissions",
+  "access-reviews.group-in-entra": "Remove {0} from {1} in Entra: the group gives an admin role, and Moss365 does not change admin roles.",
+  "access-reviews.app-in-entra": "Remove \"{0}\" of {1} in Entra (Enterprise applications, the app, Permissions): Moss365 only reads app registrations.",
+  "access-reviews.standard": "{0} of {1} access reviews due",
+  "report.reviews": "{0} reviewed in this period: {1} kept, {2} to remove. Due now: {3} of {4}.",
+  "code.security-checks.consent-of-users": "consent of {0} user(s): {1}"
 }

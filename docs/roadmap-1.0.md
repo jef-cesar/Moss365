@@ -548,7 +548,8 @@ summary; the inventory moved to the settings.
 
 Done in 0.39.0: privileged AD groups, admin roles and shared mailboxes, with the reviewer and the interval per subject,
 the decisions in the change log and the removals as plans (admin roles in Entra itself: Moss365 has no permission to
-change roles). Still to come: privileged groups in Entra and the app permissions.
+change roles). In 0.40.0: Entra groups that hold an admin role and the app permissions (removed in Entra itself), and the
+reviews in the period report and with the standards.
 
 ## 11. Open source, with room for paid support
 

@@ -154,7 +154,7 @@ public static class SecurityChecks
         foreach (var g in r.Permissions.Where(p => p.ConsentType == "Principal").GroupBy(p => p.App))
         {
             var broad = g.Any(p => BroadPermissions.Contains(p.Permission, StringComparer.OrdinalIgnoreCase));
-            rows.Add(new CheckRow(g.Key, $"toestemming van {g.Select(p => p.Principal).Distinct().Count()} gebruiker(s): {string.Join(", ", g.Select(p => p.Permission).Distinct().Take(6))}",
+            rows.Add(new CheckRow(g.Key, Texts.T.Format("code.security-checks.consent-of-users", g.Select(p => p.Principal).Distinct().Count(), string.Join(", ", g.Select(p => p.Permission).Distinct().Take(6))),
                 broad ? CheckStatus.Problem : CheckStatus.Attention));
         }
 

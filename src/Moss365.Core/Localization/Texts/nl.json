@@ -3558,5 +3558,12 @@
   "board.scores": "Hardeningscore door de tijd",
   "board.date": "Datum",
   "overview.history": "Verloop: van {0} op {1:d} tot {2} op {3:d}",
-  "overview.passwords-expiring": "wachtwoorden die binnen 14 dagen verlopen"
+  "overview.passwords-expiring": "wachtwoorden die binnen 14 dagen verlopen",
+  "access-reviews.kind.EntraGroup": "Entra-groep met een beheerrol",
+  "access-reviews.kind.AppPermission": "rechten van een app",
+  "access-reviews.group-in-entra": "Haal {0} uit {1} in Entra: de groep geeft een beheerrol, en Moss365 wijzigt geen beheerrollen.",
+  "access-reviews.app-in-entra": "Haal \"{0}\" van {1} weg in Entra (Bedrijfstoepassingen, de app, Machtigingen): Moss365 leest app-registraties alleen.",
+  "access-reviews.standard": "{0} van {1} toegangsreviews te doen",
+  "report.reviews": "{0} gereviewd in deze periode: {1} behouden, {2} te verwijderen. Nu te doen: {3} van {4}.",
+  "code.security-checks.consent-of-users": "toestemming van {0} gebruiker(s): {1}"
 }

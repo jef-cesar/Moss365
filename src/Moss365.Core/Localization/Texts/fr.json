@@ -3558,5 +3558,12 @@
   "board.scores": "Score de durcissement dans le temps",
   "board.date": "Date",
   "overview.history": "Évolution : de {0} le {1:d} à {2} le {3:d}",
-  "overview.passwords-expiring": "mots de passe qui expirent dans les 14 jours"
+  "overview.passwords-expiring": "mots de passe qui expirent dans les 14 jours",
+  "access-reviews.kind.EntraGroup": "groupe Entra avec un rôle d'administration",
+  "access-reviews.kind.AppPermission": "autorisations d'une application",
+  "access-reviews.group-in-entra": "Retirez {0} de {1} dans Entra : le groupe donne un rôle d'administration, et Moss365 ne modifie pas les rôles d'administration.",
+  "access-reviews.app-in-entra": "Retirez « {0} » de {1} dans Entra (Applications d'entreprise, l'application, Autorisations) : Moss365 ne fait que lire les inscriptions d'applications.",
+  "access-reviews.standard": "{0} révisions d'accès sur {1} à faire",
+  "report.reviews": "{0} révisés sur cette période : {1} gardés, {2} à retirer. À faire maintenant : {3} sur {4}.",
+  "code.security-checks.consent-of-users": "consentement de {0} utilisateur(s) : {1}"
 }

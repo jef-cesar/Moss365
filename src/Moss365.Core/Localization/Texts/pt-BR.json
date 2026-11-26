@@ -3558,5 +3558,12 @@
   "board.scores": "Pontuação de proteção ao longo do tempo",
   "board.date": "Data",
   "overview.history": "Evolução: de {0} em {1:d} até {2} em {3:d}",
-  "overview.passwords-expiring": "senhas que expiram em até 14 dias"
+  "overview.passwords-expiring": "senhas que expiram em até 14 dias",
+  "access-reviews.kind.EntraGroup": "grupo do Entra com função de administrador",
+  "access-reviews.kind.AppPermission": "permissões de aplicativo",
+  "access-reviews.group-in-entra": "Remova {0} de {1} no Entra: o grupo dá uma função de administrador, e o Moss365 não altera funções de administrador.",
+  "access-reviews.app-in-entra": "Remova \"{0}\" de {1} no Entra (Aplicativos empresariais, o aplicativo, Permissões): o Moss365 só lê os registros de aplicativos.",
+  "access-reviews.standard": "{0} de {1} revisões de acesso pendentes",
+  "report.reviews": "{0} revisados neste período: {1} mantidos, {2} a remover. Pendentes agora: {3} de {4}.",
+  "code.security-checks.consent-of-users": "consentimento de {0} usuário(s): {1}"
 }

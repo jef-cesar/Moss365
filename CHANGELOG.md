@@ -8,6 +8,11 @@ The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
 
 - **The overview** (R19): every tile also draws a small line of its counts in the chosen period, and the work block
   shows the passwords that expire within 14 days (when a maximum age of passwords is set on *Wachtwoord verloopt*).
+- **Access reviews** (R20) also for **Entra groups that hold an admin role** and for the **permissions of apps** found
+  by the last check of app permissions. Removing those is done in Entra itself, with the way explained: Moss365 has no
+  permission to change roles or apps. The period report has a section on the reviews of the period, and a review that
+  is due counts as "attention" with the standards (NIS2 21.2.i and CIS 6).
+- The consent of users in the check of app permissions is now in the language of the interface.
 
 ## 0.39.0
 

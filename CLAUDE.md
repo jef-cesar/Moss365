@@ -104,9 +104,12 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   (`Desktop/Headless.cs`: skips while the app is open, never a sign-in link, `ConnectionFactory(withoutWindow: true)`),
   `ManagementState.RunUnattendedAsync` (AD and Entra only, never a write), `IAppEnvironment.Scheduler` (schtasks in
   `Desktop/WindowsTaskScheduler.cs`), page `lezen-zonder-venster`.
-  Access reviews (R20): `Security/AccessReviews.cs` (privileged AD groups, admin roles, shared mailboxes; reviewer and
-  interval per subject in document `toegangsreviews`; each decision a change log line with action `Review`; removals
-  as plans, admin roles never: no permission to change roles), page `toegangsreviews` (Security to see, Manage to record).
+  Access reviews (R20): `Security/AccessReviews.cs` (privileged AD groups, admin roles, Entra groups with a role, shared
+  mailboxes, app permissions from the check `app-rechten`; reviewer and interval per subject in document
+  `toegangsreviews`; each decision a change log line with action `Review`; removals as plans for AD groups and
+  mailboxes only: no permission to change roles, role-assignable groups or apps), page `toegangsreviews` (Security to
+  see, Manage to record); `AccessReviews.Summary` goes into the period report and, as the pseudo-check
+  `toegangsreviews`, into the standards.
   The overview (R19): `Reporting/Overview.cs` (tiles with a key, block, link and trend; the layout per role, kept per
   person in document `overzicht-indeling`), computed by `ManagementState.Overview.cs`; after a read the own tiles are kept
   per day in `KpiStand` with the prefix `overzicht:` (counts only). The start screen shows the blocks; the inventory is
