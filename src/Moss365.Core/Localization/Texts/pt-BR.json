@@ -3289,5 +3289,19 @@
   "advice.gpo.what": "Objetos de Política de Grupo que não estão vinculados a nada, estão vazios ou totalmente desativados.",
   "advice.gpo.why": "Políticas não usadas dificultam ver o que realmente vale, e uma política esquecida que alguém ainda pode editar é um caminho para executar código em muitos PCs de uma vez.",
   "advice.gpo.fix": "Remova ou arquive o que não é usado (faça antes um backup do GPO) e verifique quem pode editar as políticas que ficam.",
-  "advice.gpo.risk": "Uma política sem vínculo pode ser para mais tarde ou usada em um teste: confirme com o responsável antes de removê-la."
+  "advice.gpo.risk": "Uma política sem vínculo pode ser para mais tarde ou usada em um teste: confirme com o responsável antes de removê-la.",
+  "compromised.title": "Conta comprometida",
+  "compromised.intro": "Quando outra pessoa está com esta conta: um único plano a bloqueia no AD e no Entra, define uma nova senha aleatória, revoga todas as sessões de entrada e a remove de grupos privilegiados. Nada é excluído; você escolhe as etapas antes de qualquer execução.",
+  "compromised.make": "Criar o plano de bloqueio",
+  "compromised.context": "Conta comprometida {0}",
+  "compromised.password": "Definir uma nova senha aleatória (trocar no próximo acesso); ela não é guardada nem mostrada em lugar nenhum",
+  "compromised.nothing": "Esta pessoa não tem conta no AD nem no Entra.",
+  "compromised.check": "Verifique depois",
+  "compromised.mfa": "Métodos de MFA: {0}. Remova os que a pessoa não registrou ela mesma (Entra, o usuário, Métodos de autenticação).",
+  "compromised.mfa.none": "Nenhum método de MFA conhecido (leia os dados de segurança de novo, ou a conta não tem nenhum).",
+  "compromised.roles": "Funções de administrador: {0}. O Moss365 não remove atribuições de função: remova-as no Entra ou torne-as qualificadas com o PIM.",
+  "compromised.synced": "A conta vem do AD: o Entra acompanha o bloqueio após a próxima sincronização; as sessões são revogadas na hora.",
+  "compromised.forwarding": "Encaminhamento encontrado na última verificação: {0}",
+  "compromised.rules": "Regras da caixa de entrada e encaminhamentos: verifique-os em Verificações de segurança (com as regras da caixa de entrada) e remova o que a pessoa não criou.",
+  "compromised.signins": "Entradas e dispositivos: veja as entradas dos últimos dias (Visão geral de segurança) e os dispositivos da pessoa (Dispositivos)."
 }

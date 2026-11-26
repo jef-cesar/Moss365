@@ -3289,5 +3289,19 @@
   "advice.gpo.what": "Objets de stratégie de groupe liés nulle part, vides ou entièrement désactivés.",
   "advice.gpo.why": "Les stratégies inutilisées empêchent de voir ce qui s'applique vraiment, et une stratégie oubliée que quelqu'un peut encore modifier permet d'exécuter du code sur beaucoup de PC à la fois.",
   "advice.gpo.fix": "Supprimez ou archivez ce qui n'est pas utilisé (sauvegardez d'abord le GPO) et vérifiez qui peut modifier les stratégies qui restent.",
-  "advice.gpo.risk": "Une stratégie liée nulle part peut être prévue pour plus tard ou servir à un test : vérifiez avec son propriétaire avant de la supprimer."
+  "advice.gpo.risk": "Une stratégie liée nulle part peut être prévue pour plus tard ou servir à un test : vérifiez avec son propriétaire avant de la supprimer.",
+  "compromised.title": "Compte compromis",
+  "compromised.intro": "Quand quelqu'un d'autre détient ce compte : un seul plan le bloque dans AD et Entra, définit un nouveau mot de passe aléatoire, révoque chaque session de connexion et le retire des groupes privilégiés. Rien n'est supprimé ; vous choisissez les étapes avant toute exécution.",
+  "compromised.make": "Créer le plan de blocage",
+  "compromised.context": "Compte compromis {0}",
+  "compromised.password": "Définir un nouveau mot de passe aléatoire (à changer à la prochaine connexion) ; il n'est conservé ni affiché nulle part",
+  "compromised.nothing": "Cette personne n'a pas de compte dans AD ni dans Entra.",
+  "compromised.check": "À vérifier ensuite",
+  "compromised.mfa": "Méthodes MFA : {0}. Supprimez celles que la personne n'a pas enregistrées elle-même (Entra, l'utilisateur, Méthodes d'authentification).",
+  "compromised.mfa.none": "Aucune méthode MFA connue (relisez les données de sécurité, ou le compte n'en a pas).",
+  "compromised.roles": "Rôles d'administration : {0}. Moss365 ne retire pas les attributions de rôles : retirez-les dans Entra ou rendez-les éligibles avec PIM.",
+  "compromised.synced": "Le compte vient d'AD : Entra suit le blocage après la prochaine synchronisation ; les sessions sont révoquées tout de suite.",
+  "compromised.forwarding": "Transfert trouvé lors du dernier contrôle : {0}",
+  "compromised.rules": "Règles de boîte de réception et transferts : vérifiez-les dans Contrôles de sécurité (avec les règles de boîte de réception) et supprimez ce que la personne n'a pas créé.",
+  "compromised.signins": "Connexions et appareils : regardez les connexions des derniers jours (Vue d'ensemble de la sécurité) et les appareils de la personne (Appareils)."
 }

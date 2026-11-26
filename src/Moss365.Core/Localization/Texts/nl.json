@@ -3289,5 +3289,19 @@
   "advice.gpo.what": "Groepsbeleidsobjecten die nergens gekoppeld, leeg of helemaal uitgeschakeld zijn.",
   "advice.gpo.why": "Ongebruikt beleid maakt moeilijk te zien wat echt geldt, en een vergeten beleid dat iemand nog kan wijzigen, is een manier om in één keer code op veel pc's uit te voeren.",
   "advice.gpo.fix": "Verwijder of archiveer wat niet gebruikt wordt (maak eerst een back-up van het GPO), en controleer wie het overblijvende beleid mag wijzigen.",
-  "advice.gpo.risk": "Een beleid dat nergens gekoppeld is, kan bedoeld zijn voor later of gebruikt worden in een test: vraag het na bij de eigenaar voor je het verwijdert."
+  "advice.gpo.risk": "Een beleid dat nergens gekoppeld is, kan bedoeld zijn voor later of gebruikt worden in een test: vraag het na bij de eigenaar voor je het verwijdert.",
+  "compromised.title": "Gecompromitteerd account",
+  "compromised.intro": "Als iemand anders dit account in handen heeft: één plan blokkeert het in AD en Entra, zet een nieuw willekeurig wachtwoord, trekt elke aanmeldsessie in en haalt het uit bevoorrechte groepen. Er wordt niets verwijderd; je kiest eerst welke stappen je uitvoert.",
+  "compromised.make": "Blokkeerplan maken",
+  "compromised.context": "Gecompromitteerd account {0}",
+  "compromised.password": "Een nieuw willekeurig wachtwoord zetten (wijzigen bij de volgende aanmelding); het wordt nergens bewaard of getoond",
+  "compromised.nothing": "Deze persoon heeft geen account in AD of Entra.",
+  "compromised.check": "Kijk daarna na",
+  "compromised.mfa": "MFA-methoden: {0}. Verwijder wat de persoon niet zelf registreerde (Entra, de gebruiker, Verificatiemethoden).",
+  "compromised.mfa.none": "Geen MFA-methoden gekend (lees de beveiliging opnieuw, of het account heeft er geen).",
+  "compromised.roles": "Beheerrollen: {0}. Moss365 haalt geen roltoewijzingen weg: verwijder ze in Entra, of maak ze in aanmerking met PIM.",
+  "compromised.synced": "Het account komt uit AD: Entra volgt de blokkering na de volgende synchronisatie; de sessies worden meteen ingetrokken.",
+  "compromised.forwarding": "Doorsturen gevonden bij de laatste controle: {0}",
+  "compromised.rules": "Inboxregels en doorsturen: kijk ze na op Beveiligingscontroles (met de inboxregels), en verwijder wat de persoon niet zelf maakte.",
+  "compromised.signins": "Aanmeldingen en toestellen: bekijk de aanmeldingen van de laatste dagen (Overzicht beveiliging) en de toestellen van de persoon (Toestellen)."
 }

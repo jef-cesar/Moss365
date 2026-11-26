@@ -483,6 +483,9 @@ Advice for **Microsoft 365**:
 | Shared mailboxes where signing in is allowed | Plan with undo |
 | SharePoint: links for everyone without sign-in | Plan with undo |
 
+Started in 0.39.0: the explanation (ⓘ), accepted risks, the kept results, the hardening score and the compromised-
+account plan. Still to come in R16: solving the advice as plans (guided), and the write permissions per part.
+
 Carrying out advice needs the Administrator role; the Auditor sees everything, read only. Advice that needs a licence
 the tenant does not have (Entra ID P2, Defender for Office) says so instead of "problem".
 

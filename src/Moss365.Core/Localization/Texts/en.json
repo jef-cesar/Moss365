@@ -3289,5 +3289,19 @@
   "advice.gpo.what": "Group Policy objects that are linked nowhere, empty, or completely disabled.",
   "advice.gpo.why": "Unused policies make it hard to see what really applies, and a forgotten policy that someone can still edit is a way to run code on many PCs at once.",
   "advice.gpo.fix": "Remove or archive what is not used (back up the GPO first), and check who may edit the policies that remain.",
-  "advice.gpo.risk": "A policy that is linked nowhere may be meant for later or used in a test: check with its owner before you remove it."
+  "advice.gpo.risk": "A policy that is linked nowhere may be meant for later or used in a test: check with its owner before you remove it.",
+  "compromised.title": "Compromised account",
+  "compromised.intro": "When someone else has this account: one plan blocks it in AD and Entra, sets a new random password, revokes every sign-in session and removes it from privileged groups. Nothing is deleted; you choose the steps before anything runs.",
+  "compromised.make": "Make the blocking plan",
+  "compromised.context": "Compromised account {0}",
+  "compromised.password": "Set a new random password (change at the next sign-in); it is kept and shown nowhere",
+  "compromised.nothing": "This person has no account in AD or Entra.",
+  "compromised.check": "Check afterwards",
+  "compromised.mfa": "MFA methods: {0}. Remove the ones the person did not register themselves (Entra, the user, Authentication methods).",
+  "compromised.mfa.none": "No MFA methods known (read the security data again, or the account has none).",
+  "compromised.roles": "Admin roles: {0}. Moss365 does not remove role assignments: remove them in Entra, or make them eligible with PIM.",
+  "compromised.synced": "The account comes from AD: Entra follows the block after the next synchronisation; the sessions are revoked at once.",
+  "compromised.forwarding": "Forwarding found by the last check: {0}",
+  "compromised.rules": "Inbox rules and forwarding: check them on Security checks (with the inbox rules), and remove what the person did not make.",
+  "compromised.signins": "Sign-ins and devices: look at the sign-ins of the last days (Security overview) and at the devices of the person (Devices)."
 }
