@@ -214,6 +214,8 @@ source); the key is never stored in the database, the repository or a log.
   this works on the Server (same approach, or C with the service account).
 
 Decided (U7): **no encryption by default**; can be turned on per tenant with A, B or C. **D after a successful study**. Done in 0.16; the study of D is in [encryption.md](encryption.md): D comes after 1.0.
+Changed by U24 (26 November 2026): a **new tenant is encrypted with the Windows account (A) by default**; turning it
+off stays possible.
 
 ### Maintenance
 
@@ -255,6 +257,8 @@ A **Database** screen per tenant:
 - Technology (U4): **Velopack** (open source, small delta updates, per-user install without admin rights).
 - Done in 0.17: the app installs in `%LOCALAPPDATA%\Moss365.Desktop` (pack id `Moss365.Desktop`), so that removing it
   never touches the data in `%LOCALAPPDATA%\Moss365`. Until 1.0 the default channel is preview.
+- Decided (U23, 26 November 2026): **every release waits for the maintainer's approval** in GitHub (an environment
+  with a required reviewer) before it is published and offered as an update.
 
 ## 9. Organisation: universal settings, job profiles and logon scripts
 
@@ -560,7 +564,7 @@ Further:
 ## 12. Decisions
 
 U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interactively the same day); U13 on 23 November 2026;
-U14 to U21 interactively on 26 November 2026.
+U14 to U24 interactively on 26 November 2026.
 
 | # | Decision | Outcome |
 | --- | --- | --- |
@@ -571,7 +575,7 @@ U14 to U21 interactively on 26 November 2026.
 | U4 | **Updates** | **Velopack**: per-user install without admin rights, delta updates, rollback to the previous version |
 | U5 | **Signing in to a tenant** | **An app registration `Moss365` of its own in each tenant**: each organisation grants and revokes consent itself; no shared app run by the makers |
 | U6 | **First sign-in in the wizard** | **The public client of Microsoft Graph PowerShell** (as used by `Connect-MgGraph`), with the link in the app; fallback: `Register-App.ps1` |
-| U7 | **Encryption** | **No encryption by default**; per tenant: Windows account (A), password with recovery key (B) or AD group (C). Microsoft 365 via Key Vault (D) after the study |
+| U7 | **Encryption** | **No encryption by default**; per tenant: Windows account (A), password with recovery key (B) or AD group (C). Microsoft 365 via Key Vault (D) after the study. Changed by U24: a new tenant is encrypted with the Windows account by default |
 | U8 | **Signing** | **Later**: until 1.0 the app and users verify the published fingerprints (SHA-256); from 1.0 a code signing certificate (Authenticode) for the app, the updates and the scripts |
 | U9 | **Retention** (defaults, adjustable per tenant) | **Longer**: snapshots daily for 1 year, then monthly; change log 5 years; technical log 90 days; script runs 1 year |
 | U10 | **Language of code and documentation** | **English**: names in the code, comments, tests and documentation (from R1). The interface in five languages via dictionaries (R15) |
@@ -585,6 +589,9 @@ U14 to U21 interactively on 26 November 2026.
 | U19 | **Own data** | **Sign-in and audit logs kept locally**, an option that is on by default (1 year, adjustable); **reading without a window** through the Windows Task Scheduler at an hour you choose, read only |
 | U20 | **All tenants on one screen** | **Yes, only scores and counts per tenant**, side by side; computed when shown, never stored or exported together. Personal and object data of two tenants never come together |
 | U21 | **Hosted edition** | **Only at the organisation itself**: paid installation and management are allowed, always on the organisation's own server or Azure subscription; the makers never keep an organisation's data (chapter 11) |
+| U22 | **.NET 10 before R16** | **First move from .NET 8 to .NET 10** (supported until November 2028): .NET 8 gets no security updates since 10 November 2026, and the app ships the runtime itself. Then R16; the tests in a test tenant (issue 19) run alongside |
+| U23 | **Approval before a release** | **Every release waits for the maintainer's approval** in GitHub before it is published and offered as an update. Not chosen now: a separate job with write permissions, pinned actions, `main` only through pull requests, signing before 1.0 |
+| U24 | **Encryption by default** | **A new tenant is encrypted with the Windows account (A) by default**; changes U7. Backups (issue 22) and the roles mode (Transition) stay as they are for now |
 
 ## 13. The steps to 1.0
 
@@ -606,6 +613,7 @@ U14 to U21 interactively on 26 November 2026.
 | **R13 Devices, Teams and SharePoint** | Everything from chapter 10, Devices, Teams and SharePoint (the needed read permissions are added in the wizard) | Same |
 | **R14 Reporting and working as a team** | Everything from chapter 10, Reporting and working as a team | Same; a quarterly report comes from the snapshots, also for a period in the past |
 | **R15 Languages** | Dictionaries for the interface (one per language, with a glossary); EN, NL, PT-BR, FR and DE; system language by default, configurable in Settings; dates and numbers per language; fallback to English | Every screen in five languages; the app follows the Windows language and the choice in Settings wins; a test finds no hard-coded text in the screens and reports missing translations |
+| **.NET 10** | From .NET 8 (no support since 10 November 2026) to .NET 10 (U22): target frameworks, the SDK in `global.json`, the packages; check the SQLCipher build | All tests green on .NET 10; the single-file build starts on Windows 10 and 11; an encrypted tenant from 0.38 still opens |
 | **R16 Security advice** | Everything from chapter 10, Security advice you can carry out: the explanation (ⓘ), solving as a plan (guided for high risk, U16), exceptions, the hardening score with its trend, the results in the tenant database, the compromised-account plan, write permissions per part in the wizard | Every check gives advice with an explanation; every solution is a plan with preview, change log and undo where possible; a test proves that the wrong role and a historic view cannot carry out anything |
 | **R17 Devices and Intune** | Everything from chapter 10, Devices and Intune: one list over AD, Entra and Intune, a page per device, actions on three levels with their safeguards (U17), compliance, offboarding, clean-up (U18), the life cycle as data, devices in the snapshots | Every action is a plan with the right role; the planner and the engine refuse a destructive action for more than one device or for a personal device |
 | **R18 Own data** | Everything from chapter 10, Own data: sign-in and audit logs kept locally (on by default), reading without a window at an hour you choose, since your last visit | A read at night makes a snapshot without the app being open and never writes; the logs follow the retention |
@@ -615,7 +623,8 @@ U14 to U21 interactively on 26 November 2026.
 
 Order: R0 and R1 first. R2 and R3 belong together (one database per tenant). R4 builds on them, and R11 and R14 build
 on R4. The other steps can be done in a different order if that works better; every step is a release of its own
-(0.10, 0.11, ...). R16 to R20 come before 1.0 (U15), in that order; R19 builds on R16 to R18. The review of the
+(0.10, 0.11, ...). First the move to .NET 10 (U22); then R16 to R20 (U15), in that order; R19 builds on R16 to R18; the
+tests in a test tenant (issue 19) run alongside R16. The review of the
 translations by native speakers (the rest of R15) comes after R20, so that it covers every new text. Then the web
 version: [roadmap-web.md](roadmap-web.md), and Google Workspace (chapter 15).
 
@@ -624,7 +633,8 @@ version: [roadmap-web.md](roadmap-web.md), and Google Workspace (chapter 15).
 | Risk | Approach |
 | --- | --- |
 | Organisation-specific data ends up in the public repository | Fresh start without history (U3), a check in the workflow, secret scanning with push protection, made-up examples |
-| A hijacked update or script | Fingerprints verified and everything signed from 1.0 (U8), only from the official source, scripts never run by themselves. Until 1.0 Windows SmartScreen warns at installation |
+| A hijacked update or script | Fingerprints verified and everything signed from 1.0 (U8), only from the official source, scripts never run by themselves; every release waits for the maintainer's approval (U23). Until 1.0 Windows SmartScreen warns at installation |
+| A runtime without security updates | .NET 10 before R16 (U22); from then on, the next LTS version of .NET before the current one loses its support |
 | An unencrypted database (default, U7) on a stolen or shared PC | The installation guide recommends BitLocker; the wizard suggests encryption when the disk is not encrypted |
 | Moving everything to English (U10) makes R1 big | Renaming with IDE tools and the tests as a safety net; in small pieces |
 | Encrypted database, key lost | Recovery key at setup; the tenant's own data can be read again (only the change log and history are unique) |

@@ -8,7 +8,7 @@ Motto: **data under your own control** ("data in eigen beheer"): the Desktop sta
 feature needs a server or a service of the makers.
 
 Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R14 are done (0.37.0); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
-per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. Next, before 1.0 (U15, decided 26 November 2026): R16 security advice (explanation, solving as a plan, guided for high risk, exceptions, hardening score, compromised account), R17 devices and Intune (a destructive action: one device per plan, never a personal device; a device record is deleted only after 90 days disabled), R18 own data (sign-in and audit logs kept locally, reading without a window), R19 the overview (All tenants: only scores and counts, never stored together), R20 access reviews; then the native-speaker review of R15 and 1.0. Open work is in the
+per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. Next, before 1.0 (decided 26 November 2026): first .NET 10 (U22: .NET 8 has no support since 10 November 2026), then (U15) R16 security advice (explanation, solving as a plan, guided for high risk, exceptions, hardening score, compromised account), R17 devices and Intune (a destructive action: one device per plan, never a personal device; a device record is deleted only after 90 days disabled), R18 own data (sign-in and audit logs kept locally, reading without a window), R19 the overview (All tenants: only scores and counts, never stored together), R20 access reviews; then the native-speaker review of R15 and 1.0. Open work is in the
 GitHub issues (label `roadmap` per step, `limitation`, `test`). The interface texts move to dictionaries (R15, [docs/translating.md](docs/translating.md)): new text in a screen goes through `T["key"]` (in Core and Connections `Texts.T["key"]`, never in a `static readonly` field or `const`) with the key in all five `Localization/Texts/*.json`, and `tests/Moss365.Tests/Localization/untranslated.txt` may only go down; the inventory
 keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots). Script headers are English since 0.18 (`Name:`, `Version:`, ...); the
 Dutch keys of older scripts are still read. Data saved before 0.11 uses Dutch
@@ -41,11 +41,12 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   (a test compares all of them).
 - Encryption (`Storage/Encryption.cs`, `TenantHub.Encryption.cs`, [docs/encryption.md](docs/encryption.md)): a random
   key per tenant, opened with `Database(path, key)`; moss365.db keeps only the protected key. Never log a key, password
-  or recovery key; `TenantHub.Open` throws `TenantLockedException` until the tenant is unlocked.
+  or recovery key; `TenantHub.Open` throws `TenantLockedException` until the tenant is unlocked. To come (U24): a new
+  tenant is encrypted with the Windows account by default.
 - Updates (R7): Velopack, pack id `Moss365.Desktop` (never `Moss365`: Velopack removes its install folder on uninstall,
   and `%LOCALAPPDATA%\Moss365` holds the data). `Program.Main` runs `VelopackApp` first. `AppUpdates` refuses while
   anything runs or is open and copies every database first. The release workflow packs channel `stable`, or `preview`
-  for a version with a suffix.
+  for a version with a suffix. To come (U23): every release waits for the maintainer's approval (a GitHub environment).
 - Script library (R8, `Scripts/ScriptIndex.cs`): `scripts/index.json` must match `scripts/` (a test; regenerate with
   `MOSS365_WRITE_INDEX=1`, see CONTRIBUTING). Downloads are checked against the SHA-256 in the index; pins per tenant in
   `scripts/pins.json` of the tenant store. Never change the bytes of `scripts/` through Git (`.gitattributes`).
