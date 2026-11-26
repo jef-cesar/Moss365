@@ -18,7 +18,11 @@ public enum OverviewBlock
 /// attention, and the number of a period ago for the trend.
 /// </summary>
 public sealed record OverviewTile(string Key, OverviewBlock Block, int? Value, string Label, string Link, bool Let, int? Before = null, string Unit = "",
-    bool HigherIsBetter = false);
+    bool HigherIsBetter = false)
+{
+    /// <summary>The counts kept per day in the chosen period, oldest first (for the small line on the tile).</summary>
+    public IReadOnlyList<(DateOnly Date, int Value)> History { get; init; } = Array.Empty<(DateOnly, int)>();
+}
 
 /// <summary>The order of the blocks and the hidden ones (per person; the default follows the role).</summary>
 public sealed record OverviewLayout(IReadOnlyList<OverviewBlock> Order, IReadOnlyList<OverviewBlock> Hidden);
@@ -68,6 +72,10 @@ public static class Overview
 
     public static OverviewLayout Toggle(OverviewLayout layout, OverviewBlock block)
         => layout with { Hidden = layout.Hidden.Contains(block) ? layout.Hidden.Where(b => b != block).ToList() : layout.Hidden.Append(block).ToList() };
+
+    /// <summary>The counts of a key from a date until another, oldest first.</summary>
+    public static IReadOnlyList<(DateOnly Date, int Value)> HistoryOf(IReadOnlyDictionary<string, IReadOnlyList<(DateOnly Date, int Value)>> kept, string key, DateOnly from, DateOnly until)
+        => kept.TryGetValue(key, out var points) ? points.Where(p => p.Date >= from && p.Date <= until).OrderBy(p => p.Date).ToList() : Array.Empty<(DateOnly, int)>();
 
     /// <summary>The value on or before a date from the counts kept per day, or null.</summary>
     public static int? ValueAt(IReadOnlyDictionary<string, IReadOnlyList<(DateOnly Date, int Value)>> kept, string key, DateOnly date)

@@ -3556,5 +3556,7 @@
   "board.now": "Nu",
   "board.trend": "Trend",
   "board.scores": "Hardeningscore door de tijd",
-  "board.date": "Datum"
+  "board.date": "Datum",
+  "overview.history": "Verloop: van {0} op {1:d} tot {2} op {3:d}",
+  "overview.passwords-expiring": "wachtwoorden die binnen 14 dagen verlopen"
 }

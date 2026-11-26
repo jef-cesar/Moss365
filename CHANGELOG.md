@@ -2,6 +2,13 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.40.0
+
+The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
+
+- **The overview** (R19): every tile also draws a small line of its counts in the chosen period, and the work block
+  shows the passwords that expire within 14 days (when a maximum age of passwords is set on *Wachtwoord verloopt*).
+
 ## 0.39.0
 
 .NET 10, the first version of R16 to R20 (security advice, devices and Intune, own data, the overview and access

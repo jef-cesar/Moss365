@@ -3556,5 +3556,7 @@
   "board.now": "Maintenant",
   "board.trend": "Tendance",
   "board.scores": "Score de durcissement dans le temps",
-  "board.date": "Date"
+  "board.date": "Date",
+  "overview.history": "Évolution : de {0} le {1:d} à {2} le {3:d}",
+  "overview.passwords-expiring": "mots de passe qui expirent dans les 14 jours"
 }

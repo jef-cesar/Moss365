@@ -3556,5 +3556,7 @@
   "board.now": "Agora",
   "board.trend": "Tendência",
   "board.scores": "Pontuação de proteção ao longo do tempo",
-  "board.date": "Data"
+  "board.date": "Data",
+  "overview.history": "Evolução: de {0} em {1:d} até {2} em {3:d}",
+  "overview.passwords-expiring": "senhas que expiram em até 14 dias"
 }

@@ -40,6 +40,27 @@ public sealed partial class PlanScreenTests
     }
 
     [Fact]
+    public void EveryTileDrawsItsLineAndPasswordsThatExpireSoonAreWork()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        State.Database.SaveKpiSnapshot(today.AddDays(-40), new Dictionary<string, int> { ["overzicht:reviews-due"] = 9 }); // before the period
+        State.Database.SaveKpiSnapshot(today.AddDays(-20), new Dictionary<string, int> { ["overzicht:reviews-due"] = 4 });
+        State.Database.SaveKpiSnapshot(today.AddDays(-10), new Dictionary<string, int> { ["overzicht:reviews-due"] = 2 });
+
+        var tile = State.OverviewTiles(30).Single(t => t.Key == "reviews-due");
+        Assert.Equal(new[] { 4, 2 }, tile.History.Select(p => p.Value));
+        var svg = RenderComponent<Start>().Find("#tegel-reviews-due svg");
+        Assert.StartsWith("Verloop: van 4 op", svg.GetAttribute("aria-label"), StringComparison.Ordinal);
+        Assert.StartsWith("M", svg.QuerySelector("path")!.GetAttribute("d"), StringComparison.Ordinal);
+
+        // Passwords that expire within 14 days: work, and only with a maximum age of passwords
+        Assert.DoesNotContain(State.OverviewTiles(30), t => t.Key == "passwords-expiring");
+        State.Config.PasswordMaxAgeDays = 90;
+        var passwords = Assert.Single(State.OverviewTiles(30), t => t.Key == "passwords-expiring");
+        Assert.Equal((OverviewBlock.Work, "wachtwoorden"), (passwords.Block, passwords.Link));
+    }
+
+    [Fact]
     public void TheLayoutFollowsTheRoleAndIsKeptPerPerson()
     {
         State.Config.ProfilesRequired = true;

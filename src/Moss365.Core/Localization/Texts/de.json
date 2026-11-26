@@ -3556,5 +3556,7 @@
   "board.now": "Jetzt",
   "board.trend": "Trend",
   "board.scores": "Härtungswert im Zeitverlauf",
-  "board.date": "Datum"
+  "board.date": "Datum",
+  "overview.history": "Verlauf: von {0} am {1:d} bis {2} am {3:d}",
+  "overview.passwords-expiring": "Kennwörter, die innerhalb von 14 Tagen ablaufen"
 }

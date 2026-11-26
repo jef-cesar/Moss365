@@ -3556,5 +3556,7 @@
   "board.now": "Now",
   "board.trend": "Trend",
   "board.scores": "Hardening score over time",
-  "board.date": "Date"
+  "board.date": "Date",
+  "overview.history": "Trend: from {0} on {1:d} to {2} on {3:d}",
+  "overview.passwords-expiring": "passwords that expire within 14 days"
 }
