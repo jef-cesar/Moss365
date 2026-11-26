@@ -1,47 +1,43 @@
 @page "/nieuw"
 @inject ManagementState State
 
-<h1>Nieuwe gebruiker</h1>
+<h1>@T["menu.nieuw"]</h1>
 
 <p class="kb-zacht">
-    Vul de gegevens in en kies <strong>Voorbeeld</strong>. De app leidt de namen af, controleert of ze al bestaan en toont wat er
-    gebeurt.
+    @Html("new-user.intro")
     @if (InCloud)
     {
-        <text>Het account wordt rechtstreeks in Entra aangemaakt, met de licentie en de cloudgroepen meteen erbij. Mailgroepen (en toegang
-        tot gedeelde postvakken) volgen zodra het postvak bestaat (scherm <a href="opvolging">Opvolging</a>).</text>
+        @Html("new-user.cloud")
     }
     else
     {
-        <text>Het account wordt in AD aangemaakt; licentie en cloudgroepen volgen na de synchronisatie naar Entra (scherm
-        <a href="opvolging">Opvolging</a>).</text>
+        @Html("new-user.ad")
     }
 </p>
 
 @if (State.HasAd && State.HasMicrosoft365)
 {
     <div class="kb-filters">
-        <label><input type="radio" name="waar" checked="@(!request.InCloud)" @onchange="() => SetInCloud(false)" aria-label="In AD" /> In AD (gesynchroniseerd naar Entra)</label>
-        <label><input type="radio" name="waar" checked="@request.InCloud" @onchange="() => SetInCloud(true)" aria-label="Enkel in de cloud" /> Enkel in de cloud (Entra)</label>
+        <label><input type="radio" name="waar" checked="@(!request.InCloud)" @onchange="() => SetInCloud(false)" aria-label="@T["new-user.in-ad"]" /> @T["new-user.in-ad-synchronised-to-entra"]</label>
+        <label><input type="radio" name="waar" checked="@request.InCloud" @onchange="() => SetInCloud(true)" aria-label="@T["new-user.only-in-the-cloud"]" /> @T["new-user.only-in-the-cloud-entra"]</label>
     </div>
 }
 
 @if (!InCloud && State.Config.Populations.Count == 0)
 {
     <div class="kb-melding kb-fout">
-        Er zijn geen soorten (gemeente, OCMW, vrijwilliger) in de organisatie, dus kan je nog geen gebruiker aanmaken.
-        Bron: <code>@(State.ConfigSource ?? "geen organisatie.json gevonden")</code>. Zie <a href="organisatie">Organisatie</a>.
+        @Html("new-user.nokinds", State.ConfigSource ?? T["start.noconfig"])
     </div>
 }
 
 <section class="kb-kaart">
-    <h2>Gegevens</h2>
+    <h2>@T["new-mailbox.details"]</h2>
     @if (State.Config.JobProfiles.Count > 0)
     {
         <div class="kb-rij">
-            <label>Functieprofiel
-                <select class="kb-invoer" @bind="request.JobProfile" @bind:after="ProfileSelected" aria-label="Functieprofiel">
-                    <option value="">(geen)</option>
+            <label>@T["requests.job-profile"]
+                <select class="kb-invoer" @bind="request.JobProfile" @bind:after="ProfileSelected" aria-label="@T["requests.job-profile"]">
+                    <option value="">@T["edit-user.none"]</option>
                     @foreach (var jp in State.Config.JobProfiles.OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase))
                     {
                         <option value="@jp.Id">@jp.Name</option>
@@ -58,7 +54,7 @@
         </div>
     }
     <div class="kb-raster">
-        <label>Soort
+        <label>@T["nested-groups.kind"]
             <select class="kb-invoer" @bind="request.Population" @bind:after="Clear">
                 <option value="">@(InCloud ? "(geen)" : "(kies)")</option>
                 @foreach (var p in State.Config.Populations)
@@ -69,8 +65,8 @@
         </label>
         @if (InCloud && State.Config.SearchPopulation(request.Population) is null)
         {
-            <label>Domein
-                <select class="kb-invoer" @bind="request.Domain" @bind:after="Clear" aria-label="Domein">
+            <label>@T["new-mailbox.domain"]
+                <select class="kb-invoer" @bind="request.Domain" @bind:after="Clear" aria-label="@T["new-mailbox.domain"]">
                     @foreach (var d in Domains)
                     {
                         <option value="@d">@d</option>
@@ -78,22 +74,22 @@
                 </select>
             </label>
         }
-        <label>Voornaam <input class="kb-invoer" @bind="request.GivenName" @bind:after="Clear" /></label>
-        <label>Achternaam <input class="kb-invoer" @bind="request.Surname" @bind:after="Clear" /></label>
+        <label>@T["edit-user.first-name"] <input class="kb-invoer" @bind="request.GivenName" @bind:after="Clear" /></label>
+        <label>@T["edit-user.last-name"] <input class="kb-invoer" @bind="request.Surname" @bind:after="Clear" /></label>
         @if (!IsVolunteer)
         {
-            <label>Dienst
+            <label>@T["service-health-card.service"]
                 <select class="kb-invoer" @bind="request.Department" @bind:after="DepartmentSelected">
-                    <option value="">(kies)</option>
+                    <option value="">@T["script-form.choose"]</option>
                     @foreach (var d in State.Config.Departments.OrderBy(d => d.Department, StringComparer.OrdinalIgnoreCase))
                     {
                         <option value="@d.Department">@d.Department@(string.IsNullOrWhiteSpace(d.Division) ? null : $" ({d.Division})")</option>
                     }
                 </select>
             </label>
-            <label>Kantoor
+            <label>@T["bulk-tasks.office"]
                 <select class="kb-invoer" @bind="request.Office" @bind:after="Clear">
-                    <option value="">(kies)</option>
+                    <option value="">@T["script-form.choose"]</option>
                     @foreach (var k in State.Config.Offices)
                     {
                         <option value="@k">@k</option>
@@ -101,12 +97,12 @@
                 </select>
             </label>
         }
-        <label>Functie <input class="kb-invoer" @bind="request.JobTitle" @bind:after="Clear" /></label>
+        <label>@T["bulk-tasks.job-title"] <input class="kb-invoer" @bind="request.JobTitle" @bind:after="Clear" /></label>
         @if (!InCloud)
         {
-        <label>Logonscript
+        <label>@T["edit-user.logon-script"]
             <select class="kb-invoer" @bind="request.LogonScript" @bind:after="Clear">
-                <option value="">(geen)</option>
+                <option value="">@T["edit-user.none"]</option>
                 @foreach (var s in LogonScripts)
                 {
                     <option value="@s">@s</option>
@@ -114,9 +110,9 @@
             </select>
         </label>
         }
-        <label>Licentie
+        <label>@T["licences.licence"]
             <select class="kb-invoer" @bind="request.LicenceSku" @bind:after="Clear">
-                <option value="">(geen)</option>
+                <option value="">@T["edit-user.none"]</option>
                 @foreach (var l in State.Config.Licences)
                 {
                     <option value="@l.Sku">@l.Name @FreeText(l.Sku)</option>
@@ -127,20 +123,20 @@
     @if (!InCloud)
     {
         <div class="kb-filters">
-            <label><input type="checkbox" @bind="request.DefaultAdGroups" @bind:after="Clear" /> Standaardgroepen van de soort toevoegen</label>
+            <label><input type="checkbox" @bind="request.DefaultAdGroups" @bind:after="Clear" /> @T["new-user.add-the-default-groups-of"]</label>
         </div>
     }
     <PersonPicker Label="Groepen overnemen van (optioneel, spiegelgebruiker)" Selected="request.Mirror" SelectedChanged="ChooseMirror" />
     <div class="kb-filters">
-        <button class="kb-knop kb-primair" @onclick="MakeProposal">Voorbeeld</button>
-        <button class="kb-knop" @onclick="Empty">Leegmaken</button>
+        <button class="kb-knop kb-primair" @onclick="MakeProposal">@T["new-user.preview"]</button>
+        <button class="kb-knop" @onclick="Empty">@T["rooms.clear"]</button>
     </div>
 </section>
 
 @if (proposal is not null)
 {
     <section class="kb-kaart">
-        <h2>Voorstel</h2>
+        <h2>@T["new-user.suggestion"]</h2>
         @foreach (var f in proposal.Errors)
         {
             <div class="kb-melding kb-fout">@f</div>
@@ -153,16 +149,16 @@
         {
             <table class="kb-tabel kb-naast">
                 <tbody>
-                    <tr><th>Weergavenaam</th><td>@proposal.ViewName</td></tr>
-                    <tr><th>Aanmeldnaam (UPN)</th><td>@proposal.Upn</td></tr>
+                    <tr><th>@T["edit-user.display-name"]</th><td>@proposal.ViewName</td></tr>
+                    <tr><th>@T["new-user.sign-in-name-upn"]</th><td>@proposal.Upn</td></tr>
                     @if (!InCloud)
                     {
-                        <tr><th>sAMAccountName</th><td>@proposal.Sam</td></tr>
-                        <tr><th>Locatie in AD</th><td>@proposal.Dn</td></tr>
+                        <tr><th>@T["group-detail.samaccountname"]</th><td>@proposal.Sam</td></tr>
+                        <tr><th>@T["new-user.location-in-ad"]</th><td>@proposal.Dn</td></tr>
                     }
                     else
                     {
-                        <tr><th>Waar</th><td>Entra (cloudaccount)</td></tr>
+                        <tr><th>@T["group-detail.where"]</th><td>@T["new-user.entra-cloud-account"]</td></tr>
                     }
                 </tbody>
             </table>
@@ -176,10 +172,9 @@
         @if (!showPassword)
         {
             <details class="kb-later">
-                <summary>Later uitvoeren (bv. op de eerste werkdag)</summary>
+                <summary>@T["new-user.run-later-e-g-on"]</summary>
                 <p class="kb-zacht">
-                    Op het gekozen moment staat de instroom bij <a href="gepland">Gepland</a> klaar. Het startwachtwoord maakt de app
-                    pas dan; het wachtwoord hierboven vervalt. Er gebeurt niets zonder jouw bevestiging.
+                    @Html("new-user.scheduled")
                 </p>
                 <Schedule Selected="PlanIn" />
                 @if (scheduled is not null) { <div class="kb-melding kb-goed">Ingepland op @scheduled.Value.ToString("dd/MM/yyyy HH:mm").</div> }
@@ -189,11 +184,10 @@
         @if (showPassword)
         {
             <section class="kb-kaart">
-                <h2>Startwachtwoord</h2>
+                <h2>@T["scheduled.initial-password"]</h2>
                 <p><code class="kb-wachtwoord">@proposal.Password</code></p>
                 <p class="kb-zacht">
-                    Geef dit door aan de gebruiker; het moet gewijzigd worden bij de eerste aanmelding. De app bewaart het nergens en
-                    toont het niet opnieuw.
+                    @T["new-user.pass-this-on-to-the"]
                 </p>
             </section>
         }
@@ -207,7 +201,7 @@
             else
             {
                 <table class="kb-tabel">
-                    <thead><tr><th>Systeem</th><th>Wijziging</th><th>Wordt</th></tr></thead>
+                    <thead><tr><th>@T["plan.system"]</th><th>@T["plan.change"]</th><th>@T["plan.becomes"]</th></tr></thead>
                     <tbody>
                         @foreach (var w in proposal.AfterSynchronisation)
                         {
@@ -218,13 +212,13 @@
                 <p class="kb-zacht">
                     @if (followUpSaved)
                     {
-                        <span class="kb-ok">Bewaard als opvolgtaak.</span>
+                        <span class="kb-ok">@T["new-user.saved-as-a-follow-up"]</span>
                     }
                     else
                     {
                         @(InCloud ? "Deze stappen worden een opvolgtaak zodra het account aangemaakt is." : "Deze stappen worden een opvolgtaak zodra het account in AD aangemaakt is.")
                     }
-                    @(InCloud ? "Exchange maakt het postvak enkele minuten na de licentie;" : "Entra Connect synchroniseert standaard om de 30 minuten;") werk ze daarna af in <a href="opvolging">Opvolging</a>.
+                    @(InCloud ? "Exchange maakt het postvak enkele minuten na de licentie;" : "Entra Connect synchroniseert standaard om de 30 minuten;") werk ze daarna af in <a href="opvolging">@T["menu.opvolging"]</a>.
                 </p>
             }
         </section>
