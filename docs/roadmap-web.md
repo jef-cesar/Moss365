@@ -13,7 +13,7 @@ This is a plan for later. Details may change based on what we learn in 1.0.
 | Where | On every admin PC separately | One server; opened in the browser, also on a PC without installation |
 | Sign-in | Per PC, with the link in the app | **Single sign-on with Microsoft 365**: MFA and Conditional Access apply as for any Microsoft app |
 | Data | One database per tenant per PC | One database per tenant on the server, **shared by the team** |
-| Reading | When the app is open | **Always**: the server reads in the background, also at night; snapshots without gaps |
+| Reading | When the app is open, or at an hour you choose through the Windows Task Scheduler (R18) | **Always**: the server reads in the background, also at night; snapshots without gaps |
 | Alerts | When the app is opened | **Immediately**: e-mail or Teams message on a new admin, a changed policy, an expiring secret |
 | Scheduled actions | Ready when the app is opened | Ready for the whole team, with a notification |
 

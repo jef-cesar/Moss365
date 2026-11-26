@@ -46,6 +46,9 @@ What stays in every version, guarded by the tests:
   checks this.
 - **Offboarding never deletes**: disable, remove from groups, move.
 - **No telemetry.** The app sends nothing to its makers. Data stays with the organisation.
+- **Data under your own control** (the motto, "data in eigen beheer"): the Desktop stays a full edition after 1.0, also
+  next to the Server; no feature needs a server or a service of the makers, and the makers never keep an organisation's
+  data (U14, U21).
 - **No personal data in this repository**: test data is made up; examples use `contoso.com` or `example.org`.
 
 ## 2. What changes compared to the internal version
@@ -326,8 +329,9 @@ Done in 0.32 (R9 is complete): the Logonscripts screen with all of the above; ve
 ## 10. Proposals: what AD and Microsoft 365 administrators want
 
 What administrators often miss in practice. All of them are in the steps to 1.0 (chapter 13); each heading names its
-step (R10 to R15). Everything that changes something goes through a plan as always; everything that shows sensitive
-data (recovery keys, passwords, message traces) is written to the access log and requires the right role.
+step (R10 to R20; R16 to R20 were added on 26 November 2026, U15). Everything that changes something goes through a
+plan as always; everything that shows sensitive data (recovery keys, passwords, message traces) is written to the access
+log and requires the right role.
 
 ### Helpdesk and daily work (R10)
 
@@ -424,7 +428,101 @@ the system language by default and a choice in Settings, dates and numbers per l
 glossary, and tests that report missing translations and refuse new hard-coded text. Since 0.38.2 every screen takes its
 text from the dictionaries (the count of hard-coded text in the screens is zero); since 0.38.4 also what the screens
 build in code, and since 0.38.5 the texts of the core and the connections (KPIs, plans, checks, reports, messages).
-Left for R15: a review of the translations by native speakers.
+Left for R15: a review of the translations by native speakers. It comes after R20 (U15), so that it covers the new texts
+too.
+
+### Security advice you can carry out (R16)
+
+Every check of R11 becomes **advice**: what was found, an explanation behind an ⓘ, the solution as a plan, and the
+choice of an exception. Carrying out is **guided** (U16): low risk with undo is a plan right away; high risk first shows
+the impact (who or what still uses it), then a plan in steps or for a pilot group first.
+
+| Proposal | Why |
+| --- | --- |
+| **Explanation (ⓘ)** per advice: what it is, why it matters (the attack, with its MITRE ATT&CK technique), what the plan does, what can go wrong (users, applications), how to undo it, and links to Microsoft Learn and the standards (NIS2, CIS). In the five languages, like every text | Nobody should carry out what they do not understand |
+| **Solve as a plan**, guided for high risk (U16): preview, confirmation, change log and undo where possible | The same safety as every other change |
+| **Exception**: accept a risk with a reason, who and until when; after that date the advice returns. In the change log and the report | Not every advice fits every organisation; evidence for an audit |
+| **Hardening score**: a score of our own over AD and Microsoft 365 together, computed locally from the advice (weighted by severity; an exception counts as handled), with its trend | One number that also sees AD, next to Microsoft Secure Score |
+| **Results in the tenant database** (until now they are kept only while the app is open) | A trend per advice, and what was open on a date in the past |
+| **Compromised account**: one plan that blocks the account in AD and Entra, sets a new password, revokes the sessions and removes it from privileged groups, and shows the recent MFA methods, inbox rules, forwarding, sign-ins and devices (R17) | Act within minutes, without forgetting a step |
+| **Write permissions per part**: the wizard asks for the new write permissions only for the parts a tenant uses | Least privilege, also for the app registration |
+
+Advice for **Active Directory**:
+
+| Advice | Carried out as |
+| --- | --- |
+| "Password not required", reversible encryption, Kerberos pre-authentication off (AS-REP roasting) | Plan with undo |
+| Administrators in **Protected Users** and "sensitive and cannot be delegated" | Guided: first the services and tasks that run as an administrator |
+| User accounts with an SPN (kerberoasting): AES only, a gMSA where possible | Plan with undo (AES), advice (gMSA) |
+| adminCount orphans; disabled members of privileged groups; members of Account, Server, Print and Backup Operators; Schema and Enterprise Admins not empty | Plan with undo |
+| `ms-DS-MachineAccountQuota` to 0 (users can no longer join computers to the domain) | Plan with undo |
+| AD Recycle Bin | Plan; cannot be undone, and the preview says so |
+| krbtgt password older than 180 days | Guided: two rounds, with a replication check and the waiting time in between |
+| Unconstrained delegation | Guided: first who uses it, then a plan per account |
+| Computers without a LAPS password | Advice (Group Policy or Intune) |
+| LDAP signing, NTLMv1, SMBv1 and the print spooler on domain controllers | A check with a library script; advice |
+
+Advice for **Microsoft 365**:
+
+| Advice | Carried out as |
+| --- | --- |
+| No Security Defaults and no Conditional Access | The baseline from the existing CA templates in one plan (`CaSafety` as always) |
+| Admin roles on accounts synchronised from AD, or on the daily account with a mailbox | Advice per account |
+| Permanent admin roles | Plan to make them eligible (PIM, needs Entra ID P2) |
+| Users who register apps, create tenants or consent to apps themselves | Plan, with the admin consent workflow |
+| Guests: limited access to the directory; only administrators and Guest Inviters invite | Plan with undo |
+| SMS and voice still allowed; passkeys or Microsoft Authenticator not on | Guided: first who has no other method yet |
+| Emergency accounts: an alert at every sign-in | Check (with the sign-ins of R18) |
+| Exchange: SMTP AUTH, automatic forwarding to outside, the "external" tag in Outlook, the audit log | Plan with fixed commands in `Exchange.ps1`; SMTP AUTH guided (first who still uses it) |
+| Defender for Office: the Standard or Strict preset | Plan, where licensed |
+| SPF, DKIM and DMARC per domain | Check through DNS; turning DKIM on is a plan, the DNS records come with an explanation |
+| Shared mailboxes where signing in is allowed | Plan with undo |
+| SharePoint: links for everyone without sign-in | Plan with undo |
+
+Carrying out advice needs the Administrator role; the Auditor sees everything, read only. Advice that needs a licence
+the tenant does not have (Entra ID P2, Defender for Office) says so instead of "problem".
+
+### Devices and Intune (R17)
+
+| Proposal | Why |
+| --- | --- |
+| **One device list over AD, Entra and Intune** (like AD against Entra for users): which device is where, where the hybrid join fails, duplicate and orphaned records | One device, one line, three systems |
+| **A page per device**: model, serial number, encryption, last sync, primary user, company or personal, the compliance settings that fail, BitLocker and LAPS (access log); on the user page a **Devices** block | The helpdesk sees everything in one place |
+| **Actions as a plan** (U17): safe (sync, restart, rotate the LAPS password and the BitLocker key, Defender scan; also for the Helpdesk), management (rename, change the primary user, retire) and destructive (wipe, fresh start) | Initial management without the Intune portal |
+| **Safeguards for destructive actions**: Administrator only, one device per plan, confirmed by typing the device name, never for a personal device (retire instead), never scheduled; the engine checks it too, like `CaSafety` | A wipe cannot be undone |
+| **Compliance**: per policy which devices fail and on which setting; the setting "devices without a policy are not compliant"; baseline compliance policies as templates (like the CA templates), as a plan | "Compliant device" in Conditional Access only makes sense with this |
+| **Offboarding**: the devices of the person who leaves in the same plan: retire for a personal device, return or wipe for a company device | Company data does not leave with the person |
+| **Clean-up** (U18): a stale device is first disabled in Entra (undo possible); only after 90 days disabled, a separate plan deletes the Entra and Intune record, with a warning when BitLocker keys are still attached (they go with the record) | Clean lists, without losing a recovery key by accident |
+| **Life cycle of systems** as data that comes with the updates (build and end of support), instead of a fixed list in the code. Today Windows 10 is not marked, although its support ended on 14 October 2025 (except with ESU) | Correct without a code change for every date |
+| **Devices in the snapshots**: devices and their compliance get versions, like users | The trend of compliance and of the move to Windows 11; the devices on a date |
+
+Offboarding still never deletes: deleting a device record is only ever the separate clean-up plan.
+
+### Own data: logs and reading without a window (R18)
+
+| Proposal | Why |
+| --- | --- |
+| **Sign-in and audit logs kept locally** (U19), an option that is **on by default**: failed, risky, administrator and emergency account sign-ins and the directory audit log, for 1 year (adjustable with the other retention periods) | Microsoft keeps them 7 to 30 days, depending on the licence; an incident is often found later |
+| **Reading without a window** (U19): a task in the Windows Task Scheduler starts Moss365 without a window at an **hour you choose**, per tenant. It only reads: it never writes, and scheduled actions keep waiting for an administrator. It runs under your own Windows account and needs "stay signed in" and a tenant without encryption or with the Windows account or AD group (not with a password); AD only when a domain controller is reachable at that hour | A snapshot every day, without gaps and without a server |
+| **Since your last visit**: at opening, what changed outside Moss365 since you last opened the tenant (new administrators, changed policies, new app consents, emergency account sign-ins) | The alerts of the Server, on the Desktop |
+
+### The overview (R19)
+
+| Proposal | Why |
+| --- | --- |
+| **Overview** as the start screen of a tenant, in four blocks: **security** (hardening score, open advice by severity, MFA coverage, administrators, since your last visit), **devices** (compliance, not seen, outdated systems, encryption), **hygiene and costs** (inactive accounts, guests without renewal, wasted licences in euros, data quality) and **work** (what expires soon: app secrets, guests, passwords; requests, scheduled actions, follow-up, the status of Microsoft 365). Every tile shows its trend and clicks through to the list behind it | One look: how are we doing? |
+| **Compared with a previous period** ("+3 since last month"), and the overview on a date in the past | Progress, also for management |
+| **A layout per role** (Helpdesk, Administrator, Auditor), adjustable per person | Everyone sees first what they need |
+| **All tenants** (U20): per tenant only scores and counts, side by side, computed when shown from each tenant's own database (unlocked tenants only); never stored or exported together | For those who manage several organisations |
+| **Board summary**: one page with the reports (HTML, prints as PDF) | For management and information security |
+
+The inventory part of today's start screen (folders and files) moves to the settings.
+
+### Access reviews (R20)
+
+| Proposal | Why |
+| --- | --- |
+| **Light access reviews**, like Gasten verlengen (R14): every quarter (adjustable) the owner, or a reviewer you choose, confirms the members of privileged groups (AD and Entra), the access to shared mailboxes and the app permissions. Asking is a plan of mails, removing is a plan, every decision is a change log line, and overdue reviews show on the overview | Evidence for NIS2 and the CIS Controls, without an Entra ID Governance licence |
 
 ## 11. Open source, with room for paid support
 
@@ -436,7 +534,7 @@ Moss365 is **open source**: anyone can read, use, change and improve the code. L
 | The app (Desktop and Server), the source code, the script library, the documentation, the updates | **Support** with agreements (response times, help with problems) |
 | | **Installation and setup** (wizard, job profiles, Conditional Access) |
 | | **Training** for administrators and helpdesk |
-| | **Hosted Server edition** (Moss365 as a service, for those who do not want their own server) |
+| | **Installing and running the Server** for an organisation, always on its own infrastructure (its own server or Azure subscription): the makers never keep an organisation's data (U21) |
 | | **Priority** for requested features, or custom work |
 
 The licence must allow and protect that:
@@ -456,11 +554,13 @@ Further:
 - **Name and trademark**: "Moss365" is the project name. The README and the app state that Moss365 is **not affiliated
   with Microsoft**; "Microsoft 365", "Entra" and "Exchange" are trademarks of Microsoft. The name could be registered as a
   trademark later (Benelux), so nobody else sells a Moss365.
-- **Data**: no telemetry, not even in a paid version without explicit consent.
+- **Data**: no telemetry, not even in a paid version without explicit consent, and no hosting of an organisation's data
+  by the makers (U21).
 
 ## 12. Decisions
 
-U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interactively the same day); U13 on 23 November 2026.
+U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interactively the same day); U13 on 23 November 2026;
+U14 to U21 interactively on 26 November 2026.
 
 | # | Decision | Outcome |
 | --- | --- | --- |
@@ -477,6 +577,14 @@ U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interacti
 | U10 | **Language of code and documentation** | **English**: names in the code, comments, tests and documentation (from R1). The interface in five languages via dictionaries (R15) |
 | U11 | **House style** | **Moss green and purple** by default (fits the name), colour and logo per tenant |
 | U13 | **Google Workspace** | **In the same app**, as a system a tenant can have (**MossSpace**), next to or instead of AD and Microsoft 365; not a separate edition (decided 23 November 2026, chapter 15) |
+| U14 | **Desktop after 1.0** | **The Desktop stays a full edition**, also next to the Server. The motto is **data under your own control** ("data in eigen beheer"): no feature needs a server or a service of the makers (chapter 1) |
+| U15 | **More before 1.0** | **R16 to R20 come before 1.0**, starting with R16: security advice (with the compromised-account plan), devices and Intune, own data, the overview (security, devices, hygiene and costs, work) and light access reviews. The native-speaker review of R15 moves to the end, so that it covers the new texts too |
+| U16 | **Carrying out security advice** | **Guided**: low risk with undo is a plan right away; high risk (krbtgt, unconstrained delegation, SMTP AUTH, Protected Users, ...) first shows the impact, then a plan in steps or a pilot group first. Always with an explanation (ⓘ) and the choice of an exception with a reason and an end date |
+| U17 | **Actions on Intune devices** | **All levels**: safe (sync, restart, rotate keys, Defender scan), management (rename, primary user, retire), destructive (wipe, fresh start) and clean-up; each as a plan, the destructive ones with the safeguards of R17 |
+| U18 | **Cleaning up devices** | **First disable, delete later**: disabled in Entra first (undo possible); only after 90 days disabled is deleting the Entra and Intune record a separate plan, with a warning about BitLocker keys |
+| U19 | **Own data** | **Sign-in and audit logs kept locally**, an option that is on by default (1 year, adjustable); **reading without a window** through the Windows Task Scheduler at an hour you choose, read only |
+| U20 | **All tenants on one screen** | **Yes, only scores and counts per tenant**, side by side; computed when shown, never stored or exported together. Personal and object data of two tenants never come together |
+| U21 | **Hosted edition** | **Only at the organisation itself**: paid installation and management are allowed, always on the organisation's own server or Azure subscription; the makers never keep an organisation's data (chapter 11) |
 
 ## 13. The steps to 1.0
 
@@ -498,11 +606,18 @@ U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interacti
 | **R13 Devices, Teams and SharePoint** | Everything from chapter 10, Devices, Teams and SharePoint (the needed read permissions are added in the wizard) | Same |
 | **R14 Reporting and working as a team** | Everything from chapter 10, Reporting and working as a team | Same; a quarterly report comes from the snapshots, also for a period in the past |
 | **R15 Languages** | Dictionaries for the interface (one per language, with a glossary); EN, NL, PT-BR, FR and DE; system language by default, configurable in Settings; dates and numbers per language; fallback to English | Every screen in five languages; the app follows the Windows language and the choice in Settings wins; a test finds no hard-coded text in the screens and reports missing translations |
-| **1.0 Desktop** | Code signing certificate for app, updates and scripts (U8); guide per role, installation guide, migration guide, privacy information (what the app stores and where), a DPIA template | An organisation that does not know Moss365 installs and uses it with the documentation alone |
+| **R16 Security advice** | Everything from chapter 10, Security advice you can carry out: the explanation (ⓘ), solving as a plan (guided for high risk, U16), exceptions, the hardening score with its trend, the results in the tenant database, the compromised-account plan, write permissions per part in the wizard | Every check gives advice with an explanation; every solution is a plan with preview, change log and undo where possible; a test proves that the wrong role and a historic view cannot carry out anything |
+| **R17 Devices and Intune** | Everything from chapter 10, Devices and Intune: one list over AD, Entra and Intune, a page per device, actions on three levels with their safeguards (U17), compliance, offboarding, clean-up (U18), the life cycle as data, devices in the snapshots | Every action is a plan with the right role; the planner and the engine refuse a destructive action for more than one device or for a personal device |
+| **R18 Own data** | Everything from chapter 10, Own data: sign-in and audit logs kept locally (on by default), reading without a window at an hour you choose, since your last visit | A read at night makes a snapshot without the app being open and never writes; the logs follow the retention |
+| **R19 The overview** | Everything from chapter 10, The overview: the start screen per tenant in four blocks, comparison with a period, a layout per role, All tenants (U20), the board summary | Every tile shows its trend and clicks through to the list behind it; a test proves that All tenants stores nothing and shows no names |
+| **R20 Access reviews** | Everything from chapter 10, Access reviews | Every decision is in the change log; asking and removing are plans |
+| **1.0 Desktop** | Code signing certificate for app, updates and scripts (U8); guide per role, installation guide, migration guide, privacy information (what the app stores and where, including the sign-in and audit logs of R18), a DPIA template | An organisation that does not know Moss365 installs and uses it with the documentation alone |
 
 Order: R0 and R1 first. R2 and R3 belong together (one database per tenant). R4 builds on them, and R11 and R14 build
 on R4. The other steps can be done in a different order if that works better; every step is a release of its own
-(0.10, 0.11, ...). Then the web version: [roadmap-web.md](roadmap-web.md), and Google Workspace (chapter 15).
+(0.10, 0.11, ...). R16 to R20 come before 1.0 (U15), in that order; R19 builds on R16 to R18. The review of the
+translations by native speakers (the rest of R15) comes after R20, so that it covers every new text. Then the web
+version: [roadmap-web.md](roadmap-web.md), and Google Workspace (chapter 15).
 
 ## 14. Risks
 
@@ -521,6 +636,13 @@ on R4. The other steps can be done in a different order if that works better; ev
 | Outside contributions | Pull requests with tests and review, a CLA, the rules of chapter 1 in the contributing guide |
 | The name suggests a Microsoft product | The "not affiliated with Microsoft" notice in the README and the app; no Microsoft logos |
 | Too much at once for one maintainer | Every step a small release with tests; the order of R5 to R15 is free, so what helps most goes first |
+| More before 1.0 (U15) makes 1.0 later | Every step its own release with tests (0.39, 0.40, ...), usable as soon as it is done; the order of R16 to R20 puts what helps most first |
+| A security solution breaks something (krbtgt, delegation, SMTP AUTH, Protected Users) | Guided (U16): the impact first, steps or a pilot group, undo where possible; the explanation says what can go wrong |
+| A wipe of the wrong device | Administrator only, one device per plan, the device name typed, never for a personal device; the engine checks it too (R17) |
+| Deleting a device record also deletes its BitLocker keys | Disabled first; deleting only after 90 days, with a warning in the preview (U18) |
+| Sign-in logs on the PC are more personal data | Only what matters, a retention (1 year by default), encryption recommended, in the privacy information and the DPIA template |
+| Reading without a window with a remembered sign-in | Read only, under your own Windows account; "stay signed in" stays a choice; the task is only created after your confirmation |
+| All tenants shows several organisations together | Only scores and counts, computed when shown, never stored or exported together (U20) |
 
 ## 15. After 1.0: Google Workspace (MossSpace)
 
