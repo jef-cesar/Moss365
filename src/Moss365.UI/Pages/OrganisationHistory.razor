@@ -4,50 +4,48 @@
    read only), compare two dates, and compute the KPIs again from the snapshots. *@
 @inherits RefreshingPage
 
-<h1>Geschiedenis</h1>
+<h1>@T["menu.geschiedenis"]</h1>
 
 <p class="kb-zacht">
-    Elke lezing (live of een ingelezen inventaris) is een momentopname in de databank van <strong>@State.Tenant.Name</strong>.
-    De app bewaart enkel wat veranderde, zodat je kan zien hoe de organisatie eruitzag op elke datum en wat er tussen twee
-    datums veranderde, ook wat buiten Moss365 gebeurde.
+    @Html("history.intro", State.Tenant.Name)
 </p>
 
 @if (snapshots.Count == 0)
 {
-    <div class="kb-melding">Nog geen momentopnamen. Laad live via <a href="verbindingen">Verbindingen</a>: elke lezing wordt er een.</div>
+    <div class="kb-melding">@Html("history.none")</div>
 }
 else
 {
     <section class="kb-kaart">
-        <h2>De organisatie op een datum</h2>
+        <h2>@T["organisation-history.the-organisation-on-a-date"]</h2>
         @if (State.AsOf is { } a)
         {
-            <p>Alle schermen tonen nu de stand van <strong>@a.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</strong> (alleen lezen).</p>
-            <button class="kb-knop kb-primair" @onclick="State.BackToNow">Terug naar nu</button>
+            <p>@Html("history.showing", a.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm"))</p>
+            <button class="kb-knop kb-primair" @onclick="State.BackToNow">@T["past.back"]</button>
         }
         else
         {
             <div class="kb-rij">
-                <label>Datum <input type="date" class="kb-invoer" @bind="asOf" /></label>
-                <button class="kb-knop kb-primair" @onclick="Show">Tonen</button>
+                <label>@T["schedule.date"] <input type="date" class="kb-invoer" @bind="asOf" /></label>
+                <button class="kb-knop kb-primair" @onclick="Show">@T["organisation-history.show"]</button>
             </div>
-            <p class="kb-zacht">De schermen tonen dan de laatste momentopname van voor het einde van die dag. Plannen kunnen dan niet.</p>
+            <p class="kb-zacht">@T["organisation-history.the-screens-then-show-the"]</p>
         }
         @if (message is not null) { <div class="kb-melding kb-fout">@message</div> }
     </section>
 
     <section class="kb-kaart">
-        <h2>Wat veranderde er</h2>
+        <h2>@T["organisation-history.what-changed"]</h2>
         <div class="kb-rij">
-            <label>Van <input type="date" class="kb-invoer" @bind="from" /></label>
-            <label>Tot en met <input type="date" class="kb-invoer" @bind="until" /></label>
-            <button class="kb-knop" @onclick="Compare">Vergelijken</button>
+            <label>@T["absence-card.from"] <input type="date" class="kb-invoer" @bind="from" /></label>
+            <label>@T["manage-ca.up-to-and-including"] <input type="date" class="kb-invoer" @bind="until" /></label>
+            <button class="kb-knop" @onclick="Compare">@T["organisation-history.compare"]</button>
         </div>
         @if (changes is { } list)
         {
             if (list.Count == 0)
             {
-                <p>Geen verschillen tussen deze datums.</p>
+                <p>@T["organisation-history.no-differences-between-these-dates"]</p>
             }
             else
             {
@@ -56,7 +54,7 @@ else
                 {
                     <h3>@TableName(g.Key) <span class="kb-zacht">(@g.Count())</span></h3>
                     <table class="kb-tabel">
-                        <thead><tr><th>Wat</th><th>Object</th><th>Veranderd</th></tr></thead>
+                        <thead><tr><th>@T["service-health-card.what"]</th><th>@T["plan.object"]</th><th>@T["organisation-history.changed"]</th></tr></thead>
                         <tbody>
                             @foreach (var c in g)
                             {
@@ -74,9 +72,9 @@ else
     </section>
 
     <section class="kb-kaart">
-        <h2>Momentopnamen</h2>
+        <h2>@T["organisation-history.snapshots"]</h2>
         <table class="kb-tabel">
-            <thead><tr><th>Wanneer</th><th>Bron</th><th class="kb-getal">Tabellen</th></tr></thead>
+            <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["organisation-history.source"]</th><th class="kb-getal">@T["organisation-history.tables"]</th></tr></thead>
             <tbody>
                 @foreach (var s in snapshots.AsEnumerable().Reverse().Take(50))
                 {
@@ -85,10 +83,10 @@ else
             </tbody>
         </table>
         <div class="kb-filters">
-            <button class="kb-knop" disabled="@State.IsHistoric" @onclick="Recompute">KPI's herberekenen uit de momentopnamen</button>
+            <button class="kb-knop" disabled="@State.IsHistoric" @onclick="Recompute">@T["organisation-history.recalculate-kpis-from-the-snapshots"]</button>
             @if (recomputed is not null) { <span class="kb-zacht">@recomputed</span> }
         </div>
-        <p class="kb-zacht">Zo krijgt ook een KPI die later toegevoegd werd zijn verloop terug, voor elke dag met een momentopname.</p>
+        <p class="kb-zacht">@T["organisation-history.that-way-a-kpi-added"]</p>
     </section>
 }
 

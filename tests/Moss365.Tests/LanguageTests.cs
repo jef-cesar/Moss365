@@ -46,6 +46,20 @@ public sealed class LanguageTests
     }
 
     [Fact]
+    public void TranslationsKeepTheSameLinksAndMarkup()
+    {
+        static string Shape(string text) => string.Join(" ", Regex.Matches(text, @"<(/?)(\w+)([^>]*)>").Select(m => m.Groups[1].Value + m.Groups[2].Value + Regex.Match(m.Groups[3].Value, @"href=""[^""]*""").Value).Order(StringComparer.Ordinal));
+        foreach (var (key, english) in Translator.Dictionaries["en"])
+        {
+            foreach (var l in Translator.Languages)
+            {
+                var text = Translator.Dictionaries[l.Code][key];
+                Assert.True(Shape(english) == Shape(text), $"{l.Code} {key}: other tags or links than English: {text}");
+            }
+        }
+    }
+
+    [Fact]
     public void EveryKeyUsedInTheScreensExists()
     {
         var used = new Regex(@"\bTx?(?:\.Format|\.Text)?\(?\[?""([a-z][a-z0-9\.\-]+)""");

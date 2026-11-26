@@ -5,18 +5,16 @@
    The change log and the access log go to a CSV before anything is removed. *@
 @inherits RefreshingPage
 
-<h1>Databank</h1>
+<h1>@T["database-maintenance.database"]</h1>
 
 <p class="kb-zacht">
-    Alles van <strong>@State.Tenant.Name</strong> staat in één databank (<code>tenants\@State.Tenant.Id\tenant.db</code>,
-    @Size(State.Database.FileSize)). Opruimen toont altijd eerst wat er weg zou gaan; het logboek en het toegangslog gaan
-    eerst naar een CSV. Een volledige kopie maak je bij <a href="tenants">Tenants</a> (Back-up).
+    @Html("database.intro", State.Tenant.Name, $"tenants\\{State.Tenant.Id}\\tenant.db", Size(State.Database.FileSize))
 </p>
 
 <section class="kb-kaart">
-    <h2>Grootte per deel</h2>
+    <h2>@T["database-maintenance.size-per-part"]</h2>
     <table class="kb-tabel">
-        <thead><tr><th>Deel</th><th>Rijen</th><th>Inhoud</th></tr></thead>
+        <thead><tr><th>@T["database-maintenance.part"]</th><th>@T["start.rows"]</th><th>@T["database-maintenance.content"]</th></tr></thead>
         <tbody>
             @foreach (var p in sizes)
             {
@@ -25,8 +23,8 @@
         </tbody>
     </table>
     <div class="kb-rij">
-        <button class="kb-knop" disabled="@busy" @onclick="Check">Integriteit nakijken</button>
-        <button class="kb-knop" disabled="@busy" @onclick="Compact">Comprimeren</button>
+        <button class="kb-knop" disabled="@busy" @onclick="Check">@T["database-maintenance.check-integrity"]</button>
+        <button class="kb-knop" disabled="@busy" @onclick="Compact">@T["database-maintenance.compact"]</button>
         @if (checkResult is not null)
         {
             <span class="@(checkResult == "ok" ? "kb-ok" : "kb-waarschuwing")">@(checkResult == "ok" ? "De databank is in orde." : "Problemen: " + checkResult)</span>
@@ -42,30 +40,30 @@
 <EncryptionPanel />
 
 <section class="kb-kaart">
-    <h2>Bewaartermijnen</h2>
-    <p class="kb-zacht">Standaard (keuze U9): momentopnamen een jaar dagelijks, daarna één per maand; logboek 5 jaar; technisch log 90 dagen; scriptruns een jaar.</p>
+    <h2>@T["database-maintenance.retention-periods"]</h2>
+    <p class="kb-zacht">@T["database-maintenance.default-choice-u9-snapshots-daily"]</p>
     <div class="kb-formulier">
-        <label>Logboek (jaar) <input type="number" min="1" class="kb-invoer" @bind="State.Config.ChangeLogSaveYears" @bind:after="Modified" /></label>
-        <label>Momentopnamen dagelijks (dagen) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.SnapshotsDailyDays" @bind:after="Modified" /></label>
-        <label>Toegangslog (jaar) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.AccessLogYears" @bind:after="Modified" /></label>
-        <label>Technisch log (dagen) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.TechnicalLogDays" @bind:after="Modified" /></label>
-        <label>Scriptruns (dagen) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.ScriptRunDays" @bind:after="Modified" /></label>
-        <label>Kopieën voor een update (dagen) <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.MigrationCopyDays" @bind:after="Modified" /></label>
+        <label>@T["database-maintenance.change-log-years"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.ChangeLogSaveYears" @bind:after="Modified" /></label>
+        <label>@T["database-maintenance.daily-snapshots-days"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.SnapshotsDailyDays" @bind:after="Modified" /></label>
+        <label>@T["database-maintenance.access-log-years"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.AccessLogYears" @bind:after="Modified" /></label>
+        <label>@T["database-maintenance.technical-log-days"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.TechnicalLogDays" @bind:after="Modified" /></label>
+        <label>@T["database-maintenance.script-runs-days"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.ScriptRunDays" @bind:after="Modified" /></label>
+        <label>@T["database-maintenance.copies-before-an-update-days"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.MigrationCopyDays" @bind:after="Modified" /></label>
     </div>
-    <button class="kb-knop kb-primair" disabled="@(!modified)" @onclick="SaveRetention">Bewaren</button>
-    @if (saved) { <span class="kb-ok">Bewaard.</span> }
+    <button class="kb-knop kb-primair" disabled="@(!modified)" @onclick="SaveRetention">@T["action.save"]</button>
+    @if (saved) { <span class="kb-ok">@T["database-maintenance.saved"]</span> }
 </section>
 
 <section class="kb-kaart">
-    <h2>Opruimen</h2>
+    <h2>@T["database-maintenance.clean-up"]</h2>
     @if (State.IsHistoric)
     {
-        <div class="kb-melding">Je bekijkt een stand uit het verleden. Ga terug naar nu om op te ruimen.</div>
+        <div class="kb-melding">@T["database-maintenance.you-are-looking-at-a"]</div>
     }
     else
     {
         <table class="kb-tabel">
-            <thead><tr><th></th><th>Deel</th><th>Weg te halen</th><th>Wat</th></tr></thead>
+            <thead><tr><th></th><th>@T["database-maintenance.part"]</th><th>@T["database-maintenance.to-remove"]</th><th>@T["service-health-card.what"]</th></tr></thead>
             <tbody>
                 @foreach (var i in preview)
                 {
@@ -85,14 +83,14 @@
         </table>
         @if (preview.All(i => i.Count == 0))
         {
-            <p class="kb-ok">Er is niets ouder dan de bewaartermijnen.</p>
+            <p class="kb-ok">@T["database-maintenance.nothing-is-older-than-the"]</p>
         }
         else if (confirm)
         {
             <div class="kb-rij">
-                <span>@chosen.Count deel/delen opruimen in <strong>@State.Tenant.Name</strong>? Dit kan niet ongedaan gemaakt worden (de archieven blijven).</span>
-                <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="Clean">Ja, opruimen in @State.Tenant.Name</button>
-                <button class="kb-knop" @onclick="() => confirm = false">Annuleren</button>
+                <span>@Html("database.confirm", chosen.Count, State.Tenant.Name)</span>
+                <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="Clean">@T.Format("database.yes", State.Tenant.Name)</button>
+                <button class="kb-knop" @onclick="() => confirm = false">@T["action.cancel"]</button>
             </div>
         }
         else

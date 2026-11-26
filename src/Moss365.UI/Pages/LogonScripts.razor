@@ -6,12 +6,12 @@
    scripts nobody uses, what a script does, editing as a plan (the previous version goes into the change log), the
    logon script of users as a plan, and the scripts that Group Policies assign (shown, not changed). *@
 
-<h1>Logonscripts</h1>
+<h1>@T["menu.logonscripts"]</h1>
 
 <p class="kb-zacht">
     De scripts in NETLOGON en wie welk script heeft (het kenmerk scriptPath in AD). Een script bewaren en het logonscript van
     gebruikers wijzigen zijn plannen zoals altijd; elke vorige versie staat in het logboek en is terug te zetten.
-    @if (share is not null) { <text>Locatie: <code>@share.Location</code>.</text> }
+    @if (share is not null) { @Html("logon-scripts.location", share.Location) }
 </p>
 
 @if (error is not null)
@@ -24,7 +24,7 @@
     <section class="kb-kaart">
         <h2>Scripts (@files.Count)</h2>
         <table class="kb-tabel">
-            <thead><tr><th>Script</th><th class="kb-getal">Gebruikers</th><th>Wat het doet</th><th>Gewijzigd</th><th></th></tr></thead>
+            <thead><tr><th>@T["code-editor.script"]</th><th class="kb-getal">@T["menu.gebruikers"]</th><th>@T["edit-script.what-it-does"]</th><th>@T["logon-scripts.changed"]</th><th></th></tr></thead>
             <tbody>
                 @foreach (var u in uses.Where(u => u.File is not null))
                 {
@@ -33,7 +33,7 @@
                         <td class="kb-getal">@u.Users.Count</td>
                         <td class="kb-zacht">@Summary(u.Name)</td>
                         <td>@u.File!.Modified.LocalDateTime.ToString("dd/MM/yyyy")</td>
-                        <td><button class="kb-knop kb-klein" @onclick="() => Open(u.Name)">Openen</button></td>
+                        <td><button class="kb-knop kb-klein" @onclick="() => Open(u.Name)">@T["script-result.open"]</button></td>
                     </tr>
                 }
             </tbody>
@@ -41,39 +41,39 @@
         @if (State.Can(Permission.Manage) && share is not null)
         {
             <div class="kb-rij">
-                <input class="kb-invoer" placeholder="nieuw-script.bat" @bind="newName" aria-label="Naam van een nieuw script" />
-                <button class="kb-knop" disabled="@(newName.Trim().Length == 0)" @onclick="NewScript">Nieuw script</button>
+                <input class="kb-invoer" placeholder="@T["logon-scripts.new-script-bat"]" @bind="newName" aria-label="@T["logon-scripts.name-of-a-new-script"]" />
+                <button class="kb-knop" disabled="@(newName.Trim().Length == 0)" @onclick="NewScript">@T["logon-scripts.new-script"]</button>
             </div>
         }
     </section>
 
     <section class="kb-kaart">
-        <h2>Na te kijken</h2>
+        <h2>@T["logon-scripts.to-check"]</h2>
         @if (Missing.Count == 0 && Unused.Count == 0)
         {
-            <p class="kb-zacht">Elk logonscript bestaat, en elk script wordt gebruikt.</p>
+            <p class="kb-zacht">@T["logon-scripts.every-logon-script-exists-and"]</p>
         }
         @foreach (var u in Missing)
         {
             <div class="kb-melding">
                 <strong>@u.Name</strong> bestaat niet in NETLOGON, maar @u.Users.Count gebruiker(s) hebben het:
                 @string.Join(", ", u.Users.Take(10).Select(p => p.Name))@(u.Users.Count > 10 ? " ..." : null)
-                @if (State.Can(Permission.Manage)) { <button class="kb-knop kb-klein" @onclick="() => Open(u.Name)">Bekijken</button> }
+                @if (State.Can(Permission.Manage)) { <button class="kb-knop kb-klein" @onclick="() => Open(u.Name)">@T["script-run-panel.view"]</button> }
             </div>
         }
         @if (Unused.Count > 0)
         {
-            <p>Niemand gebruikt (rechtstreeks): @foreach (var f in Unused) { <code class="kb-label">@f.Name</code> } <span class="kb-zacht">Ze kunnen nog door een ander script of een groepsbeleid gestart worden.</span></p>
+            <p>Niemand gebruikt (rechtstreeks): @foreach (var f in Unused) { <code class="kb-label">@f.Name</code> } <span class="kb-zacht">@T["logon-scripts.they-can-still-be-started"]</span></p>
         }
     </section>
 
     <section class="kb-kaart">
         <h2>Via groepsbeleid (@gpo.Count)</h2>
-        <p class="kb-zacht">Scripts die een groepsbeleid (GPO) toekent. De app toont ze, maar wijzigt ze niet: dat gebeurt in Groepsbeleidsbeheer.</p>
+        <p class="kb-zacht">@T["logon-scripts.scripts-that-a-group-policy"]</p>
         @if (gpo.Count > 0)
         {
             <table class="kb-tabel">
-                <thead><tr><th>Beleid</th><th>Soort</th><th>Script</th><th>Parameters</th></tr></thead>
+                <thead><tr><th>@T["what-if-table.policy"]</th><th>@T["nested-groups.kind"]</th><th>@T["code-editor.script"]</th><th>@T["logon-scripts.parameters"]</th></tr></thead>
                 <tbody>@foreach (var g in gpo) { <tr><td><code>@g.PolicyId</code></td><td>@g.Kind</td><td>@g.Script</td><td class="kb-zacht">@g.Parameters</td></tr> }</tbody>
             </table>
         }
@@ -83,16 +83,16 @@ else
 {
     <div class="kb-titelbalk">
         <h1><code>@selected</code></h1>
-        <button class="kb-knop" @onclick="Close">Terug naar de lijst</button>
+        <button class="kb-knop" @onclick="Close">@T["logon-scripts.back-to-the-list"]</button>
     </div>
 
     <section class="kb-kaart">
-        <h2>Wat het doet</h2>
+        <h2>@T["edit-script.what-it-does"]</h2>
         <ul>@foreach (var l in LogonScriptAnalysis.Explain(text).Lines) { <li>@l</li> }</ul>
     </section>
 
     <section class="kb-kaart">
-        <h2>Script</h2>
+        <h2>@T["code-editor.script"]</h2>
         <CodeEditor Text="@text" TextChanged="t => { text = t; outcome = null; }" ReadOnly="@(!State.Can(Permission.Manage) || State.IsHistoric)" />
         @if (original is not null && Diff.Count > 0)
         {
@@ -104,7 +104,7 @@ else
         @if (State.Can(Permission.Manage) && !State.IsHistoric)
         {
             <div class="kb-filters">
-                <button class="kb-knop kb-primair" @onclick="Save">Plan maken (bewaren)</button>
+                <button class="kb-knop kb-primair" @onclick="Save">@T["logon-scripts.make-plan-save"]</button>
             </div>
         }
     </section>
@@ -126,13 +126,13 @@ else
             @if (extra.Count > 0) { <p>Ook: @string.Join(", ", extra.Select(p => p.Name))</p> }
             <div class="kb-rij">
                 <label>Logonscript van de gekozen gebruikers (@chosen.Count)
-                    <select class="kb-invoer" @bind="assignTo" aria-label="Nieuw logonscript">
+                    <select class="kb-invoer" @bind="assignTo" aria-label="@T["logon-scripts.new-logon-script"]">
                         <option value="@selected">@selected</option>
                         @foreach (var f in files.Where(f => !string.Equals(f.Name, selected, StringComparison.OrdinalIgnoreCase))) { <option value="@f.Name">@f.Name</option> }
-                        <option value="">(geen logonscript)</option>
+                        <option value="">@T["logon-scripts.no-logon-script"]</option>
                     </select>
                 </label>
-                <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="Assign">Plan maken</button>
+                <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="Assign">@T["bulk-tasks.make-plan"]</button>
             </div>
         }
     </section>
@@ -142,7 +142,7 @@ else
         <section class="kb-kaart">
             <h2>Versies in deze app (@Versions.Count)</h2>
             <table class="kb-tabel">
-                <thead><tr><th>Wanneer</th><th>Door</th><th></th></tr></thead>
+                <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["logon-scripts.by"]</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var v in Versions)
                     {
@@ -151,7 +151,7 @@ else
                             <td>
                                 @if (v.Previous?.GetValueOrDefault(LogonScriptPlans.Content) is { } before && State.Can(Permission.Manage))
                                 {
-                                    <button class="kb-knop kb-klein" @onclick="() => { text = before; outcome = null; }">Versie van daarvoor in de editor zetten</button>
+                                    <button class="kb-knop kb-klein" @onclick="() => { text = before; outcome = null; }">@T["logon-scripts.put-the-version-from-before"]</button>
                                 }
                             </td>
                         </tr>
