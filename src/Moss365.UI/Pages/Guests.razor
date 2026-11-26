@@ -95,7 +95,7 @@
         new() { Key = "naam", Title = T["variables-editor.name"], Cell = p => @<ObjectLink Object="State.Data.Index.Ref(p)" />, SortBy = p => p.Name },
         new() { Key = "mail", Title = T["guests.e-mail-address"], Cell = p => @<text>@p.Entra?.Mail</text>, SortBy = p => p.Entra?.Mail },
         new() { Key = "domein", Title = T["new-mailbox.domain"], Cell = p => @<text>@Domain(p)</text>, SortBy = p => Domain(p) },
-        new() { Key = "status", Title = "Status", Cell = p => @<text>@(p.Enabled ? "actief" : "geblokkeerd")</text>, SortBy = p => p.Enabled ? "actief" : "geblokkeerd" },
+        new() { Key = "status", Title = "Status", Cell = p => @<text>@(p.Enabled ? T["word.active"] : T["word.blocked"])</text>, SortBy = p => p.Enabled ? "actief" : "geblokkeerd" },
         new() { Key = "aangemaakt", Title = T["guests.invited"], Cell = p => @<text>@Date(p.Entra?.CreatedDateTime)</text>, SortBy = p => p.Entra?.CreatedDateTime },
         new() { Key = "aanmelding", Title = T["statistics.last-sign-in"], Cell = p => @<text>@Date(p.Entra?.LastSignIn)</text>, SortBy = p => p.Entra?.LastSignIn },
         new() { Key = "groepen", Title = T["menu.groepen"], Number = true, Cell = p => @<text>@State.Data.CloudGroupsOf(p).Count()</text>, SortBy = p => State.Data.CloudGroupsOf(p).Count() },

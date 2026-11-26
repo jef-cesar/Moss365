@@ -81,7 +81,7 @@ else
         new() { Key = "afwijkingen", Title = T["rooms.deviations"], Cell = r => @<span class="kb-zacht">@string.Join("; ", Deviations(r))</span>, SortBy = r => Deviations(r).Count, Text = r => string.Join("; ", Deviations(r)) },
         new() { Key = "duur", Title = T["rooms.max-duration"], Hidden = true, Number = true, Cell = r => @<text>@r.MaximumDurationInMinutes</text>, SortBy = r => r.MaximumDurationInMinutes },
         new() { Key = "gedelegeerden", Title = T["rooms.delegates"], Hidden = true, Cell = r => @<text>@r.ResourceDelegates.Replace("|", ", ")</text>, SortBy = r => r.ResourceDelegates, Text = r => r.ResourceDelegates.Replace("|", ", ") },
-        new() { Key = "verborgen", Title = T["mailboxes.hidden"], Hidden = true, Cell = r => @<text>@(r.Hidden ? "ja" : "")</text>, SortBy = r => r.Hidden ? "ja" : "" },
+        new() { Key = "verborgen", Title = T["mailboxes.hidden"], Hidden = true, Cell = r => @<text>@(r.Hidden ? T["yesno.yes"] : "")</text>, SortBy = r => r.Hidden ? "ja" : "" },
         new() { Key = "entraid", Title = T["object-status.entra-id"], Hidden = true, Cell = r => @<code>@(State.Data.Index.AccountOf(r.Smtp, r.Alias)?.Entra?.Id)</code>, SortBy = r => State.Data.Index.AccountOf(r.Smtp, r.Alias)?.Entra?.Id },
     };
 

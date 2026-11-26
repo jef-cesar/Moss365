@@ -87,7 +87,7 @@
             <tbody>
                 @foreach (var s in sites.Take(50))
                 {
-                    <tr><td>@s.Url</td><td>@s.Owner</td><td class="kb-getal">@DeviceAnalysis.Size(s.StorageBytes)</td><td class="kb-getal">@s.Files</td><td>@(s.LastActivity?.LocalDateTime.ToString("dd/MM/yyyy") ?? "nooit")</td></tr>
+                    <tr><td>@s.Url</td><td>@s.Owner</td><td class="kb-getal">@DeviceAnalysis.Size(s.StorageBytes)</td><td class="kb-getal">@s.Files</td><td>@(s.LastActivity?.LocalDateTime.ToString("dd/MM/yyyy") ?? T["word.never"])</td></tr>
                 }
             </tbody>
         </table>

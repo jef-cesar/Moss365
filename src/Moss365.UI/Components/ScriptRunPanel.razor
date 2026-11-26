@@ -3,7 +3,7 @@
 @inject ManagementState State
 
 <section class="kb-kaart">
-    <h2>@(OneTimeText is null ? "Starten" : "Eenmalig uitvoeren")</h2>
+    <h2>@(OneTimeText is null ? T["word.start"] : T["word.runonce"])</h2>
     <ScriptForm Header="Script.Header" Values="values" ValuesChanged="OnValuesChanged" />
 
     @if (error is not null)

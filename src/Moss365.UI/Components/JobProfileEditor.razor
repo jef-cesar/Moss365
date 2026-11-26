@@ -45,7 +45,7 @@
     </div>
     <PersonPicker Label="@T["code.job-profile-editor.or-take-over-from-a"]" Selected="example" SelectedChanged="p => example = p" />
     <div class="kb-rij">
-        <button class="kb-knop" disabled="@(!CanAdd || example is null)" @onclick="AddFromPerson">@T.Format("job-profile-editor.make-profile-from-0", example?.Name ?? "deze gebruiker")</button>
+        <button class="kb-knop" disabled="@(!CanAdd || example is null)" @onclick="AddFromPerson">@T.Format("job-profile-editor.make-profile-from-0", example?.Name ?? T["word.thisuser"])</button>
     </div>
     @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
 </section>

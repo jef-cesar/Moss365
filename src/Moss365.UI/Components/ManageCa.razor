@@ -20,8 +20,8 @@
 
     <div class="kb-filters">
         <span class="kb-segment" role="group" aria-label="@T["manage-ca.manage"]">
-            @foreach (var (o, text) in new[] { (Section.Status, T["code.manage-ca.on-and-off"]), (Section.Exclusions, "Uitzonderingen"), (Section.New, "Nieuw beleid"),
-                                                 (Section.Locations, "Benoemde locaties"), (Section.Backups, "Back-ups"), (Section.Audit, T["code.manage-ca.who-changed-what"]) })
+            @foreach (var (o, text) in new[] { (Section.Status, T["code.manage-ca.on-and-off"]), (Section.Exclusions, T["word.exclusions"]), (Section.New, T["word.newpolicy"]),
+                                                 (Section.Locations, T["word.namedlocations"]), (Section.Backups, T["word.backups"]), (Section.Audit, T["code.manage-ca.who-changed-what"]) })
             {
                 <button class="kb-knop @(component == o ? "kb-primair" : null)" @onclick="() => Choose(o)">@text</button>
             }
@@ -43,7 +43,7 @@
                         <tr>
                             <td><a href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}")">@b.Name</a> <a class="kb-knop kb-klein" href="@($"conditional-access/{Uri.EscapeDataString(b.Id)}/bewerken")">@T["edit-user.edit"]</a></td>
                             <td><CaLabel Status="b.Status" /></td>
-                            <td class="kb-zacht">@(b.Blocks ? "blokkeert" : string.Join(", ", b.Checks.Select(CaReader.CheckName)))</td>
+                            <td class="kb-zacht">@(b.Blocks ? T["word.blocks"] : string.Join(", ", b.Checks.Select(CaReader.CheckName)))</td>
                             <td>
                                 <span class="kb-filters">
                                     @foreach (var s in new[] { CaStatus.Report, CaStatus.On, CaStatus.Off }.Where(s => s != b.Status))
@@ -163,7 +163,7 @@
                     <label><input type="radio" name="locsoort" checked="@(!locIp)" @onchange="() => locIp = false" /> @T["manage-ca.countries"]</label>
                 }
                 @if (locIp) { <label><input type="checkbox" @bind="locTrusted" /> @T["manage-ca.trusted-location-office"]</label> }
-                <label>@T.Format("manage-ca.0-one-per-line", locIp ? "IP-bereiken" : "Landen") <textarea class="kb-invoer" rows="5" @bind="locValues"></textarea></label>
+                <label>@T.Format("manage-ca.0-one-per-line", locIp ? T["word.ipranges.title"] : T["manage-ca.countries"]) <textarea class="kb-invoer" rows="5" @bind="locValues"></textarea></label>
                 <div class="kb-filters">
                     <button class="kb-knop kb-primair" @onclick="LocationPlan">@T["bulk-tasks.make-plan"]</button>
                     @if (location is not null) { <button class="kb-knop" @onclick="() => Edit(null)">@T["manage-ca.new-location"]</button> }
@@ -306,7 +306,7 @@
     private CaTemplate? Template => CaTemplates.All.FirstOrDefault(s => s.Key == template);
     private IEnumerable<Group> CloudGroups => State.Data.Index.Groups.Where(g => g.Cloud is not null && !g.Dynamic).OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase);
 
-    private static string ButtonText(CaStatus s) => s switch { CaStatus.On => "Aanzetten", CaStatus.Report => "Alleen rapport", _ => "Uitzetten" };
+    private static string ButtonText(CaStatus s) => s switch { CaStatus.On => T["word.turnon"], CaStatus.Report => T["word.reportonly"], _ => T["word.turnoff"] };
 
     private static string DifferenceText(string kind) => kind switch { "nieuw" => T["code.manage-ca.new-since-the-backup"], "verdwenen" => T["code.manage-ca.no-longer-exists"], _ => "gewijzigd" };
 

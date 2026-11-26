@@ -2,7 +2,7 @@
 @if (Kpi is not null)
 {
     <div class="kb-melding kb-kpi-filter" role="status">
-        <span>@T["kpi-filter.filtered-on"] <strong>@Kpi.Label</strong>: @Count @(Count == 1 ? "rij" : "rijen")@if (Shown is { } g && g != Count) { <text>@T.Format("kpi-filter.0-after-your-own-filters", g)</text> }.</span>
+        <span>@T["kpi-filter.filtered-on"] <strong>@Kpi.Label</strong>: @Count @(Count == 1 ? T["word.row"] : T["word.rows"])@if (Shown is { } g && g != Count) { <text>@T.Format("kpi-filter.0-after-your-own-filters", g)</text> }.</span>
         @ChildContent
         <button class="kb-knop" @onclick="Erase">@T["kpi-filter.clear-filter"]</button>
     </div>

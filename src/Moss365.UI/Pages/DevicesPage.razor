@@ -57,7 +57,7 @@
                     <tr>
                         <td><input type="checkbox" checked="@chosen.Contains(c.DistinguishedName)" aria-label="@c.Name" @onchange="e => Toggle(c.DistinguishedName, e.Value is true)" /></td>
                         <td>@c.Name</td><td>@c.OperatingSystem</td><td class="kb-zacht">@c.OuPath</td>
-                        <td>@(c.LastLogon?.LocalDateTime.ToString("dd/MM/yyyy") ?? "nooit")</td>
+                        <td>@(c.LastLogon?.LocalDateTime.ToString("dd/MM/yyyy") ?? T["word.never"])</td>
                     </tr>
                 }
             </tbody>
@@ -131,7 +131,7 @@
             <tbody>
                 @foreach (var d in list.Take(100))
                 {
-                    <tr><td>@d.Name</td><td>@d.Owner</td><td>@d.OperatingSystem @d.Version</td><td>@d.Compliance</td><td>@(d.LastSync?.LocalDateTime.ToString("dd/MM/yyyy") ?? "nooit")</td></tr>
+                    <tr><td>@d.Name</td><td>@d.Owner</td><td>@d.OperatingSystem @d.Version</td><td>@d.Compliance</td><td>@(d.LastSync?.LocalDateTime.ToString("dd/MM/yyyy") ?? T["word.never"])</td></tr>
                 }
             </tbody>
         </table>

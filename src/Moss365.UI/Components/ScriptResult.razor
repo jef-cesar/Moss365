@@ -71,7 +71,7 @@
                 <tr><th>@T["plan.result"]</th><td>@Run.ResultText <span class="kb-zacht">@Run.Message</span></td></tr>
                 <tr><th>@T["script-result.who"]</th><td>@Run.Who</td></tr>
                 <tr><th>@T["script-result.start"]</th><td>@Run.Start.LocalDateTime.ToString("dd/MM/yyyy HH:mm:ss")</td></tr>
-                <tr><th>@T["script-result.duration"]</th><td>@(Run.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "bezig")</td></tr>
+                <tr><th>@T["script-result.duration"]</th><td>@(Run.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : T["word.busy"])</td></tr>
                 <tr><th>@T["script-result.values"]</th><td>@foreach (var (k, v) in Run.Values) { <div><strong>@k</strong>: @v.Replace("\n", ", ")</div> }</td></tr>
                 <tr><th>@T["script-result.fingerprint"]</th><td><code>@Run.Fingerprint</code></td></tr>
             </tbody>

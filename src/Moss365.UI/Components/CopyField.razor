@@ -6,14 +6,14 @@
            aria-label="@Label" @ref="field" @onfocus="Select" />
     @if (Secret)
     {
-        <button class="kb-knop" @onclick="() => show = !show">@(show ? "Verbergen" : "Tonen")</button>
+        <button class="kb-knop" @onclick="() => show = !show">@(show ? T["word.hide"] : T["word.show"])</button>
     }
-    <button class="kb-knop kb-primair" @onclick="Copy">@(copied ? "Gekopieerd" : "Kopiëren")</button>
+    <button class="kb-knop kb-primair" @onclick="Copy">@(copied ? T["action.copied"] : T["action.copy"])</button>
 </span>
 
 @code {
     [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
-    [Parameter] public string Label { get; set; } = "Waarde";
+    [Parameter] public string Label { get; set; } = T["suggestions-panel.value"];
     [Parameter] public bool Secret { get; set; }
 
     private ElementReference field;

@@ -226,7 +226,7 @@ else
         }
     }
 
-    private static string YesNoText(bool b) => b ? "ja" : "nee";
+    private static string YesNoText(bool b) => b ? T["yesno.yes"] : T["yesno.no"];
 
     private static IEnumerable<string> Items(string text)
         => text.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

@@ -84,7 +84,7 @@
         new() { Key = "ou", Title = "OU", Cell = p => @<text>@p.Ad?.OuPath</text>, SortBy = p => p.Ad?.OuPath },
         new() { Key = "dienst", Title = T["service-health-card.service"], Cell = p => @<text>@p.Department</text>, SortBy = p => p.Department },
         new() { Key = "afdeling", Title = T["statistics.division"], Cell = p => @<text>@(State.Config.DivisionFor(p.Department)?.Name)</text>, SortBy = p => State.Config.DivisionFor(p.Department)?.Name },
-        new() { Key = "status", Title = "Status", Cell = p => @<text>@(p.Enabled ? "ingeschakeld" : "uitgeschakeld")</text>, SortBy = p => p.Enabled ? "ingeschakeld" : "uitgeschakeld" },
+        new() { Key = "status", Title = "Status", Cell = p => @<text>@(p.Enabled ? T["word.enabled"] : T["word.disabled"])</text>, SortBy = p => p.Enabled ? "ingeschakeld" : "uitgeschakeld" },
         new() { Key = "sam", Title = T["group-detail.samaccountname"], Hidden = true, Cell = p => @<text>@p.Ad?.SamAccountName</text>, SortBy = p => p.Ad?.SamAccountName },
         new() { Key = "mail", Title = T["users.e-mail"], Hidden = true, Cell = p => @<text>@(p.Entra?.Mail ?? p.Ad?.EmailAddress)</text>, SortBy = p => p.Entra?.Mail ?? p.Ad?.EmailAddress },
         new() { Key = "functie", Title = T["bulk-tasks.job-title"], Hidden = true, Cell = p => @<text>@(p.Ad?.Title ?? p.Entra?.JobTitle)</text>, SortBy = p => p.Ad?.Title ?? p.Entra?.JobTitle },

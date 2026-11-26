@@ -54,12 +54,12 @@
 
     private static string StatusText(string s) => s switch
     {
-        "Delivered" => "afgeleverd",
-        "Failed" => "mislukt",
-        "FilteredAsSpam" => "als spam tegengehouden",
-        "Quarantined" => "in quarantaine",
-        "Pending" => "onderweg",
-        "Expanded" => "uitgebreid (groep)",
+        "Delivered" => T["word.delivered"],
+        "Failed" => T["plan.failed"],
+        "FilteredAsSpam" => T["word.spam"],
+        "Quarantined" => T["word.quarantine"],
+        "Pending" => T["word.enroute"],
+        "Expanded" => T["word.expanded"],
         "GettingStatus" => "status ophalen",
         _ => s,
     };

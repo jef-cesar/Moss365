@@ -78,7 +78,7 @@
         new() { Key = "upn", Title = "UPN", Cell = k => @<text>@k.Person.Upn</text>, SortBy = k => k.Person.Upn },
         new() { Key = "bron", Title = T["organisation-history.source"], Cell = k => @<text>@k.Person.Source</text>, SortBy = k => k.Person.Source },
         new() { Key = "dienst", Title = T["service-health-card.service"], Cell = k => @<text>@k.Person.Department</text>, SortBy = k => k.Person.Department },
-        new() { Key = "aanmelding", Title = T["statistics.last-sign-in"], Cell = k => @<text>@(k.LastSignIn?.ToString("dd/MM/yyyy") ?? "nooit")</text>, SortBy = k => k.LastSignIn ?? DateTime.MinValue, Text = k => k.LastSignIn?.ToString("yyyy-MM-dd") ?? "nooit" },
+        new() { Key = "aanmelding", Title = T["statistics.last-sign-in"], Cell = k => @<text>@(k.LastSignIn?.ToString("dd/MM/yyyy") ?? T["word.never"])</text>, SortBy = k => k.LastSignIn ?? DateTime.MinValue, Text = k => k.LastSignIn?.ToString("yyyy-MM-dd") ?? "nooit" },
         new() { Key = "aangemaakt", Title = T["cleanup.created"], Cell = k => @<text>@k.Created?.ToString("dd/MM/yyyy")</text>, SortBy = k => k.Created, Text = k => k.Created?.ToString("yyyy-MM-dd") },
         new() { Key = "ou", Title = "OU", Hidden = true, Cell = k => @<text>@k.Person.Ad?.OuPath</text>, SortBy = k => k.Person.Ad?.OuPath },
         new() { Key = "omschrijving", Title = T["edit-user.description"], Hidden = true, Cell = k => @<text>@k.Person.Ad?.Description</text>, SortBy = k => k.Person.Ad?.Description },

@@ -150,8 +150,8 @@
 
     private static string KindText(LibraryChange c) => c.Kind switch
     {
-        LibraryChangeKind.New => "nieuw",
-        LibraryChangeKind.Changed => "gewijzigd",
+        LibraryChangeKind.New => T["word.new"],
+        LibraryChangeKind.Changed => T["word.changed"],
         LibraryChangeKind.TooNew => T.Format("code.library-panel.needs-moss365-or-newer", c.Entry.MinimumApp),
         _ => "vastgezet in deze tenant",
     };

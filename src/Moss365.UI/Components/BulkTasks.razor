@@ -4,7 +4,7 @@
 @if (Count > 0)
 {
     <section class="kb-kaart kb-bulk">
-        <h2>Met de @Count gekozen @(Items switch { "gebruikers" => "gebruikers", "groepen" => "groepen", _ => "postvakken" })</h2>
+        <h2>Met de @Count gekozen @(Items switch { "gebruikers" => T["word.users"], "groepen" => T["word.groups"], _ => T["word.mailboxes"] })</h2>
         @switch (Items)
         {
             case "gebruikers":

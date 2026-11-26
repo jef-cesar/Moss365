@@ -144,8 +144,8 @@ else
                             {
                                 <tr>
                                     <td>@l.Name</td>
-                                    <td>@(l.IsIp ? "IP-bereiken" : "landen")</td>
-                                    <td>@(l.Trusted ? "ja" : "nee")</td>
+                                    <td>@(l.IsIp ? T["word.ipranges"] : T["word.countries"])</td>
+                                    <td>@(l.Trusted ? T["yesno.yes"] : T["yesno.no"])</td>
                                     <td>@string.Join(", ", l.Values) @if (l.UnknownCountries) { <span class="kb-zacht">@T["ca-overview.unknown-countries"]</span> }</td>
                                     <td>@string.Join(", ", ca.Policies.Where(b => b.LocationsIn.Contains(l.Id) || b.LocationsOff.Contains(l.Id)).Select(b => b.Name))</td>
                                 </tr>
@@ -163,7 +163,7 @@ else
                         {
                             <tr>
                                 <td>@s.Name</td>
-                                <td>@(s.BuiltIn ? T["code.ca-overview.from-microsoft"] : "eigen")</td>
+                                <td>@(s.BuiltIn ? T["code.ca-overview.from-microsoft"] : T["word.own"])</td>
                                 <td class="kb-zacht">@string.Join(", ", s.Combinations)</td>
                                 <td>@string.Join(", ", ca.Policies.Where(b => b.StrengthId == s.Id).Select(b => b.Name))</td>
                             </tr>
@@ -191,13 +191,13 @@ else
     {
         get
         {
-            yield return (Part.Check, "Controle");
-            yield return (Part.Policies, "Beleiden");
+            yield return (Part.Check, T["word.check"]);
+            yield return (Part.Policies, T["word.policies"]);
             yield return (Part.WhatIf, "Wat als");
             yield return (Part.Locations, T["code.ca-overview.locations-and-strengths"]);
             if (State.Can(Permission.Manage))
             {
-                yield return (Part.Manage, "Beheren");
+                yield return (Part.Manage, T["word.manage"]);
             }
         }
     }

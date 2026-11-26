@@ -11,7 +11,7 @@
     }
     @if (session.CountActive > 0)
     {
-        <span class="kb-label kb-label-let">@Tx.Format("kb-table.0-1-2-of-3", session.CountActive, session.CountActive == 1 ? "filter" : "filters", filtered.Count, all.Count)</span>
+        <span class="kb-label kb-label-let">@Tx.Format("kb-table.0-1-2-of-3", session.CountActive, session.CountActive == 1 ? Tx["word.filter"] : Tx["word.filters"], filtered.Count, all.Count)</span>
         <button class="kb-knop kb-klein" @onclick="ClearFilters">@Tx["kb-table.clear-filters"]</button>
     }
     @if (Selectable && SelectedSet.Count > 0)

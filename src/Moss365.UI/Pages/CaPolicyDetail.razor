@@ -145,7 +145,7 @@ else
             new() { Key = "bron", Title = T["organisation-history.source"], Cell = x => @<text>@x.Person.Source</text>, SortBy = x => x.Person.Source },
             new() { Key = "geldt", Title = T["what-if-table.applies"], Cell = x => @<CaLabel Applies="x.Answer.Applies" />, SortBy = x => (int)x.Answer.Applies, Text = x => x.Answer.Applies == CaApplies.Yes ? "ja" : "misschien" },
             new() { Key = "reden", Title = T["nested-groups.why"], Cell = x => @<text>@x.Answer.Reason</text>, SortBy = x => x.Answer.Reason },
-            new() { Key = "staat", Title = T["security.account"], Cell = x => @<text>@(x.Person.Enabled ? "ingeschakeld" : "uitgeschakeld")</text>, SortBy = x => x.Person.Enabled, Text = x => x.Person.Enabled ? "ingeschakeld" : "uitgeschakeld" },
+            new() { Key = "staat", Title = T["security.account"], Cell = x => @<text>@(x.Person.Enabled ? T["word.enabled"] : T["word.disabled"])</text>, SortBy = x => x.Person.Enabled, Text = x => x.Person.Enabled ? "ingeschakeld" : "uitgeschakeld" },
         };
     }
 

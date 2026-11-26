@@ -74,7 +74,7 @@
         new() { Key = "direct", Title = T["mailboxes.direct"], Number = true, Cell = p => @<text>@Direct(p)</text>, SortBy = p => Direct(p) },
         new() { Key = "aanmelden", Title = T["mailbox-detail.can-sign-in"], Cell = p => CanSignIn(p), SortBy = p => CanSignInText(p), Text = p => CanSignInText(p) },
         new() { Key = "laatste", Title = T["statistics.last-sign-in"], Cell = p => @<text>@LastSignIn(p)?.ToString("dd/MM/yyyy")</text>, SortBy = p => LastSignIn(p), Text = p => LastSignIn(p)?.ToString("yyyy-MM-dd") },
-        new() { Key = "verborgen", Title = T["mailboxes.hidden"], Cell = p => @<text>@(p.Hidden ? "ja" : "")</text>, SortBy = p => p.Hidden ? "ja" : "" },
+        new() { Key = "verborgen", Title = T["mailboxes.hidden"], Cell = p => @<text>@(p.Hidden ? T["yesno.yes"] : "")</text>, SortBy = p => p.Hidden ? "ja" : "" },
         new() { Key = "doorsturen", Title = T["mailboxes.forwarding"], Cell = p => @<text>@p.Forwarding</text>, SortBy = p => p.Forwarding },
         new() { Key = "model", Title = T["mailboxes.permission-model"], Hidden = true, Cell = p => @<text>@Model(p)</text>, SortBy = p => Model(p) },
         new() { Key = "soort", Title = T["nested-groups.kind"], Hidden = true, Cell = p => @<text>@p.TypeText</text>, SortBy = p => p.TypeText },

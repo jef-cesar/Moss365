@@ -47,7 +47,7 @@
         var v => $"{Sign(v.Value)} t.o.v. 30 dagen",
     };
 
-    private static string Sign(int v) => v > 0 ? $"▲ {v}" : v < 0 ? $"▼ {-v}" : "gelijk";
+    private static string Sign(int v) => v > 0 ? $"▲ {v}" : v < 0 ? $"▼ {-v}" : T["word.equal"];
 
     private double X(DateOnly d)
     {

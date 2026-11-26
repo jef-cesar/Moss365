@@ -117,7 +117,7 @@
     <input type="checkbox" @bind="State.Settings.QuickLoad" @bind:after="State.SaveSettings" />
     @T["connections.quick-load-only-what-changed"]
     <span class="kb-zacht">
-        @T.Format("connections.ad-0-entra-groups-1", State.AdCanQuick ? "kan" : T["code.connections.everything-next-time"], State.EntraCanQuick ? "kan" : T["code.connections.everything-next-time"])
+        @T.Format("connections.ad-0-entra-groups-1", State.AdCanQuick ? T["word.can"] : T["code.connections.everything-next-time"], State.EntraCanQuick ? T["word.can"] : T["code.connections.everything-next-time"])
     </span>
 </label>
 @if (State.Error is not null) { <div class="kb-melding kb-fout">@State.Error</div> }

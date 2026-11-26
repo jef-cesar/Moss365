@@ -213,10 +213,10 @@
 
     private static string MethodText(EncryptionMethod m) => m switch
     {
-        EncryptionMethod.WindowsAccount => "Windows-account",
-        EncryptionMethod.Password => "Wachtwoord",
-        EncryptionMethod.AdGroup => "AD-groep",
-        _ => "Uit",
+        EncryptionMethod.WindowsAccount => T["word.windowsaccount"],
+        EncryptionMethod.Password => T["word.password"],
+        EncryptionMethod.AdGroup => T["word.adgroup"],
+        _ => T["word.off"],
     };
 
     private static string MethodExplanation(EncryptionMethod m) => m switch

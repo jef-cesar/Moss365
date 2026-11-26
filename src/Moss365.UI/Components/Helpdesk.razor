@@ -16,7 +16,7 @@
         <p>
             @if (ad.LockedOut) { <span class="kb-label kb-rood">@T["helpdesk.locked"]</span> }
             @if (!ad.Enabled) { <span class="kb-label">@T["helpdesk.disabled"]</span> }
-            <span class="kb-zacht">@T.Format("helpdesk.password-last-set-0", string.IsNullOrEmpty(ad.PasswordLastSet) ? "onbekend" : ad.PasswordLastSet)</span>
+            <span class="kb-zacht">@T.Format("helpdesk.password-last-set-0", string.IsNullOrEmpty(ad.PasswordLastSet) ? T["word.unknown"] : ad.PasswordLastSet)</span>
         </p>
         <div class="kb-filters">
             <button class="kb-knop" @onclick="NewPassword">@T["helpdesk.reset-password"]</button>

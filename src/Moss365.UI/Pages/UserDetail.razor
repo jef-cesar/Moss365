@@ -11,7 +11,7 @@ else
     <h1>@person.Name</h1>
     <ObjectStatus Object="State.Data.Index.Ref(person)" />
     <p class="kb-zacht">
-        @person.Source &middot; @(person.Enabled ? "ingeschakeld" : "uitgeschakeld")
+        @person.Source &middot; @(person.Enabled ? T["word.enabled"] : T["word.disabled"])
         @if (person.Ad?.LockedOut == true) { <span class="kb-label kb-rood">@T["helpdesk.locked"]</span> }
         &middot; <a href="@($"spiegel?referentie={Uri.EscapeDataString(person.Key)}")">@T["user-detail.asmirror"]</a>
         &middot; <a href="@($"spiegel?doel={Uri.EscapeDataString(person.Key)}")">@T["user-detail.astarget"]</a>

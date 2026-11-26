@@ -19,7 +19,7 @@
     @if (State.Data.Index.EntraIdOf(Object) is { } id)
     {
         <span class="kb-entra-id" title="@T["object-status.object-id-in-entra-azure"]">@T["object-status.entra-id"] <code>@id</code>
-            <button class="kb-knop kb-klein" @onclick="() => Copy(id)" aria-label="@T["object-status.copy-entra-id"]">@(copied ? "Gekopieerd" : "Kopiëren")</button>
+            <button class="kb-knop kb-klein" @onclick="() => Copy(id)" aria-label="@T["object-status.copy-entra-id"]">@(copied ? T["action.copied"] : T["action.copy"])</button>
         </span>
     }
 </div>
