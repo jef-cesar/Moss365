@@ -41,8 +41,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   (a test compares all of them).
 - Encryption (`Storage/Encryption.cs`, `TenantHub.Encryption.cs`, [docs/encryption.md](docs/encryption.md)): a random
   key per tenant, opened with `Database(path, key)`; moss365.db keeps only the protected key. Never log a key, password
-  or recovery key; `TenantHub.Open` throws `TenantLockedException` until the tenant is unlocked. To come (U24): a new
-  tenant is encrypted with the Windows account by default.
+  or recovery key; `TenantHub.Open` throws `TenantLockedException` until the tenant is unlocked. A new tenant is encrypted
+  with the Windows account by default (U24: `TenantHub.AddNew` with a key from `NewKey`, after the recovery key is
+  confirmed on Tenants; `TryKey` accepts the key while the database does not exist yet).
 - Updates (R7): Velopack, pack id `Moss365.Desktop` (never `Moss365`: Velopack removes its install folder on uninstall,
   and `%LOCALAPPDATA%\Moss365` holds the data). `Program.Main` runs `VelopackApp` first. `AppUpdates` refuses while
   anything runs or is open and copies every database first. The release workflow packs channel `stable`, or `preview`

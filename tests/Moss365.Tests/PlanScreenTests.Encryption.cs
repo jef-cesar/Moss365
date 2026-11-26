@@ -161,6 +161,50 @@ public sealed partial class PlanScreenTests
     }
 
     [Fact]
+    public void ANewTenantIsEncryptedFromTheStartWithTheWindowsAccount()
+    {
+        var (hub, protector, environment) = EncryptedHub("nieuw-versleuteld");
+        var (key, recovery) = TenantHub.NewKey();
+        var tenant = hub.AddNew("Fabrikam", key: key);
+        Assert.Equal(EncryptionMethod.WindowsAccount, hub.Encryption(tenant.Id)!.Method);
+        Assert.True(Database.NeedsKey(hub.Open(tenant).Database.FilePath));
+        Assert.Contains(hub.Open(tenant).Database.ReadAccess(5), a => a.What == "Databank versleuteld");
+        Assert.Null(hub.Encryption(hub.AddNew("Northwind").Id)); // without a key: not encrypted
+        hub.Dispose();
+
+        // Another Windows user: locked; only the recovery key opens it
+        protector.User = 9;
+        using var other = Restart(environment, protector);
+        Assert.True(other.NeedsUnlock(tenant));
+        Assert.True(other.Unlock(tenant.Id, recovery));
+    }
+
+    [Fact]
+    public void TheTenantsScreenEncryptsANewTenantOnlyAfterTheRecoveryKey()
+    {
+        var (hub, _, _) = EncryptedHub("nieuw-scherm");
+        using var __ = hub;
+        using var ctx = new Bunit.TestContext();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddSingleton(hub);
+        ctx.Services.AddSingleton(hub.Current);
+        var cut = ctx.RenderComponent<Moss365.UI.Pages.Tenants>();
+        Assert.True(cut.Find("input[type=checkbox]").HasAttribute("checked")); // on by default (U24)
+
+        cut.Find("input[placeholder='bv. Contoso']").Change("Fabrikam");
+        cut.FindAll("button").First(b => b.TextContent == "Toevoegen").Click();
+        var recovery = cut.Find("code.kb-herstelsleutel").TextContent;
+        Assert.DoesNotContain(hub.Tenants, t => t.Name == "Fabrikam"); // not made before the key is confirmed
+        Assert.True(cut.FindAll("button").First(b => b.TextContent == "Toevoegen en versleutelen").HasAttribute("disabled"));
+
+        cut.Find("input[aria-label='Laatste groep van de herstelsleutel']").Input(recovery[(recovery.LastIndexOf('-') + 1)..]);
+        cut.FindAll("button").First(b => b.TextContent == "Toevoegen en versleutelen").Click();
+        var fabrikam = hub.Tenants.Single(t => t.Name == "Fabrikam");
+        Assert.Equal(EncryptionMethod.WindowsAccount, hub.Encryption(fabrikam.Id)!.Method);
+        Assert.True(Database.Opens(hub.Open(fabrikam).Database.FilePath, TenantKeys.FromRecoveryKey(recovery)));
+    }
+
+    [Fact]
     public void ThePanelShowsTheRecoveryKeyBeforeEncrypting()
     {
         var (hub, _, _) = EncryptedHub("versleuteld-scherm");

@@ -58,7 +58,10 @@ public sealed partial class TenantHub
             try
             {
                 var k = _protector.Unprotect(info.Method, Convert.FromBase64String(info.Protected));
-                if (Database.Opens(path, k))
+
+                // A new tenant encrypted from the start (U24) has no database yet: it is made with this key
+                var notMadeYet = !File.Exists(path) || new FileInfo(path).Length == 0;
+                if (notMadeYet || Database.Opens(path, k))
                 {
                     lock (_lock)
                     {
@@ -169,6 +172,28 @@ public sealed partial class TenantHub
         Reencrypt(tenant, key);
         SaveEncryption(tenant.Id, protection);
         Log(tenant, "Databank versleuteld ({Methode})", method);
+    }
+
+    /// <summary>
+    /// A new tenant (U24). With a key from <see cref="NewKey"/> it is encrypted from the start, protected with the
+    /// Windows account: the protection is saved before the database exists, so that the database is never on disk
+    /// without it. Without a key the tenant is not encrypted.
+    /// </summary>
+    public TenantInfo AddNew(string name, TenantSystems systems = TenantSystems.Both, byte[]? key = null)
+    {
+        if (key is not null && !CanProtect(EncryptionMethod.WindowsAccount))
+        {
+            throw new InvalidOperationException(Texts.T["code.tenant-hub-encryption.this-way-of-protecting-is"]);
+        }
+
+        var tenant = Add(name, systems: systems);
+        if (key is not null)
+        {
+            SaveEncryption(tenant.Id, Protection(key, EncryptionMethod.WindowsAccount, null, null));
+            Log(tenant, "Databank versleuteld ({Methode})", EncryptionMethod.WindowsAccount);
+        }
+
+        return tenant;
     }
 
     /// <summary>Another way of protecting the same key (the database itself stays as it is).</summary>

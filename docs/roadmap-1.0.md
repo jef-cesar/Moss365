@@ -215,7 +215,7 @@ source); the key is never stored in the database, the repository or a log.
 
 Decided (U7): **no encryption by default**; can be turned on per tenant with A, B or C. **D after a successful study**. Done in 0.16; the study of D is in [encryption.md](encryption.md): D comes after 1.0.
 Changed by U24 (26 November 2026): a **new tenant is encrypted with the Windows account (A) by default**; turning it
-off stays possible.
+off stays possible. Done in 0.39.0.
 
 ### Maintenance
 

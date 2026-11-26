@@ -15,6 +15,9 @@ default** (decision U7) and is turned on per tenant under **Instellingen > Datab
 - Turning encryption on or off, or renewing the key, makes a **copy** with the new key (`sqlcipher_export`), checks it
   (integrity, row counts, schema version) and only then replaces the database. The automatic copies made before a
   database update are removed at that moment, because they still have the old protection.
+- A **new tenant** is encrypted with the Windows account by default (decision U24): *Tenants*, *Add tenant* shows the
+  recovery key first and makes the tenant, already encrypted, once its last group is typed. The protection is saved
+  before the database exists, so that it is never on disk without it. Not encrypting is a choice at that moment.
 - A **backup** (Tenants > Back-up) of an encrypted tenant is encrypted with the same key. Restoring it asks for the
   recovery key; the restored tenant is then protected with this Windows account (or a new password).
 

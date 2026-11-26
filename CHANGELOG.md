@@ -15,6 +15,9 @@ Every version becomes a release on GitHub; the section under the version is the 
 - **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.
 - **Faster**: the alerts from the snapshots no longer slow down with many accounts, and *Alles nakijken* reads the app
   registrations once instead of twice.
+- **A new tenant is encrypted** with your Windows account by default (U24): *Tenants*, *Tenant toevoegen* first shows
+  the recovery key, and the tenant is made once you typed its last group. Not encrypting stays a choice. Existing
+  tenants stay as they are; *Databank en versleuteling* encrypts them.
 - **Releases** now wait for the maintainer's approval before they are published and offered as an update (U23).
 
 ## 0.38.6

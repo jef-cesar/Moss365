@@ -121,9 +121,29 @@ else
             <label>@T["variables-editor.name"] <input class="kb-invoer" @bind="newName" placeholder="@T["tenants.e-g-contoso"]" /></label>
         </div>
         <SystemsChoice @bind-Value="newSystems" Legend="@T["tenants.what-does-it-have"]" />
-        <div class="kb-rij">
-            <button class="kb-knop kb-primair" disabled="@(newName.Trim().Length == 0)" @onclick="() => Add(hub)">@T["tenants.add"]</button>
-        </div>
+        @if (hub.CanProtect(EncryptionMethod.WindowsAccount))
+        {
+            <label><input type="checkbox" @bind="newEncrypt" disabled="@(newRecovery is not null)" /> @T["tenants.encrypt-new"]</label>
+            <p class="kb-zacht">@T["tenants.encrypt-new.help"]</p>
+        }
+        @if (newRecovery is not null)
+        {
+            <div class="kb-melding">
+                <p>@Html("encryption.recovery")</p>
+                <p><code class="kb-herstelsleutel">@newRecovery</code></p>
+                <label>@T["encryption-panel.type-the-last-group-of"] <input class="kb-invoer" @bind="newConfirmation" @bind:event="oninput" aria-label="@T["encryption-panel.last-group-of-the-recovery"]" /></label>
+            </div>
+            <div class="kb-rij">
+                <button class="kb-knop kb-primair" disabled="@(!NewRecoveryConfirmed)" @onclick="() => Create(hub, newKey)">@T["tenants.add-encrypted"]</button>
+                <button class="kb-knop" @onclick="CancelNew">@T["action.cancel"]</button>
+            </div>
+        }
+        else
+        {
+            <div class="kb-rij">
+                <button class="kb-knop kb-primair" disabled="@(newName.Trim().Length == 0)" @onclick="() => Add(hub)">@T["tenants.add"]</button>
+            </div>
+        }
         <p class="kb-zacht">
             @T["tenants.a-new-tenant-starts-empty"]
         </p>
@@ -194,19 +214,56 @@ else
         }
     }
 
+    // U24: a new tenant is encrypted with the Windows account by default; the recovery key is shown first and the
+    // tenant is only made once its last group is typed (as in Databank en versleuteling)
+    private bool newEncrypt = true;
+    private byte[]? newKey;
+    private string? newRecovery;
+    private string newConfirmation = string.Empty;
+
+    private bool NewRecoveryConfirmed => newRecovery is not null && newConfirmation.Trim().Length > 0
+                                         && string.Equals(newConfirmation.Trim(), newRecovery[(newRecovery.LastIndexOf('-') + 1)..], StringComparison.OrdinalIgnoreCase);
+
     private void Add(TenantHub hub)
+    {
+        if (newEncrypt && hub.CanProtect(EncryptionMethod.WindowsAccount))
+        {
+            if (hub.Tenants.Any(t => string.Equals(t.Name, newName.Trim(), StringComparison.CurrentCultureIgnoreCase)))
+            {
+                (message, error) = (T.Format("code.tenant-hub.there-is-already-a-tenant", newName.Trim()), true);
+                return;
+            }
+
+            (newKey, newRecovery) = TenantHub.NewKey();
+            newConfirmation = string.Empty;
+            (message, error) = (null, false);
+            return;
+        }
+
+        Create(hub, null);
+    }
+
+    private void Create(TenantHub hub, byte[]? key)
     {
         try
         {
-            var t = hub.Add(newName, systems: newSystems);
+            var t = hub.AddNew(newName, newSystems, key);
             newName = string.Empty;
             newSystems = TenantSystems.Both;
-            (message, error) = (T.Format("code.tenants.tenant-added-open-it-to", t.Name), false);
+            CancelNew();
+            (message, error) = (T.Format(key is null ? "code.tenants.tenant-added-open-it-to" : "code.tenants.tenant-added-encrypted", t.Name), false);
         }
-        catch (ArgumentException ex)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
             (message, error) = (ex.Message.Split(" (Parameter")[0], true);
         }
+    }
+
+    private void CancelNew()
+    {
+        newKey = null;
+        newRecovery = null;
+        newConfirmation = string.Empty;
     }
 
     private TenantSystems editSystems = TenantSystems.Both;
