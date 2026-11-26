@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -33,7 +34,7 @@ public sealed class GitHubUpdates : IUpdateCheck
             using var answer = await _http.SendAsync(request, cancel);
             if (answer.StatusCode == HttpStatusCode.NotFound)
             {
-                return new UpdateInfo(null, ReleasesLink, "De releases zijn niet openbaar (privé-repo): automatisch controleren kan niet.");
+                return new UpdateInfo(null, ReleasesLink, Texts.T["code.git-hub-updates.the-releases-are-not-public"]);
             }
 
             if (!answer.IsSuccessStatusCode)
@@ -41,11 +42,11 @@ public sealed class GitHubUpdates : IUpdateCheck
                 return new UpdateInfo(null, ReleasesLink, $"GitHub antwoordde {(int)answer.StatusCode}.");
             }
 
-            return Newest(await answer.Content.ReadAsStringAsync(cancel), channel) ?? new UpdateInfo(null, ReleasesLink, "Nog geen release in dit kanaal.");
+            return Newest(await answer.Content.ReadAsStringAsync(cancel), channel) ?? new UpdateInfo(null, ReleasesLink, Texts.T["code.git-hub-updates.no-release-in-this-channel"]);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            return new UpdateInfo(null, ReleasesLink, "GitHub is niet bereikbaar: " + ex.Message);
+            return new UpdateInfo(null, ReleasesLink, Texts.T.Format("code.git-hub-updates.github-is-not-reachable", ex.Message));
         }
     }
 

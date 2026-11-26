@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Microsoft.Identity.Client;
 
@@ -114,7 +115,7 @@ public sealed class MsalTokenSource
         }
         catch (MsalException ex)
         {
-            ExchangeMessage = "Exchange kon niet met dezelfde aanmelding (" + ex.ErrorCode + "). Kijk de app-registratie na bij Tenant inrichten (recht Exchange.Manage); tot dan meldt Exchange apart aan.";
+            ExchangeMessage = Texts.T.Format("code.msal-token-source.exchange-could-not-use-the", ex.ErrorCode);
             return null;
         }
     }
@@ -146,7 +147,7 @@ public sealed class MsalTokenSource
 
             if (silent)
             {
-                throw new InvalidOperationException("Nog niet aangemeld.");
+                throw new InvalidOperationException(Texts.T["code.msal-token-source.not-signed-in-yet"]);
             }
 
             using var running = CancellationTokenSource.CreateLinkedTokenSource(cancel);
@@ -180,7 +181,7 @@ public sealed class MsalTokenSource
             }
             catch (OperationCanceledException) when (!cancel.IsCancellationRequested)
             {
-                throw new InvalidOperationException("Aanmelden geannuleerd of niet binnen 10 minuten afgerond.");
+                throw new InvalidOperationException(Texts.T["code.msal-token-source.sign-in-cancelled-or-not"]);
             }
             finally
             {

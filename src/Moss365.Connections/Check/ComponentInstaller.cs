@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using Moss365.Core.Localization;
 
 namespace Moss365.Connections.Check;
 
@@ -13,7 +14,7 @@ public static class ComponentInstaller
     {
         if (!OperatingSystem.IsWindows())
         {
-            return "Mislukt: enkel op Windows.";
+            return Texts.T["installer.windows-only"];
         }
 
         var info = component switch
@@ -35,25 +36,25 @@ public static class ComponentInstaller
         };
         if (info is null)
         {
-            return "Mislukt: onbekend onderdeel.";
+            return Texts.T["code.component-installer.failed-unknown-component"];
         }
 
         try
         {
-            using var process = Process.Start(info) ?? throw new InvalidOperationException("niet gestart");
+            using var process = Process.Start(info) ?? throw new InvalidOperationException(Texts.T["code.component-installer.not-started"]);
             await process.WaitForExitAsync(cancel);
-            return process.ExitCode == 0 ? "Gelukt" : $"Mislukt: code {process.ExitCode}.";
+            return process.ExitCode == 0 ? Texts.T["report.succeeded"] : Texts.T.Format("code.component-installer.failed-code", process.ExitCode);
         }
         catch (Win32Exception ex)
         {
             // Also when the administrator says no to UAC
             return component == SystemCheck.PowerShell7 && ex.NativeErrorCode == 2
-                ? "Mislukt: winget ontbreekt. Installeer 'App Installer' uit de Microsoft Store, of PowerShell 7 van aka.ms/powershell."
-                : "Mislukt: " + ex.Message;
+                ? Texts.T["code.component-installer.failed-winget-is-missing-install"]
+                : Texts.T.Format("code.component-installer.failed", ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            return "Mislukt: " + ex.Message;
+            return Texts.T.Format("code.component-installer.failed", ex.Message);
         }
     }
 }

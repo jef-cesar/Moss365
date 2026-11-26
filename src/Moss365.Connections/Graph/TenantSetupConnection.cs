@@ -33,15 +33,15 @@ public sealed class TenantSetupConnection : ITenantSetupConnection
 
     public async Task<TenantSetupReading> ReadAsync(IProgress<string>? progress, CancellationToken cancel)
     {
-        progress?.Report("Tenant lezen...");
+        progress?.Report(Texts.T["code.tenant-setup-connection.reading-the-tenant"]);
         var organisation = (await _client.GetAllAsync("/organization?$select=id,displayName,verifiedDomains,onPremisesSyncEnabled,onPremisesLastSyncDateTime", cancel)).FirstOrDefault();
         var me = await _client.GetAsync("/me?$select=id,displayName,userPrincipalName", cancel);
 
-        progress?.Report("Microsoft Graph en Exchange Online...");
+        progress?.Report(Texts.T["code.tenant-setup-connection.microsoft-graph-and-exchange-online"]);
         var graphSp = await ServicePrincipalAsync(AppManifest.GraphAppId, cancel);
         var exchangeSp = await ServicePrincipalAsync(AppManifest.ExchangeAppId, cancel);
 
-        progress?.Report($"App-registratie {AppManifest.Name}...");
+        progress?.Report(Texts.T.Format("code.tenant-setup-connection.app-registration", AppManifest.Name));
         var app = (await _client.GetAllAsync($"/applications?$filter={Filter("displayName", AppManifest.Name)}&$select=id,appId,displayName,signInAudience,isFallbackPublicClient,publicClient,requiredResourceAccess,appRoles", cancel))
             .Select(ToApplication).FirstOrDefault();
         var appSp = app is null ? null : await ServicePrincipalAsync(app.AppId, cancel);
@@ -54,7 +54,7 @@ public sealed class TenantSetupConnection : ITenantSetupConnection
                 .Select(a => new AssignmentInfo(S(a, "principalId"), S(a, "appRoleId"))));
         }
 
-        progress?.Report("Groepen van de profielen...");
+        progress?.Report(Texts.T["code.tenant-setup-connection.groups-of-the-profiles"]);
         var groups = (await _client.GetAllAsync($"/groups?$filter={Uri.EscapeDataString("startswith(displayName,'GG-Moss365-')")}&$select=id,displayName", cancel))
             .GroupBy(g => S(g, "displayName"), StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => S(g.First(), "id"), StringComparer.OrdinalIgnoreCase);
 
@@ -134,8 +134,7 @@ public sealed class TenantSetupConnection : ITenantSetupConnection
             catch (GraphError ex)
             {
                 output.Add(ChangeResult.Error(w, ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized
-                    ? "Geen rechten: dit vraagt de rol Application Administrator of Global Administrator. " + ex.Message
-                    : ex.Message));
+                    ? Texts.T.Format("code.tenant-setup-connection.no-permissions-this-needs-the", ex.Message)                    : ex.Message));
             }
             catch (Exception ex) when (ex is InvalidOperationException or HttpRequestException)
             {
@@ -158,7 +157,7 @@ public sealed class TenantSetupConnection : ITenantSetupConnection
                 }
 
                 var app = await _client.PostWithResponseAsync("/applications", JsonNode.Parse(w.P("json"))!, cancel);
-                return ChangeResult.Ok(w, $"Gemaakt; client ID {S(app, "appId")}");
+                return ChangeResult.Ok(w, Texts.T.Format("result.created-client-id", S(app, "appId")));
             }
 
             case ChangeAction.GraphUpdateApplication:
@@ -167,7 +166,7 @@ public sealed class TenantSetupConnection : ITenantSetupConnection
 
             case ChangeAction.GraphCreateServicePrincipal:
             {
-                var app = await FindApplicationAsync(w.P("appName"), cancel) ?? throw new InvalidOperationException($"De app-registratie {w.P("appName")} bestaat niet.");
+                var app = await FindApplicationAsync(w.P("appName"), cancel) ?? throw new InvalidOperationException(Texts.T.Format("result.app-missing", w.P("appName")));
                 if (await ServicePrincipalAsync(app.AppId, cancel) is { } existing)
                 {
                     if (!existing.AssignmentRequired)
@@ -255,11 +254,11 @@ public sealed class TenantSetupConnection : ITenantSetupConnection
                     ["displayName"] = name, ["mailNickname"] = w.P("mailNickname"), ["mailEnabled"] = false, ["securityEnabled"] = true,
                     ["description"] = w.P("description"),
                 }, cancel);
-                return ChangeResult.Ok(w, $"Aangemaakt; id {S(group, "id")}");
+                return ChangeResult.Ok(w, Texts.T.Format("result.created-id", S(group, "id")));
             }
 
             default:
-                return ChangeResult.Error(w, "Deze wijziging hoort niet bij het inrichten van een tenant.");
+                return ChangeResult.Error(w, Texts.T["code.tenant-setup-connection.this-change-does-not-belong"]);
         }
     }
 
@@ -268,8 +267,8 @@ public sealed class TenantSetupConnection : ITenantSetupConnection
 
     private async Task<ServicePrincipalInfo> AppServicePrincipalAsync(string name, CancellationToken cancel)
     {
-        var app = await FindApplicationAsync(name, cancel) ?? throw new InvalidOperationException($"De app-registratie {name} bestaat niet.");
-        return await ServicePrincipalAsync(app.AppId, cancel) ?? throw new InvalidOperationException($"De bedrijfstoepassing van {name} bestaat niet.");
+        var app = await FindApplicationAsync(name, cancel) ?? throw new InvalidOperationException(Texts.T.Format("result.app-missing", name));
+        return await ServicePrincipalAsync(app.AppId, cancel) ?? throw new InvalidOperationException(Texts.T.Format("code.tenant-setup-connection.the-enterprise-application-of-does", name));
     }
 
     private async Task<string> GroupIdAsync(string name, CancellationToken cancel)
@@ -285,7 +284,7 @@ public sealed class TenantSetupConnection : ITenantSetupConnection
 
             if (attempt >= 5)
             {
-                throw new InvalidOperationException($"De groep {name} bestaat niet.");
+                throw new InvalidOperationException(Texts.T.Format("code.tenant-setup-connection.the-group-does-not-exist", name));
             }
 
             await Task.Delay(TimeSpan.FromSeconds(3 * attempt), cancel);

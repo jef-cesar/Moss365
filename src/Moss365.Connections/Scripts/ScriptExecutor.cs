@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Diagnostics;
 using System.Text;
 using Moss365.Core.Scripts;
@@ -110,7 +111,7 @@ public sealed class ScriptExecutor : IScriptExecutor
             info.Environment["MOSS365_GRAPH_TOKEN"] = await _graphToken(cancel);
         }
 
-        using var process = Process.Start(info) ?? throw new InvalidOperationException("PowerShell kon niet gestart worden.");
+        using var process = Process.Start(info) ?? throw new InvalidOperationException(Texts.T["code.exchange-connection.powershell-could-not-be-started"]);
         try
         {
             if (adWithPassword)
@@ -169,7 +170,7 @@ public sealed class ScriptExecutor : IScriptExecutor
                     throw;
                 }
 
-                throw new TimeoutException($"Het script liep langer dan {header.DurationMinutes} minuten en werd gestopt.");
+                throw new TimeoutException(Texts.T.Format("code.script-executor.the-script-ran-longer-than", header.DurationMinutes));
             }
 
             await Task.WhenAll(output, errors);
@@ -202,7 +203,7 @@ public sealed class ScriptExecutor : IScriptExecutor
                 info.ArgumentList.Add(a);
             }
 
-            using var process = Process.Start(info) ?? throw new InvalidOperationException("PowerShell kon niet gestart worden.");
+            using var process = Process.Start(info) ?? throw new InvalidOperationException(Texts.T["code.exchange-connection.powershell-could-not-be-started"]);
             var output = await process.StandardOutput.ReadToEndAsync(cancel);
             await process.WaitForExitAsync(cancel);
             return output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(ScriptOutput.Read)
@@ -234,7 +235,7 @@ public sealed class ScriptExecutor : IScriptExecutor
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, "Startup.ps1");
         await using var source = typeof(ScriptExecutor).Assembly.GetManifestResourceStream("Startup.ps1")
-                               ?? throw new InvalidOperationException("Startup.ps1 ontbreekt in de app.");
+                               ?? throw new InvalidOperationException(Texts.T["code.script-executor.startup-ps1-is-missing-in"]);
         await using var target = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
         await source.CopyToAsync(target, cancel);
         return path;

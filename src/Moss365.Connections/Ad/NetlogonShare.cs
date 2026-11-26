@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Text;
 using Moss365.Core.LogonScripts;
 
@@ -79,7 +80,7 @@ public sealed class NetlogonShare : ILogonScriptShare
         var full = Path.GetFullPath(Path.Combine(Location, relative));
         if (!full.StartsWith(Path.GetFullPath(Location).TrimEnd('\\') + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Het script ligt buiten NETLOGON.");
+            throw new InvalidOperationException(Texts.T["code.netlogon-share.the-script-is-outside-netlogon"]);
         }
 
         return full;

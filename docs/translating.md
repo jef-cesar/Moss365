@@ -25,7 +25,12 @@ Dates and numbers follow the language (`en-GB`, `nl-BE`, `pt-BR`, `fr-BE`, `de-D
 ## What is not translated
 
 Data from AD and Microsoft 365 (names of groups, departments, policies), the content of scripts and the change log
-entries already written. That is the data of the organisation, not text of the app.
+entries already written. That is the data of the organisation, not text of the app. A plan is described in the
+language of whoever makes it, and the change log keeps it so.
+
+Also not translated: the technical log, the CSV column names of the inventory (they are table names too), the status
+words of the embedded Exchange script, identifiers that are compared or stored (KPI keys, parameter names such as
+`Toevoegen`), and the placeholders of the default mails (`{naam}`, `{datum}`, `{dagen}`, `{gasten}`).
 
 ## Fixed terms
 
@@ -39,5 +44,9 @@ The same word everywhere for: plan, snapshot, tenant, role, change log (keys `te
   the test `NoNewHardCodedTextInTheScreens` keeps it so. A sentence with a link or a value is one key, with `{0}`
   holes, shown with `@Html("key", value)` so that a translation can put the words in its own order; the test
   `TranslationsKeepTheSameLinksAndMarkup` checks that every language has the same links and tags as English.
-- Still in Dutch: messages built in code (Core and the code of the screens). They move to the dictionaries next.
+- Core and the connections use the same dictionaries: `Texts.T["key"]` or `Texts.T.Format("key", value)`
+  (`Moss365.Core.Localization`). Never keep a translated text in a `static readonly` field or a `const`: make it a
+  property (`=>`), so that it follows the language. The test `EveryKeyUsedInTheScreensExists` checks the keys in the
+  screens, Core and the connections.
+- A result that means "it was already so" (no undo) uses one of the keys in `Undo.AlreadyKeys`.
 - A new language: add a `LanguageInfo` to `Translator.Languages` and a dictionary with every key.

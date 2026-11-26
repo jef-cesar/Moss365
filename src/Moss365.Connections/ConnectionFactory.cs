@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Moss365.Connections.Ad;
 using Moss365.Connections.Exchange;
@@ -114,7 +115,7 @@ public sealed class ConnectionFactory : IConnectionFactory
     {
         if (Core.Setup.TenantLookup.Clean(domainOrId) is not { } clean)
         {
-            return new(null, "Geef een domein (bv. contoso.com) of een tenant ID.");
+            return new(null, Texts.T["code.connection-factory.enter-a-domain-e-g"]);
         }
 
         try
@@ -123,11 +124,11 @@ public sealed class ConnectionFactory : IConnectionFactory
             var text = await answer.Content.ReadAsStringAsync(cancel);
             return Core.Setup.TenantLookup.TenantIdFrom(text) is { } id
                 ? new(id, null)
-                : new(null, answer.StatusCode == System.Net.HttpStatusCode.BadRequest ? $"Microsoft kent geen tenant met het domein {clean}." : $"Geen tenant gevonden ({(int)answer.StatusCode}).");
+                : new(null, answer.StatusCode == System.Net.HttpStatusCode.BadRequest ? Texts.T.Format("code.connection-factory.microsoft-knows-no-tenant-with", clean) : Texts.T.Format("code.connection-factory.no-tenant-found", (int)answer.StatusCode));
         }
         catch (HttpRequestException ex)
         {
-            return new(null, "login.microsoftonline.com niet bereikbaar: " + ex.Message);
+            return new(null, Texts.T.Format("code.connection-factory.login-microsoftonline-com-not-reachable", ex.Message));
         }
     }
 

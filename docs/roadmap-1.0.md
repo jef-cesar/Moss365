@@ -422,8 +422,9 @@ ServiceHealth.Read.All and ServiceMessage.Read.All.
 Started in 0.38 (R15): the dictionaries in five languages (`Localization/Texts`, see [translating](translating.md)),
 the system language by default and a choice in Settings, dates and numbers per language, the fallback to English, a
 glossary, and tests that report missing translations and refuse new hard-coded text. Since 0.38.2 every screen takes its
-text from the dictionaries (the count of hard-coded text in the screens is zero). Still to do: the messages built in
-code (plan descriptions, check results, KPI names, errors, in Core and in the screens' code), about 1,200 texts.
+text from the dictionaries (the count of hard-coded text in the screens is zero); since 0.38.4 also what the screens
+build in code, and since 0.38.5 the texts of the core and the connections (KPIs, plans, checks, reports, messages).
+Left for R15: a review of the translations by native speakers.
 
 ## 11. Open source, with room for paid support
 

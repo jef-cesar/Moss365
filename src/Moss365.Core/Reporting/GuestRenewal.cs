@@ -59,7 +59,7 @@ public static class GuestRenewal
             {
                 output.Add(new GuestDue(guest, sponsor, since, review?.Confirmed is null
                     ? since is null ? Texts.T["code.guest-renewal.never-confirmed-invitation-unknown"] : Texts.T.Format("code.guest-renewal.never-confirmed-invited-on", since.Value.LocalDateTime)
-                    : Texts.T.Format("code.guest-renewal.last-confirmed-on", since.Value.LocalDateTime)));
+                    : Texts.T.Format("code.guest-renewal.last-confirmed-on", since.GetValueOrDefault().LocalDateTime)));
             }
             else if (sponsor.Length == 0)
             {

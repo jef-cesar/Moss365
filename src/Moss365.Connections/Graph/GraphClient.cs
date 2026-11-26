@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -139,7 +140,7 @@ public sealed class GraphClient
         }
         catch (Exception)
         {
-            return (string.Empty, string.IsNullOrWhiteSpace(text) ? "(geen details)" : text);
+            return (string.Empty, string.IsNullOrWhiteSpace(text) ? Texts.T["code.graph-client.no-details"] : text);
         }
     }
 }

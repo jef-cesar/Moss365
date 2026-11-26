@@ -42,7 +42,7 @@ public sealed class LanguageTests
                 Assert.True(Holes(english) == Holes(text), $"{l.Code} {key}: {text}");
                 // valid format; a date format ({0:d}, {0:g}) is checked with a date
                 var values = Enumerable.Range(0, 10)
-                    .Select(i => Regex.IsMatch(text, @"\{" + i + @":[dgDGtTMyHhms]") ? (object)new DateTime(2026, 1, 2, 3, 4, 5) : 1.5).ToArray();
+                    .Select(i => Regex.IsMatch(text, @"\{" + i + @":[xX]") ? 255 : Regex.IsMatch(text, @"\{" + i + @":[dgDGtTMyHhms]") ? (object)new DateTime(2026, 1, 2, 3, 4, 5) : 1.5).ToArray();
                 _ = string.Format(CultureInfo.InvariantCulture, text, values);
             }
         }
@@ -88,7 +88,8 @@ public sealed class LanguageTests
     {
         var used = new Regex(@"\bTx?(?:\.Format|\.Text)?\(?\[?""([a-z][a-z0-9\.\-]+)""");
         var english = Translator.Dictionaries["en"];
-        var missing = Directory.GetFiles(Ui, "*.*", SearchOption.AllDirectories)
+        var missing = new[] { Ui, Path.Combine(Repo(), "src", "Moss365.Core"), Path.Combine(Repo(), "src", "Moss365.Connections") }
+            .SelectMany(folder => Directory.GetFiles(folder, "*.*", SearchOption.AllDirectories))
             .Where(f => (f.EndsWith(".razor", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal)) && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .SelectMany(f => used.Matches(File.ReadAllText(f)).Select(m => (File: Path.GetFileName(f), Key: m.Groups[1].Value)))
             .Where(x => !english.ContainsKey(x.Key) && !x.Key.EndsWith('.'))

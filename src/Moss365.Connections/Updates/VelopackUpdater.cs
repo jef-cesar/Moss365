@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Changes;
 using Velopack;
 using UpdateInfo = Velopack.UpdateInfo;
@@ -102,7 +103,7 @@ public sealed class VelopackUpdater : IAppUpdater
     {
         lock (_found)
         {
-            return _found.TryGetValue(version.Version, out var f) ? f : throw new InvalidOperationException("Zoek eerst naar deze versie.");
+            return _found.TryGetValue(version.Version, out var f) ? f : throw new InvalidOperationException(Texts.T["code.velopack-updater.search-for-this-version-first"]);
         }
     }
 

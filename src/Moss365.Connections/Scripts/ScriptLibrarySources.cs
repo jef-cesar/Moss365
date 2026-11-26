@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Scripts;
 
 namespace Moss365.Connections.Scripts;
@@ -15,7 +16,7 @@ public sealed class GitHubScriptSource(HttpClient http, string repo = "jef-cesar
     {
         if (!ScriptIndex.SafePath(path))
         {
-            throw new ArgumentException("Geen geldig pad.", nameof(path));
+            throw new ArgumentException(Texts.T["code.script-library-sources.not-a-valid-path"], nameof(path));
         }
 
         return await http.GetByteArrayAsync(Base + string.Join('/', path.Split('/').Select(Uri.EscapeDataString)), cancel);
@@ -35,7 +36,7 @@ public sealed class FolderScriptSource(string folder) : IScriptLibrarySource
     {
         if (!ScriptIndex.SafePath(path))
         {
-            throw new ArgumentException("Geen geldig pad.", nameof(path));
+            throw new ArgumentException(Texts.T["code.script-library-sources.not-a-valid-path"], nameof(path));
         }
 
         return File.ReadAllBytesAsync(Path.Combine(new[] { Root }.Concat(path.Split('/')).ToArray()), cancel);

@@ -2,6 +2,27 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.38.5
+
+Languages (R15), sixth part: also the texts that the core and the connections build follow the language.
+
+- KPI names (also those with a value, such as "guests from contoso.com" or "last signed in 30 to 90 days ago"), the
+  explanations and checks of Conditional Access, the security checks, the tenant set-up, every plan (new users, leavers,
+  groups, mailboxes, guests, job profiles, attributes, rooms, helpdesk, clean-up, licences, logon scripts, undo), the
+  period report (HTML and CSV), the standards (NIS2, CIS), organisation suggestions and templates, service health,
+  requests, scripts, encryption and the messages of AD, Graph, Exchange and the system check: about 1,100 texts.
+- A plan is described in the language of whoever makes it; the change log keeps that text as it was written.
+- Undo recognises "was already so" in every language, so that such an entry is never offered for undo.
+- The default mails (password reminder, guest renewal) are in the language of the interface; the placeholders
+  `{naam}`, `{datum}`, `{dagen}` and `{gasten}` stay the same.
+- Generic instead of local: the usage location for a new licence comes from the tenant (the most used one) instead of
+  a fixed country; a CA warning speaks of "the home country"; the error for a missing kind of user and the hint of the
+  system check no longer name local government terms.
+- The new example script is in English (scripts stay ASCII).
+- The test that every key used exists now also covers Core and the connections.
+- On purpose not translated: the change log and access log already written, data from AD and Microsoft 365, the
+  technical log, CSV column names of the inventory, the status words of the Exchange script and technical names.
+
 ## 0.38.4
 
 Languages (R15), fifth part: the whole interface layer now speaks five languages, also what it builds in code.

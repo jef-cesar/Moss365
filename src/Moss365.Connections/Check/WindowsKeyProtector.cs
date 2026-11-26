@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
@@ -31,8 +32,8 @@ public sealed class WindowsKeyProtector : IKeyProtector
         return method switch
         {
             EncryptionMethod.WindowsAccount => ProtectedData.Protect(key, Entropy, DataProtectionScope.CurrentUser),
-            EncryptionMethod.AdGroup => DpapiNg.Protect(key, groupSid ?? throw new ArgumentException("Geen groep.")),
-            _ => throw new ArgumentException("Deze manier gebruikt Windows niet.", nameof(method)),
+            EncryptionMethod.AdGroup => DpapiNg.Protect(key, groupSid ?? throw new ArgumentException(Texts.T["code.windows-key-protector.no-group"])),
+            _ => throw new ArgumentException(Texts.T["code.windows-key-protector.windows-does-not-use-this"], nameof(method)),
         };
     }
 
@@ -40,14 +41,14 @@ public sealed class WindowsKeyProtector : IKeyProtector
     {
         if (!OperatingSystem.IsWindows())
         {
-            throw new CryptographicException("Enkel op Windows.");
+            throw new CryptographicException(Texts.T["code.windows-key-protector.only-on-windows"]);
         }
 
         return method switch
         {
             EncryptionMethod.WindowsAccount => ProtectedData.Unprotect(blob, Entropy, DataProtectionScope.CurrentUser),
             EncryptionMethod.AdGroup => DpapiNg.Unprotect(blob),
-            _ => throw new CryptographicException("Deze manier gebruikt Windows niet."),
+            _ => throw new CryptographicException(Texts.T["code.windows-key-protector.windows-does-not-use-this"]),
         };
     }
 
@@ -77,10 +78,10 @@ public sealed class WindowsKeyProtector : IKeyProtector
 
         public static byte[] Protect(byte[] data, string sid)
         {
-            Check(NCryptCreateProtectionDescriptor("SID=" + sid, 0, out var descriptor), "beschermen voor de groep");
+            Check(NCryptCreateProtectionDescriptor("SID=" + sid, 0, out var descriptor), Texts.T["code.windows-key-protector.protecting-for-the-group"]);
             try
             {
-                Check(NCryptProtectSecret(descriptor, SilentFlag, data, (uint)data.Length, IntPtr.Zero, IntPtr.Zero, out var blob, out var length), "beschermen voor de groep");
+                Check(NCryptProtectSecret(descriptor, SilentFlag, data, (uint)data.Length, IntPtr.Zero, IntPtr.Zero, out var blob, out var length), Texts.T["code.windows-key-protector.protecting-for-the-group"]);
                 return Take(blob, length);
             }
             finally
@@ -94,7 +95,7 @@ public sealed class WindowsKeyProtector : IKeyProtector
             var status = NCryptUnprotectSecret(IntPtr.Zero, SilentFlag, blob, (uint)blob.Length, IntPtr.Zero, IntPtr.Zero, out var data, out var length);
             if (status != 0)
             {
-                throw new CryptographicException($"De sleutel kon niet geopend worden voor deze gebruiker (0x{status:X8}).");
+                throw new CryptographicException(Texts.T.Format("code.windows-key-protector.the-key-could-not-be", status));
             }
 
             return Take(data, length);
@@ -118,7 +119,7 @@ public sealed class WindowsKeyProtector : IKeyProtector
         {
             if (status != 0)
             {
-                throw new CryptographicException($"DPAPI-NG: {what} mislukt (0x{status:X8}).");
+                throw new CryptographicException(Texts.T.Format("code.windows-key-protector.dpapi-ng-failed-0x", what, status));
             }
         }
 

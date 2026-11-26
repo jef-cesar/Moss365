@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Moss365.Core.Inventory;
 using Moss365.Core.Changes;
+using Moss365.Core.Localization;
 
 namespace Moss365.Connections.Exchange;
 
@@ -52,7 +53,7 @@ public sealed class PowerShellProcess : IPowerShellStarter
             info.Environment[name] = value;
         }
 
-        using var process = Process.Start(info) ?? throw new InvalidOperationException("PowerShell kon niet gestart worden.");
+        using var process = Process.Start(info) ?? throw new InvalidOperationException(Texts.T["code.exchange-connection.powershell-could-not-be-started"]);
         var errors = process.StandardError.ReadToEndAsync(cancel);
         _ = process.StandardOutput.ReadToEndAsync(cancel);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
@@ -64,7 +65,7 @@ public sealed class PowerShellProcess : IPowerShellStarter
         catch (OperationCanceledException)
         {
             process.Kill(entireProcessTree: true);
-            throw new TimeoutException("Exchange Online reageerde niet binnen 20 minuten.");
+            throw new TimeoutException(Texts.T["code.exchange-connection.exchange-online-did-not-respond"]);
         }
 
         return (process.ExitCode, await errors);
@@ -190,7 +191,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
                 }
                 break;
             default:
-                throw new InvalidOperationException($"Actie {w.ChangeAction} hoort niet bij Exchange.");
+                throw new InvalidOperationException(Texts.T.Format("code.exchange-connection.action-does-not-belong-to", w.ChangeAction));
         }
 
         return new Command(w.Id.ToString(), op, p);
@@ -232,7 +233,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             {
                 var r = results.FirstOrDefault(x => x.Id == w.Id.ToString());
                 output[w.Id] = r is null
-                    ? ChangeResult.Error(w, "Geen resultaat van Exchange.")
+                    ? ChangeResult.Error(w, Texts.T["code.exchange-connection.no-result-from-exchange"])
                     : r.Status == "Gelukt" ? ChangeResult.Ok(w, r.Message) : ChangeResult.Error(w, r.Message);
             }
         }
@@ -243,7 +244,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
     /// <summary>Forwarding on mailboxes and inbox rules that forward (0.34), read only.</summary>
     public async Task<IReadOnlyList<Core.Security.ForwardingRule>> ReadForwardingAsync(bool includeRules, IProgress<string>? progress, CancellationToken cancel)
     {
-        progress?.Report(includeRules ? "Exchange: doorsturen en inboxregels lezen (kan enkele minuten duren)..." : "Exchange: doorsturen lezen...");
+        progress?.Report(includeRules ? Texts.T["code.exchange-connection.exchange-reading-forwarding-and-inbox"] : Texts.T["code.exchange-connection.exchange-reading-forwarding"]);
         var r = (await RunScriptAsync(new[] { new Command("doorsturen", "Doorsturen", new() { ["MetRegels"] = includeRules ? "True" : "False" }) }, cancel)).Single();
         if (r.Status != "Gelukt")
         {
@@ -281,7 +282,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
 
     public async Task<IReadOnlyList<Room>> ReadRoomsAsync(IProgress<string>? progress, CancellationToken cancel)
     {
-        progress?.Report("Exchange: aanmelden en rooms lezen...");
+        progress?.Report(Texts.T["code.exchange-connection.exchange-signing-in-and-reading"]);
         var r = (await RunScriptAsync(new[] { new Command("rooms", "LeesRooms", new()) }, cancel)).Single();
         if (r.Status != "Gelukt")
         {
@@ -289,27 +290,27 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
         }
 
         var rooms = r.Data is { ValueKind: JsonValueKind.Array } list ? list.EnumerateArray().Select(ToRoom).ToList() : new List<Room>();
-        progress?.Report($"Exchange: {rooms.Count} rooms gelezen.");
+        progress?.Report(Texts.T.Format("code.exchange-connection.exchange-rooms-read", rooms.Count));
         return rooms;
     }
 
     public async Task<ExchangeData> ReadMailboxesAsync(IProgress<string>? progress, CancellationToken cancel)
     {
-        progress?.Report("Exchange: postvakken, rechten en groepen lezen (dit kan enkele minuten duren)...");
+        progress?.Report(Texts.T["code.exchange-connection.exchange-reading-mailboxes-permissions-and"]);
         var r = (await RunScriptAsync(new[] { new Command("postvakken", "LeesPostvakken", new()) }, cancel)).Single();
         if (r.Status != "Gelukt" || r.Data is not { ValueKind: JsonValueKind.Object } d)
         {
-            throw new InvalidOperationException(r.Status == "Gelukt" ? "Exchange gaf geen postvakken terug." : r.Message);
+            throw new InvalidOperationException(r.Status == "Gelukt" ? Texts.T["code.exchange-connection.exchange-returned-no-mailboxes"] : r.Message);
         }
 
         var data = ToExchangeData(d);
-        progress?.Report($"Exchange: {data.Mailboxes.Count} postvakken, {data.Permissions.Count} rechten en {data.Groups.Count} groepen gelezen.");
+        progress?.Report(Texts.T.Format("code.exchange-connection.exchange-mailboxes-permissions-and-groups", data.Mailboxes.Count, data.Permissions.Count, data.Groups.Count));
         return data;
     }
 
     public async Task<ExchangeReading> ReadAllAsync(IProgress<string>? progress, CancellationToken cancel)
     {
-        progress?.Report("Exchange: aanmelden, rooms, postvakken, rechten en groepen lezen (dit kan enkele minuten duren)...");
+        progress?.Report(Texts.T["code.exchange-connection.exchange-signing-in-reading-rooms"]);
         var results = await RunScriptAsync(new[] { new Command("rooms", "LeesRooms", new()), new Command("postvakken", "LeesPostvakken", new()) }, cancel);
         var r = results.FirstOrDefault(x => x.Id == "rooms");
         var p = results.FirstOrDefault(x => x.Id == "postvakken");
@@ -319,9 +320,9 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             : null;
         ExchangeData? mailboxes = p is { Status: "Gelukt", Data: { ValueKind: JsonValueKind.Object } d } ? ToExchangeData(d) : null;
         var reading = new ExchangeReading(
-            rooms, rooms is null ? r?.Message ?? "Geen resultaat van Exchange." : null,
-            mailboxes, mailboxes is null ? (p is { Status: "Gelukt" } ? "Exchange gaf geen postvakken terug." : p?.Message ?? "Geen resultaat van Exchange.") : null);
-        progress?.Report($"Exchange: {rooms?.Count ?? 0} rooms, {mailboxes?.Mailboxes.Count ?? 0} postvakken en {mailboxes?.Groups.Count ?? 0} groepen gelezen.");
+            rooms, rooms is null ? r?.Message ?? Texts.T["code.exchange-connection.no-result-from-exchange"] : null,
+            mailboxes, mailboxes is null ? (p is { Status: "Gelukt" } ? Texts.T["code.exchange-connection.exchange-returned-no-mailboxes"] : p?.Message ?? Texts.T["code.exchange-connection.no-result-from-exchange"]) : null);
+        progress?.Report(Texts.T.Format("exchange.read-all", rooms?.Count ?? 0, mailboxes?.Mailboxes.Count ?? 0, mailboxes?.Groups.Count ?? 0));
         return reading;
     }
 
@@ -336,7 +337,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
         var r = (await RunScriptAsync(new[] { new Command("objecten", "LeesObjecten", new() { ["Adressen"] = string.Join('|', list) }) }, cancel)).Single();
         if (r.Status != "Gelukt" || r.Data is not { ValueKind: JsonValueKind.Object } d)
         {
-            throw new InvalidOperationException(r.Status == "Gelukt" ? "Exchange gaf geen gegevens terug." : r.Message);
+            throw new InvalidOperationException(r.Status == "Gelukt" ? Texts.T["code.exchange-connection.exchange-returned-no-data"] : r.Message);
         }
 
         var rooms = d.TryGetProperty("Rooms", out var rl) && rl.ValueKind == JsonValueKind.Array ? rl.EnumerateArray().Select(ToRoom).ToList() : new List<Room>();
@@ -397,7 +398,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
         Directory.CreateDirectory(_workFolder);
         var script = Path.Combine(_workFolder, "Exchange.ps1");
         await using (var source = typeof(ExchangeConnection).Assembly.GetManifestResourceStream("Exchange.ps1")
-                                ?? throw new InvalidOperationException("Exchange.ps1 ontbreekt in de app."))
+                                ?? throw new InvalidOperationException(Texts.T["code.exchange-connection.exchange-ps1-is-missing-in"]))
         await using (var target = File.Create(script))
         {
             await source.CopyToAsync(target, cancel);
@@ -426,8 +427,8 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             var (code, errors) = await _starter.StartAsync(script, arguments, environment, cancel);
             if (!File.Exists(output))
             {
-                var reason = string.IsNullOrWhiteSpace(errors) ? $"PowerShell stopte met code {code}." : errors.Trim();
-                throw new InvalidOperationException("Exchange-script gaf geen resultaat: " + reason);
+                var reason = string.IsNullOrWhiteSpace(errors) ? Texts.T.Format("code.system-check.powershell-stopped-with-code", code) : errors.Trim();
+                throw new InvalidOperationException(Texts.T.Format("code.exchange-connection.the-exchange-script-returned-no", reason));
             }
 
             return ReadResults(await File.ReadAllTextAsync(output, cancel));
