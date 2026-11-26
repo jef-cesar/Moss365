@@ -22,8 +22,11 @@ public enum KpiList
 /// count of rows of that list (<see cref="Kpis.Count"/>), so tile and list never differ. With a parameter (e.g.
 /// <c>afdeling:Vrije tijd</c>) it is one KPI per value.
 /// </summary>
-public sealed record Kpi(string Key, string Label, KpiList Items, bool Attention = false)
+public sealed record Kpi(string Key, string Dutch, KpiList Items, bool Attention = false)
 {
+    /// <summary>The name in the language of the interface (R15): the dictionary by key, else the Dutch name.</summary>
+    public string Label => Localization.Texts.T.Text("kpi." + Key, Dutch);
+
     public string Page => Items switch
     {
         KpiList.Users => "gebruikers",
