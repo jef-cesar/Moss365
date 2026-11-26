@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Inventory;
 
 namespace Moss365.Core.Analysis;
@@ -97,7 +98,7 @@ public static class CaReader
 
     public const string ActionSecurityData = "urn:user:registersecurityinfo";
 
-    public static string AppName(string id) => AppNames.TryGetValue(id, out var n) ? n : "app " + id;
+    public static string AppName(string id) => AppNames.TryGetValue(id, out var n) ? Texts.T.Text("ca-app." + id, n) : Texts.T.Format("code.ca-analysis.app", id);
 
     /// <summary>The apps the app knows by name (for the editor).</summary>
     public static IReadOnlyCollection<string> KnownApps => AppNames.Keys;
@@ -105,23 +106,23 @@ public static class CaReader
     public static string ActionName(string action) => action.ToLowerInvariant() switch
     {
         ActionSecurityData => "beveiligingsgegevens registreren (MFA instellen)",
-        "urn:user:registerdevice" => "een toestel registreren of koppelen",
+        "urn:user:registerdevice" => Texts.T["code.ca-analysis.registering-or-joining-a-device"],
         _ => action,
     };
 
     public static string ClientName(string c) => c switch
     {
-        "all" => "alle soorten",
-        "browser" => "de browser",
-        "mobileAppsAndDesktopClients" => "apps en desktopprogramma's",
-        "exchangeActiveSync" => "Exchange ActiveSync (verouderd)",
-        "other" => "andere verouderde programma's (IMAP, POP, SMTP ...)",
+        "all" => Texts.T["ca-analysis.all-kinds"],
+        "browser" => Texts.T["ca-overview.the-browser"],
+        "mobileAppsAndDesktopClients" => Texts.T["code.ca-analysis.apps-and-desktop-programs"],
+        "exchangeActiveSync" => Texts.T["ca-analysis.exchange-activesync-legacy"],
+        "other" => Texts.T["ca-analysis.other-legacy-programs-imap-pop-smtp"],
         _ => c,
     };
 
     public static string PlatformName(string p) => p.ToLowerInvariant() switch
     {
-        "all" => "alle platformen",
+        "all" => Texts.T["ca-analysis.all-platforms"],
         "windows" => "Windows",
         "macos" => "macOS",
         "ios" => "iOS",
@@ -133,37 +134,37 @@ public static class CaReader
 
     public static string CheckName(string c) => c switch
     {
-        "block" => "blokkeren",
+        "block" => Texts.T["ca-analysis.block"],
         "mfa" => "MFA",
-        "compliantDevice" => "een conform toestel (Intune)",
-        "domainJoinedDevice" => "een toestel dat hybride aan Entra gekoppeld is",
-        "approvedApplication" => "een goedgekeurde app",
-        "compliantApplication" => "een app met app-beveiligingsbeleid",
-        "passwordChange" => "het wachtwoord wijzigen",
+        "compliantDevice" => Texts.T["code.ca-analysis.a-compliant-device-intune"],
+        "domainJoinedDevice" => Texts.T["code.ca-analysis.a-device-that-is-hybrid"],
+        "approvedApplication" => Texts.T["code.ca-analysis.an-approved-app"],
+        "compliantApplication" => Texts.T["code.ca-analysis.an-app-with-an-app"],
+        "passwordChange" => Texts.T["code.ca-analysis.changing-the-password"],
         _ => c,
     };
 
     public static string RiskName(string r) => r switch
     {
-        "low" => "laag",
-        "medium" => "gemiddeld",
-        "high" => "hoog",
-        "none" => "geen",
+        "low" => Texts.T["ca-analysis.low"],
+        "medium" => Texts.T["ca-analysis.medium"],
+        "high" => Texts.T["ca-analysis.high"],
+        "none" => Texts.T["security-card.none"],
         _ => r,
     };
 
     public static string StatusName(CaStatus s) => s switch
     {
-        CaStatus.On => "Aan",
-        CaStatus.Report => "Alleen rapport",
-        _ => "Uit",
+        CaStatus.On => Texts.T["ca-editor.state.on"],
+        CaStatus.Report => Texts.T["word.reportonly"],
+        _ => Texts.T["word.off"],
     };
 
     public static string LocationName(string id, CaData ca) => id switch
     {
-        "All" => "elke locatie",
-        "AllTrusted" => "alle vertrouwde locaties",
-        _ => ca.Location(id) is { } l ? l.Name : "locatie " + id,
+        "All" => Texts.T["ca-analysis.every-location"],
+        "AllTrusted" => Texts.T["ca-analysis.all-trusted-locations"],
+        _ => ca.Location(id) is { } l ? l.Name : Texts.T.Format("code.ca-analysis.location", id),
     };
 
     // ------------------------------------------------------------------ explanation
@@ -177,82 +178,82 @@ public static class CaReader
         var realIn = b.UsersIn.Where(u => u is not ("All" or "None" or "GuestsOrExternalUsers")).ToList();
         if (b.UsersIn.Contains("All"))
         {
-            who.Add("Alle gebruikers");
+            who.Add(Texts.T["word.allusers"]);
         }
         else if (b.UsersIn.Contains("None") && b.GroupsIn.Count + b.RolesIn.Count == 0 && !b.GuestsIn)
         {
-            who.Add("Niemand (het beleid geldt voor geen enkele gebruiker)");
+            who.Add(Texts.T["code.ca-analysis.nobody-the-policy-applies-to"]);
         }
         else
         {
-            if (realIn.Count > 0) who.Add("Gebruikers: " + Names(realIn));
-            if (b.GroupsIn.Count > 0) who.Add("Leden van: " + Names(b.GroupsIn));
-            if (b.RolesIn.Count > 0) who.Add("Met de rol: " + Roles(b.RolesIn));
-            if (b.GuestsIn) who.Add("Gasten en externe gebruikers");
-            if (who.Count == 0) who.Add("Niemand");
+            if (realIn.Count > 0) who.Add(Texts.T.Format("code.ca-analysis.users", Names(realIn)));
+            if (b.GroupsIn.Count > 0) who.Add(Texts.T.Format("code.ca-analysis.members-of", Names(b.GroupsIn)));
+            if (b.RolesIn.Count > 0) who.Add(Texts.T.Format("code.ca-analysis.with-the-role", Roles(b.RolesIn)));
+            if (b.GuestsIn) who.Add(Texts.T["ca-policy-editor.guests-and-external-users"]);
+            if (who.Count == 0) who.Add(Texts.T["word.nobody"]);
         }
 
         var realOff = b.UsersOff.Where(u => u != "GuestsOrExternalUsers").ToList();
-        if (realOff.Count > 0) who.Add("Behalve: " + Names(realOff));
-        if (b.GroupsOff.Count > 0) who.Add("Behalve leden van: " + Names(b.GroupsOff));
-        if (b.RolesOff.Count > 0) who.Add("Behalve wie de rol heeft: " + Roles(b.RolesOff));
-        if (b.GuestsOff) who.Add("Behalve gasten");
+        if (realOff.Count > 0) who.Add(Texts.T.Format("code.ca-analysis.except", Names(realOff)));
+        if (b.GroupsOff.Count > 0) who.Add(Texts.T.Format("code.ca-analysis.except-members-of", Names(b.GroupsOff)));
+        if (b.RolesOff.Count > 0) who.Add(Texts.T.Format("code.ca-analysis.except-who-has-the-role", Roles(b.RolesOff)));
+        if (b.GuestsOff) who.Add(Texts.T["ca-analysis.except-guests"]);
 
         var apps = new List<string>();
         if (b.UserActions.Count > 0)
         {
-            apps.Add("Bij het " + string.Join(" of ", b.UserActions.Select(ActionName)));
+            apps.Add(Texts.T.Format("code.ca-analysis.when", string.Join((" " + Texts.T["keys.or"] + " "), b.UserActions.Select(ActionName))));
         }
         else if (b.AppsIn.Count > 0)
         {
-            apps.Add("Voor " + string.Join(", ", b.AppsIn.Select(AppName)));
+            apps.Add(Texts.T.Format("code.ca-analysis.for", string.Join(", ", b.AppsIn.Select(AppName))));
         }
 
-        if (b.AppsOff.Count > 0) apps.Add("Behalve " + string.Join(", ", b.AppsOff.Select(AppName)));
-        if (apps.Count == 0) apps.Add("Geen apps");
+        if (b.AppsOff.Count > 0) apps.Add(Texts.T.Format("code.ca-analysis.except-2", string.Join(", ", b.AppsOff.Select(AppName))));
+        if (apps.Count == 0) apps.Add(Texts.T["ca-analysis.no-apps"]);
 
         var conditions = new List<string>();
         if (b.ClientApps.Count > 0 && !b.ClientApps.Contains("all"))
         {
-            conditions.Add("Enkel via " + string.Join(", ", b.ClientApps.Select(ClientName)));
+            conditions.Add(Texts.T.Format("code.ca-analysis.only-through", string.Join(", ", b.ClientApps.Select(ClientName))));
         }
 
-        if (b.PlatformsIn.Count > 0) conditions.Add("Op " + string.Join(", ", b.PlatformsIn.Select(PlatformName)));
-        if (b.PlatformsOff.Count > 0) conditions.Add("Niet op " + string.Join(", ", b.PlatformsOff.Select(PlatformName)));
+        if (b.PlatformsIn.Count > 0) conditions.Add(Texts.T.Format("ca-analysis.on", string.Join(", ", b.PlatformsIn.Select(PlatformName))));
+        if (b.PlatformsOff.Count > 0) conditions.Add(Texts.T.Format("code.ca-analysis.not-on", string.Join(", ", b.PlatformsOff.Select(PlatformName))));
         if (b.LocationsIn.Count > 0 && !(b.LocationsIn.Count == 1 && b.LocationsIn[0] == "All"))
         {
-            conditions.Add("Vanaf " + string.Join(", ", b.LocationsIn.Select(l => LocationName(l, ca))));
+            conditions.Add(Texts.T.Format("code.ca-analysis.from", string.Join(", ", b.LocationsIn.Select(l => LocationName(l, ca)))));
         }
 
-        if (b.LocationsOff.Count > 0) conditions.Add("Niet vanaf " + string.Join(", ", b.LocationsOff.Select(l => LocationName(l, ca))));
-        if (b.SignInRisk.Count > 0) conditions.Add("Bij een aanmelding met risico " + string.Join(", ", b.SignInRisk.Select(RiskName)) + " (Entra ID P2)");
-        if (b.UsersRisk.Count > 0) conditions.Add("Bij een gebruiker met risico " + string.Join(", ", b.UsersRisk.Select(RiskName)) + " (Entra ID P2)");
-        if (b.DeviceFilter) conditions.Add("Met een filter op toestellen");
-        if (b.Transfer.Contains("deviceCodeFlow")) conditions.Add("Bij aanmelden met een toestelcode (device code flow)");
-        if (b.Transfer.Contains("authenticationTransfer")) conditions.Add("Bij het doorgeven van een aanmelding naar een ander toestel");
-        if (conditions.Count == 0) conditions.Add("Altijd (geen extra voorwaarden)");
+        if (b.LocationsOff.Count > 0) conditions.Add(Texts.T.Format("code.ca-analysis.not-from", string.Join(", ", b.LocationsOff.Select(l => LocationName(l, ca)))));
+        if (b.SignInRisk.Count > 0) conditions.Add(Texts.T.Format("code.ca-analysis.at-a-sign-in-with", string.Join(", ", b.SignInRisk.Select(RiskName))));
+        if (b.UsersRisk.Count > 0) conditions.Add(Texts.T.Format("code.ca-analysis.for-a-user-with-risk", string.Join(", ", b.UsersRisk.Select(RiskName))));
+        if (b.DeviceFilter) conditions.Add(Texts.T["code.ca-analysis.with-a-filter-on-devices"]);
+        if (b.Transfer.Contains("deviceCodeFlow")) conditions.Add(Texts.T["code.ca-analysis.when-signing-in-with-a"]);
+        if (b.Transfer.Contains("authenticationTransfer")) conditions.Add(Texts.T["code.ca-analysis.when-passing-a-sign-in"]);
+        if (conditions.Count == 0) conditions.Add(Texts.T["code.ca-analysis.always-no-extra-conditions"]);
 
         string consequence;
         if (b.Blocks)
         {
-            consequence = "Toegang blokkeren";
+            consequence = Texts.T["ca-policy-editor.block-access"];
         }
         else
         {
             var requirements = b.Checks.Where(c => !(c == "mfa" && b.StrengthId is not null)).Select(CheckName).ToList();
-            if (b.StrengthId is not null) requirements.Insert(0, "MFA met sterkte " + (b.StrengthName ?? ca.Strengths.FirstOrDefault(s => s.Id == b.StrengthId)?.Name ?? b.StrengthId));
-            if (b.TermsOfUse) requirements.Add("de gebruiksvoorwaarden aanvaarden");
+            if (b.StrengthId is not null) requirements.Insert(0, Texts.T.Format("code.ca-analysis.mfa-with-strength", (b.StrengthName ?? ca.Strengths.FirstOrDefault(s => s.Id == b.StrengthId)?.Name ?? b.StrengthId)));
+            if (b.TermsOfUse) requirements.Add(Texts.T["code.ca-analysis.accepting-the-terms-of-use"]);
             consequence = requirements.Count switch
             {
-                0 => "Toegang toestaan (geen eis)",
-                1 => "Toegang mits " + requirements[0],
-                _ => "Toegang mits " + string.Join(b.Operator == "AND" ? " en " : " of ", requirements),
+                0 => Texts.T["code.ca-analysis.allow-access-no-requirement"],
+                1 => Texts.T.Format("code.ca-analysis.access-provided", requirements[0]),
+                _ => Texts.T.Format("code.ca-analysis.access-provided", string.Join(b.Operator == "AND" ? (" " + Texts.T["code.ca-analysis.and"] + " ") : (" " + Texts.T["keys.or"] + " "), requirements)),
             };
         }
 
         var session = new List<string>();
-        if (b.SignInFrequency is { } f) session.Add("Opnieuw aanmelden: " + f);
-        if (b.PersistentBrowser is { } br) session.Add("Browser: " + br);
+        if (b.SignInFrequency is { } f) session.Add(Texts.T.Format("code.ca-analysis.sign-in-again", f));
+        if (b.PersistentBrowser is { } br) session.Add(Texts.T.Format("code.ca-analysis.browser", br));
 
         return new CaExplanation(who, apps, conditions, consequence, session);
     }
@@ -269,17 +270,17 @@ public static class CaReader
 
         if (b.GroupsOff.FirstOrDefault(g.Groups.Contains) is { } groupOff)
         {
-            return CaAnswer.No("uitgezonderd via de groep " + name(groupOff));
+            return CaAnswer.No(Texts.T.Format("code.ca-analysis.excluded-through-the-group", name(groupOff)));
         }
 
         if (b.RolesOff.FirstOrDefault(g.Roles.Contains) is { } roleOff)
         {
-            return CaAnswer.No("uitgezonderd via de rol " + ca.RoleName(roleOff));
+            return CaAnswer.No(Texts.T.Format("code.ca-analysis.excluded-through-the-role", ca.RoleName(roleOff)));
         }
 
         if (b.GuestsOff && g.IsGuest)
         {
-            return CaAnswer.No("gasten zijn uitgezonderd");
+            return CaAnswer.No(Texts.T["code.ca-analysis.guests-are-excluded"]);
         }
 
         CaAnswer? inValue = null;
@@ -293,15 +294,15 @@ public static class CaReader
         }
         else if (b.GuestsIn && g.IsGuest)
         {
-            inValue = CaAnswer.Yes("gasten en externe gebruikers");
+            inValue = CaAnswer.Yes(Texts.T["code.ca-analysis.guests-and-external-users"]);
         }
         else if (b.GroupsIn.FirstOrDefault(g.Groups.Contains) is { } groupIn)
         {
-            inValue = CaAnswer.Yes("lid van " + name(groupIn));
+            inValue = CaAnswer.Yes(Texts.T.Format("code.ca-analysis.member-of", name(groupIn)));
         }
         else if (b.RolesIn.FirstOrDefault(g.Roles.Contains) is { } roleIn)
         {
-            inValue = CaAnswer.Yes("heeft de rol " + ca.RoleName(roleIn));
+            inValue = CaAnswer.Yes(Texts.T.Format("code.ca-analysis.has-the-role", ca.RoleName(roleIn)));
         }
 
         // Without the full group members (also nested groups) a group in the policy is not certain
@@ -309,16 +310,16 @@ public static class CaReader
         {
             if (inValue is not null && b.GroupsOff.Count > 0)
             {
-                return CaAnswer.Maybe(inValue.Reason + ", tenzij lid van een uitgezonderde groep via een groep in de groep");
+                return CaAnswer.Maybe(Texts.T.Format("code.ca-analysis.unless-member-of-an-excluded", inValue.Reason));
             }
 
             if (inValue is null && b.GroupsIn.Count > 0)
             {
-                return CaAnswer.Maybe("misschien lid van een opgenomen groep via een groep in de groep");
+                return CaAnswer.Maybe(Texts.T["code.ca-analysis.maybe-member-of-an-included"]);
             }
         }
 
-        return inValue ?? CaAnswer.No("niet opgenomen");
+        return inValue ?? CaAnswer.No(Texts.T["code.ca-analysis.not-included"]);
     }
 
     /// <summary>All persons with an Entra account who fall under the policy (certain or maybe).</summary>
@@ -349,7 +350,7 @@ public static class CaReader
     {
         if (b.UserActions.Count > 0 && b.AppsIn.Count == 0)
         {
-            return CaAnswer.No("geldt enkel bij " + string.Join(", ", b.UserActions.Select(ActionName)));
+            return CaAnswer.No(Texts.T.Format("code.ca-analysis.only-applies-when", string.Join(", ", b.UserActions.Select(ActionName))));
         }
 
         bool Belongs(string id) => id == "All"
@@ -358,7 +359,7 @@ public static class CaReader
 
         if (b.AppsOff.FirstOrDefault(Belongs) is { } output)
         {
-            return CaAnswer.No(AppName(output) + " uitgezonderd");
+            return CaAnswer.No(Texts.T.Format("code.ca-analysis.excluded", AppName(output)));
         }
 
         if (b.AppsIn.FirstOrDefault(Belongs) is { } inValue)
@@ -368,7 +369,7 @@ public static class CaReader
 
         var specific = b.AppsIn.Where(a => a is not "None" && !AppNames.ContainsKey(a)).ToList();
         return app == CaApp.Other && specific.Count > 0
-            ? CaAnswer.Maybe("geldt voor specifieke apps")
+            ? CaAnswer.Maybe(Texts.T["code.ca-analysis.applies-to-specific-apps"])
             : CaAnswer.No("andere apps");
     }
 
@@ -443,18 +444,18 @@ public static class CaReader
                 : b.ClientApps.Contains(client);
             if (!matches)
             {
-                return CaAnswer.No("enkel via " + string.Join(", ", b.ClientApps.Select(ClientName)));
+                return CaAnswer.No(Texts.T.Format("code.ca-analysis.only-through-2", string.Join(", ", b.ClientApps.Select(ClientName))));
             }
         }
 
         if (b.PlatformsOff.Any(p => p.Equals(s.Platform, StringComparison.OrdinalIgnoreCase) || p == "all"))
         {
-            return CaAnswer.No("niet op " + PlatformName(s.Platform));
+            return CaAnswer.No(Texts.T.Format("code.ca-analysis.not-on-2", PlatformName(s.Platform)));
         }
 
         if (b.PlatformsIn.Count > 0 && !b.PlatformsIn.Any(p => p.Equals(s.Platform, StringComparison.OrdinalIgnoreCase) || p == "all"))
         {
-            return CaAnswer.No("enkel op " + string.Join(", ", b.PlatformsIn.Select(PlatformName)));
+            return CaAnswer.No(Texts.T.Format("code.ca-analysis.only-on", string.Join(", ", b.PlatformsIn.Select(PlatformName))));
         }
 
         if (b.LocationsOff.Count > 0)
@@ -462,10 +463,10 @@ public static class CaReader
             switch (AOf(b.LocationsOff, s.Place, ca))
             {
                 case true:
-                    return CaAnswer.No("niet vanaf " + string.Join(", ", b.LocationsOff.Select(l => LocationName(l, ca))));
+                    return CaAnswer.No(Texts.T.Format("code.ca-analysis.not-from-2", string.Join(", ", b.LocationsOff.Select(l => LocationName(l, ca)))));
                 case null:
                     certain = false;
-                    reasons.Add("hangt af van de locatie");
+                    reasons.Add(Texts.T["code.ca-analysis.depends-on-the-location"]);
                     break;
             }
         }
@@ -475,28 +476,28 @@ public static class CaReader
             switch (AOf(b.LocationsIn, s.Place, ca))
             {
                 case false:
-                    return CaAnswer.No("enkel vanaf " + string.Join(", ", b.LocationsIn.Select(l => LocationName(l, ca))));
+                    return CaAnswer.No(Texts.T.Format("code.ca-analysis.only-from", string.Join(", ", b.LocationsIn.Select(l => LocationName(l, ca)))));
                 case null:
                     certain = false;
-                    reasons.Add("hangt af van de locatie");
+                    reasons.Add(Texts.T["code.ca-analysis.depends-on-the-location"]);
                     break;
             }
         }
 
         if (b.SignInRisk.Count > 0 || b.UsersRisk.Count > 0)
         {
-            return CaAnswer.No("geldt enkel bij een riskante aanmelding of gebruiker");
+            return CaAnswer.No(Texts.T["code.ca-analysis.only-applies-at-a-risky"]);
         }
 
         if (b.Transfer.Count > 0)
         {
-            return CaAnswer.No("geldt enkel bij aanmelden met een toestelcode of overdracht");
+            return CaAnswer.No(Texts.T["code.ca-analysis.only-applies-when-signing-in"]);
         }
 
         if (b.DeviceFilter)
         {
             certain = false;
-            reasons.Add("hangt af van het toestel (filter)");
+            reasons.Add(Texts.T["code.ca-analysis.depends-on-the-device-filter"]);
         }
 
         return new CaAnswer(certain ? CaApplies.Yes : CaApplies.Maybe, string.Join("; ", reasons.Where(r => r.Length > 0)));
@@ -535,10 +536,10 @@ public static class CaReader
             var texts = options.Select(c => c == "mfa" && b.AsksPhishingResistant ? "phishingbestendige MFA" : CheckName(c)).ToList();
             if (b.TermsOfUse)
             {
-                texts.Add("de gebruiksvoorwaarden aanvaarden");
+                texts.Add(Texts.T["code.ca-analysis.accepting-the-terms-of-use"]);
             }
 
-            var requirement = string.Join(b.Operator == "AND" ? " en " : " of ", texts);
+            var requirement = string.Join(b.Operator == "AND" ? (" " + Texts.T["code.ca-analysis.and"] + " ") : (" " + Texts.T["keys.or"] + " "), texts);
             if (requirement.Length > 0 && !requirements.Contains(requirement))
             {
                 requirements.Add(requirement);
@@ -548,11 +549,11 @@ public static class CaReader
         string summary;
         if (blocked)
         {
-            summary = "Geblokkeerd door " + string.Join(", ", certain.Where(r => r.Policy.Blocks).Select(r => r.Policy.Name));
+            summary = Texts.T.Format("code.ca-analysis.blocked-by", string.Join(", ", certain.Where(r => r.Policy.Blocks).Select(r => r.Policy.Name)));
         }
         else if (requirements.Count > 0)
         {
-            summary = "Toegang mits " + string.Join(" en ", requirements);
+            summary = Texts.T.Format("code.ca-analysis.access-provided", string.Join((" " + Texts.T["code.ca-analysis.and"] + " "), requirements));
         }
         else if (certain.Count > 0)
         {
@@ -560,12 +561,12 @@ public static class CaReader
         }
         else
         {
-            summary = "Geen enkel beleid is zeker van toepassing: aanmelden met enkel een wachtwoord";
+            summary = Texts.T["code.ca-analysis.no-policy-surely-applies-signing"];
         }
 
         if (enabled.Any(r => r.Answer.Applies == CaApplies.Maybe))
         {
-            summary += " (en misschien meer, zie de beleiden met \"misschien\")";
+            summary += (" " + Texts.T["code.ca-analysis.and-maybe-more-see-the"]);
         }
 
         return new CaWhatIfOutcome(rules, blocked, requirements, summary);
