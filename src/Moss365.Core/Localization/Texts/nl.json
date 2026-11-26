@@ -3407,5 +3407,19 @@
   "local-logs.col.activity": "Activiteit",
   "local-logs.col.target": "Doel",
   "local-logs.col.service": "Dienst",
-  "local-logs.access": "{0} tot {1}: {2} aanmeldingen, {3} auditregels"
+  "local-logs.access": "{0} tot {1}: {2} aanmeldingen, {3} auditregels",
+  "visit.title": "Sinds je laatste bezoek ({0})",
+  "visit.nothing": "Niets buiten Moss365 veranderd dat je aandacht vraagt: geen nieuwe beheerders, wijzigingen aan Conditional Access, toestemmingen voor apps of aanmeldingen van noodaccounts.",
+  "visit.col.kind": "Soort",
+  "visit.kind.admin": "nieuwe beheerder",
+  "visit.kind.policy": "Conditional Access",
+  "visit.kind.consent": "toestemming voor een app",
+  "visit.kind.emergency": "noodaccount",
+  "visit.audit": "{0}: {1}",
+  "visit.ad-group": "{0} zit nu in {1}",
+  "visit.emergency": "{0} meldde zich aan ({1}, {2})",
+  "visit.from-snapshots": "tussen twee momentopnames",
+  "visit.more": "En nog {0}:",
+  "visit.no-logs": "Het bewaren van de aanmeld- en auditlogboeken staat uit voor deze tenant, dus alleen de momentopnames worden vergeleken.",
+  "visit.help": "Uit de momentopnames en de lokaal bewaarde logboeken, dus zover de laatste inlezing (ook een zonder venster) het weet. Wat Moss365 zelf deed, staat in het logboek en blijft hier weg."
 }

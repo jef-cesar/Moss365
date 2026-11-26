@@ -3407,5 +3407,19 @@
   "local-logs.col.activity": "Activité",
   "local-logs.col.target": "Cible",
   "local-logs.col.service": "Service",
-  "local-logs.access": "{0} au {1} : {2} connexions, {3} lignes d'audit"
+  "local-logs.access": "{0} au {1} : {2} connexions, {3} lignes d'audit",
+  "visit.title": "Depuis votre dernière visite ({0})",
+  "visit.nothing": "Rien n'a changé en dehors de Moss365 qui demande votre attention : pas de nouveaux administrateurs, de modifications de l'accès conditionnel, de consentements d'applications ni de connexions de comptes d'urgence.",
+  "visit.col.kind": "Type",
+  "visit.kind.admin": "nouvel administrateur",
+  "visit.kind.policy": "Accès conditionnel",
+  "visit.kind.consent": "consentement d'application",
+  "visit.kind.emergency": "compte d'urgence",
+  "visit.audit": "{0} : {1}",
+  "visit.ad-group": "{0} est maintenant dans {1}",
+  "visit.emergency": "{0} s'est connecté ({1}, {2})",
+  "visit.from-snapshots": "entre deux instantanés",
+  "visit.more": "Et {0} de plus :",
+  "visit.no-logs": "La conservation des journaux de connexion et d'audit est désactivée pour ce tenant : seuls les instantanés sont comparés.",
+  "visit.help": "D'après les instantanés et les journaux conservés localement, donc dans la mesure de la dernière lecture (même sans fenêtre). Ce que Moss365 a fait lui-même figure dans le journal des modifications et n'apparaît pas ici."
 }

@@ -47,6 +47,10 @@ Every version becomes a release on GitHub; the section under the version is the 
     first, as always). Microsoft itself keeps them 7 to 30 days. The new screen *Bewaarde logboeken* (under
     Beveiliging) is for whoever may see sign-ins, and viewing it goes to the access log. Sign-in logs need Entra ID P1;
     without it the screen says so and the audit log is still kept.
+  - **Since your last visit**, on the start screen: what changed outside Moss365 since you last opened the tenant: new
+    administrators (privileged AD groups, from the snapshots; admin roles, from the audit log), changes to Conditional
+    Access, new app consents and sign-ins of emergency accounts. What Moss365 did itself is in the change log and is
+    left out.
 - **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
   address; anything else (such as a script link or a file share) is no longer clickable.
 - **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.

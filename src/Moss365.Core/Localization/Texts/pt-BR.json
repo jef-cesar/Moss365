@@ -3407,5 +3407,19 @@
   "local-logs.col.activity": "Atividade",
   "local-logs.col.target": "Destino",
   "local-logs.col.service": "Serviço",
-  "local-logs.access": "{0} a {1}: {2} entradas, {3} linhas de auditoria"
+  "local-logs.access": "{0} a {1}: {2} entradas, {3} linhas de auditoria",
+  "visit.title": "Desde sua última visita ({0})",
+  "visit.nothing": "Nada mudou fora do Moss365 que precise da sua atenção: nenhum administrador novo, alteração no Acesso Condicional, consentimento de aplicativo ou entrada de conta de emergência.",
+  "visit.col.kind": "Tipo",
+  "visit.kind.admin": "novo administrador",
+  "visit.kind.policy": "Acesso Condicional",
+  "visit.kind.consent": "consentimento de aplicativo",
+  "visit.kind.emergency": "conta de emergência",
+  "visit.audit": "{0}: {1}",
+  "visit.ad-group": "{0} agora está em {1}",
+  "visit.emergency": "{0} entrou ({1}, {2})",
+  "visit.from-snapshots": "entre dois instantâneos",
+  "visit.more": "E mais {0}:",
+  "visit.no-logs": "Guardar os logs de entrada e de auditoria está desativado para este tenant, então só os instantâneos são comparados.",
+  "visit.help": "A partir dos instantâneos e dos logs guardados localmente, portanto até onde a última leitura (também uma sem janela) sabe. O que o próprio Moss365 fez está no registro de alterações e fica de fora aqui."
 }

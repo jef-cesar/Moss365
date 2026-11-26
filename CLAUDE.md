@@ -95,7 +95,10 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   accounts) next to the whole directory audit log; table `LocalLog` (migration 5, `Storage/LocalLogStore.cs`, never a
   line twice) is filled after every read of Entra (`ManagementState.LocalLogs.cs`) while `Retention.KeepLocalLogs` is
   on (the default) and cleaned up by maintenance after `Retention.LocalLogDays`; screen `bewaarde-logboeken`
-  (Permission.SignIns, writes the access log).
+  (Permission.SignIns, writes the access log). Since your last visit: `Security/SinceLastVisit.cs` (audit lines,
+  privileged AD groups between the snapshot of the last visit and now, emergency sign-ins, minus the change log);
+  the start screen marks the visit once per session (`ManagementState.BeginVisit`, document `laatste-bezoek`), reading
+  without a window never does.
   Reporting (0.37, `Reporting/`): `PeriodReport` (from `ReadKpiSnapshot` and the change log; `ToHtml`/`ToCsv`, CSV never
   starts a cell with a formula), `DataQuality`, `Standards` (checks mapped to NIS2/CIS), `GuestRenewal` (document
   `gastenverlenging`), `StaffRequests` (document `aanvragen`; decisions are change log lines with action `Request`),

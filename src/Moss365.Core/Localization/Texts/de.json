@@ -3407,5 +3407,19 @@
   "local-logs.col.activity": "Aktivität",
   "local-logs.col.target": "Ziel",
   "local-logs.col.service": "Dienst",
-  "local-logs.access": "{0} bis {1}: {2} Anmeldungen, {3} Überwachungszeilen"
+  "local-logs.access": "{0} bis {1}: {2} Anmeldungen, {3} Überwachungszeilen",
+  "visit.title": "Seit Ihrem letzten Besuch ({0})",
+  "visit.nothing": "Außerhalb von Moss365 hat sich nichts geändert, das Ihre Aufmerksamkeit braucht: keine neuen Administratoren, Änderungen an Conditional Access, App-Zustimmungen oder Anmeldungen von Notfallkonten.",
+  "visit.col.kind": "Art",
+  "visit.kind.admin": "neuer Administrator",
+  "visit.kind.policy": "Conditional Access",
+  "visit.kind.consent": "App-Zustimmung",
+  "visit.kind.emergency": "Notfallkonto",
+  "visit.audit": "{0}: {1}",
+  "visit.ad-group": "{0} ist jetzt in {1}",
+  "visit.emergency": "{0} hat sich angemeldet ({1}, {2})",
+  "visit.from-snapshots": "zwischen zwei Momentaufnahmen",
+  "visit.more": "Und {0} weitere:",
+  "visit.no-logs": "Das Aufbewahren der Anmelde- und Überwachungsprotokolle ist für diesen Mandanten aus, daher werden nur die Momentaufnahmen verglichen.",
+  "visit.help": "Aus den Momentaufnahmen und den lokal aufbewahrten Protokollen, also so weit das letzte Einlesen (auch eines ohne Fenster) es weiß. Was Moss365 selbst getan hat, steht im Änderungsprotokoll und fehlt hier."
 }

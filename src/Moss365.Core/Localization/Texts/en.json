@@ -3407,5 +3407,19 @@
   "local-logs.col.activity": "Activity",
   "local-logs.col.target": "Target",
   "local-logs.col.service": "Service",
-  "local-logs.access": "{0} to {1}: {2} sign-ins, {3} audit lines"
+  "local-logs.access": "{0} to {1}: {2} sign-ins, {3} audit lines",
+  "visit.title": "Since your last visit ({0})",
+  "visit.nothing": "Nothing changed outside Moss365 that needs your attention: no new administrators, Conditional Access changes, app consents or emergency account sign-ins.",
+  "visit.col.kind": "Kind",
+  "visit.kind.admin": "new administrator",
+  "visit.kind.policy": "Conditional Access",
+  "visit.kind.consent": "app consent",
+  "visit.kind.emergency": "emergency account",
+  "visit.audit": "{0}: {1}",
+  "visit.ad-group": "{0} is now in {1}",
+  "visit.emergency": "{0} signed in ({1}, {2})",
+  "visit.from-snapshots": "between two snapshots",
+  "visit.more": "And {0} more:",
+  "visit.no-logs": "Keeping the sign-in and audit logs is off for this tenant, so only the snapshots are compared.",
+  "visit.help": "From the snapshots and the logs kept locally, so as far as the last read (also one without a window) knows. What Moss365 did itself is in the change log and is left out here."
 }

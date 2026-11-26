@@ -13,6 +13,11 @@
 
 <p>@T["start.current"] <strong>@State.Data.Origin</strong>@if (State.LoadedOn is { } t) { @T.Format("start.loadedat", t) }</p>
 
+@if (State.Can(Permission.Security))
+{
+    <SinceLastVisitCard />
+}
+
 @if (State.HasMicrosoft365)
 {
     <ServiceHealthCard />
@@ -105,6 +110,9 @@
 
     private string otherFolder = string.Empty;
     private string? importMessage;
+
+    // The start screen marks the visit (R18), once per session; the card shows what changed since the one before
+    protected override void OnInitialized() => State.BeginVisit();
 
     private void Import() => importMessage = State.ImportInventory(otherFolder);
 
