@@ -421,9 +421,9 @@ ServiceHealth.Read.All and ServiceMessage.Read.All.
 
 Started in 0.38 (R15): the dictionaries in five languages (`Localization/Texts`, see [translating](translating.md)),
 the system language by default and a choice in Settings, dates and numbers per language, the fallback to English, a
-glossary, and tests that report missing translations and refuse new hard-coded text. Translated so far: the menu, the
-settings side bar, the layout, the status bar, the tenant bar and the language screen. The other screens follow per
-release (`tests/Moss365.Tests/Localization/untranslated.txt` counts down to zero; then 1.0).
+glossary, and tests that report missing translations and refuse new hard-coded text. Since 0.38.2 every screen takes its
+text from the dictionaries (the count of hard-coded text in the screens is zero). Still to do: the messages built in
+code (plan descriptions, check results, KPI names, errors, in Core and in the screens' code), about 1,200 texts.
 
 ## 11. Open source, with room for paid support
 

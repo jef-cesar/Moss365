@@ -2,6 +2,21 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.38.2
+
+Languages (R15), third part: **every screen** now takes its text from the dictionaries in five languages (English,
+Dutch, Brazilian Portuguese, French, German): users, groups, mailboxes, rooms, guests, new user, offboarding, job
+profiles, Conditional Access (overview, policy, editor, management), security, licences, devices, Teams and
+SharePoint, reports, requests, scripts, the change log, history, statistics, organisation, connections, tenants,
+set-up, database and updates. About 1,300 texts moved; the count of hard-coded text in the screens is now zero, and
+a test keeps it there.
+
+- A new test checks that every translation keeps the same links and markup as English (a wrong link in a translation
+  is caught before release).
+- The hint about offices on the Organisation screen named a group and offices of one organisation; it is now general.
+- Still Dutch for now: messages that the app builds in code (plan descriptions, check results, KPI names, errors).
+  They follow in the next versions.
+
 ## 0.38.1
 
 Languages (R15), second part: every shared component now comes from the dictionaries in five languages, as well as

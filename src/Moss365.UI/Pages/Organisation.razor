@@ -4,22 +4,21 @@
 @implements IDisposable
 @inject ManagementState State
 
-<h1>Organisatie<span class="kb-zacht">: @PartTitle</span></h1>
+<h1>@T["menu.organisatie"]<span class="kb-zacht">: @PartTitle</span></h1>
 
 <p class="kb-zacht">
-    Keuzelijsten voor nieuwe gebruikers. Bewaren schrijft naar de databank van <strong>@State.Tenant.Name</strong>;
-    de meegeleverde lijst blijft ongewijzigd.
+    @Html("organisation.intro", State.Tenant.Name)
 </p>
 
 <LeaveConfirm Active="changed" CanSave="@(Errors.Count == 0)" Saving="Save" Discard="Undone"
                    Text="Je hebt de organisatie aangepast maar nog niet bewaard." />
 
 <div class="kb-filters kb-plak">
-    <button class="kb-knop kb-primair" disabled="@(!changed || Errors.Count > 0)" @onclick="Save">Bewaren</button>
-    <button class="kb-knop" disabled="@(!changed)" @onclick="Undone">Wijzigingen ongedaan maken</button>
+    <button class="kb-knop kb-primair" disabled="@(!changed || Errors.Count > 0)" @onclick="Save">@T["action.save"]</button>
+    <button class="kb-knop" disabled="@(!changed)" @onclick="Undone">@T["organisation.undo-changes"]</button>
     @if (State.ConfigIsModified)
     {
-        <button class="kb-knop" @onclick="Restore">Terug naar de meegeleverde lijst</button>
+        <button class="kb-knop" @onclick="Restore">@T["organisation.back-to-the-list-that"]</button>
     }
     @if (message is not null)
     {
@@ -27,7 +26,7 @@
     }
     @if (changed)
     {
-        <span class="kb-label">niet bewaard</span>
+        <span class="kb-label">@T["connections.not-saved"]</span>
     }
 </div>
 
@@ -41,26 +40,26 @@
 <SuggestionsPanel TakenOver="Recompute" />
 
 <section class="kb-kaart">
-    <h2>Bedrijf</h2>
+    <h2>@T["organisation.company"]</h2>
     <div class="kb-rij">
-        <label>Company</label>
+        <label>@T["organisation.company-2"]</label>
         <input class="kb-invoer" value="@State.Config.Company" @onchange="e => Set(() => State.Config.Company = e.Value?.ToString() ?? string.Empty)" />
     </div>
 </section>
 
 <section class="kb-kaart">
-    <h2>Naamgeving van nieuwe accounts</h2>
+    <h2>@T["organisation.naming-of-new-accounts"]</h2>
     <div class="kb-raster">
         <label>Accountnaam (voor de @@)
-            <select class="kb-invoer" aria-label="Accountnaam" @onchange="e => Set(() => State.Config.Naming.LocalPart = Enum.Parse<LocalPartPattern>(e.Value?.ToString() ?? nameof(LocalPartPattern.GivenDotSurname)))">
+            <select class="kb-invoer" aria-label="@T["organisation.account-name"]" @onchange="e => Set(() => State.Config.Naming.LocalPart = Enum.Parse<LocalPartPattern>(e.Value?.ToString() ?? nameof(LocalPartPattern.GivenDotSurname)))">
                 @foreach (var p in Enum.GetValues<LocalPartPattern>())
                 {
                     <option value="@p" selected="@(State.Config.Naming.LocalPart == p)">@NamingSettings.Example(p)</option>
                 }
             </select>
         </label>
-        <label>Weergavenaam
-            <select class="kb-invoer" aria-label="Weergavenaam" @onchange="e => Set(() => State.Config.Naming.DisplayName = Enum.Parse<DisplayNamePattern>(e.Value?.ToString() ?? nameof(DisplayNamePattern.GivenSurname)))">
+        <label>@T["edit-user.display-name"]
+            <select class="kb-invoer" aria-label="@T["edit-user.display-name"]" @onchange="e => Set(() => State.Config.Naming.DisplayName = Enum.Parse<DisplayNamePattern>(e.Value?.ToString() ?? nameof(DisplayNamePattern.GivenSurname)))">
                 @foreach (var p in Enum.GetValues<DisplayNamePattern>())
                 {
                     <option value="@p" selected="@(State.Config.Naming.DisplayName == p)">@NamingSettings.Example(p)</option>
@@ -68,28 +67,27 @@
             </select>
         </label>
     </div>
-    <p class="kb-zacht">Voorbeeld voor An Peeters. Accentjes en spaties gaan eruit; bestaat de naam al, dan komt er een cijfer achter.</p>
+    <p class="kb-zacht">@T["organisation.example-for-an-peeters-accents"]</p>
 </section>
 
 <section class="kb-kaart">
-    <h2>Sjabloon, exporteren en importeren</h2>
+    <h2>@T["organisation.template-export-and-import"]</h2>
     <div class="kb-rij">
-        <label>Sjabloon
-            <select class="kb-invoer" @bind="templateKey" aria-label="Sjabloon">
-                <option value="">(kies)</option>
+        <label>@T["manage-ca.template"]
+            <select class="kb-invoer" @bind="templateKey" aria-label="@T["manage-ca.template"]">
+                <option value="">@T["script-form.choose"]</option>
                 @foreach (var t in OrganisationTemplates.All) { <option value="@t.Key">@t.Name: @t.Description</option> }
             </select>
         </label>
-        <button class="kb-knop" disabled="@(templateKey.Length == 0)" @onclick="ApplyTemplate">Toepassen</button>
+        <button class="kb-knop" disabled="@(templateKey.Length == 0)" @onclick="ApplyTemplate">@T["organisation.apply"]</button>
     </div>
-    <p class="kb-zacht">Een sjabloon vult enkel aan wat ontbreekt (afdelingen, soorten gebruikers, voorvoegsels); wat al ingevuld is, blijft.</p>
+    <p class="kb-zacht">@T["organisation.a-template-only-adds-what"]</p>
     <div class="kb-rij">
-        <button class="kb-knop" @onclick="Export">Exporteren</button>
-        <label class="kb-knop kb-bestandknop">Importeren (.json)<InputFile OnChange="Import" accept=".json" /></label>
+        <button class="kb-knop" @onclick="Export">@T["kb-table.export"]</button>
+        <label class="kb-knop kb-bestandknop">@T["organisation.import-json"]<InputFile OnChange="Import" accept=".json" /></label>
     </div>
     <p class="kb-zacht">
-        Exporteren schrijft de instellingen naar een bestand, om ze in een andere tenant te importeren. Importeren vervangt de
-        instellingen, behalve het AD-domein en de noodaccounts (die horen bij deze tenant); daarna eerst nakijken en bewaren.
+        @T["organisation.export-writes-the-settings-to"]
     </p>
     @if (exchangeMessage is not null) { <div class="kb-melding @(exchangeError ? "kb-fout" : null)">@exchangeMessage</div> }
 </section>
@@ -98,16 +96,16 @@
 @if (Is("diensten"))
 {
 <section class="kb-kaart">
-    <h2>Diensten en afdelingen</h2>
+    <h2>@T["menu.organisatie.diensten"]</h2>
     <p class="kb-zacht">
         Department bevat de dienst; de app leidt de afdeling af uit deze koppeling.
         @Unlinked van de @State.Config.Departments.Count diensten hebben nog geen afdeling.
     </p>
     <div class="kb-filters">
-        <label><input type="checkbox" @bind="onlyUnlinked" /> Alleen diensten zonder afdeling</label>
+        <label><input type="checkbox" @bind="onlyUnlinked" /> @T["organisation.only-departments-without-a-division"]</label>
     </div>
     <table class="kb-tabel">
-        <thead><tr><th>Dienst (Department)</th><th>Afdeling</th><th class="kb-getal">Gebruikers</th><th>Opmerking</th><th></th></tr></thead>
+        <thead><tr><th>@T["organisation.department"]</th><th>@T["statistics.division"]</th><th class="kb-getal">@T["menu.gebruikers"]</th><th>@T["mirror.note"]</th><th></th></tr></thead>
         <tbody>
             @foreach (var d in State.Config.Departments.Where(d => !onlyUnlinked || string.IsNullOrWhiteSpace(d.Division)).ToList())
             {
@@ -115,7 +113,7 @@
                     <td><input class="kb-invoer" value="@d.Department" @onchange="e => Set(() => d.Department = e.Value?.ToString() ?? string.Empty)" /></td>
                     <td>
                         <select class="kb-invoer" aria-label="@($"Afdeling voor {d.Department}")" @onchange="e => Set(() => d.Division = EmptyIsNull(e.Value))">
-                            <option value="" selected="@string.IsNullOrWhiteSpace(d.Division)">(nog niet gekoppeld)</option>
+                            <option value="" selected="@string.IsNullOrWhiteSpace(d.Division)">@T["organisation.not-linked-yet"]</option>
                             @foreach (var a in State.Config.Divisions)
                             {
                                 <option value="@a.Name" selected="@(string.Equals(a.Name, d.Division, StringComparison.OrdinalIgnoreCase))">@a.Name</option>
@@ -124,22 +122,22 @@
                     </td>
                     <td class="kb-getal">@(counts.TryGetValue(d.Department, out var n) ? n : 0)</td>
                     <td><input class="kb-invoer" value="@d.Remark" @onchange="e => Set(() => d.Remark = EmptyIsNull(e.Value))" /></td>
-                    <td><button class="kb-knop kb-klein" title="Verwijderen" @onclick="() => Set(() => State.Config.Departments.Remove(d))">&times;</button></td>
+                    <td><button class="kb-knop kb-klein" title="@T["variables-editor.remove"]" @onclick="() => Set(() => State.Config.Departments.Remove(d))">&times;</button></td>
                 </tr>
             }
         </tbody>
     </table>
     <div class="kb-rij">
-        <input class="kb-invoer" placeholder="Nieuwe dienst" @bind="newDepartment" />
-        <button class="kb-knop" @onclick="AddDepartment">Dienst toevoegen</button>
+        <input class="kb-invoer" placeholder="@T["organisation.new-department"]" @bind="newDepartment" />
+        <button class="kb-knop" @onclick="AddDepartment">@T["organisation.add-department"]</button>
     </div>
 
     @if (departmentsInData.Any(x => !x.InConfig || x.IsSpellingVariant))
     {
-        <h3>In de data, maar niet (exact) in de lijst</h3>
-        <p class="kb-zacht">Department-waarden van ingeschakelde gebruikers. Een schrijfvariant hoort bij een dienst uit de lijst, maar met andere hoofdletters of spaties.</p>
+        <h3>@T["organisation.in-the-data-but-not"]</h3>
+        <p class="kb-zacht">@T["organisation.department-values-of-enabled-users"]</p>
         <table class="kb-tabel">
-            <thead><tr><th>Waarde</th><th class="kb-getal">Gebruikers</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>@T["suggestions-panel.value"]</th><th class="kb-getal">@T["menu.gebruikers"]</th><th>@T["service-health-card.status"]</th><th></th></tr></thead>
             <tbody>
                 @foreach (var x in departmentsInData.Where(x => !x.InConfig || x.IsSpellingVariant))
                 {
@@ -150,7 +148,7 @@
                         <td>
                             @if (!x.InConfig)
                             {
-                                <button class="kb-knop kb-klein" @onclick="() => Add(x.Value.Trim())">Toevoegen</button>
+                                <button class="kb-knop kb-klein" @onclick="() => Add(x.Value.Trim())">@T["tenants.add"]</button>
                             }
                         </td>
                     </tr>
@@ -161,9 +159,9 @@
 </section>
 
 <section class="kb-kaart">
-    <h2>Afdelingen</h2>
+    <h2>@T["organisation.divisions"]</h2>
     <table class="kb-tabel">
-        <thead><tr><th>Afdeling</th><th>Cloudgroep</th><th class="kb-getal">Diensten</th><th></th></tr></thead>
+        <thead><tr><th>@T["statistics.division"]</th><th>@T["organisation.cloud-group"]</th><th class="kb-getal">@T["organisation.departments"]</th><th></th></tr></thead>
         <tbody>
             @foreach (var a in State.Config.Divisions.ToList())
             {
@@ -171,14 +169,14 @@
                     <td><input class="kb-invoer" value="@a.Name" @onchange="e => RenameDivision(a, e.Value?.ToString())" /></td>
                     <td><input class="kb-invoer" value="@a.Group" @onchange="e => Set(() => a.Group = EmptyIsNull(e.Value))" /></td>
                     <td class="kb-getal">@State.Config.Departments.Count(d => string.Equals(d.Division, a.Name, StringComparison.OrdinalIgnoreCase))</td>
-                    <td><button class="kb-knop kb-klein" title="Verwijderen" @onclick="() => RemoveDivision(a)">&times;</button></td>
+                    <td><button class="kb-knop kb-klein" title="@T["variables-editor.remove"]" @onclick="() => RemoveDivision(a)">&times;</button></td>
                 </tr>
             }
         </tbody>
     </table>
     <div class="kb-rij">
-        <input class="kb-invoer" placeholder="Nieuwe afdeling" @bind="newDivision" />
-        <button class="kb-knop" @onclick="AddDivision">Afdeling toevoegen</button>
+        <input class="kb-invoer" placeholder="@T["organisation.new-division"]" @bind="newDivision" />
+        <button class="kb-knop" @onclick="AddDivision">@T["organisation.add-division"]</button>
     </div>
 </section>
 }
@@ -186,33 +184,32 @@
 @if (Is("kantoren"))
 {
 <section class="kb-kaart">
-    <h2>Kantoren</h2>
+    <h2>@T["menu.organisatie.kantoren"]</h2>
     <p class="kb-zacht">
-        Verplichte keuze bij een nieuwe gebruiker. Let op: <code>SG-INTRANET-SHAREPOINT-Gemeentehuis</code> sluit kantoren uit die
-        beginnen met "bib" of "Visit".
+        @T["organisation.offices"]
     </p>
     <ul class="kb-lijst">
         @foreach (var k in State.Config.Offices.ToList())
         {
-            <li>@k <button class="kb-knop kb-klein" title="Verwijderen" @onclick="() => Set(() => State.Config.Offices.Remove(k))">&times;</button></li>
+            <li>@k <button class="kb-knop kb-klein" title="@T["variables-editor.remove"]" @onclick="() => Set(() => State.Config.Offices.Remove(k))">&times;</button></li>
         }
     </ul>
     <div class="kb-rij">
-        <input class="kb-invoer" placeholder="Nieuw kantoor" @bind="newOffice" />
-        <button class="kb-knop" @onclick="AddOffice">Kantoor toevoegen</button>
+        <input class="kb-invoer" placeholder="@T["organisation.new-office"]" @bind="newOffice" />
+        <button class="kb-knop" @onclick="AddOffice">@T["organisation.add-office"]</button>
     </div>
     @if (officesInData.Any(x => !x.InConfig))
     {
-        <h3>Kantoren in de data die niet in de lijst staan</h3>
+        <h3>@T["organisation.offices-in-the-data-that"]</h3>
         <table class="kb-tabel">
-            <thead><tr><th>Waarde</th><th class="kb-getal">Gebruikers</th><th></th></tr></thead>
+            <thead><tr><th>@T["suggestions-panel.value"]</th><th class="kb-getal">@T["menu.gebruikers"]</th><th></th></tr></thead>
             <tbody>
                 @foreach (var x in officesInData.Where(x => !x.InConfig))
                 {
                     <tr>
                         <td><code>"@x.Value"</code></td>
                         <td class="kb-getal">@x.Count</td>
-                        <td><button class="kb-knop kb-klein" @onclick="() => Set(() => State.Config.Offices.Add(x.Value.Trim()))">Toevoegen</button></td>
+                        <td><button class="kb-knop kb-klein" @onclick="() => Set(() => State.Config.Offices.Add(x.Value.Trim()))">@T["tenants.add"]</button></td>
                     </tr>
                 }
             </tbody>
@@ -224,21 +221,21 @@
 @if (Is("groepen"))
 {
 <section class="kb-kaart">
-    <h2>Nieuwe groepen</h2>
+    <h2>@T["menu.organisatie.groepen"]</h2>
     <div class="kb-raster">
         @if (State.HasAd)
         {
-        <label>OU voor nieuwe AD-groepen
-            <input class="kb-invoer" placeholder="bv. GEMEENTEBESTUUR/GROEPEN" value="@State.Config.GroupsOu"
+        <label>@T["organisation.ou-for-new-ad-groups"]
+            <input class="kb-invoer" placeholder="@T["organisation.e-g-organisation-groups"]" value="@State.Config.GroupsOu"
                    @onchange="e => Set(() => State.Config.GroupsOu = EmptyIsNull(e.Value))" />
         </label>
         }
-        <label>Voorvoegsels (naamgeving, gescheiden door komma's)
-            <input class="kb-invoer" placeholder="gg_, AFD_, DNST_, SG-, WKG_" value="@string.Join(", ", State.Config.GroupPrefixes)"
+        <label>@T["organisation.prefixes-naming-separated-by-commas"]
+            <input class="kb-invoer" placeholder="@T["organisation.gg-afd-dnst-sg-wkg"]" value="@string.Join(", ", State.Config.GroupPrefixes)"
                    @onchange="e => Set(() => State.Config.GroupPrefixes = (e.Value?.ToString() ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList())" />
         </label>
     </div>
-    <p class="kb-zacht">Een naam die niet met een van de voorvoegsels begint, geeft een waarschuwing in het plan.</p>
+    <p class="kb-zacht">@T["organisation.a-name-that-does-not"]</p>
 </section>
 }
 
@@ -250,12 +247,9 @@
 @if (Is("rollen") || Is("profielen"))
 {
 <section class="kb-kaart">
-    <h2>Rollen in Moss365</h2>
+    <h2>@T["menu.organisatie.rollen"]</h2>
     <p class="kb-zacht">
-        Kies per tenant of je met rollen werkt. Met rollen volgt wie wat mag in Moss365 uit de app-rollen in Entra (Lezer, Helpdesk,
-        Beheerder, Auditor, Appbeheer), toegekend via de groepen <code>GG-Moss365-...</code> (die maakt <a href="inrichten">Tenant inrichten</a>).
-        Zonder rollen mag iedereen die de app hier gebruikt alles; de rechten in Entra en AD zelf blijven natuurlijk gelden.
-        (Wat iemand in zijn job krijgt, staat bij <a href="organisatie/functieprofielen">Functieprofielen</a>.)
+        @Html("organisation.roles")
     </p>
     <div class="kb-keuzes">
         @foreach (var (mode, title, explanation) in RoleModes)
@@ -275,20 +269,19 @@
 @if (Is("noodaccounts"))
 {
 <section class="kb-kaart">
-    <h2>Noodaccounts</h2>
+    <h2>@T["menu.organisatie.noodaccounts"]</h2>
     <p class="kb-zacht">
-        De UPN's van de noodaccounts (break glass): cloud-only accounts met de rol Global Administrator, buiten alle Conditional
-        Access-beleiden, voor als niemand zich nog kan aanmelden. De controle bij Conditional Access kijkt ze na.
+        @T["organisation.the-upns-of-the-emergency"]
     </p>
     <ul class="kb-lijst">
         @foreach (var n in State.Config.EmergencyAccounts.ToList())
         {
-            <li>@n <button class="kb-knop kb-klein" title="Verwijderen" @onclick="() => Set(() => State.Config.EmergencyAccounts.Remove(n))">&times;</button></li>
+            <li>@n <button class="kb-knop kb-klein" title="@T["variables-editor.remove"]" @onclick="() => Set(() => State.Config.EmergencyAccounts.Remove(n))">&times;</button></li>
         }
     </ul>
     <div class="kb-rij">
         <input class="kb-invoer" placeholder="bv. nood1@contoso.onmicrosoft.com" @bind="newEmergencyAccount" />
-        <button class="kb-knop" @onclick="AddEmergencyAccount">Noodaccount toevoegen</button>
+        <button class="kb-knop" @onclick="AddEmergencyAccount">@T["organisation.add-emergency-account"]</button>
     </div>
 </section>
 }

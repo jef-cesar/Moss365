@@ -1,3 +1,1 @@
 # Screens with text that is not yet in the dictionaries (R15): number of texts, file. The numbers may only go down.
-79 Pages/CaPolicyEditor.razor
-72 Pages/Organisation.razor

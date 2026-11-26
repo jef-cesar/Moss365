@@ -35,7 +35,9 @@ The same word everywhere for: plan, snapshot, tenant, role, change log (keys `te
 
 - A screen takes its text with `@T["key"]` or `@T.Format("key", value)` (`UiText` in `Moss365.UI`). Add the key to all
   five files.
-- Not every screen is translated yet. `tests/Moss365.Tests/Localization/untranslated.txt` lists, per screen, how many
-  texts are still written in the screen. The test `NoNewHardCodedTextInTheScreens` fails when a screen gets more; when
-  you move a screen to the dictionaries, lower its number or remove its line.
+- No screen has text written in its markup any more (`tests/Moss365.Tests/Localization/untranslated.txt` is empty);
+  the test `NoNewHardCodedTextInTheScreens` keeps it so. A sentence with a link or a value is one key, with `{0}`
+  holes, shown with `@Html("key", value)` so that a translation can put the words in its own order; the test
+  `TranslationsKeepTheSameLinksAndMarkup` checks that every language has the same links and tags as English.
+- Still in Dutch: messages built in code (Core and the code of the screens). They move to the dictionaries next.
 - A new language: add a `LanguageInfo` to `Translator.Languages` and a dictionary with every key.
