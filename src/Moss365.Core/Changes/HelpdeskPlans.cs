@@ -1,5 +1,6 @@
 using Moss365.Core.Analysis;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -21,12 +22,12 @@ public static class HelpdeskPlans
         var errors = new List<string>();
         if (password.Length < MinimumLength)
         {
-            errors.Add($"Het wachtwoord moet minstens {MinimumLength} tekens hebben.");
+            errors.Add(Texts.T.Format("code.helpdesk-plans.the-password-must-have-at", MinimumLength));
         }
 
         if (password.Trim() != password)
         {
-            errors.Add("Het wachtwoord begint of eindigt met een spatie.");
+            errors.Add(Texts.T["code.helpdesk-plans.the-password-starts-or-ends"]);
         }
 
         if (errors.Count > 0)
@@ -43,7 +44,7 @@ public static class HelpdeskPlans
                 Target = ad.DistinguishedName,
                 TargetName = p.Name,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["wijzigenBijAanmelding"] = changeAtSignIn ? "True" : "False" },
-                Description = "Nieuw wachtwoord instellen" + (changeAtSignIn ? " (wijzigen bij de volgende aanmelding)" : string.Empty),
+                Description = Texts.T.Format("code.helpdesk-plans.set-a-new-password", (changeAtSignIn ? (" " + Texts.T["code.helpdesk-plans.change-at-the-next-sign"]) : string.Empty)),
                 Secret = password,
                 Warning = Warning(d, p),
             },
@@ -78,8 +79,8 @@ public static class HelpdeskPlans
         ChangeAction = ChangeAction.AdUnlockAccount,
         Target = ad.DistinguishedName,
         TargetName = p.Name,
-        Description = "Account ontgrendelen",
-        CurrentValue = ad.LockedOut ? "vergrendeld" : "niet vergrendeld (volgens de geladen gegevens)",
+        Description = Texts.T["code.helpdesk-plans.unlock-account"],
+        CurrentValue = ad.LockedOut ? "vergrendeld" : Texts.T["code.helpdesk-plans.not-locked-according-to-the"],
         NewValue = "ontgrendeld",
     };
 
@@ -89,22 +90,22 @@ public static class HelpdeskPlans
         ChangeAction = ChangeAction.AdEnableAccount,
         Target = ad.DistinguishedName,
         TargetName = p.Name,
-        Description = "AD-account inschakelen",
-        CurrentValue = ad.Enabled ? "al ingeschakeld" : "uitgeschakeld",
+        Description = Texts.T["code.helpdesk-plans.enable-ad-account"],
+        CurrentValue = ad.Enabled ? Texts.T["code.helpdesk-plans.already-enabled"] : "uitgeschakeld",
         NewValue = "ingeschakeld",
         Warning = ad.OuPath.Contains("disabled", StringComparison.OrdinalIgnoreCase)
-            ? "Dit account staat in de OU van uitgestroomde gebruikers. Is de persoon terug in dienst?"
+            ? Texts.T["code.helpdesk-plans.this-account-is-in-the"]
             : null,
         Selected = selected,
     };
 
     private static string? Warning(InventoryData d, Person p)
         => d.AdGroupsOf(p).Where(MirrorUser.IsPrivileged).Select(g => g.Name).ToList() is { Count: > 0 } groups
-            ? $"Bevoorrecht account (lid van {string.Join(", ", groups)}): controleer extra goed wie dit vraagt."
+            ? Texts.T.Format("helpdesk.privileged", string.Join(", ", groups))
             : null;
 
     private static string NoAd(Person p)
         => p.Entra is not null
-            ? $"{p.Name} heeft geen AD-account. Het wachtwoord van een cloudaccount stel je in via het Entra-portaal."
-            : $"{p.Name} heeft geen AD-account.";
+            ? Texts.T.Format("code.helpdesk-plans.has-no-ad-account-you", p.Name)
+            : Texts.T.Format("code.helpdesk-plans.has-no-ad-account", p.Name);
 }

@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Moss365.Core.Changes;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Analysis;
 
@@ -219,7 +220,7 @@ public static class CaEditor
     public static CaEdit Duplicate(CaPolicy b)
     {
         var e = CaEdit.Of(b);
-        e.Name = "Kopie van " + b.Name;
+        e.Name = Texts.T.Format("code.edit-script.copy-of", b.Name);
         e.Status = CaStatus.Report;
         return e;
     }
@@ -246,57 +247,57 @@ public static class CaEditor
         var errors = new List<string>();
         if (e.Name.Trim().Length == 0)
         {
-            errors.Add("Geef het beleid een naam.");
+            errors.Add(Texts.T["code.ca-editor.give-the-policy-a-name"]);
         }
         else if (ca is not null && ca.Policies.Any(b => b.Id != ownId && string.Equals(b.Name.Trim(), e.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
         {
-            errors.Add($"Er bestaat al een beleid \"{e.Name.Trim()}\".");
+            errors.Add(Texts.T.Format("code.ca-management.there-is-already-a-policy", e.Name.Trim()));
         }
 
         if (e.UsersMode == CaUsersMode.Selected && e.UsersIn.Count + e.GroupsIn.Count + e.RolesIn.Count == 0 && !e.GuestsIn)
         {
-            errors.Add("Kies wie onder het beleid valt: gebruikers, groepen, rollen of gasten.");
+            errors.Add(Texts.T["code.ca-editor.choose-who-falls-under-the"]);
         }
 
         if (e.AppsMode == CaAppsMode.Selected && e.AppsIn.Count == 0)
         {
-            errors.Add("Kies minstens één app, of kies alle apps.");
+            errors.Add(Texts.T["code.ca-editor.choose-at-least-one-app"]);
         }
 
         if (e.AppsMode == CaAppsMode.UserAction && e.UserAction is not (RegisterSecurityInfo or RegisterDevice))
         {
-            errors.Add("Kies een gebruikersactie.");
+            errors.Add(Texts.T["code.ca-editor.choose-a-user-action"]);
         }
 
         var hasSession = e.FrequencyType is not null || e.Browser is not null;
         if (!e.Block && e.Checks.Count == 0 && e.StrengthId is null && !hasSession)
         {
-            errors.Add("Kies wat er gebeurt: blokkeren, een vereiste (bv. MFA) of een sessie-instelling.");
+            errors.Add(Texts.T["code.ca-editor.choose-what-happens-block-a"]);
         }
 
         if (!e.Block && e.Checks.Contains("mfa") && e.StrengthId is not null)
         {
-            errors.Add("MFA en een authenticatiesterkte samen kan niet: de sterkte vraagt al MFA. Kies er één.");
+            errors.Add(Texts.T["code.ca-editor.mfa-and-an-authentication-strength"]);
         }
 
         if (e.FrequencyType == "hours" && e.FrequencyValue is < 1 or > 23)
         {
-            errors.Add("De aanmeldfrequentie in uren ligt tussen 1 en 23.");
+            errors.Add(Texts.T["code.ca-editor.the-sign-in-frequency-in"]);
         }
 
         if (e.FrequencyType == "days" && e.FrequencyValue is < 1 or > 365)
         {
-            errors.Add("De aanmeldfrequentie in dagen ligt tussen 1 en 365.");
+            errors.Add(Texts.T["code.ca-editor.the-sign-in-frequency-in-2"]);
         }
 
         if (e.DeviceFilterRule.Trim().Length > 0 && e.DeviceFilterMode is not ("include" or "exclude"))
         {
-            errors.Add("Kies of het toestelfilter toestellen opneemt of uitsluit.");
+            errors.Add(Texts.T["code.ca-editor.choose-whether-the-device-filter"]);
         }
 
         if (e.LocationsIn.Count == 0 && e.LocationsOff.Count > 0 && e.LocationsOff.Contains("All"))
         {
-            errors.Add("Alle locaties uitsluiten laat niets over.");
+            errors.Add(Texts.T["code.ca-editor.excluding-all-locations-leaves-nothing"]);
         }
 
         return errors;
@@ -427,9 +428,9 @@ public static class CaEditor
                 TargetName = current.Name,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["json"] = patch },
                 Previous = new(StringComparer.OrdinalIgnoreCase) { ["json"] = CaJson.Previous(currentJson, patch) },
-                Description = $"Beleid \"{current.Name}\" wijzigen",
+                Description = Texts.T.Format("ca-editor.change", current.Name),
                 CurrentValue = CaReader.StatusName(current.Status),
-                NewValue = details.Count == 0 ? "andere instellingen" : string.Join("; ", details),
+                NewValue = details.Count == 0 ? Texts.T["ca-editor.other-settings"] : string.Join("; ", details),
                 Warning = check.Warnings.Count == 0 ? null : string.Join(" ", check.Warnings),
             },
         });
@@ -440,13 +441,13 @@ public static class CaEditor
     {
         if (d.ConditionalAccess is not { Message: null } ca)
         {
-            return PlanOutcome.Error("Conditional Access is niet geladen. Laad eerst live (Verbindingen).");
+            return PlanOutcome.Error(Texts.T["code.ca-management.conditional-access-is-not-loaded"]);
         }
 
         var errors = Validate(e, ca).ToList();
         if (e.Status == CaStatus.On)
         {
-            errors.Add("Een nieuw beleid begint in alleen rapport (of uit). Kijk eerst het effect na en zet het daarna aan.");
+            errors.Add(Texts.T["code.ca-editor.a-new-policy-starts-in"]);
         }
 
         if (errors.Count > 0)
@@ -471,7 +472,7 @@ public static class CaEditor
                 TargetName = policy.Name,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["json"] = ToJson(e) },
                 Description = $"Nieuw Conditional Access-beleid \"{policy.Name}\" ({CaReader.StatusName(policy.Status).ToLowerInvariant()})",
-                CurrentValue = "(bestaat niet)",
+                CurrentValue = Texts.T["code.ca-management.does-not-exist"],
                 NewValue = string.Join("; ", CaReader.Explanation(policy, ca, CaReader.Names(d)).Who.Take(2)),
                 Warning = check.Warnings.Count == 0 ? null : string.Join(" ", check.Warnings),
             },

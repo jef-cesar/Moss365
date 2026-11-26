@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Moss365.Core.Changes;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.LogonScripts;
 
@@ -99,7 +100,7 @@ public static class LogonScriptAnalysis
             Match m;
             if ((m = NetUseDelete.Match(line)).Success)
             {
-                lines.Add(m.Groups[1].Value == "*" ? "Verwijdert alle bestaande schijfkoppelingen" : $"Verwijdert de koppeling {m.Groups[1].Value.ToUpperInvariant()}");
+                lines.Add(m.Groups[1].Value == "*" ? Texts.T["code.logon-scripts.removes-all-existing-drive-mappings"] : Texts.T.Format("code.logon-scripts.removes-the-mapping", m.Groups[1].Value.ToUpperInvariant()));
             }
             else if ((m = NetUse.Match(line)).Success || (m = VbsDrive.Match(line)).Success)
             {
@@ -112,33 +113,33 @@ public static class LogonScriptAnalysis
             else if ((m = PrinterUi.Match(line)).Success || (m = VbsPrinter.Match(line)).Success || (m = PsPrinter.Match(line)).Success)
             {
                 printers.Add(m.Groups[1].Value);
-                lines.Add($"Voegt de printer {m.Groups[1].Value} toe" + When());
+                lines.Add(Texts.T.Format("code.logon-scripts.adds-the-printer", m.Groups[1].Value) + When());
             }
             else if ((m = Call.Match(line)).Success)
             {
                 calls.Add(m.Groups[1].Value);
-                lines.Add($"Start het script {m.Groups[1].Value}" + When());
+                lines.Add(Texts.T.Format("code.logon-scripts.starts-the-script", m.Groups[1].Value) + When());
             }
             else if ((m = Start.Match(line)).Success)
             {
-                lines.Add($"Start het programma {m.Groups[1].Value}" + When());
+                lines.Add(Texts.T.Format("code.logon-scripts.starts-the-program", m.Groups[1].Value) + When());
             }
         }
 
         if (lines.Count == 0)
         {
-            lines.Add("De app herkent geen schijven, printers of andere scripts in dit script.");
+            lines.Add(Texts.T["code.logon-scripts.the-app-recognises-no-drives"]);
         }
 
         return new ScriptExplanation(lines, drives, printers, calls);
 
-        string When() => condition is null ? string.Empty : $" (voor leden van {condition})";
+        string When() => condition is null ? string.Empty : Texts.T.Format("logon.for-members", condition);
 
         void Drive(string letter, string path)
         {
             var l = letter.ToUpperInvariant();
             drives.Add(new DriveMapping(l, path, condition));
-            lines.Add($"Koppelt {l} aan {path}" + When());
+            lines.Add(Texts.T.Format("code.logon-scripts.maps-to", l, path) + When());
         }
     }
 
@@ -195,12 +196,12 @@ public static class LogonScriptPlans
         name = name.Trim().Replace('/', '\\').TrimStart('\\');
         if (name.Length == 0 || name.Contains("..", StringComparison.Ordinal) || name.IndexOfAny(Path.GetInvalidPathChars()) >= 0 || name.Contains(':'))
         {
-            return PlanOutcome.Error("Geef het script een geldige naam binnen NETLOGON, bv. logon.bat.");
+            return PlanOutcome.Error(Texts.T["code.logon-scripts.give-the-script-a-valid"]);
         }
 
         if (!Regex.IsMatch(name, @"\.(bat|cmd|vbs|ps1|kix)$", RegexOptions.IgnoreCase))
         {
-            return PlanOutcome.Error("Een logonscript eindigt op .bat, .cmd, .vbs, .ps1 of .kix.");
+            return PlanOutcome.Error(Texts.T["code.logon-scripts.a-logon-script-ends-in"]);
         }
 
         var normalised = after.Replace("\r\n", "\n").Replace("\n", "\r\n");
@@ -222,10 +223,10 @@ public static class LogonScriptPlans
                 TargetName = name,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { [Content] = normalised },
                 Previous = before is null ? null : new(StringComparer.OrdinalIgnoreCase) { [Content] = before },
-                Description = before is null ? $"Nieuw logonscript {name} in NETLOGON" : $"Logonscript {name} bewaren",
-                CurrentValue = before is null ? "(bestaat niet)" : $"{before.Replace("\r\n", "\n").Split('\n').Length} regels",
-                NewValue = before is null ? $"{normalised.Split("\r\n").Length} regels" : $"+{added} / -{removed} regels",
-                Warning = "Het script geldt meteen voor iedereen die het heeft, bij de volgende aanmelding.",
+                Description = before is null ? Texts.T.Format("code.logon-scripts.new-logon-script-in-netlogon", name) : Texts.T.Format("code.logon-scripts.save-logon-script", name),
+                CurrentValue = before is null ? Texts.T["code.ca-management.does-not-exist"] : $"{before.Replace("\r\n", "\n").Split('\n').Length} regels",
+                NewValue = before is null ? $"{normalised.Split("\r\n").Length} regels" : Texts.T.Format("code.logon-scripts.lines", added, removed),
+                Warning = Texts.T["code.logon-scripts.the-script-applies-at-once"],
             },
         });
     }
@@ -234,7 +235,7 @@ public static class LogonScriptPlans
     public static PlanOutcome Assign(InventoryData d, OrganisationConfig c, IEnumerable<Person> persons, string script)
     {
         var list = persons.ToList();
-        var withoutAd = list.Where(p => p.Ad is null).Select(p => $"{p.Name} heeft geen AD-account (een logonscript bestaat enkel in AD).").ToList();
+        var withoutAd = list.Where(p => p.Ad is null).Select(p => Texts.T.Format("code.logon-scripts.has-no-ad-account-a", p.Name)).ToList();
         var outcome = BulkPlans.Attribute(d, c, list.Where(p => p.Ad is not null), nameof(UserDesired.LogonScript), script.Trim());
         return PlanOutcome.Of(outcome.Plan, withoutAd.Concat(outcome.Errors));
     }

@@ -1,5 +1,6 @@
 using System.Net.Mail;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -22,19 +23,19 @@ public static class GuestPlans
         address = address.Trim();
         if (!MailAddress.TryCreate(address, out var mail) || mail.Address != address)
         {
-            errors.Add($"'{address}' is geen geldig e-mailadres.");
+            errors.Add(Texts.T.Format("code.helpdesk-tools.is-not-a-valid-e", address));
         }
 
         if (name.Trim().Length == 0)
         {
-            errors.Add("Vul een naam in.");
+            errors.Add(Texts.T["code.guest-plans.enter-a-name"]);
         }
 
         // A guest has the UPN address_domain#EXT#@tenant; its mail is the address itself
         if (errors.Count == 0 && d.EntraUsers.FirstOrDefault(e => string.Equals(e.Mail, address, StringComparison.OrdinalIgnoreCase)
                                                                        || string.Equals(e.UserPrincipalName, address, StringComparison.OrdinalIgnoreCase)) is { } exists)
         {
-            errors.Add($"{address} bestaat al in Entra ({exists.DisplayName}{(exists.IsGuest ? ", gast" : string.Empty)}).");
+            errors.Add(Texts.T.Format(exists.IsGuest ? "guest.exists.guest" : "guest.exists", address, exists.DisplayName));
         }
 
         if (errors.Count > 0)
@@ -49,7 +50,7 @@ public static class GuestPlans
             Target = address,
             TargetName = name.Trim(),
             Parameters = GroupPlans.P(("naam", name.Trim()), ("bericht", message ? "True" : "False")),
-            Description = message ? "Gast uitnodigen (met uitnodiging per e-mail)" : "Gast uitnodigen (zonder e-mail; deel zelf de link https://myapps.microsoft.com)",
+            Description = message ? Texts.T["code.guest-plans.invite-guest-with-an-invitation"] : "Gast uitnodigen (zonder e-mail; deel zelf de link https://myapps.microsoft.com)",
             NewValue = address,
         };
         var plan = new List<Change> { invite };
@@ -58,15 +59,15 @@ public static class GuestPlans
         {
             if (g.Dynamic)
             {
-                notes.Add($"{g.Name} is een dynamische groep: de leden volgen uit de regel.");
+                notes.Add(Texts.T.Format("code.guest-plans.is-a-dynamic-group-the", g.Name));
             }
             else if (g.Ad is not null)
             {
-                notes.Add($"{g.Name} is een AD-groep; een gast bestaat enkel in Entra.");
+                notes.Add(Texts.T.Format("code.guest-plans.is-an-ad-group-a", g.Name));
             }
             else if (g.Route == Analysis.WriteRoute.Exchange)
             {
-                notes.Add($"{g.Name} is een mailgroep: voeg de gast toe op zijn pagina zodra Exchange hem kent (enkele minuten na de uitnodiging).");
+                notes.Add(Texts.T.Format("code.guest-plans.is-a-mail-group-add", g.Name));
             }
             else if (g.Cloud is { } cloud)
             {
@@ -77,7 +78,7 @@ public static class GuestPlans
                     Target = address,
                     TargetName = name.Trim(),
                     Parameters = GroupPlans.P(("groepId", cloud.Id), ("groep", g.Name)),
-                    Description = $"Lid maken van cloudgroep {g.Name}",
+                    Description = Texts.T.Format("code.plan-builder.make-member-of-cloud-group", g.Name),
                     DependentOf = invite.Id,
                 });
             }
@@ -94,7 +95,7 @@ public static class GuestPlans
         {
             if (p.Entra is not { IsGuest: true } || p.Ad is not null)
             {
-                errors.Add($"{p.Name} is geen gastaccount en wordt niet verwijderd (gebruik Uitstroom).");
+                errors.Add(Texts.T.Format("code.guest-plans.is-not-a-guest-account", p.Name));
                 continue;
             }
 
@@ -104,9 +105,9 @@ public static class GuestPlans
                 ChangeAction = ChangeAction.GraphRemoveGuest,
                 Target = p.Entra.Id,
                 TargetName = p.Name,
-                Description = "Gastaccount verwijderen (30 dagen terug te zetten in Entra)",
+                Description = Texts.T["code.guest-plans.remove-guest-account-can-be"],
                 CurrentValue = p.Entra.Mail.Length > 0 ? p.Entra.Mail : p.Entra.UserPrincipalName,
-                NewValue = "(verwijderd)",
+                NewValue = Texts.T["code.guest-plans.removed"],
             });
         }
 

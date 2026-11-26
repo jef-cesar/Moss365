@@ -1,6 +1,7 @@
 using Moss365.Core.Analysis;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Setup;
 
@@ -42,7 +43,7 @@ public static class OrganisationSuggestions
             .GroupBy(x => x, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault();
         if (domain is not null && !string.Equals(domain.Key, c.AdDomain?.Trim(), StringComparison.OrdinalIgnoreCase))
         {
-            output.Add(new(SuggestionKind.AdDomain, domain.Key, domain.Count(), string.IsNullOrWhiteSpace(c.AdDomain) ? "Nog niet ingevuld." : $"Ingevuld is {c.AdDomain}."));
+            output.Add(new(SuggestionKind.AdDomain, domain.Key, domain.Count(), string.IsNullOrWhiteSpace(c.AdDomain) ? Texts.T["code.organisation-suggestions.not-filled-in-yet"] : Texts.T.Format("code.organisation-suggestions.filled-in-is", c.AdDomain)));
         }
 
         // The OUs whose accounts are synchronised to Entra (the highest OU per branch)
@@ -51,7 +52,7 @@ public static class OrganisationSuggestions
         {
             if (!c.SynchronisedOus.Any(s => DnHelp.FallsUnder(top.Key, new[] { s }) || DnHelp.FallsUnder(s, new[] { top.Key })))
             {
-                output.Add(new(SuggestionKind.SynchronisedOu, top.Key, top.Count(), "Accounts uit deze OU staan ook in Entra."));
+                output.Add(new(SuggestionKind.SynchronisedOu, top.Key, top.Count(), Texts.T["code.organisation-suggestions.accounts-from-this-ou-are"]));
             }
         }
 
@@ -60,7 +61,7 @@ public static class OrganisationSuggestions
         {
             if (c.SearchDepartment(g.Key) is null)
             {
-                output.Add(new(SuggestionKind.Department, MostUsed(g), g.Count(), "Staat bij accounts, niet in de lijst van diensten."));
+                output.Add(new(SuggestionKind.Department, MostUsed(g), g.Count(), Texts.T["code.organisation-suggestions.set-on-accounts-not-in"]));
             }
         }
 
@@ -70,7 +71,7 @@ public static class OrganisationSuggestions
         {
             if (!offices.Contains(g.Key))
             {
-                output.Add(new(SuggestionKind.Office, MostUsed(g), g.Count(), "Staat bij accounts, niet in de lijst van kantoren."));
+                output.Add(new(SuggestionKind.Office, MostUsed(g), g.Count(), Texts.T["code.organisation-suggestions.set-on-accounts-not-in-2"]));
             }
         }
 
@@ -82,7 +83,7 @@ public static class OrganisationSuggestions
         {
             if (!known.Contains(g.Key))
             {
-                output.Add(new(SuggestionKind.GroupPrefix, g.Key, g.Count(), "Begin van groepsnamen."));
+                output.Add(new(SuggestionKind.GroupPrefix, g.Key, g.Count(), Texts.T["code.organisation-suggestions.start-of-group-names"]));
             }
         }
 
@@ -124,12 +125,12 @@ public static class OrganisationSuggestions
             }
 
             yield return new(SuggestionKind.EmergencyAccount, e.UserPrincipalName, 1,
-                "Cloud-only Global Administrator" + (under switch
+                Texts.T.Format(named ? "suggest.emergency.named" : "suggest.emergency", under switch
                 {
-                    0 => ", valt onder geen enkel beleid dat aan staat",
-                    null => " (Conditional Access niet geladen)",
-                    _ => $", valt nog onder {under} beleid(en)",
-                }) + (named ? "; de naam wijst op een noodaccount." : "."));
+                    0 => Texts.T["suggest.emergency.none"],
+                    null => Texts.T["suggest.emergency.no-ca"],
+                    _ => Texts.T.Format("suggest.emergency.under", under),
+                }));
         }
     }
 
@@ -140,7 +141,7 @@ public static class OrganisationSuggestions
             .GroupBy(x => x, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault();
         if (company is not null && !string.Equals(company.Key, c.Company, StringComparison.OrdinalIgnoreCase))
         {
-            yield return new(SuggestionKind.Company, company.Key, company.Count(), $"Staat bij de meeste accounts; nu ingevuld: {c.Company}.");
+            yield return new(SuggestionKind.Company, company.Key, company.Count(), Texts.T.Format("code.organisation-suggestions.set-on-most-accounts-filled", c.Company));
         }
 
         // The OU with the most enabled accounts (new users), with the most disabled accounts (offboarding), with the most groups
@@ -150,20 +151,20 @@ public static class OrganisationSuggestions
             var domain = enabledOu.Select(u => u.UserPrincipalName.Contains('@') ? u.UserPrincipalName[(u.UserPrincipalName.IndexOf('@') + 1)..] : string.Empty)
                 .Where(x => x.Length > 0).GroupBy(x => x, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key ?? string.Empty;
             yield return new(SuggestionKind.NewUsersOu, enabledOu.Key, enabledOu.Count(),
-                $"De OU met de meeste actieve accounts{(domain.Length > 0 ? $" (UPN op {domain})" : string.Empty)}: een soort gebruiker voor nieuwe accounts.");
+                Texts.T.Format("suggest.new-users-ou", domain.Length > 0 ? $" (UPN @{domain})" : string.Empty));
         }
 
         var disabledOu = d.AdUsers.Where(u => !u.Enabled && u.OuPath.Length > 0).GroupBy(u => u.OuPath, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault();
         if (disabledOu is not null && disabledOu.Count() >= 2 && string.IsNullOrWhiteSpace(c.Offboarding?.Ou))
         {
-            yield return new(SuggestionKind.OffboardingOu, disabledOu.Key, disabledOu.Count(), "De OU met de meeste uitgeschakelde accounts: hierheen bij uitstroom.");
+            yield return new(SuggestionKind.OffboardingOu, disabledOu.Key, disabledOu.Count(), Texts.T["code.organisation-suggestions.the-ou-with-the-most"]);
         }
 
         var groupsOu = d.AdGroupsByDn.Values.Where(g => g.OuPath.Length > 0 && !g.OuPath.Equals("Builtin", StringComparison.OrdinalIgnoreCase) && !g.OuPath.Equals("Users", StringComparison.OrdinalIgnoreCase))
             .GroupBy(g => g.OuPath, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault();
         if (groupsOu is not null && string.IsNullOrWhiteSpace(c.GroupsOu))
         {
-            yield return new(SuggestionKind.GroupsOu, groupsOu.Key, groupsOu.Count(), "De OU met de meeste groepen: hier komen nieuwe AD-groepen.");
+            yield return new(SuggestionKind.GroupsOu, groupsOu.Key, groupsOu.Count(), Texts.T["code.organisation-suggestions.the-ou-with-the-most-2"]);
         }
 
         // The naming most accounts follow (only when a clear majority does)
@@ -172,13 +173,13 @@ public static class OrganisationSuggestions
             if (n.Local != c.Naming.LocalPart && n.LocalCount * 10 >= n.Accounts * 6)
             {
                 yield return new(SuggestionKind.LocalPart, n.Local.ToString(), n.LocalCount,
-                    $"Accountnamen zoals {NamingSettings.Example(n.Local)}@... ({n.LocalCount} van {n.Accounts} accounts); nu: {NamingSettings.Example(c.Naming.LocalPart)}.");
+                    Texts.T.Format("code.organisation-suggestions.account-names-like-of-accounts", NamingSettings.Example(n.Local), n.LocalCount, n.Accounts, NamingSettings.Example(c.Naming.LocalPart)));
             }
 
             if (n.Display != c.Naming.DisplayName && n.DisplayCount * 10 >= n.Accounts * 6)
             {
                 yield return new(SuggestionKind.DisplayName, n.Display.ToString(), n.DisplayCount,
-                    $"Weergavenamen zoals \"{NamingSettings.Example(n.Display)}\" ({n.DisplayCount} van {n.Accounts} accounts); nu: \"{NamingSettings.Example(c.Naming.DisplayName)}\".");
+                    Texts.T.Format("code.organisation-suggestions.display-names-like-of-accounts", NamingSettings.Example(n.Display), n.DisplayCount, n.Accounts, NamingSettings.Example(c.Naming.DisplayName)));
             }
         }
 
@@ -218,7 +219,7 @@ public static class OrganisationSuggestions
                     c.Company = s.Value;
                     break;
                 case SuggestionKind.NewUsersOu when !c.Populations.Any(p => string.Equals(p.Ou, s.Value, StringComparison.OrdinalIgnoreCase)):
-                    c.Populations.Add(new Population { Name = s.Value.Split('/')[0] is { Length: > 0 } first ? first : "Medewerkers", Ou = s.Value, UpnDomain = UpnDomainOf(s.Explanation) });
+                    c.Populations.Add(new Population { Name = s.Value.Split('/')[0] is { Length: > 0 } first ? first : Texts.T["suggest.employees"], Ou = s.Value, UpnDomain = UpnDomainOf(s.Explanation) });
                     break;
                 case SuggestionKind.OffboardingOu:
                     c.Offboarding ??= new OffboardingRule();
@@ -255,7 +256,7 @@ public static class OrganisationSuggestions
 
     private static string UpnDomainOf(string explanation)
     {
-        var m = System.Text.RegularExpressions.Regex.Match(explanation, @"UPN op ([^\s)]+)");
+        var m = System.Text.RegularExpressions.Regex.Match(explanation, @"UPN @([^\s)]+)");
         return m.Success ? m.Groups[1].Value : string.Empty;
     }
 }
