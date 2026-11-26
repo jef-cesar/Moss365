@@ -18,6 +18,9 @@ Every version becomes a release on GitHub; the section under the version is the 
   - the last result of every check is **kept** in the tenant database, with the date it was checked;
   - a **hardening score** of Moss365's own, over AD and Microsoft 365 together and weighted per check, with the score
     of an earlier day next to it.
+- **Solving advice as a plan** (R16, U16): in *AD-beveiliging*, *Oplossen als plan* turns off "password not required"
+  and "reversible encryption" on the accounts found, with preview, confirmation and undo from the change log. The
+  engine only changes these flags.
 - **Compromised account** (R16), on the page of a user: *Blokkeerplan maken* makes one plan that disables the account
   in AD (and a cloud account in Entra), sets a new random password (kept and shown nowhere), revokes every sign-in
   session and removes the account from privileged AD groups; next to it what to check afterwards (MFA methods, admin

@@ -87,6 +87,9 @@ public enum ChangeAction
     // New in 0.33: helpdesk
     GraphCreateTemporaryAccessPass, // Target = user id; minuten, eenmalig; the pass is put in Secret after running (never logged)
     GraphSendMail,                // Target = addresses (;); onderwerp, tekst; sent by the signed-in administrator
+
+    // New in 0.39: security advice (R16)
+    AdSetAccountFlag,             // Target = DN; vlag (a name in SecurityAdvice.AccountFlags), aan (True/False); Previous aan
 }
 
 /// <summary>

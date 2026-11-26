@@ -124,6 +124,24 @@ public sealed partial class PlanScreenTests
     }
 
     [Fact]
+    public void AdAdviceIsSolvedAsAPlan()
+    {
+        EntraFilled();
+        var cut = RenderComponent<SecurityChecksPage>();
+        cut.FindAll("button").First(b => b.TextContent == "Alles nakijken").Click();
+        cut.WaitForAssertion(() => Assert.Equal(State.SecurityCheckList().Count, State.SecurityCheckResults.Count), TimeSpan.FromSeconds(5));
+
+        // "Password not required" on oud.account: a plan to turn it off, run after confirming
+        cut.FindAll("button").First(b => b.TextContent == "Oplossen als plan (1)").Click();
+        Assert.Contains("wachtwoord niet vereist", cut.Markup, StringComparison.Ordinal);
+        cut.FindAll("section.kb-plan button").First(b => b.TextContent.StartsWith("Uitvoeren (", StringComparison.Ordinal)).Click();
+        cut.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).Click();
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, c => c.ChangeAction == Moss365.Core.Changes.ChangeAction.AdSetAccountFlag && c.TargetName == "oud.account"), TimeSpan.FromSeconds(5));
+        var done = _factory.Executed.Single(c => c.ChangeAction == Moss365.Core.Changes.ChangeAction.AdSetAccountFlag);
+        Assert.Equal("False", done.Parameters["aan"]);
+    }
+
+    [Fact]
     public void AlertsSeeAccountsEnabledAgainInAdAndEntra()
     {
         var now = State.Data;

@@ -3303,5 +3303,14 @@
   "compromised.synced": "The account comes from AD: Entra follows the block after the next synchronisation; the sessions are revoked at once.",
   "compromised.forwarding": "Forwarding found by the last check: {0}",
   "compromised.rules": "Inbox rules and forwarding: check them on Security checks (with the inbox rules), and remove what the person did not make.",
-  "compromised.signins": "Sign-ins and devices: look at the sign-ins of the last days (Security overview) and at the devices of the person (Devices)."
+  "compromised.signins": "Sign-ins and devices: look at the sign-ins of the last days (Security overview) and at the devices of the person (Devices).",
+  "advice.solve": "Solve as a plan ({0})",
+  "advice.solve.title": "Solve the advice",
+  "advice.solve.context": "Security advice: {0}",
+  "advice.flag.password-not-required": "password not required",
+  "advice.flag.reversible-encryption": "password with reversible encryption",
+  "advice.solve.flag-off": "Turn off \"{0}\" for {1}",
+  "advice.solve.reversible-warning": "The password kept with reversible encryption only disappears when the password changes: ask the person to change it, or set a new one.",
+  "advice.solve.not-found": "{0} is not in the data read; read AD again.",
+  "advice.solve.unknown-flag": "Moss365 may not change this flag."
 }

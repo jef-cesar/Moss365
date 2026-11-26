@@ -88,12 +88,26 @@
                 <td><span class="kb-filters">
                     <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => Run(key)">@T["library-panel.check"]</button>
                     @if (c is { Rows.Count: > 0 }) { <button class="kb-knop kb-klein" @onclick="() => open = open == key ? null : key">@(open == key ? T["word.hide"] : $"Details ({c.Rows.Count})")</button> }
+                    @if (MayAccept && c is not null && SecurityAdvice.Solvable(c).Count is > 0 and var solvable)
+                    {
+                        <button class="kb-knop kb-klein kb-primair" @onclick="() => Solve(c)">@T.Format("advice.solve", solvable)</button>
+                    }
                     @if (MayAccept && c is { AcceptedUntil: null, Status: CheckStatus.Attention or CheckStatus.Problem })
                     {
                         <button class="kb-knop kb-klein" @onclick="() => StartAccept(key, string.Empty)">@T["advice.exception"]</button>
                     }
                 </span></td>
             </tr>
+            @if (solving is { } s && s.Key == key)
+            {
+                <tr><td colspan="4">
+                    @foreach (var e in s.Outcome.Errors) { <div class="kb-melding kb-fout">@e</div> }
+                    @if (s.Outcome.Plan.Count > 0)
+                    {
+                        <PlanView Plan="s.Outcome.Plan" Context="@T.Format("advice.solve.context", title)" Title="@T["advice.solve.title"]" />
+                    }
+                </td></tr>
+            }
             @if (info == key && SecurityAdvice.Info(key) is { } a)
             {
                 <tr><td colspan="4">
@@ -195,6 +209,11 @@
     private DateOnly until = DateOnly.FromDateTime(DateTime.Today.AddDays(90));
 
     private bool MayAccept => State.Can(Permission.Manage) && !State.IsHistoric;
+
+    // Solving advice as a plan (R16, U16): the lines with a fix of one check; shown, confirmed and run as every plan
+    private (string Key, Moss365.Core.Changes.PlanOutcome Outcome)? solving;
+
+    private void Solve(SecurityCheck check) => solving = (check.Key, SecurityAdvice.Solve(State.Data, check));
 
     private ScorePoint? Previous => State.HardeningScores.LastOrDefault(p => p.Date < DateOnly.FromDateTime(DateTime.Today));
 

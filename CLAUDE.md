@@ -78,7 +78,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   the hardening score); document `beveiligingscontroles` keeps the last results, the accepted risks and the score per
   day. `SecurityCheckResults` applies the accepted risks; an unknown result never replaces a real one kept earlier. A compromised account:
   `Security/CompromisedAccount.cs` (block in AD, a cloud account in Entra, new random password in `Secret`, revoke
-  sessions, out of privileged AD groups; never deletes), shown by `CompromisedCard` on the user page. Licences (0.35): `Licences/LicenceAnalysis.cs`
+  sessions, out of privileged AD groups; never deletes), shown by `CompromisedCard` on the user page.
+  Solving advice (R16): a `CheckRow.Fix` names the flag; `SecurityAdvice.Solve` makes `AdSetAccountFlag` changes
+  (only the flags in `SecurityAdvice.AccountFlags`; the engine refuses others), undone through `Previous`. Licences (0.35): `Licences/LicenceAnalysis.cs`
   (waste, costs with `OrganisationConfig.LicencePrices`, against job profiles); `GraphRemoveLicences` takes optional `skuIds`.
   Devices, Teams and SharePoint (0.36): `Devices/DeviceAnalysis.cs` (stale computers, systems, Intune, groups without
   owner/with guests/unused, sites); reads `IAdConnection.ReadComputersAsync`, `IGraphConnection.ReadIntuneDevicesAsync`/

@@ -365,6 +365,22 @@ public sealed class AdLdap : IAdConnection, IExecutor
                     return ChangeResult.Ok(w);
                 }
 
+                case ChangeAction.AdSetAccountFlag:
+                {
+                    // Only the flags that the security advice may change (R16); anything else is refused
+                    if (!Core.Security.SecurityAdvice.AccountFlags.TryGetValue(w.P("vlag"), out var flag))
+                    {
+                        return ChangeResult.Error(w, Texts.T["advice.solve.unknown-flag"]);
+                    }
+
+                    using var item = Item(w.Target);
+                    var uac = Convert.ToInt32(item.Properties["userAccountControl"].Value);
+                    var on = string.Equals(w.P("aan"), "True", StringComparison.OrdinalIgnoreCase);
+                    item.Properties["userAccountControl"].Value = on ? uac | flag : uac & ~flag;
+                    item.CommitChanges();
+                    return ChangeResult.Ok(w);
+                }
+
                 case ChangeAction.AdEnableAccount:
                 {
                     using var item = Item(w.Target);

@@ -3303,5 +3303,14 @@
   "compromised.synced": "Het account komt uit AD: Entra volgt de blokkering na de volgende synchronisatie; de sessies worden meteen ingetrokken.",
   "compromised.forwarding": "Doorsturen gevonden bij de laatste controle: {0}",
   "compromised.rules": "Inboxregels en doorsturen: kijk ze na op Beveiligingscontroles (met de inboxregels), en verwijder wat de persoon niet zelf maakte.",
-  "compromised.signins": "Aanmeldingen en toestellen: bekijk de aanmeldingen van de laatste dagen (Overzicht beveiliging) en de toestellen van de persoon (Toestellen)."
+  "compromised.signins": "Aanmeldingen en toestellen: bekijk de aanmeldingen van de laatste dagen (Overzicht beveiliging) en de toestellen van de persoon (Toestellen).",
+  "advice.solve": "Oplossen als plan ({0})",
+  "advice.solve.title": "Advies oplossen",
+  "advice.solve.context": "Beveiligingsadvies: {0}",
+  "advice.flag.password-not-required": "wachtwoord niet vereist",
+  "advice.flag.reversible-encryption": "wachtwoord met omkeerbare versleuteling",
+  "advice.solve.flag-off": "\"{0}\" uitzetten voor {1}",
+  "advice.solve.reversible-warning": "Het wachtwoord dat met omkeerbare versleuteling bewaard is, verdwijnt pas als het wachtwoord verandert: vraag de persoon het te wijzigen, of zet een nieuw.",
+  "advice.solve.not-found": "{0} staat niet in de gelezen gegevens; lees AD opnieuw.",
+  "advice.solve.unknown-flag": "Moss365 mag deze vlag niet wijzigen."
 }

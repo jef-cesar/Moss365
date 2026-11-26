@@ -3303,5 +3303,14 @@
   "compromised.synced": "Le compte vient d'AD : Entra suit le blocage après la prochaine synchronisation ; les sessions sont révoquées tout de suite.",
   "compromised.forwarding": "Transfert trouvé lors du dernier contrôle : {0}",
   "compromised.rules": "Règles de boîte de réception et transferts : vérifiez-les dans Contrôles de sécurité (avec les règles de boîte de réception) et supprimez ce que la personne n'a pas créé.",
-  "compromised.signins": "Connexions et appareils : regardez les connexions des derniers jours (Vue d'ensemble de la sécurité) et les appareils de la personne (Appareils)."
+  "compromised.signins": "Connexions et appareils : regardez les connexions des derniers jours (Vue d'ensemble de la sécurité) et les appareils de la personne (Appareils).",
+  "advice.solve": "Résoudre par un plan ({0})",
+  "advice.solve.title": "Appliquer le conseil",
+  "advice.solve.context": "Conseil de sécurité : {0}",
+  "advice.flag.password-not-required": "mot de passe non requis",
+  "advice.flag.reversible-encryption": "mot de passe avec chiffrement réversible",
+  "advice.solve.flag-off": "Désactiver « {0} » pour {1}",
+  "advice.solve.reversible-warning": "Le mot de passe conservé avec chiffrement réversible ne disparaît qu'au changement du mot de passe : demandez à la personne de le changer, ou définissez-en un nouveau.",
+  "advice.solve.not-found": "{0} ne figure pas dans les données lues ; relisez AD.",
+  "advice.solve.unknown-flag": "Moss365 ne peut pas modifier cet indicateur."
 }

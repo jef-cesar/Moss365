@@ -37,7 +37,7 @@ public static class Undo
     {
         ChangeAction.AdSetAttributes, ChangeAction.GraphSetAttributes, ChangeAction.GraphSetGroupAttributes,
         ChangeAction.ExchangeUpdateGroup, ChangeAction.ExchangeUpdateMailbox, ChangeAction.ExchangeAutoReply, ChangeAction.GraphSetManager,
-        ChangeAction.GraphUpdateCaPolicy, ChangeAction.GraphUpdateCaLocation,
+        ChangeAction.GraphUpdateCaPolicy, ChangeAction.GraphUpdateCaLocation, ChangeAction.AdSetAccountFlag,
     };
 
     /// <summary>Can this entry be undone? If not, why not.</summary>

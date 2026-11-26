@@ -17,6 +17,9 @@ public sealed record CheckRow(string Object, string Detail, CheckStatus Status, 
 {
     /// <summary>The risk of this line is accepted until this date (R16).</summary>
     public DateOnly? AcceptedUntil { get; init; }
+
+    /// <summary>What solves this line as a plan (R16): a flag of <see cref="SecurityAdvice.AccountFlags"/> to turn off.</summary>
+    public string? Fix { get; init; }
 }
 
 public sealed record SecurityCheck(string Key, string Title, CheckStatus Status, string Summary, IReadOnlyList<CheckRow> Rows)
@@ -172,8 +175,8 @@ public static class SecurityChecks
         var rows = new List<CheckRow>();
         rows.AddRange(r.SpnUsers.Select(u => new CheckRow(u, Texts.T["code.security-checks.user-account-with-an-spn"], CheckStatus.Attention)));
         rows.AddRange(r.UnconstrainedDelegation.Select(u => new CheckRow(u, Texts.T["code.security-checks.unconstrained-kerberos-delegation"], CheckStatus.Problem)));
-        rows.AddRange(r.PasswordNotRequired.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-not-required-is-on"], CheckStatus.Problem)));
-        rows.AddRange(r.ReversibleEncryption.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-with-reversible-encryption"], CheckStatus.Problem)));
+        rows.AddRange(r.PasswordNotRequired.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-not-required-is-on"], CheckStatus.Problem) { Fix = "PasswordNotRequired" }));
+        rows.AddRange(r.ReversibleEncryption.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-with-reversible-encryption"], CheckStatus.Problem) { Fix = "ReversibleEncryption" }));
         rows.AddRange(r.AdminCountOrphans.Select(u => new CheckRow(u, Texts.T["code.security-checks.admincount-1-but-not-any"], CheckStatus.Attention)));
         rows.AddRange(r.OldSystems.Select(c => new CheckRow(c.Name, Texts.T.Format("code.security-checks.outdated-operating-system", c.OperatingSystem), CheckStatus.Problem)));
         if (r.KrbtgtPasswordSet is { } k)

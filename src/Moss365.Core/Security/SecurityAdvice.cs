@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Moss365.Core.Changes;
+using Moss365.Core.Inventory;
 using Moss365.Core.Localization;
 using Moss365.Core.Storage;
 
@@ -91,6 +92,62 @@ public static class SecurityAdvice
     };
 
     public static AdviceInfo? Info(string key) => All.FirstOrDefault(a => string.Equals(a.Key, key, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The account flags (userAccountControl) that the advice may turn off as a plan; the engine refuses any other.</summary>
+    public static IReadOnlyDictionary<string, int> AccountFlags { get; } = new Dictionary<string, int>(StringComparer.Ordinal)
+    {
+        ["PasswordNotRequired"] = 0x20,
+        ["ReversibleEncryption"] = 0x80,
+    };
+
+    /// <summary>The lines of a check that can be solved as a plan: with a fix, not OK and not accepted.</summary>
+    public static IReadOnlyList<CheckRow> Solvable(SecurityCheck check)
+        => check.AcceptedUntil is not null
+            ? Array.Empty<CheckRow>()
+            : check.Rows.Where(r => r.Fix is { } f && AccountFlags.ContainsKey(f) && r.AcceptedUntil is null && r.Status != CheckStatus.Ok).ToList();
+
+    /// <summary>
+    /// The plan that solves the lines of a check (U16: low risk with undo, so a plan right away): the flag is turned off
+    /// on the AD account, with its previous value for undo. A line whose account is not in the data read gives a message.
+    /// </summary>
+    public static PlanOutcome Solve(InventoryData data, SecurityCheck check)
+    {
+        var plan = new List<Change>();
+        var errors = new List<string>();
+        foreach (var r in Solvable(check))
+        {
+            var fix = r.Fix!;
+            var user = data.AdUsers.FirstOrDefault(u => string.Equals(u.SamAccountName, r.Object, StringComparison.OrdinalIgnoreCase));
+            if (user is null)
+            {
+                errors.Add(Texts.T.Format("advice.solve.not-found", r.Object));
+                continue;
+            }
+
+            plan.Add(new Change
+            {
+                TargetSystem = TargetSystem.ActiveDirectory,
+                ChangeAction = ChangeAction.AdSetAccountFlag,
+                Target = user.DistinguishedName,
+                TargetName = user.SamAccountName,
+                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["vlag"] = fix, ["aan"] = "False" },
+                Previous = new(StringComparer.OrdinalIgnoreCase) { ["aan"] = "True" },
+                Description = Texts.T.Format("advice.solve.flag-off", FlagText(fix), user.SamAccountName),
+                CurrentValue = Texts.T["device.enabled"],
+                NewValue = Texts.T["device.disabled"],
+                Warning = fix == "ReversibleEncryption" ? Texts.T["advice.solve.reversible-warning"] : null,
+            });
+        }
+
+        return PlanOutcome.Of(plan, errors);
+    }
+
+    public static string FlagText(string flag) => flag switch
+    {
+        "PasswordNotRequired" => Texts.T["advice.flag.password-not-required"],
+        "ReversibleEncryption" => Texts.T["advice.flag.reversible-encryption"],
+        _ => flag,
+    };
 
     /// <summary>
     /// The check as shown: a risk accepted for the whole check marks the check, one for a line marks that line. When the

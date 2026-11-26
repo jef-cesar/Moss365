@@ -1,5 +1,8 @@
+using Moss365.Core.Changes;
+using Moss365.Core.Inventory;
 using Moss365.Core.Localization;
 using Moss365.Core.Security;
+using CheckStatus = Moss365.Core.Security.CheckStatus;
 using Xunit;
 
 namespace Moss365.Tests;
@@ -100,5 +103,33 @@ public class SecurityAdviceTests
         Assert.Equal(71, Assert.Single(lifted.Scores).Score);
 
         Assert.Empty(SecurityAdvice.Read("{kapot").Last);
+    }
+
+    [Fact]
+    public void AdFlagsAreSolvedAsAPlanThatCanBeUndone()
+    {
+        var data = new InventoryData { AdUsers = new[] { new AdUser { SamAccountName = "svc-oud", DistinguishedName = "CN=svc-oud,OU=Service,DC=contoso,DC=local", Enabled = true } } };
+        var reading = new AdSecurityReading(Array.Empty<string>(), Array.Empty<string>(), new[] { "svc-oud", "weg" }, Array.Empty<string>(), null, Array.Empty<string>(), Array.Empty<(string, string)>());
+        var check = SecurityChecks.AdSecurity(reading, Now);
+
+        var outcome = SecurityAdvice.Solve(data, check);
+        var change = Assert.Single(outcome.Plan);
+        Assert.Equal(ChangeAction.AdSetAccountFlag, change.ChangeAction);
+        Assert.Equal("CN=svc-oud,OU=Service,DC=contoso,DC=local", change.Target);
+        Assert.Equal("PasswordNotRequired", change.Parameters["vlag"]);
+        Assert.Equal("False", change.Parameters["aan"]);
+        Assert.Single(outcome.Errors); // "weg" is not in the data read
+
+        // Undo turns the flag on again, from the change log
+        var entry = new LogEntry(Now, "beheerder", "test", "ActiveDirectory", change.ChangeAction.ToString(), change.Target, change.TargetName,
+            change.Description, change.Parameters, "Succeeded", string.Empty, Previous: change.Previous);
+        Assert.True(Undo.CanReverse(entry));
+        var back = Assert.Single(Undo.Plan(new[] { entry }).Plan);
+        Assert.Equal("True", back.Parameters["aan"]);
+        Assert.Equal("PasswordNotRequired", back.Parameters["vlag"]);
+
+        // An accepted line is not solved
+        var accepted = SecurityAdvice.Apply(check, new[] { SecurityAdvice.Accept(check.Key, "svc-oud", "leverancier", "b", Now, new DateOnly(2027, 1, 1)) }, Now);
+        Assert.DoesNotContain(SecurityAdvice.Solvable(accepted), r => r.Object == "svc-oud");
     }
 }

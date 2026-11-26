@@ -3303,5 +3303,14 @@
   "compromised.synced": "Das Konto stammt aus AD: Entra übernimmt die Sperre nach der nächsten Synchronisierung; die Sitzungen werden sofort widerrufen.",
   "compromised.forwarding": "Bei der letzten Prüfung gefundene Weiterleitung: {0}",
   "compromised.rules": "Posteingangsregeln und Weiterleitungen: Prüfen Sie sie unter Sicherheitsprüfungen (mit den Posteingangsregeln) und entfernen Sie, was die Person nicht selbst erstellt hat.",
-  "compromised.signins": "Anmeldungen und Geräte: Sehen Sie sich die Anmeldungen der letzten Tage (Sicherheitsübersicht) und die Geräte der Person (Geräte) an."
+  "compromised.signins": "Anmeldungen und Geräte: Sehen Sie sich die Anmeldungen der letzten Tage (Sicherheitsübersicht) und die Geräte der Person (Geräte) an.",
+  "advice.solve": "Als Plan lösen ({0})",
+  "advice.solve.title": "Empfehlung umsetzen",
+  "advice.solve.context": "Sicherheitsempfehlung: {0}",
+  "advice.flag.password-not-required": "Kennwort nicht erforderlich",
+  "advice.flag.reversible-encryption": "Kennwort mit umkehrbarer Verschlüsselung",
+  "advice.solve.flag-off": "„{0}“ für {1} ausschalten",
+  "advice.solve.reversible-warning": "Das mit umkehrbarer Verschlüsselung gespeicherte Kennwort verschwindet erst, wenn sich das Kennwort ändert: Bitten Sie die Person, es zu ändern, oder setzen Sie ein neues.",
+  "advice.solve.not-found": "{0} ist nicht in den gelesenen Daten; lesen Sie AD erneut.",
+  "advice.solve.unknown-flag": "Moss365 darf dieses Kennzeichen nicht ändern."
 }
