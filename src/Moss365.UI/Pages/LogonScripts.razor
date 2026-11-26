@@ -9,8 +9,7 @@
 <h1>@T["menu.logonscripts"]</h1>
 
 <p class="kb-zacht">
-    De scripts in NETLOGON en wie welk script heeft (het kenmerk scriptPath in AD). Een script bewaren en het logonscript van
-    gebruikers wijzigen zijn plannen zoals altijd; elke vorige versie staat in het logboek en is terug te zetten.
+    @T["logon-scripts.intro"]
     @if (share is not null) { @Html("logon-scripts.location", share.Location) }
 </p>
 
@@ -56,14 +55,14 @@
         @foreach (var u in Missing)
         {
             <div class="kb-melding">
-                <strong>@u.Name</strong> bestaat niet in NETLOGON, maar @u.Users.Count gebruiker(s) hebben het:
+                @Html("logon-scripts.missing", u.Name, u.Users.Count)
                 @string.Join(", ", u.Users.Take(10).Select(p => p.Name))@(u.Users.Count > 10 ? " ..." : null)
                 @if (State.Can(Permission.Manage)) { <button class="kb-knop kb-klein" @onclick="() => Open(u.Name)">@T["script-run-panel.view"]</button> }
             </div>
         }
         @if (Unused.Count > 0)
         {
-            <p>Niemand gebruikt (rechtstreeks): @foreach (var f in Unused) { <code class="kb-label">@f.Name</code> } <span class="kb-zacht">@T["logon-scripts.they-can-still-be-started"]</span></p>
+            <p>@T["logon-scripts.unused"] @foreach (var f in Unused) { <code class="kb-label">@f.Name</code> } <span class="kb-zacht">@T["logon-scripts.they-can-still-be-started"]</span></p>
         }
     </section>
 
@@ -97,7 +96,7 @@ else
         @if (original is not null && Diff.Count > 0)
         {
             <details open>
-                <summary>Verschil met NETLOGON (@Diff.Count(l => l.StartsWith("+ ")) erbij, @Diff.Count(l => l.StartsWith("- ")) weg)</summary>
+                <summary>@T.Format("logon-scripts.diff", Diff.Count(l => l.StartsWith("+ ")), Diff.Count(l => l.StartsWith("- ")))</summary>
                 <pre class="kb-json">@foreach (var l in Diff.Where(l => !l.StartsWith("  "))) { <span class="@(l.StartsWith("+ ") ? "kb-ca-eraf" : "kb-ca-erbij")">@l</span>@("\n") }</pre>
             </details>
         }
@@ -123,7 +122,7 @@ else
         @if (State.Can(Permission.Manage) && !State.IsHistoric)
         {
             <PersonPicker Label="@T["code.logon-scripts.add-user-to-the-selection"]" Selected="null" SelectedChanged="p => { if (p is not null) { extra.Add(p); chosen.Add(p.Key); } }" />
-            @if (extra.Count > 0) { <p>Ook: @string.Join(", ", extra.Select(p => p.Name))</p> }
+            @if (extra.Count > 0) { <p>@T["logon-scripts.also"] @string.Join(", ", extra.Select(p => p.Name))</p> }
             <div class="kb-rij">
                 <label>@T.Format("logon-scripts.logon-script-of-the-chosen", chosen.Count)
                     <select class="kb-invoer" @bind="assignTo" aria-label="@T["logon-scripts.new-logon-script"]">

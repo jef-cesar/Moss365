@@ -16,7 +16,7 @@
                 <tr>
                     <td><ObjectLink Object="p.Group.Ref" /></td>
                     <td class="kb-zacht">@p.Group.KindText</td>
-                    <td>@(p.Via.Count == 0 ? "rechtstreeks lid" : "via " + string.Join(" → ", p.Via))</td>
+                    <td>@(p.Via.Count == 0 ? T["code.nested-groups.direct-member"] : "via " + string.Join(" → ", p.Via))</td>
                 </tr>
             }
         </tbody>

@@ -108,7 +108,7 @@
     private string? previousKey;
     private int tapMinutes = 480;
     private bool tapOnce = true;
-    private string passTitle = "Nieuw wachtwoord";
+    private string passTitle = T["tenants.new-password"];
 
     /// <summary>The library script that finds where a lockout comes from (0.33), when it is there.</summary>
     private string? LockoutScript => State.ReadScripts().FirstOrDefault(s => string.Equals(s.Key, "Find-LockoutSource", StringComparison.OrdinalIgnoreCase))?.Key;
@@ -159,7 +159,7 @@
         if (configure is not null && results.Any(r => r.ChangeId == configure.Id && r.Status == ResultStatus.Succeeded))
         {
             pass = configure.Secret;
-            passTitle = configure.ChangeAction == ChangeAction.GraphCreateTemporaryAccessPass ? "Temporary Access Pass" : "Nieuw wachtwoord";
+            passTitle = configure.ChangeAction == ChangeAction.GraphCreateTemporaryAccessPass ? "Temporary Access Pass" : T["tenants.new-password"];
             passwordForm = false;
         }
 

@@ -4,7 +4,7 @@
 @if (Count > 0)
 {
     <section class="kb-kaart kb-bulk">
-        <h2>Met de @Count gekozen @(Items switch { "gebruikers" => T["word.users"], "groepen" => T["word.groups"], _ => T["word.mailboxes"] })</h2>
+        <h2>@T.Format("bulk-tasks.with-the-chosen", Count, Items switch { "gebruikers" => T["word.users"], "groepen" => T["word.groups"], _ => T["word.mailboxes"] })</h2>
         @switch (Items)
         {
             case "gebruikers":
@@ -140,18 +140,11 @@
 
     private void Hide(bool hide) => Show(BulkPlans.Hide(Mailboxes(), hide), hide ? T["bulk-tasks.hide-in-the-address-list"] : T["bulk-tasks.show-in-the-address-list"]);
 
-    private void Block() => Show(BulkPlans.BlockSignIn(State.Data, Mailboxes()), "Aanmelden blokkeren");
+    private void Block() => Show(BulkPlans.BlockSignIn(State.Data, Mailboxes()), T["mailbox-detail.block-sign-in"]);
 
     private void Attribute() => Show(BulkPlans.Attribute(State.Data, State.Config, Persons(), attribute, value.Trim()), T.Format("code.bulk-tasks.becomes", AttributeLabel(attribute), value.Trim()));
 
-    private static string AttributeLabel(string field) => field switch
-    {
-        "Office" => "Kantoor",
-        "Department" => "Dienst",
-        "City" => "Stad",
-        "JobTitle" => "Functie",
-        _ => field,
-    };
+    private static string AttributeLabel(string field) => UiText.T.Text("attribute." + field.ToLowerInvariant(), field);
 
     private void InGroups(ObjectRef r)
     {

@@ -43,6 +43,16 @@ public sealed record Kpi(string Key, string Dutch, KpiList Items, bool Attention
             }
 
             var pattern = "kpi." + Key[..(colon + 1)] + "*";
+            if (Key.StartsWith("groepsoort:", StringComparison.Ordinal))
+            {
+                return Group.KindTextOf(Value);
+            }
+
+            if (Key.StartsWith("methode:", StringComparison.Ordinal))
+            {
+                return SecurityStatistics.MethodName(Value);
+            }
+
             return t.Has(pattern) ? t.Format(pattern, Kpis.Display(Value)) : Kpis.Display(Value) is var v && v != Value ? v : Dutch;
         }
     }
@@ -154,8 +164,8 @@ public static class Kpis
     public static Kpi Source(string source) => new($"bron:{source}", source, KpiList.Users);
     public static Kpi Division(string division) => new($"afdeling:{division}", division, KpiList.Users);
     public static Kpi Licence(string sku) => new($"licentie:{sku}", sku, KpiList.Users);
-    /// <summary>Per MFA method, by the readable name (<see cref="SecurityStatistics.MethodName"/>).</summary>
-    public static Kpi Method(string name) => new($"methode:{name}", name, KpiList.Users);
+    /// <summary>Per MFA method, by the method of the report (<see cref="SecurityStatistics.MethodGroup"/>); the name follows the language.</summary>
+    public static Kpi Method(string method) => new($"methode:{method}", SecurityStatistics.MethodName(method), KpiList.Users);
     public static Kpi PermissionModel(string model) => new($"rechtenmodel:{model}", model, KpiList.Mailboxes);
 
     // For the charts of Statistics (BiStatistics)
@@ -234,7 +244,8 @@ public static class Kpis
 
     private static DateTime? Date(string? text)
         => DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
-    public static Kpi GroupKind(string kind) => new($"groepsoort:{kind}", kind, KpiList.Groups);
+    /// <summary>Per kind of group, by its fixed key (<see cref="Group.KindKey"/>); the name follows the language.</summary>
+    public static Kpi GroupKind(string kindKey) => new($"groepsoort:{kindKey}", Group.KindTextOf(kindKey), KpiList.Groups);
 
     /// <summary>The KPI for a key from the address bar, or null when it does not exist.</summary>
     public static Kpi? Find(string? key)
@@ -367,7 +378,7 @@ public static class Kpis
             _ when k.Key.StartsWith("afdeling:", StringComparison.Ordinal) => b.Active.Where(p => (b.Config.DivisionFor(p.Department)?.Name ?? Statistic.NoDivision) == k.Value),
             _ when k.Key.StartsWith("licentie:", StringComparison.Ordinal) => d.Persons.Where(p => p.Entra?.Licences.Contains(k.Value, StringComparer.OrdinalIgnoreCase) == true),
             _ when k.Key.StartsWith("methode:", StringComparison.Ordinal) => security is null ? Enumerable.Empty<Person>()
-                : b.Active.Where(p => security.MfaOf(p.Entra?.Id) is { } m && m.Methods.Any(x => SecurityStatistics.MethodName(x) == k.Value)),
+                : b.Active.Where(p => security.MfaOf(p.Entra?.Id) is { } m && m.Methods.Any(x => SecurityStatistics.MethodGroup(x) == k.Value)),
             _ => Enumerable.Empty<Person>(),
         };
         return rows.Distinct().ToList();
@@ -423,7 +434,7 @@ public static class Kpis
         {
             "dynamisch" => groups.Where(g => g.Dynamic),
             "zonder-leden" => groups.Where(g => !g.Dynamic && (g.Cloud?.CountMembers ?? g.Exo?.CountMembers ?? g.Ad?.CountMembers) == 0),
-            _ when k.Key.StartsWith("groepsoort:", StringComparison.Ordinal) => groups.Where(g => g.KindText == k.Value),
+            _ when k.Key.StartsWith("groepsoort:", StringComparison.Ordinal) => groups.Where(g => g.KindKey == k.Value),
             _ => Enumerable.Empty<Group>(),
         }).ToList();
     }

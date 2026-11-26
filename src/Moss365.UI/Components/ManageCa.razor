@@ -15,7 +15,7 @@
     }
     else
     {
-        <p>Noodaccounts: @string.Join(", ", Emergency.Select(p => p.Name)). Elk nieuw beleid sluit ze uit; een beleid aanzetten dat ze niet uitsluit, weigert de app.</p>
+        <p>@T.Format("manage-ca.emergency", string.Join(", ", Emergency.Select(p => p.Name)))</p>
     }
 
     <div class="kb-filters">
@@ -104,7 +104,7 @@
                         <option value="">@T["manage-ca.choose-a-template"]</option>
                         @foreach (var s in CaTemplates.All)
                         {
-                            <option value="@s.Key" disabled="@Ca.Policies.Any(b => b.Name == s.Name)">@s.Name@(Ca.Policies.Any(b => b.Name == s.Name) ? " (bestaat al)" : "")</option>
+                            <option value="@s.Key" disabled="@Ca.Policies.Any(b => b.Name == s.Name)">@s.Name@(Ca.Policies.Any(b => b.Name == s.Name) ? (" " + T["code.manage-ca.already-exists"]) : "")</option>
                         }
                     </select>
                 </label>
@@ -147,14 +147,14 @@
                     {
                         <tr>
                             <td>@l.Name</td>
-                            <td>@(l.IsIp ? (l.Trusted ? "IP-adressen, vertrouwd" : "IP-adressen") : "landen")</td>
+                            <td>@(l.IsIp ? (l.Trusted ? T["code.manage-ca.ip-addresses-trusted"] : T["manage-ca.ip-addresses"]) : "landen")</td>
                             <td class="kb-zacht">@string.Join(", ", l.Values)</td>
                             <td><button class="kb-knop kb-klein" @onclick="() => Edit(l)">@T["manage-ca.change"]</button></td>
                         </tr>
                     }
                 </tbody>
             </table>
-            <h3>@(location is null ? "Nieuwe locatie" : $"\"{location.Name}\" wijzigen")</h3>
+            <h3>@(location is null ? T["manage-ca.new-location"] : T.Format("code.manage-ca.change", location.Name))</h3>
             <div class="kb-formulier">
                 <label>@T["variables-editor.name"] <input class="kb-invoer" @bind="locName" /></label>
                 @if (location is null)
@@ -385,7 +385,7 @@
         }
         catch (IOException ex)
         {
-            backupMessage = "Mislukt: " + ex.Message;
+            backupMessage = (T["code.manage-ca.failed"] + " ") + ex.Message;
         }
 
         backups = State.CaBackups();

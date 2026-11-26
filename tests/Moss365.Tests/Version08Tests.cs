@@ -172,7 +172,7 @@ public sealed class Version08Tests : IDisposable
     {
         var d = TestData.AppEnvironment();
         var bo = d.SearchPerson("ad:bo.janssens")!; // department "cultuur " with a space
-        var v = new Moss365.Core.Analysis.Difference(bo, Moss365.Core.Analysis.DifferenceKind.AttributeDiffers, "Dienst (Department)", "cultuur ", "cultuur", "");
+        var v = new Moss365.Core.Analysis.Difference(bo, Moss365.Core.Analysis.DifferenceKind.AttributeDiffers, "Department", "cultuur ", "cultuur", "");
         var w = Assert.Single(AttributePlans.Fix(d, TestData.Config(), v).Plan);
         Assert.Equal("cultuur", w.P("department"));
         Assert.Equal("cultuur ", w.Previous!["department"]);

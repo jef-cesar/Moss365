@@ -189,6 +189,16 @@ public sealed class LanguageTests
     }
 
     [Fact]
+    public void TheScannerSeesTextNextToCode()
+    {
+        // 0.38.6: text in the same element as @if/@foreach or next to a lambda was not seen before
+        Assert.Contains("Bevoorrechte groepen worden verwijderd.", TextScanner.Texts("<p>@if (x) { <b>@T[\"a\"]</b> } else { <text>b</text> } Bevoorrechte groepen worden verwijderd.</p>"));
+        Assert.Contains("onderdeel(en) installeren:", TextScanner.Texts("<span>@Items.Count onderdeel(en) installeren: @string.Join(\", \", Items.Select(r => r.Name))?</span>"));
+        Assert.Contains("Wat heeft deze tenant?", TextScanner.Texts("<SystemsChoice Legend=\"Wat heeft deze tenant?\" />"));
+        Assert.Empty(TextScanner.Texts("<p>@foreach (var x in y.Where(z => z.On)) { <span>@x.Name</span> } @if (n > 0) { @T.Format(\"k\", n) }</p>"));
+    }
+
+    [Fact]
     public void TheTranslatedShellHasNoHardCodedText()
     {
         foreach (var file in new[] { "Layout/MainLayout.razor", "Layout/SettingsLayout.razor", "Components/StatusBar.razor", "Components/TenantBar.razor",

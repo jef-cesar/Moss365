@@ -40,7 +40,7 @@
         @T["set-up-tenant.sign-in-with-an-administrator"]
     </p>
     <div class="kb-rij">
-        <button class="kb-knop kb-primair" disabled="@(busy || !State.SetupAvailable)" @onclick="Read">@(State.SetupReading is null ? T["code.set-up-tenant.sign-in-and-check"] : "Opnieuw nakijken")</button>
+        <button class="kb-knop kb-primair" disabled="@(busy || !State.SetupAvailable)" @onclick="Read">@(State.SetupReading is null ? T["code.set-up-tenant.sign-in-and-check"] : T["code.set-up-tenant.check-again"])</button>
         @if (busy && progress is not null) { <span class="kb-zacht">@progress</span> }
         @if (State.SetupSignedInAs is { } who) { <span class="kb-zacht">@T.Format("set-up-tenant.signed-in-as-0", who)</span> }
     </div>

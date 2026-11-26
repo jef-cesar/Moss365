@@ -20,13 +20,13 @@ public sealed partial class ManagementState
             list.AddRange(new[]
             {
                 ("doorsturen", Texts.T["code.management-state-security-checks.forwarding-outside"]), ("app-geheimen", Texts.T["code.management-state-security-checks.secrets-and-certificates-of-apps"]), ("app-rechten", Texts.T["code.management-state-security-checks.broad-app-permissions-and-consents"]),
-                ("secure-score", "Microsoft Secure Score"), ("rollen", Texts.T["code.management-state-security-checks.admin-roles-and-pim"]), ("zwakke-mfa", "Zwakke MFA-methoden"), ("risico", "Risicovolle gebruikers"),
+                ("secure-score", "Microsoft Secure Score"), ("rollen", Texts.T["code.management-state-security-checks.admin-roles-and-pim"]), ("zwakke-mfa", Texts.T["security.check.weak-mfa-methods"]), ("risico", Texts.T["security.check.risky-users"]),
             });
         }
 
         if (HasAd)
         {
-            list.AddRange(new[] { ("ad-beveiliging", "AD-beveiliging"), ("gpo", "Groepsbeleid (GPO)") });
+            list.AddRange(new[] { ("ad-beveiliging", Texts.T["security.check.ad-security"]), ("gpo", Texts.T["security.check.group-policy-gpo"]) });
         }
 
         return list;
@@ -51,7 +51,7 @@ public sealed partial class ManagementState
                 "risico" => SecurityChecks.Risky(Graph() is { } g5 ? await g5.ReadRiskyUsersAsync(cancel) : null),
                 "ad-beveiliging" => SecurityChecks.AdSecurity(_factory?.Ad(EffectiveSettings, AdPassword) is { } a1 ? await a1.ReadSecurityAsync(cancel) : null, now),
                 "gpo" => SecurityChecks.Gpo(_factory?.Ad(EffectiveSettings, AdPassword) is { } a2 ? await a2.ReadGpoAsync(cancel) : null),
-                _ => SecurityCheck.Unknown(key, key, "Onbekende controle."),
+                _ => SecurityCheck.Unknown(key, key, Texts.T["code.management-state-security-checks.unknown-check"]),
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

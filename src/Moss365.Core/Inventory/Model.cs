@@ -131,13 +131,16 @@ public sealed record CloudGroup
     public bool GroupLicence { get; init; }
     public int? CountMembers { get; init; }
 
-    public string TypeText => Type switch
+    public string TypeText => TypeTextOf(Type);
+
+    /// <summary>The kind of a cloud group in the language of the interface.</summary>
+    public static string TypeTextOf(CloudGroupType type) => type switch
     {
-        CloudGroupType.Microsoft365 => "Microsoft 365-groep",
-        CloudGroupType.Security => "Beveiligingsgroep",
-        CloudGroupType.MailSecurity => "Mail-beveiligingsgroep",
-        CloudGroupType.Distribution => "Distributielijst",
-        _ => "Onbekend",
+        CloudGroupType.Microsoft365 => Localization.Texts.T["group.kind.microsoft365"],
+        CloudGroupType.Security => Localization.Texts.T["group.kind.security"],
+        CloudGroupType.MailSecurity => Localization.Texts.T["group.kind.mail-security"],
+        CloudGroupType.Distribution => Localization.Texts.T["group.kind.distribution"],
+        _ => Localization.Texts.T["kpi.value.unknown"],
     };
 }
 

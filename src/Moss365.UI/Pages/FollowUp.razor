@@ -22,7 +22,7 @@
     <section class="kb-kaart">
         <h2>@t.Description</h2>
         <p class="kb-zacht">
-            <ObjectLink Id="@t.Upn" Text="@t.Upn" /> &middot; aangemaakt @t.Created.ToString("yyyy-MM-dd HH:mm")
+            <ObjectLink Id="@t.Upn" Text="@t.Upn" /> &middot; @T.Format("follow-up.created", t.Created.ToString("yyyy-MM-dd HH:mm"))
             @if (t.LastChecked is { } c) { <text> @T.Format("follow-up.checked-0", c.ToString("yyyy-MM-dd HH:mm"))</text> }
         </p>
         @if (t.LastMessage is not null)

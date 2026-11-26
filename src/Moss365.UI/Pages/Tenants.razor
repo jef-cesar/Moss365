@@ -120,7 +120,7 @@ else
         <div class="kb-rij">
             <label>@T["variables-editor.name"] <input class="kb-invoer" @bind="newName" placeholder="@T["tenants.e-g-contoso"]" /></label>
         </div>
-        <SystemsChoice @bind-Value="newSystems" Legend="Wat heeft deze tenant?" />
+        <SystemsChoice @bind-Value="newSystems" Legend="@T["tenants.what-does-it-have"]" />
         <div class="kb-rij">
             <button class="kb-knop kb-primair" disabled="@(newName.Trim().Length == 0)" @onclick="() => Add(hub)">@T["tenants.add"]</button>
         </div>
@@ -201,7 +201,7 @@ else
             var t = hub.Add(newName, systems: newSystems);
             newName = string.Empty;
             newSystems = TenantSystems.Both;
-            (message, error) = ($"Tenant \"{t.Name}\" toegevoegd. Open hem om te verbinden.", false);
+            (message, error) = (T.Format("code.tenants.tenant-added-open-it-to", t.Name), false);
         }
         catch (ArgumentException ex)
         {
@@ -287,7 +287,7 @@ else
         {
             var folder = hub.Remove(t.Id);
             removing = null;
-            (message, error) = (T.Format("code.tenants.is-no-longer-in-the", t.Name) + (folder is null ? string.Empty : $" De gegevens staan in {folder}."), false);
+            (message, error) = (T.Format("code.tenants.is-no-longer-in-the", t.Name) + (folder is null ? string.Empty : (" " + T.Format("code.tenants.the-data-is-in", folder))), false);
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
         {

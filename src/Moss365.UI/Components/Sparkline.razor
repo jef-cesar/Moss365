@@ -27,7 +27,7 @@
 @code {
     [Parameter, EditorRequired] public KpiTrend Trend { get; set; } = default!;
 
-    private string Previous => Trend.Period switch { TrendPeriod.Week => "vorige week", TrendPeriod.Month => "vorige maand", _ => "vorig jaar" };
+    private string Previous => Trend.Period switch { TrendPeriod.Week => T["code.sparkline.last-week"], TrendPeriod.Month => T["code.sparkline.last-month"], _ => T["code.sparkline.last-year"] };
 
     private const int B = 160, H = 40, M = 5;
 
@@ -36,15 +36,15 @@
     private string DifferenceText => Trend.Period != TrendPeriod.Day
         ? Trend.DifferenceWithPrevious(Now) switch
         {
-            null => Trend.Points.Count == 0 ? "" : "één punt",
-            0 => $"gelijk t.o.v. {Previous}",
+            null => Trend.Points.Count == 0 ? "" : T["code.sparkline.one-point"],
+            0 => T.Format("code.sparkline.unchanged-compared-with", Previous),
             var v => $"{Sign(v.Value)} t.o.v. {Previous}",
         }
         : Trend.Difference(30, Now) switch
     {
-        null => Trend.Points.Count == 0 ? "" : $"sinds {Trend.Points[0].Date:dd/MM}: {Sign(Now - Trend.Points[0].Value)}",
-        0 => "gelijk t.o.v. 30 dagen",
-        var v => $"{Sign(v.Value)} t.o.v. 30 dagen",
+        null => Trend.Points.Count == 0 ? "" : T.Format("code.sparkline.since", Trend.Points[0].Date, Sign(Now - Trend.Points[0].Value)),
+        0 => T["code.sparkline.unchanged-compared-with-30-days"],
+        var v => T.Format("code.sparkline.compared-with-30-days", Sign(v.Value)),
     };
 
     private static string Sign(int v) => v > 0 ? $"▲ {v}" : v < 0 ? $"▼ {-v}" : T["word.equal"];

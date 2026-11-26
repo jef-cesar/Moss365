@@ -19,8 +19,7 @@
             .OrderBy(x => x.Answer.Applies).ThenBy(x => x.Policy.Status).ToList();
         var applies = rules.Count(r => r.Answer.Applies != CaApplies.No && r.Policy.Status == CaStatus.On);
         <p class="kb-zacht">
-            @applies van de @rules.Count(r => r.Policy.Status == CaStatus.On) beleiden die aan staan, gelden voor deze persoon (enkel wie: apps en voorwaarden spelen
-            bij elke aanmelding mee). <a href="@($"conditional-access?persoon={Uri.EscapeDataString(Person.Key)}")">@T["ca-user-card.what-if-this-person-signs"]</a>
+            @T.Format("ca-user-card.applies", applies, rules.Count(r => r.Policy.Status == CaStatus.On)) <a href="@($"conditional-access?persoon={Uri.EscapeDataString(Person.Key)}")">@T["ca-user-card.what-if-this-person-signs"]</a>
         </p>
         <table class="kb-tabel">
             <thead><tr><th>@T["what-if-table.policy"]</th><th>@T["ca-user-card.state"]</th><th>@T["ca-user-card.for-this-person"]</th><th>@T["nested-groups.why"]</th><th>@T["what-if-table.effect"]</th></tr></thead>

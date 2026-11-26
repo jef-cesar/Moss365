@@ -131,7 +131,7 @@
     <ul class="kb-lijst-plat">
         @foreach (var part in new[] { "AD", "Entra", "Rooms", "Postvakken" })
         {
-            <li><strong>@part</strong>: @(State.LiveOn.TryGetValue(part, out var t) ? $"live geladen om {t:HH:mm}" : T["code.connections.from-the-inventory"])</li>
+            <li><strong>@part</strong>: @(State.LiveOn.TryGetValue(part, out var t) ? T.Format("code.connections.loaded-live-at", t) : T["code.connections.from-the-inventory"])</li>
         }
         @if (State.SavedInventory is { } folder) { <li class="kb-zacht">@T.Format("connections.last-saved-as-inventory-0", System.IO.Path.GetFileName(folder))</li> }
     </ul>
@@ -185,7 +185,7 @@
     private void Save()
     {
         State.SaveSettings();
-        message = "Bewaard (zonder wachtwoord).";
+        message = T["code.connections.saved-without-password"];
     }
 
     private void Load(LoadKind kind)

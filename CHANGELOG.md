@@ -2,6 +2,22 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.38.6
+
+Languages (R15), seventh part: the last Dutch names, and texts the scanner did not see.
+
+- Kinds of groups, kinds of mailboxes, the names of the MFA methods and the attributes of AD compared with Entra now
+  follow the language. They have a fixed key (`Group.KindKey`, `SecurityStatistics.MethodGroup`, the field name of the
+  attribute), so that a KPI link keeps working after a change of language; only the name shown is translated.
+- A correction to 0.38.2 and 0.38.4: the scanner of hard-coded text did not see text in the same element as `@if` or
+  `@foreach`, nor next to an expression with a lambda (`=>`), nor the parameter `Legend`. It sees them now (with a test),
+  and about 40 such sentences moved to the dictionaries (logon scripts, leavers, Conditional Access, maintenance,
+  devices, follow-up, the table and chart components).
+- About 120 short texts inside the expressions of the screens (button texts that change, choice lists, chart labels,
+  the status of a CA check, task names, messages) moved to the dictionaries too.
+- Still not translated on purpose: the contexts of the change log and the entries of the access log (records), addresses
+  and file names, and the names of PowerShell variables.
+
 ## 0.38.5
 
 Languages (R15), sixth part: also the texts that the core and the connections build follow the language.

@@ -53,7 +53,7 @@ else
         {
             new() { Key = "gebruiker", Title = T["sign-in-list.user"], Cell = v => @<text><a href="@Searcher.Link(v.Person)">@v.Person.Name</a><div class="kb-zacht">@v.Person.Ad?.OuPath</div></text>, SortBy = v => v.Person.Name },
             new() { Key = "soort", Title = T["nested-groups.kind"], Cell = v => @<text>@v.KindText</text>, SortBy = v => v.KindText },
-            new() { Key = "kenmerk", Title = T["bulk-tasks.attribute"], Cell = v => @<text>@v.Attribute</text>, SortBy = v => v.Attribute },
+            new() { Key = "kenmerk", Title = T["bulk-tasks.attribute"], Cell = v => @<text>@v.AttributeText</text>, SortBy = v => v.Attribute },
             new() { Key = "ad", Title = "AD", Cell = v => @<text>@v.AdValue</text>, SortBy = v => v.AdValue },
             new() { Key = "entra", Title = "Entra", Cell = v => @<text>@v.EntraValue</text>, SortBy = v => v.EntraValue },
             new() { Key = "toelichting", Title = T["compare.explanation"], Cell = v => @<text>@v.Explanation</text>, SortBy = v => v.Explanation },
@@ -66,13 +66,13 @@ else
         .Where(v => z.Kind.Length == 0 || v.KindText == z.Kind)
         .Where(v => z.Find.Trim().Length == 0
                     || v.Person.Name.Contains(z.Find.Trim(), StringComparison.OrdinalIgnoreCase)
-                    || v.Attribute.Contains(z.Find.Trim(), StringComparison.OrdinalIgnoreCase));
+                    || v.AttributeText.Contains(z.Find.Trim(), StringComparison.OrdinalIgnoreCase));
 
     private IReadOnlyList<Change>? plan;
     private IReadOnlyList<string> errors = Array.Empty<string>();
 
     private bool FixCan(Difference v) => State.Can(Permission.Manage) && v.Kind == DifferenceKind.AttributeDiffers && v.Person.Ad is not null
-        && v.Attribute.Split(" (")[0] is "Weergavenaam" or "Dienst" or "Functie" or "Kantoor";
+        && v.Attribute is "DisplayName" or "Department" or "JobTitle" or "Office";
 
     private void Fix(Difference v)
     {

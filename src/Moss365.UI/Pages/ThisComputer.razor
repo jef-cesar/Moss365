@@ -18,13 +18,13 @@
 else
 {
     <div class="kb-filters">
-        <button class="kb-knop kb-primair" disabled="@busy" @onclick="Check">@(rules is null ? "Controleren" : "Opnieuw controleren")</button>
+        <button class="kb-knop kb-primair" disabled="@busy" @onclick="Check">@(rules is null ? T["edit-script.check"] : T["code.this-computer.check-again"])</button>
         @if (busy && progress is not null) { <span class="kb-zacht">@progress</span> }
         @if (rules is not null && Installable.Count > 0)
         {
             @if (confirmAll)
             {
-                <span>@Installable.Count onderdeel(en) installeren: @string.Join(", ", Installable.Select(r => r.Section))?</span>
+                <span>@T.Format("this-computer.install-question", Installable.Count, string.Join(", ", Installable.Select(r => r.Section)))</span>
                 <button class="kb-knop kb-gevaar" disabled="@busy" @onclick="InstallAll">@T["this-computer.yes-install-everything"]</button>
                 <button class="kb-knop" @onclick="() => confirmAll = false">@T["action.cancel"]</button>
             }
@@ -39,7 +39,7 @@ else
     @if (rules is not null)
     {
         <div class="kb-tegels">
-            @foreach (var (status, label) in new[] { (CheckStatus.Good, "in orde"), (CheckStatus.Warning, "aandacht"), (CheckStatus.Error, "probleem") })
+            @foreach (var (status, label) in new[] { (CheckStatus.Good, T["code.service-health.healthy"]), (CheckStatus.Warning, "aandacht"), (CheckStatus.Error, "probleem") })
             {
                 <div class="kb-tegel kb-controle-@status.ToString().ToLowerInvariant()"><div class="kb-tegel-getal">@rules.Count(r => r.Status == status)</div><div>@label</div></div>
             }
@@ -121,7 +121,7 @@ else
     {
         busy = true;
         confirm = null;
-        progress = $"{r.Module} installeren...";
+        progress = T.Format("code.this-computer.installing", r.Module);
         try
         {
             messages[Key(r)] = await State.InstallAsync(r);
@@ -159,7 +159,7 @@ else
         {
             foreach (var r in Installable)
             {
-                progress = $"{r.Section} installeren...";
+                progress = T.Format("code.this-computer.installing", r.Section);
                 StateHasChanged();
                 messages[Key(r)] = await State.InstallAsync(r);
             }
@@ -174,7 +174,7 @@ else
 
     private static string InstallText(CheckRule r) => r.Module switch
     {
-        "PowerShell7" => "Installeert PowerShell 7 via winget (Microsoft); Windows vraagt om bevestiging",
+        "PowerShell7" => T["code.this-computer.installs-powershell-7-through-winget"],
         "RSAT" => T["code.this-computer.installs-the-ad-module-as"],
         _ => T.Format("code.this-computer.installs-for-your-account-from", r.Module),
     };

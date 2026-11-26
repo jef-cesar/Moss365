@@ -13,7 +13,7 @@ else
         @script.Header.Description
         <span class="kb-label @(script.Header.Writes ? "kb-label-let" : null)">@(script.Header.Writes ? "wijzigt" : "leest")</span>
         <span>@ScriptText.ConnectionText(script.Header.Connection)</span> &middot; @script.Origin
-        &middot; <a href="@($"scripts/bewerken?sleutel={Uri.EscapeDataString(script.Key)}")">@(script.BuiltIn ? "kopie bewerken" : "bewerken")</a>
+        &middot; <a href="@($"scripts/bewerken?sleutel={Uri.EscapeDataString(script.Key)}")">@(script.BuiltIn ? T["code.start-script.edit-a-copy"] : "bewerken")</a>
     </p>
 
     @if (Scheduled is { } g && State.Scheduled.Read().FirstOrDefault(a => a.Id == g) is { } action)

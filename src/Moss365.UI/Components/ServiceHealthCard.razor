@@ -28,7 +28,7 @@
         @if (h.Note is { } n) { <p class="kb-zacht">@n</p> }
     }
     @if (State.ServiceHealthNote is { } note) { <div class="kb-melding">@note</div> }
-    <button class="kb-knop" disabled="@busy" @onclick="Read">@(busy ? "Bezig..." : "Status lezen")</button>
+    <button class="kb-knop" disabled="@busy" @onclick="Read">@(busy ? T["code.service-health-card.busy"] : T["code.service-health-card.read-status"])</button>
 </section>
 
 @code {

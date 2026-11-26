@@ -88,7 +88,7 @@ public sealed partial class ManagementState
         {
             if (_read.TryGetValue(RefreshTargets.Key(r), out var t))
             {
-                return $"live gelezen om {t:HH:mm}";
+                return Texts.T.Format("code.management-state-tasks.read-live-at", t);
             }
         }
 
@@ -156,7 +156,7 @@ public sealed partial class ManagementState
         {
             if (EffectiveSettings.AdFilled)
             {
-                steps.Add(new("AD lezen", "AD", async (p, ct) =>
+                steps.Add(new(Texts.T["code.management-state-tasks.read-ad"], "AD", async (p, ct) =>
                 {
                     var ad = _factory.Ad(EffectiveSettings, AdPassword) ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.ad-is-not-available-here"]);
                     var read = await ad.ReadAsync(AdBaseForQuick(), p, ct);
@@ -169,7 +169,7 @@ public sealed partial class ManagementState
 
             if (EffectiveSettings.GraphFilled)
             {
-                steps.Add(new("Entra lezen", "Entra", async (p, ct) =>
+                steps.Add(new(Texts.T["code.management-state-tasks.read-entra"], "Entra", async (p, ct) =>
                 {
                     var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up"]);
                     var read = await graph.ReadAsync(GraphBaseForQuick(), p, ct);
@@ -184,7 +184,7 @@ public sealed partial class ManagementState
                     var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up"]);
                     if (await graph.ReadSecurityAsync(p, ct) is not { } security)
                     {
-                        p.Report("Niet beschikbaar in deze omgeving.");
+                        p.Report(Texts.T["code.management-state-tasks.not-available-in-this-environment"]);
                         return;
                     }
 
@@ -196,12 +196,12 @@ public sealed partial class ManagementState
                     }
                 }));
 
-                steps.Add(new("Conditional Access lezen", "Entra", async (p, ct) =>
+                steps.Add(new(Texts.T["code.management-state-tasks.read-conditional-access"], "Entra", async (p, ct) =>
                 {
                     var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up"]);
                     if (await graph.ReadConditionalAccessAsync(p, ct) is not { } ca)
                     {
-                        p.Report("Niet beschikbaar in deze omgeving.");
+                        p.Report(Texts.T["code.management-state-tasks.not-available-in-this-environment"]);
                         return;
                     }
 
@@ -255,7 +255,7 @@ public sealed partial class ManagementState
 
         if (kind == LoadKind.Rooms && HasMicrosoft365)
         {
-            steps.Add(new("Rooms lezen (Exchange)", "Exchange", async (p, ct) =>
+            steps.Add(new(Texts.T["code.management-state-tasks.read-rooms-exchange"], "Exchange", async (p, ct) =>
             {
                 var exchange = _factory.Exchange(EffectiveSettings) ?? throw new InvalidOperationException(Texts.T["code.management-state-helpdesk.exchange-online-is-not-available"]);
                 var rooms = await exchange.ReadRoomsAsync(p, ct);
@@ -278,11 +278,11 @@ public sealed partial class ManagementState
         }
 
         // Only when all lanes are done
-        steps.Add(new("Bewaren als inventaris", null, (p, _) =>
+        steps.Add(new(Texts.T["code.management-state-tasks.save-as-inventory"], null, (p, _) =>
         {
             if (components == InventoryComponent.No)
             {
-                p.Report("Niets live gelezen; niets bewaard.");
+                p.Report(Texts.T["code.management-state-tasks.nothing-read-live-nothing-saved"]);
                 return Task.CompletedTask;
             }
 
@@ -293,9 +293,9 @@ public sealed partial class ManagementState
         var name = kind switch
         {
             LoadKind.AdAndEntra => Texts.T["code.management-state-tasks.load-live-ad-and-entra"],
-            LoadKind.Rooms => "Rooms laden",
-            LoadKind.Mailboxes => "Postvakken laden",
-            _ => "Alles live laden",
+            LoadKind.Rooms => Texts.T["code.management-state-tasks.load-rooms"],
+            LoadKind.Mailboxes => Texts.T["code.management-state-tasks.load-mailboxes"],
+            _ => Texts.T["set-up-tenant.load-everything-live"],
         };
         return Start(name, steps);
     }
@@ -305,7 +305,7 @@ public sealed partial class ManagementState
     {
         var list = objects.ToList();
         var targets = RefreshTargets.For(Data, list);
-        return StartRefresh(targets, list.Count == 1 ? $"Vernieuwen: {list[0].Name}" : $"Vernieuwen ({targets.Count})");
+        return StartRefresh(targets, list.Count == 1 ? Texts.T.Format("code.management-state-tasks.refresh", list[0].Name) : Texts.T.Format("code.management-state-tasks.refresh-2", targets.Count));
     }
 
     private bool StartRefresh(RefreshTargets targets, string name)
@@ -323,14 +323,14 @@ public sealed partial class ManagementState
                 var ad = _factory.Ad(EffectiveSettings, AdPassword) ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.ad-is-not-set-up"]);
                 foreach (var sam in targets.AdUsers)
                 {
-                    p.Report($"gebruiker {sam}");
+                    p.Report(Texts.T.Format("code.management-state-tasks.user", sam));
                     var g = await ad.ReadUserAsync(sam, ct);
                     UpdateData(d => ObjectRefresher.WithAdUser(d, sam, g));
                 }
 
                 foreach (var sam in targets.AdGroups)
                 {
-                    p.Report($"groep {sam}");
+                    p.Report(Texts.T.Format("code.management-state-tasks.group", sam));
                     var g = await ad.ReadGroupAsync(sam, ct);
                     UpdateData(d => ObjectRefresher.WithAdGroup(d, sam, g));
                 }
@@ -344,14 +344,14 @@ public sealed partial class ManagementState
                 var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up-2"]);
                 foreach (var id in targets.EntraUsers)
                 {
-                    p.Report($"gebruiker {id}");
+                    p.Report(Texts.T.Format("code.management-state-tasks.user", id));
                     var g = await graph.ReadUserAsync(id, ct);
                     UpdateData(d => ObjectRefresher.WithEntraUser(d, id, g));
                 }
 
                 foreach (var id in targets.CloudGroups)
                 {
-                    p.Report($"groep {id}");
+                    p.Report(Texts.T.Format("code.management-state-tasks.group", id));
                     var g = await graph.ReadGroupAsync(id, ct);
                     UpdateData(d => ObjectRefresher.WithCloudGroup(d, id, g));
                 }
@@ -496,19 +496,19 @@ public sealed partial class ManagementState
             await work.Work(reporter, ct);
             step.Status = StepStatus.Done;
             step.Message = null;
-            task.Write($"{step.Name}: klaar.");
+            task.Write(Texts.T.Format("code.management-state-tasks.done", step.Name));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             step.Status = StepStatus.Cancelled;
             task.Cancelled = true;
-            task.Write($"{step.Name}: geannuleerd.");
+            task.Write(Texts.T.Format("code.management-state-tasks.cancelled", step.Name));
         }
         catch (Exception ex)
         {
             step.Status = StepStatus.Error;
             step.Message = ex.Message;
-            task.Write($"{step.Name}: MISLUKT - {ex.Message}");
+            task.Write(Texts.T.Format("code.management-state-tasks.failed", step.Name, ex.Message));
             Log.Warning("{Taak} - {Stap} mislukt: {Fout}", LogName(task.Name), step.Name, ex.Message);
         }
 
@@ -541,7 +541,7 @@ public sealed partial class ManagementState
         SavedInventory = folder;
         SaveQuickSnapshot(folder, components);
         SaveLiveSnapshot(components, folder);
-        p.Report($"Bewaard in {folder[(folder.LastIndexOf('/') + 1)..]}.");
+        p.Report(Texts.T.Format("tasks.saved-in", folder[(folder.LastIndexOf('/') + 1)..]));
         if ((components & (InventoryComponent.Ad | InventoryComponent.Entra)) != 0)
         {
             SaveKpiSnapshot();
@@ -571,7 +571,7 @@ public sealed partial class ManagementState
             }
         }
 
-        StartRefresh(targets, "Vernieuwen na wijziging");
+        StartRefresh(targets, Texts.T["code.management-state-tasks.refresh-after-a-change"]);
     }
 
     /// <summary>After loading an inventory from disk again, nothing is live any more.</summary>

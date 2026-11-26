@@ -296,7 +296,7 @@ public sealed class Version081Tests : IDisposable
         Assert.Equal(s.RoomsWithDeviation, N(Kpis.RoomsWithDeviation));
         Assert.All(s.PerDivision, st => Assert.Equal(st.Count, N(Kpis.Find(Uri.UnescapeDataString(st.Link!.Split("kpi=")[1]))!)));
         Assert.All(s.PermissionModel, st => Assert.Equal(st.Count, N(Kpis.PermissionModel(st.Name))));
-        Assert.All(s.GroupsPerKind, st => Assert.Equal(st.Count, N(Kpis.GroupKind(st.Name))));
+        Assert.All(s.GroupsPerKind, st => Assert.Equal(st.Count, N(Kpis.Find(Uri.UnescapeDataString(st.Link!.Split("kpi=")[1]))!)));
     }
 
     // ---------------------------------------------------------------- statistics in BI style

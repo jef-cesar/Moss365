@@ -107,7 +107,7 @@
     private string? oneTimeText;
     private string? loaded;
 
-    private string Title => once ? "Eenmalig script" : builtInSource is not null ? T.Format("code.edit-script.copy-of", builtInSource) : path is null ? "Nieuw script" : $"Script bewerken: {header.Name}";
+    private string Title => once ? T["scripts-overview.one-off-script"] : builtInSource is not null ? T.Format("code.edit-script.copy-of", builtInSource) : path is null ? "Nieuw script" : T.Format("code.edit-script.edit-script", header.Name);
 
     protected override void OnParametersSet()
     {
@@ -125,7 +125,7 @@
             if (script.BuiltIn)
             {
                 builtInSource = script.Header.Name;
-                text = ScriptText.Write(script.Header with { Name = script.Header.Name + " (kopie)" }, text);
+                text = ScriptText.Write(script.Header with { Name = script.Header.Name + (" " + T["code.edit-script.copy"]) }, text);
             }
             else
             {
@@ -183,7 +183,7 @@
             syntaxErrors = await State.CheckScriptAsync(text);
             if (syntaxErrors.Count == 0 && warnings.Count == 0)
             {
-                message = "Geen fouten gevonden.";
+                message = T["code.edit-script.no-errors-found"];
             }
 
             return syntaxErrors.Count == 0 && header.Name.Trim().Length > 0;
@@ -207,7 +207,7 @@
         path = file.FilePath;
         builtInSource = null;
         changedOutsideApp = false;
-        message = withoutErrors ? $"Opgeslagen als {Path.GetFileName(file.FilePath)}." : T["code.edit-script.saved-but-with-syntax-errors"];
+        message = withoutErrors ? T.Format("code.edit-script.saved-as", Path.GetFileName(file.FilePath)) : T["code.edit-script.saved-but-with-syntax-errors"];
         if (start && withoutErrors)
         {
             Nav.NavigateTo($"scripts/starten/{Uri.EscapeDataString(file.Key)}");

@@ -187,7 +187,7 @@ else
             .GroupBy(r => r.PlanId!.Value)
             .Where(g => g.Any(Undo.CanReverse))
             .Take(50)
-            .Select(g => new PlanChoice(g.Key.ToString(), $"{g.First().Time:dd/MM HH:mm} - {g.First().Context} ({g.Count(Undo.CanReverse)} terug te draaien)"));
+            .Select(g => new PlanChoice(g.Key.ToString(), T.Format("code.change-log.can-be-undone", g.First().Time, g.First().Context, g.Count(Undo.CanReverse))));
 
     private void ChoosePlan(ChangeEventArgs e)
     {
@@ -209,7 +209,7 @@ else
         var choice = rules.Where(r => selected.Contains(Key(r))).ToList();
         reverse = Undo.Plan(choice, State.Data);
         var contexts = choice.Select(r => r.Context).Distinct().ToList();
-        reverseContext = "Ongedaan maken: " + (contexts.Count == 1 ? contexts[0] : $"{choice.Count} wijzigingen");
+        reverseContext = (T["code.change-log.undo"] + " ") + (contexts.Count == 1 ? contexts[0] : T.Format("code.change-log.changes", choice.Count));
     }
 
     private void AfterReverse(IReadOnlyList<ChangeResult> results)
@@ -271,7 +271,7 @@ else
     private void Archive()
     {
         archive = Moss365.Core.Storage.Retention.Archive(State.Database, Limit, State.ExportFolder, DateTime.Now);
-        State.Access("Logboek gearchiveerd", $"{archive.Value.Count} regels ouder dan {Limit:yyyy-MM-dd}");
+        State.Access("Logboek gearchiveerd", T.Format("code.change-log.lines-older-than", archive.Value.Count, Limit));
     }
 
     private void TakeAway()

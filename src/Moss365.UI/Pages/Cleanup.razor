@@ -29,7 +29,7 @@
     <button class="kb-knop" @onclick="ChooseAll">@T["cleanup.tick-all"]</button>
     <button class="kb-knop" disabled="@(choice.Selected.Count == 0)" @onclick="() => { choice.Selected.Clear(); plan = null; }">@T["cleanup.nothing"]</button>
     <button class="kb-knop kb-primair" disabled="@(choice.Selected.Count == 0)" @onclick="MakePlan">
-        @(choice.Kind == CleanupKind.Guests ? "Plan: verwijderen" : "Plan: uitschakelen") (@choice.Selected.Count)
+        @(choice.Kind == CleanupKind.Guests ? T["code.cleanup.plan-remove"] : T["code.cleanup.plan-disable"]) (@choice.Selected.Count)
     </button>
 </div>
 

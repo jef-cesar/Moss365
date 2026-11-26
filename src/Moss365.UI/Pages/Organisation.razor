@@ -376,7 +376,7 @@
             Directory.CreateDirectory(State.ExportFolder);
             File.WriteAllText(path, ConfigStorage.To(State.Config), new System.Text.UTF8Encoding(false));
             State.Access("Organisatie geëxporteerd", Path.GetFileName(path));
-            (exchangeMessage, exchangeError) = ($"Geëxporteerd: {path}", false);
+            (exchangeMessage, exchangeError) = (T.Format("code.organisation.exported", path), false);
             State.AppEnvironment.ShowFile(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -506,7 +506,7 @@
         try
         {
             State.SaveConfig();
-            message = "Bewaard.";
+            message = T["database-maintenance.saved"];
         }
         catch (Exception ex)
         {
@@ -517,7 +517,7 @@
     private void Undone()
     {
         State.LoadConfig();
-        message = "Wijzigingen ongedaan gemaakt.";
+        message = T["code.organisation.changes-undone"];
         Recompute();
     }
 

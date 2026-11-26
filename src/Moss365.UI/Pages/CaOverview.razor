@@ -173,7 +173,7 @@ else
             </section>
             <section class="kb-kaart">
                 <h2>@T["ca-overview.security-defaults"]</h2>
-                <p>@(ca.SecurityDefaults switch { true => T["code.ca-overview.are-on"], false => T["code.ca-overview.are-off-normal-when-you"], _ => "Onbekend." })</p>
+                <p>@(ca.SecurityDefaults switch { true => T["code.ca-overview.are-on"], false => T["code.ca-overview.are-off-normal-when-you"], _ => T["code.ca-overview.unknown"] })</p>
             </section>
             break;
 
@@ -193,7 +193,7 @@ else
         {
             yield return (Part.Check, T["word.check"]);
             yield return (Part.Policies, T["word.policies"]);
-            yield return (Part.WhatIf, "Wat als");
+            yield return (Part.WhatIf, T["ca-overview.what-if"]);
             yield return (Part.Locations, T["code.ca-overview.locations-and-strengths"]);
             if (State.Can(Permission.Manage))
             {

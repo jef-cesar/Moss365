@@ -13,6 +13,9 @@ public enum DifferenceKind
 
 public sealed record Difference(Person Person, DifferenceKind Kind, string Attribute, string AdValue, string EntraValue, string Explanation)
 {
+    /// <summary>The attribute in the language of the interface (<see cref="Attribute"/> is a fixed name).</summary>
+    public string AttributeText => AdEntraComparison.AttributeText(Attribute);
+
     public string KindText => Kind switch
     {
         DifferenceKind.MissingInEntra => Texts.T["code.ad-entra-comparison.missing-in-entra"],
@@ -24,17 +27,21 @@ public sealed record Difference(Person Person, DifferenceKind Kind, string Attri
 /// <summary>Compares on-premises AD with Entra ID for the synchronised populations.</summary>
 public static class AdEntraComparison
 {
-    /// <summary>The attributes Entra Connect takes over from AD to Entra (AD name, Entra name).</summary>
+    /// <summary>The attributes Entra Connect takes over from AD to Entra: a fixed name (the same in every language,
+    /// the field of <see cref="Changes.UserDesired"/> where there is one), the AD value and the Entra value.</summary>
     public static readonly IReadOnlyList<(string Attribute, Func<AdUser, string> Ad, Func<EntraUser, string> Entra)> Attributes = new[]
     {
-        ("Weergavenaam", (Func<AdUser, string>)(a => a.DisplayName), (Func<EntraUser, string>)(e => e.DisplayName)),
+        ("DisplayName", (Func<AdUser, string>)(a => a.DisplayName), (Func<EntraUser, string>)(e => e.DisplayName)),
         ("UPN", a => a.UserPrincipalName, e => e.UserPrincipalName),
-        ("E-mail", a => a.EmailAddress, e => e.Mail),
-        ("Dienst (Department)", a => a.Department, e => e.Department),
-        ("Functie (Title)", a => a.Title, e => e.JobTitle),
-        ("Bedrijf (Company)", a => a.Company, e => e.CompanyName),
-        ("Kantoor (Office)", a => a.Office, e => e.OfficeLocation),
+        ("Mail", a => a.EmailAddress, e => e.Mail),
+        ("Department", a => a.Department, e => e.Department),
+        ("JobTitle", a => a.Title, e => e.JobTitle),
+        ("Company", a => a.Company, e => e.CompanyName),
+        ("Office", a => a.Office, e => e.OfficeLocation),
     };
+
+    /// <summary>The name of an attribute of a difference in the language of the interface.</summary>
+    public static string AttributeText(string attribute) => Texts.T.Text("compare.attribute." + attribute.ToLowerInvariant(), attribute);
 
     public static IReadOnlyList<Difference> Compare(InventoryData data, OrganisationConfig config)
     {
@@ -64,7 +71,7 @@ public static class AdEntraComparison
 
             if (!p.Ad.Enabled && p.Entra.AccountEnabled)
             {
-                output.Add(new Difference(p, DifferenceKind.StatusDiffers, Texts.T["word.enabled-2"], "uitgeschakeld", "ingeschakeld",
+                output.Add(new Difference(p, DifferenceKind.StatusDiffers, "Enabled", Texts.T["device.disabled"], Texts.T["device.enabled"],
                     Texts.T["code.ad-entra-comparison.disabled-in-ad-but-still"]));
             }
 

@@ -72,7 +72,7 @@
         <h2>@T.Format("keys.laps-0", shownFor)</h2>
         @if (laps is { } l)
         {
-            <p class="kb-zacht">Account @l.Account &middot; @l.Source @(l.Backup is { } b ? "· bewaard " + b.LocalDateTime.ToString("dd/MM/yyyy HH:mm") : null)</p>
+            <p class="kb-zacht">@T.Format("keys.account", l.Account) &middot; @l.Source @(l.Backup is { } b ? "· " + T.Format("keys.backed-up", b.LocalDateTime) : null)</p>
             <CopyField Value="@(l.Password ?? "(niet leesbaar)")" Label="@T["keys.laps-password"]" Secret="true" />
         }
         else { <p>@T["keys.no-laps-password-found"]</p> }

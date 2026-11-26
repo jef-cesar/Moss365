@@ -11,7 +11,7 @@ else
     <h1>@groupValue.Name</h1>
     <ObjectStatus Object="groupValue.Ref" />
     <p class="kb-zacht">
-        @groupValue.KindText &middot; @groupValue.Layers &middot; wijzigen via @RouteText(groupValue)
+        @groupValue.KindText &middot; @groupValue.Layers &middot; @T.Format("group-detail.change-through", RouteText(groupValue))
         @if (groupValue.Dynamic) { <span class="kb-label">@T["group-detail.dynamic"]</span> }
         @if (groupValue.Ad is { } bev && Moss365.Core.Analysis.MirrorUser.IsPrivileged(bev)) { <span class="kb-label kb-rood">@T["group-detail.privileged"]</span> }
     </p>

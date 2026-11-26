@@ -27,13 +27,12 @@
         <button class="kb-knop" disabled="@busy" @onclick="Compact">@T["database-maintenance.compact"]</button>
         @if (checkResult is not null)
         {
-            <span class="@(checkResult == "ok" ? "kb-ok" : "kb-waarschuwing")">@(checkResult == "ok" ? T["code.database-maintenance.the-database-is-in-order"] : "Problemen: " + checkResult)</span>
+            <span class="@(checkResult == "ok" ? "kb-ok" : "kb-waarschuwing")">@(checkResult == "ok" ? T["code.database-maintenance.the-database-is-in-order"] : (T["code.database-maintenance.problems"] + " ") + checkResult)</span>
         }
         @if (compacted is not null) { <span class="kb-ok">@compacted</span> }
     </div>
     <p class="kb-zacht">
-        Voor elke update van de databank maakt de app vanzelf een kopie (@State.Database.MigrationCopies().Count nu, samen
-        @Size(State.Database.MigrationCopies().Sum(f => f.Length))).
+        @T.Format("database-maintenance.copies", State.Database.MigrationCopies().Count, Size(State.Database.MigrationCopies().Sum(f => f.Length)))
     </p>
 </section>
 
@@ -102,7 +101,7 @@
             <ul>
                 @foreach (var r in results)
                 {
-                    <li>@PartText(r.Part): @r.Removed weggehaald@(r.Archive is { } a ? $", archief {a}" : string.Empty).</li>
+                    <li>@(r.Archive is { } a ? T.Format("database-maintenance.removed.archive", PartText(r.Part), r.Removed, a) : T.Format("database-maintenance.removed", PartText(r.Part), r.Removed))</li>
                 }
             </ul>
         }
