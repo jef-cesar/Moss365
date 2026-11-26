@@ -298,7 +298,7 @@ public static class Kpis
             "beheerrol" => WithRole(d, _ => true),
             "licentie-verspild" => Licences.LicenceAnalysis.Wasted(d, now).Select(w => w.Person),
             "global-admin" => WithRole(d, r => r.Role == "Global Administrator"),
-            "buiten-mfa-beleid" => b.CaFindings.FirstOrDefault(x => x.Subject == "Medewerkers zonder MFA-beleid")?.Persons ?? Enumerable.Empty<Person>(),
+            "buiten-mfa-beleid" => b.CaFindings.FirstOrDefault(x => x.Subject == Localization.Texts.T["code.ca-check.employees-without-an-mfa-policy"])?.Persons ?? Enumerable.Empty<Person>(),
             _ when k.Key.StartsWith("bron:", StringComparison.Ordinal) => d.Persons.Where(p => p.Source == k.Value),
             _ when k.Key.StartsWith("aanmelding:", StringComparison.Ordinal) => b.Active.Where(p => Statistic.LastSignIn(p) is var l && k.Value switch
             {

@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
 
@@ -19,10 +20,10 @@ public sealed record CaFinding(string Subject, CaVerdict Verdict, string Explana
 
     public string VerdictText => Verdict switch
     {
-        CaVerdict.InOrder => "In orde",
-        CaVerdict.Info => "Info",
-        CaVerdict.Attention => "Aandacht",
-        _ => "Probleem",
+        CaVerdict.InOrder => Texts.T["ca-check.verdict.ok"],
+        CaVerdict.Info => Texts.T["ca-check.verdict.info"],
+        CaVerdict.Attention => Texts.T["ca-check.verdict.attention"],
+        _ => Texts.T["ca-check.verdict.problem"],
     };
 }
 
@@ -39,7 +40,7 @@ public static class CaCheck
         var output = new List<CaFinding>();
         if (d.ConditionalAccess is not { } ca)
         {
-            output.Add(new CaFinding("Conditional Access", CaVerdict.Info, "Niet geladen.", "Laad live (Verbindingen > Alles live laden) met een account dat de beleiden mag lezen."));
+            output.Add(new CaFinding("Conditional Access", CaVerdict.Info, "Niet geladen.", Texts.T["code.ca-check.load-live-connections-load-everything"]));
             return output;
         }
 
@@ -69,14 +70,14 @@ public static class CaCheck
         if (ca.SecurityDefaults == true)
         {
             output.Add(enabled.Count > 0
-                ? new CaFinding("Beveiligingsstandaarden", CaVerdict.Attention, "De beveiligingsstandaarden staan aan, naast Conditional Access-beleiden.",
-                    "Kies één van de twee: met Entra ID P1 schakel je de standaarden uit en regel je alles met Conditional Access.")
-                : new CaFinding("Beveiligingsstandaarden", CaVerdict.Info, "De beveiligingsstandaarden van Microsoft staan aan (basis-MFA voor iedereen)."));
+                ? new CaFinding(Texts.T["ca-overview.security-defaults"], CaVerdict.Attention, Texts.T["code.ca-check.the-security-defaults-are-on"],
+                    Texts.T["code.ca-check.choose-one-of-the-two"])
+                : new CaFinding(Texts.T["ca-overview.security-defaults"], CaVerdict.Info, Texts.T["code.ca-check.the-security-defaults-of-microsoft"]));
         }
         else if (enabled.Count == 0)
         {
-            output.Add(new CaFinding("Bescherming", CaVerdict.Problem, "Geen enkel beleid staat aan en de beveiligingsstandaarden staan uit: aanmelden kan met enkel een wachtwoord.",
-                "Zet minstens MFA voor alle gebruikers aan."));
+            output.Add(new CaFinding(Texts.T["code.ca-check.protection"], CaVerdict.Problem, Texts.T["code.ca-check.no-policy-is-on-and"],
+                Texts.T["code.ca-check.turn-on-at-least-mfa"]));
         }
 
         // 1. MFA for everyone
@@ -85,14 +86,14 @@ public static class CaCheck
         {
             var withLocation = mfaAll.Where(b => b.LocationsOff.Count > 0).ToList();
             output.Add(withLocation.Count == mfaAll.Count
-                ? new CaFinding("MFA voor iedereen", CaVerdict.Attention, "MFA geldt voor alle gebruikers, maar niet vanaf " + string.Join(", ", withLocation[0].LocationsOff.Select(l => CaReader.LocationName(l, ca))) + ".",
-                    "Microsoft raadt MFA aan ook op kantoor: een gestolen wachtwoord werkt anders in het gebouw (of via een gekaapte pc) zonder tweede stap.") { Policies = withLocation }
-                : new CaFinding("MFA voor iedereen", CaVerdict.InOrder, "MFA voor alle gebruikers en alle apps.") { Policies = mfaAll });
+                ? new CaFinding(Texts.T["code.ca-check.mfa-for-everyone"], CaVerdict.Attention, Texts.T.Format("ca-check.mfa.notfrom", string.Join(", ", withLocation[0].LocationsOff.Select(l => CaReader.LocationName(l, ca)))),
+                    Texts.T["code.ca-check.microsoft-recommends-mfa-at-the"]) { Policies = withLocation }
+                : new CaFinding(Texts.T["code.ca-check.mfa-for-everyone"], CaVerdict.InOrder, Texts.T["code.ca-check.mfa-for-all-users-and"]) { Policies = mfaAll });
         }
         else
         {
-            output.Add(new CaFinding("MFA voor iedereen", CaVerdict.Problem, "Er is geen beleid dat MFA vraagt voor alle gebruikers en alle apps.",
-                "Maak (eerst als alleen rapport) een beleid: alle gebruikers, alle apps, MFA vereisen; de noodaccounts uitgezonderd."));
+            output.Add(new CaFinding(Texts.T["code.ca-check.mfa-for-everyone"], CaVerdict.Problem, Texts.T["code.ca-check.there-is-no-policy-that"],
+                Texts.T["code.ca-check.make-a-policy-first-as"]));
         }
 
         // 2. Who falls outside MFA
@@ -105,16 +106,16 @@ public static class CaCheck
         var critical = outside.Where(x => d.Security?.RolesOf(x.G.Id).Any(r => SecurityData.IsCriticalRole(r.Role)) == true).ToList();
         if (outside.Count == 0)
         {
-            output.Add(new CaFinding("Medewerkers zonder MFA-beleid", CaVerdict.InOrder, $"Alle {staff.Count} actieve medewerkers vallen onder een beleid dat MFA vraagt."));
+            output.Add(new CaFinding(Texts.T["code.ca-check.employees-without-an-mfa-policy"], CaVerdict.InOrder, Texts.T.Format("code.ca-check.all-active-employees-come-under", staff.Count)));
         }
         else
         {
             var noRegistration = d.Security is { MfaKnown: true } bev ? outside.Count(x => bev.MfaOf(x.G.Id) is not { MfaRegistered: true }) : (int?)null;
-            output.Add(new CaFinding("Medewerkers zonder MFA-beleid", critical.Count > 0 ? CaVerdict.Problem : CaVerdict.Attention,
-                $"{outside.Count} van de {staff.Count} actieve medewerkers vallen onder geen enkel beleid dat MFA vraagt"
-                + (noRegistration is { } n ? $" ({n} van hen hebben ook geen MFA geregistreerd)" : string.Empty)
-                + (critical.Count > 0 ? $"; {critical.Count} met een kritieke beheerrol." : "."),
-                "Kijk na of ze bewust uitgezonderd zijn (bv. via een groep). Zie Wat als voor de reden per persoon.")
+            output.Add(new CaFinding(Texts.T["code.ca-check.employees-without-an-mfa-policy"], critical.Count > 0 ? CaVerdict.Problem : CaVerdict.Attention,
+                Texts.T.Format("code.ca-check.of-the-active-employees-come", outside.Count, staff.Count)
+                + (noRegistration is { } n ? (" " + Texts.T.Format("code.ca-check.of-them-have-no-mfa", n)) : string.Empty)
+                + (critical.Count > 0 ? Texts.T.Format("code.ca-check.with-a-critical-admin-role", critical.Count) : "."),
+                Texts.T["code.ca-check.check-whether-they-are-excluded"])
             {
                 Persons = outside.Select(x => x.Person).ToList(),
             });
@@ -125,9 +126,9 @@ public static class CaCheck
             var notRegistered = staff.Where(x => Covered(x.G) && b2.MfaOf(x.G.Id) is not { MfaRegistered: true }).ToList();
             if (notRegistered.Count > 0)
             {
-                output.Add(new CaFinding("MFA nog niet ingesteld", enabled.Any(b => b.UserActions.Contains(CaReader.ActionSecurityData)) ? CaVerdict.Info : CaVerdict.Attention,
-                    $"{notRegistered.Count} medewerkers vallen onder MFA maar hebben nog geen methode geregistreerd: bij de volgende aanmelding moeten ze die instellen, met enkel hun wachtwoord.",
-                    "Laat ze MFA instellen op kantoor, of bescherm het registreren (zie hieronder).")
+                output.Add(new CaFinding(Texts.T["code.ca-check.mfa-not-set-up-yet"], enabled.Any(b => b.UserActions.Contains(CaReader.ActionSecurityData)) ? CaVerdict.Info : CaVerdict.Attention,
+                    Texts.T.Format("code.ca-check.employees-come-under-mfa-but", notRegistered.Count),
+                    Texts.T["code.ca-check.have-them-set-up-mfa"])
                 {
                     Persons = notRegistered.Select(x => x.Person).ToList(),
                 });
@@ -137,9 +138,9 @@ public static class CaCheck
         // 3. Legacy sign-in
         var legacy = enabled.Where(b => b.Blocks && Everyone(b) && AllApps(b) && b.ClientApps.Contains("exchangeActiveSync") && b.ClientApps.Contains("other")).ToList();
         output.Add(legacy.Count > 0
-            ? new CaFinding("Verouderde aanmelding geblokkeerd", CaVerdict.InOrder, "IMAP, POP, SMTP en ActiveSync (zonder MFA) zijn geblokkeerd.") { Policies = legacy }
-            : new CaFinding("Verouderde aanmelding geblokkeerd", CaVerdict.Problem, "Er is geen beleid dat verouderde aanmelding (IMAP, POP, SMTP, ActiveSync) blokkeert. Die kunnen geen MFA: een wachtwoord volstaat.",
-                "Maak een beleid: alle gebruikers, alle apps, client-apps Exchange ActiveSync en andere, blokkeren."));
+            ? new CaFinding(Texts.T["code.ca-check.legacy-sign-in-blocked"], CaVerdict.InOrder, Texts.T["code.ca-check.imap-pop-smtp-and-activesync"]) { Policies = legacy }
+            : new CaFinding(Texts.T["code.ca-check.legacy-sign-in-blocked"], CaVerdict.Problem, Texts.T["code.ca-check.there-is-no-policy-that-2"],
+                Texts.T["code.ca-check.make-a-policy-all-users"]));
 
         // 4. Administrators
         var management = enabled.Where(b => Mfa(b) && (Everyone(b) || b.RolesIn.Contains(CaData.RoleGlobalAdmin, StringComparer.OrdinalIgnoreCase))
@@ -147,15 +148,15 @@ public static class CaCheck
         var phishing = management.Where(b => b.AsksPhishingResistant && b.RolesIn.Count > 0).ToList();
         if (management.Count == 0)
         {
-            output.Add(new CaFinding("Beheerders", CaVerdict.Problem, "Geen beleid vraagt MFA voor de rol Global Administrator.",
-                "Maak een beleid voor de beheerrollen met MFA (liefst phishingbestendig: FIDO2-sleutel of Windows Hello)."));
+            output.Add(new CaFinding(Texts.T["code.ca-check.administrators"], CaVerdict.Problem, Texts.T["code.ca-check.no-policy-asks-mfa-for"],
+                Texts.T["code.ca-check.make-a-policy-for-the"]));
         }
         else
         {
             output.Add(phishing.Count > 0
-                ? new CaFinding("Beheerders", CaVerdict.InOrder, "Beheerrollen moeten phishingbestendige MFA gebruiken.") { Policies = phishing }
-                : new CaFinding("Beheerders", CaVerdict.Attention, "Beheerders vallen onder MFA, maar niet onder phishingbestendige MFA.",
-                    "Microsoft raadt voor beheerrollen de sterkte \"Phishingbestendige MFA\" aan (FIDO2-sleutel, Windows Hello, certificaat).") { Policies = management });
+                ? new CaFinding(Texts.T["code.ca-check.administrators"], CaVerdict.InOrder, "Beheerrollen moeten phishingbestendige MFA gebruiken.") { Policies = phishing }
+                : new CaFinding(Texts.T["code.ca-check.administrators"], CaVerdict.Attention, Texts.T["code.ca-check.administrators-come-under-mfa-but"],
+                    Texts.T["code.ca-check.for-admin-roles-microsoft-recommends"]) { Policies = management });
         }
 
         // 5. Noodaccounts
@@ -167,23 +168,23 @@ public static class CaCheck
         {
             var guestPolicy = enabled.Where(b => Mfa(b) && (b.GuestsIn || (Everyone(b) && !b.GuestsOff))).ToList();
             output.Add(guestPolicy.Count > 0
-                ? new CaFinding("Gasten", CaVerdict.InOrder, $"Gasten ({guests.Count}) moeten MFA gebruiken.") { Policies = guestPolicy }
-                : new CaFinding("Gasten", CaVerdict.Attention, $"Er zijn {guests.Count} gasten, maar geen beleid vraagt hen MFA.", "Neem gasten op in het MFA-beleid voor iedereen."));
+                ? new CaFinding(Texts.T["collaboration.guests"], CaVerdict.InOrder, $"Gasten ({guests.Count}) moeten MFA gebruiken.") { Policies = guestPolicy }
+                : new CaFinding(Texts.T["collaboration.guests"], CaVerdict.Attention, Texts.T.Format("code.ca-check.there-are-guests-but-no", guests.Count), Texts.T["code.ca-check.include-guests-in-the-mfa"]));
         }
 
         // 7. Toestelcode
         var code = enabled.Where(b => b.Blocks && b.Transfer.Contains("deviceCodeFlow")).ToList();
         output.Add(code.Count > 0
-            ? new CaFinding("Aanmelden met toestelcode", CaVerdict.InOrder, "Aanmelden met een toestelcode (device code flow) is geblokkeerd.") { Policies = code }
-            : new CaFinding("Aanmelden met toestelcode", CaVerdict.Attention, "Aanmelden met een toestelcode is niet geblokkeerd. Phishing gebruikt dat vaak (\"geef deze code in op microsoft.com/devicelogin\").",
-                "Blokkeer de device code flow voor iedereen behalve wie het echt nodig heeft (bv. vergaderzaal-toestellen)."));
+            ? new CaFinding(Texts.T["code.ca-check.sign-in-with-device-code"], CaVerdict.InOrder, Texts.T["code.ca-check.signing-in-with-a-device"]) { Policies = code }
+            : new CaFinding(Texts.T["code.ca-check.sign-in-with-device-code"], CaVerdict.Attention, Texts.T["code.ca-check.signing-in-with-a-device-2"],
+                Texts.T["code.ca-check.block-the-device-code-flow"]));
 
         // 8. Register MFA
         var register = enabled.Where(b => b.UserActions.Contains(CaReader.ActionSecurityData)).ToList();
         output.Add(register.Count > 0
-            ? new CaFinding("MFA registreren beschermd", CaVerdict.InOrder, "Beveiligingsgegevens registreren is beschermd.") { Policies = register }
-            : new CaFinding("MFA registreren beschermd", CaVerdict.Attention, "Iedereen kan zijn MFA-methode registreren met enkel een wachtwoord, van overal.",
-                "Beperk het registreren tot vertrouwde locaties (kantoor) of eis een Temporary Access Pass."));
+            ? new CaFinding(Texts.T["code.ca-check.mfa-registration-protected"], CaVerdict.InOrder, Texts.T["code.ca-check.registering-security-info-is-protected"]) { Policies = register }
+            : new CaFinding(Texts.T["code.ca-check.mfa-registration-protected"], CaVerdict.Attention, Texts.T["code.ca-check.everyone-can-register-their-mfa"],
+                Texts.T["code.ca-check.limit-registration-to-trusted-locations"]));
 
         // 9. Notable policies
         foreach (var b in ca.Policies)
@@ -191,38 +192,38 @@ public static class CaCheck
             var days = b.Changed is { } g ? (int)(now - g.LocalDateTime).TotalDays : (int?)null;
             if (b.Status == CaStatus.Report && days > 30)
             {
-                output.Add(new CaFinding("Lang op alleen rapport", CaVerdict.Attention, $"\"{b.Name}\" staat al {days} dagen op alleen rapport.",
-                    "Kijk het effect na (aanmeldingen) en zet het aan, of verwijder het.") { Policies = new[] { b } });
+                output.Add(new CaFinding(Texts.T["code.ca-check.long-in-report-only"], CaVerdict.Attention, Texts.T.Format("code.ca-check.has-been-in-report-only", b.Name, days),
+                    Texts.T["code.ca-check.check-the-effect-sign-ins"]) { Policies = new[] { b } });
             }
 
             if (b.Status == CaStatus.Off)
             {
-                output.Add(new CaFinding("Uitgeschakeld beleid", CaVerdict.Info, $"\"{b.Name}\" staat uit.") { Policies = new[] { b } });
+                output.Add(new CaFinding(Texts.T["code.ca-check.disabled-policy"], CaVerdict.Info, Texts.T.Format("code.ca-check.is-off", b.Name)) { Policies = new[] { b } });
             }
 
             var nobody = !Everyone(b) && !b.GuestsIn && b.GroupsIn.Count + b.RolesIn.Count == 0 && b.UsersIn.All(u => u == "None");
             if (nobody)
             {
-                output.Add(new CaFinding("Beleid zonder gebruikers", CaVerdict.Info, $"\"{b.Name}\" geldt voor niemand.") { Policies = new[] { b } });
+                output.Add(new CaFinding(Texts.T["code.ca-check.policy-without-users"], CaVerdict.Info, Texts.T.Format("code.ca-check.applies-to-nobody", b.Name)) { Policies = new[] { b } });
             }
 
             var exclusions = b.UsersOff.Count + b.GroupsOff.Count + b.RolesOff.Count;
             if (b.Status != CaStatus.Off && exclusions > 5)
             {
-                output.Add(new CaFinding("Veel uitzonderingen", CaVerdict.Attention, $"\"{b.Name}\" heeft {exclusions} uitzonderingen.",
-                    "Elke uitzondering is een gat. Werk liefst met één groep uitzonderingen die je regelmatig nakijkt.") { Policies = new[] { b } });
+                output.Add(new CaFinding(Texts.T["code.ca-check.many-exceptions"], CaVerdict.Attention, $"\"{b.Name}\" heeft {exclusions} uitzonderingen.",
+                    Texts.T["code.ca-check.every-exception-is-a-hole"]) { Policies = new[] { b } });
             }
 
             if (b.Status == CaStatus.On && b.Blocks && Everyone(b) && AllApps(b) && WithoutConditions(b) && b.LocationsOff.Count == 0 && b.PlatformsOff.Count == 0)
             {
-                output.Add(new CaFinding("Iedereen buitengesloten", CaVerdict.Problem, $"\"{b.Name}\" blokkeert alle gebruikers voor alle apps"
-                    + (exclusions == 0 ? ", zonder uitzonderingen." : $", met enkel {exclusions} uitzondering(en)."),
-                    "Kijk dit meteen na: niemand (ook geen beheerder) kan zich zo aanmelden.") { Policies = new[] { b } });
+                output.Add(new CaFinding(Texts.T["code.ca-check.everyone-locked-out"], CaVerdict.Problem, Texts.T.Format("code.ca-check.blocks-all-users-for-all", b.Name)
+                    + (exclusions == 0 ? ", zonder uitzonderingen." : Texts.T.Format("code.ca-check.with-only-exception-s", exclusions)),
+                    Texts.T["code.ca-check.check-this-at-once-nobody"]) { Policies = new[] { b } });
             }
 
             if (b.SignInRisk.Count + b.UsersRisk.Count > 0)
             {
-                output.Add(new CaFinding("Risicobeleid", CaVerdict.Info, $"\"{b.Name}\" werkt met aanmeld- of gebruikersrisico: dat vraagt Entra ID P2.") { Policies = new[] { b } });
+                output.Add(new CaFinding(Texts.T["code.ca-check.risk-policy"], CaVerdict.Info, Texts.T.Format("code.ca-check.works-with-sign-in-or", b.Name)) { Policies = new[] { b } });
             }
         }
 
@@ -239,9 +240,9 @@ public static class CaCheck
             var candidates = users.Where(x => EmergencyWords.Any(w => x.Person.Upn.Contains(w, StringComparison.OrdinalIgnoreCase)
                                                                         || x.Person.Name.Contains(w, StringComparison.OrdinalIgnoreCase)))
                 .Select(x => x.Person).ToList();
-            yield return new CaFinding("Noodaccounts", CaVerdict.Attention,
-                "Er zijn geen noodaccounts aangeduid" + (candidates.Count > 0 ? $"; {candidates.Count} account(s) lijken er een (naam)." : "."),
-                "Maak twee cloud-only accounts met de rol Global Administrator, sluit ze uit van alle beleiden en vul ze in bij Organisatie > Noodaccounts.")
+            yield return new CaFinding(Texts.T["menu.organisatie.noodaccounts"], CaVerdict.Attention,
+                Texts.T["code.ca-check.no-emergency-accounts-are-marked"] + (candidates.Count > 0 ? Texts.T.Format("code.ca-check.account-s-look-like-one", candidates.Count) : "."),
+                Texts.T["code.ca-check.make-two-cloud-only-accounts"])
             {
                 Persons = candidates,
             };
@@ -253,7 +254,7 @@ public static class CaCheck
             var x = users.FirstOrDefault(g => string.Equals(g.Person.Entra!.UserPrincipalName, upn, StringComparison.OrdinalIgnoreCase));
             if (x.Person is null)
             {
-                yield return new CaFinding("Noodaccount " + upn, CaVerdict.Problem, "Niet gevonden in Entra.", "Kijk de naam na bij Organisatie > Noodaccounts.");
+                yield return new CaFinding(Texts.T.Format("ca-check.emergency", upn), CaVerdict.Problem, Texts.T["code.ca-check.not-found-in-entra"], Texts.T["code.ca-check.check-the-name-under-organisation"]);
                 continue;
             }
 
@@ -261,36 +262,36 @@ public static class CaCheck
             var attention = new List<string>();
             if (x.Person.Entra!.OnPremisesSyncEnabled)
             {
-                problems.Add("komt uit AD (moet cloud-only zijn, anders hangt het af van de synchronisatie)");
+                problems.Add(Texts.T["code.ca-check.comes-from-ad-must-be"]);
             }
 
             if (!x.Person.Entra.AccountEnabled)
             {
-                problems.Add("is uitgeschakeld");
+                problems.Add(Texts.T["code.ca-check.is-disabled"]);
             }
 
             if (d.Security is { RolesKnown: true } bev && !bev.RolesOf(x.G.Id).Any(r => r.Role == "Global Administrator" || r.RoleTemplateId == CaData.RoleGlobalAdmin))
             {
-                attention.Add("heeft geen (permanente) rol Global Administrator");
+                attention.Add(Texts.T["code.ca-check.has-no-permanent-role-global"]);
             }
 
             var inValue = enabled.Where(b => CaReader.Scope(b, x.G, name, ca).Applies != CaApplies.No).ToList();
             if (inValue.Count > 0)
             {
-                problems.Add("valt onder " + inValue.Count + " beleid(en) die aan staan: " + string.Join(", ", inValue.Select(b => b.Name)));
+                problems.Add(Texts.T.Format("ca-check.emergency.under", inValue.Count, string.Join(", ", inValue.Select(b => b.Name))));
             }
 
             if (Statistic.LastSignIn(x.Person) is { } last && (now - last).TotalDays <= 30)
             {
-                attention.Add($"meldde zich aan op {last:dd-MM-yyyy} (klopt dat? een noodaccount gebruik je enkel in nood)");
+                attention.Add(Texts.T.Format("code.ca-check.signed-in-on-right-you", last));
             }
 
             var verdict = problems.Count > 0 ? CaVerdict.Problem : attention.Count > 0 ? CaVerdict.Attention : CaVerdict.InOrder;
             var text = verdict == CaVerdict.InOrder
-                ? "Cloud-only, ingeschakeld en uitgezonderd van alle beleiden."
+                ? Texts.T["code.ca-check.cloud-only-enabled-and-excluded"]
                 : string.Join("; ", problems.Concat(attention)) + ".";
-            yield return new CaFinding("Noodaccount " + x.Person.Name, verdict, char.ToUpperInvariant(text[0]) + text[1..],
-                inValue.Count > 0 ? "Sluit het account (of een groep met de noodaccounts) uit van elk beleid." : string.Empty)
+            yield return new CaFinding(Texts.T.Format("ca-check.emergency", x.Person.Name), verdict, char.ToUpperInvariant(text[0]) + text[1..],
+                inValue.Count > 0 ? Texts.T["code.ca-check.exclude-the-account-or-a"] : string.Empty)
             {
                 Persons = new[] { x.Person },
                 Policies = inValue,
