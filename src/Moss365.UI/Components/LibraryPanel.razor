@@ -45,14 +45,14 @@
             @if (confirm)
             {
                 <div class="kb-rij">
-                    <span>@chosen.Count script(s) downloaden in <strong>@State.Tenant.Name</strong>?</span>
+                    <span>@T.Format("library-panel.download-0-script-s-into", chosen.Count) <strong>@State.Tenant.Name</strong>?</span>
                     <button class="kb-knop kb-primair" disabled="@busy" @onclick="Take">@T["library-panel.yes-download"]</button>
                     <button class="kb-knop" @onclick="() => confirm = false">@T["action.cancel"]</button>
                 </div>
             }
             else
             {
-                <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0 || busy)" @onclick="() => confirm = true">Downloaden (@chosen.Count)</button>
+                <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0 || busy)" @onclick="() => confirm = true">@T.Format("library-panel.download-0", chosen.Count)</button>
             }
         }
     }

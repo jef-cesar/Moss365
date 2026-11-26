@@ -53,7 +53,7 @@
 @if (Editing is { } jp)
 {
     <section class="kb-kaart" id="profiel-bewerken">
-        <h2>@jp.Name <span class="kb-zacht">versie @jp.Version</span></h2>
+        <h2>@jp.Name <span class="kb-zacht">@T.Format("job-profile-editor.version-0", jp.Version)</span></h2>
         <div class="kb-raster">
             <label>@T["variables-editor.name"] <input class="kb-invoer" value="@jp.Name" @onchange="e => Change(() => jp.Name = Text(e.Value) ?? jp.Name)" aria-label="@T["variables-editor.name"]" /></label>
             <label>@T["edit-user.description"] <input class="kb-invoer" value="@jp.Description" @onchange="e => Change(() => jp.Description = Text(e.Value) ?? string.Empty)" aria-label="@T["edit-user.description"]" /></label>
@@ -106,7 +106,7 @@
 
         @if (State.HasMicrosoft365)
         {
-            <h3>Gedeelde postvakken (@jp.Mailboxes.Count)</h3>
+            <h3>@T.Format("job-profile-editor.shared-mailboxes-0", jp.Mailboxes.Count)</h3>
             <ul class="kb-lijst">
                 @foreach (var smtp in jp.Mailboxes.ToList())
                 {

@@ -21,7 +21,7 @@ else
                 <option value="" selected="@(profile is null)">@T["script-form.choose"]</option>
                 @foreach (var p in State.Config.JobProfiles.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
                 {
-                    <option value="@p.Id" selected="@(p.Id == profile?.Id)">@p.Name (versie @p.Version)</option>
+                    <option value="@p.Id" selected="@(p.Id == profile?.Id)">@T.Format("job-profiles.0-version-1", p.Name, p.Version)</option>
                 }
             </select>
         </label>
@@ -30,7 +30,7 @@ else
     @if (profile is not null)
     {
         <section class="kb-kaart">
-            <h2>Wie heeft @profile.Name (@holders.Count)</h2>
+            <h2>@T.Format("job-profiles.who-has-0-1", profile.Name, holders.Count)</h2>
             @if (holders.Count == 0)
             {
                 <p class="kb-zacht">@T.Format("job-profiles.nobody-yet-nobody-received-this", string.IsNullOrWhiteSpace(profile.JobTitle) ? null : T.Format("code.job-profiles.and-nobody-has-the-job", profile.JobTitle))</p>
@@ -62,7 +62,7 @@ else
         @if (person is not null)
         {
             <section class="kb-kaart">
-                <h2>@person.Name tegenover @profile.Name</h2>
+                <h2>@T.Format("job-profiles.0-versus-1", person.Name, profile.Name)</h2>
                 <div class="kb-tegels">
                     @foreach (var g in comparison.GroupBy(i => i.StatusText))
                     {

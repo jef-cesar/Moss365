@@ -75,7 +75,7 @@
                 </div>
                 <p class="kb-zacht">@T["encryption-panel.the-app-makes-an-encrypted"]</p>
                 <div class="kb-rij">
-                    <button class="kb-knop kb-gevaar" disabled="@(!RecoveryConfirmed || busy)" @onclick="Encrypt">Versleutelen in @State.Tenant.Name</button>
+                    <button class="kb-knop kb-gevaar" disabled="@(!RecoveryConfirmed || busy)" @onclick="Encrypt">@T.Format("encryption-panel.encrypt-in-0", State.Tenant.Name)</button>
                     <button class="kb-knop" @onclick="Reset">@T["action.cancel"]</button>
                 </div>
                 break;

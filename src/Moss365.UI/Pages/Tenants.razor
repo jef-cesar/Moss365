@@ -65,7 +65,7 @@ else
                         }
                     </td>
                     <td><code>@(t.TenantId ?? T["code.tenants.not-known-yet"])</code></td>
-                    <td class="kb-zacht"><code>tenants\@t.Id</code></td>
+                    <td class="kb-zacht"><code>@T.Format("tenants.tenants-0", t.Id)</code></td>
                     <td>
                         <span class="kb-filters">
                             @if (editing == t.Id)

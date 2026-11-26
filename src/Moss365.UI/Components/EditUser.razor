@@ -27,7 +27,7 @@
                         <option value="@d">@d</option>
                     }
                 </select>
-                @if (State.Config.DivisionFor(desired.Department) is { } a) { <span class="kb-zacht">afdeling @a.Name</span> }
+                @if (State.Config.DivisionFor(desired.Department) is { } a) { <span class="kb-zacht">@T.Format("edit-user.division-0", a.Name)</span> }
             </label>
             <label>
                 @T["bulk-tasks.office"]

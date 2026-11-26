@@ -99,12 +99,12 @@ else
         }
         else
         {
-            <p><strong>@tooOld</strong> regels ouder dan @Limit.ToString("dd/MM/yyyy").</p>
+            <p><strong>@tooOld</strong> @T.Format("change-log.lines-older-than-0", Limit.ToString("dd/MM/yyyy"))</p>
             <div class="kb-filters">
                 <button class="kb-knop" @onclick="Archive">@T["change-log.archive-to-csv"]</button>
                 @if (archive is not null)
                 {
-                    <span class="kb-ok">@archive.Value.Count regels in <code>@archive.Value.FilePath</code></span>
+                    <span class="kb-ok">@T.Format("change-log.0-lines-in", archive.Value.Count) <code>@archive.Value.FilePath</code></span>
                     @if (!removeConfirm)
                     {
                         <button class="kb-knop kb-gevaar" @onclick="() => removeConfirm = true">@T["change-log.remove-from-the-database"]</button>

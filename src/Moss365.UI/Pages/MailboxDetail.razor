@@ -13,7 +13,7 @@ else
     <p class="kb-zacht">
         @mailbox.TypeText &middot; @mailbox.Smtp
         @if (mailbox.Hidden) { <span class="kb-label">@T["room-detail.hidden-in-the-address-list"]</span> }
-        @if (mailbox.Forwarding.Length > 0) { <span class="kb-label">doorsturen: @mailbox.Forwarding</span> }
+        @if (mailbox.Forwarding.Length > 0) { <span class="kb-label">@T.Format("mailbox-detail.forwarding-0", mailbox.Forwarding)</span> }
     </p>
 
     <section class="kb-kaart">
@@ -68,7 +68,7 @@ else
             }
             else
             {
-                <p>@T["mirror.via"] <ObjectLink Object="groupValue.Ref" /> (@groupMembers.Count leden)</p>
+                <p>@T["mirror.via"] <ObjectLink Object="groupValue.Ref" /> @T.Format("mailbox-detail.0-members", groupMembers.Count)</p>
                 <ul class="kb-lijst-plat">
                     @foreach (var l in groupMembers)
                     {
@@ -93,7 +93,7 @@ else
     </div>
 
     <section class="kb-kaart">
-        <h2>Rechten (@permissions.Count)</h2>
+        <h2>@T.Format("mailbox-detail.permissions-0", permissions.Count)</h2>
         @if (permissions.Count == 0)
         {
             <p class="kb-zacht">@T["mailbox-detail.no-explicit-permissions-known"]</p>

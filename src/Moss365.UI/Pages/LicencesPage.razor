@@ -48,7 +48,7 @@ else
     </div>
 
     <section class="kb-kaart">
-        <h2>Licenties die niets opleveren (@Wasted.Count)</h2>
+        <h2>@T.Format("licences.licences-that-bring-nothing-0", Wasted.Count)</h2>
         <p>@Html("licences.savings", Money(LicenceAnalysis.Savings(Wasted, State.Config)), chosen.Count > 0 ? T.Format("licences.chosen", Money(LicenceAnalysis.Savings(Chosen, State.Config))) : string.Empty)</p>
         <div class="kb-filters">
             @foreach (var (kind, text) in Kinds)
@@ -74,7 +74,7 @@ else
         </table>
         @if (State.Can(Permission.Manage) && !State.IsHistoric)
         {
-            <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0)" @onclick="MakePlan">Licenties weghalen (@chosen.Count)</button>
+            <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0)" @onclick="MakePlan">@T.Format("licences.remove-licences-0", chosen.Count)</button>
         }
     </section>
 

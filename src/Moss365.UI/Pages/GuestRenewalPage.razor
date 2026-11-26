@@ -11,7 +11,7 @@
 </p>
 
 <section class="kb-kaart">
-    <h2>Te bevestigen (@Due.Count)</h2>
+    <h2>@T.Format("guest-renewal.to-confirm-0", Due.Count)</h2>
     <label>@T["guest-renewal.months"] <input class="kb-invoer kb-smal" type="number" min="1" max="36" @bind="months" aria-label="@T["guest-renewal.months"]" /></label>
     <table class="kb-tabel">
         <thead><tr><th></th><th>@T["guest-renewal.guest"]</th><th>@T["guest-renewal.sponsor-e-mail-address"]</th><th>@T["nested-groups.why"]</th><th></th></tr></thead>
@@ -31,11 +31,11 @@
     </table>
     @if (CanEdit)
     {
-        <button class="kb-knop" disabled="@(chosen.Count == 0 || !State.Can(Permission.Helpdesk))" @onclick="Ask">Sponsors mailen (@chosen.Count)</button>
+        <button class="kb-knop" disabled="@(chosen.Count == 0 || !State.Can(Permission.Helpdesk))" @onclick="Ask">@T.Format("guest-renewal.mail-sponsors-0", chosen.Count)</button>
     }
     @if (State.Can(Permission.Manage) && !State.IsHistoric)
     {
-        <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="Disable">Gasten uitschakelen (@chosen.Count)</button>
+        <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="Disable">@T.Format("guest-renewal.disable-guests-0", chosen.Count)</button>
     }
 </section>
 

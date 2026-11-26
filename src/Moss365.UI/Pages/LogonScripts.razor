@@ -22,7 +22,7 @@
 @if (selected is null)
 {
     <section class="kb-kaart">
-        <h2>Scripts (@files.Count)</h2>
+        <h2>@T.Format("logon-scripts.scripts-0", files.Count)</h2>
         <table class="kb-tabel">
             <thead><tr><th>@T["code-editor.script"]</th><th class="kb-getal">@T["menu.gebruikers"]</th><th>@T["edit-script.what-it-does"]</th><th>@T["logon-scripts.changed"]</th><th></th></tr></thead>
             <tbody>
@@ -68,7 +68,7 @@
     </section>
 
     <section class="kb-kaart">
-        <h2>Via groepsbeleid (@gpo.Count)</h2>
+        <h2>@T.Format("logon-scripts.through-group-policy-0", gpo.Count)</h2>
         <p class="kb-zacht">@T["logon-scripts.scripts-that-a-group-policy"]</p>
         @if (gpo.Count > 0)
         {
@@ -140,7 +140,7 @@ else
     @if (Versions.Count > 0)
     {
         <section class="kb-kaart">
-            <h2>Versies in deze app (@Versions.Count)</h2>
+            <h2>@T.Format("logon-scripts.versions-in-this-app-0", Versions.Count)</h2>
             <table class="kb-tabel">
                 <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["logon-scripts.by"]</th><th></th></tr></thead>
                 <tbody>

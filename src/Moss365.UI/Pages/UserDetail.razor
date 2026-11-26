@@ -97,7 +97,7 @@ else
         @if (State.HasMicrosoft365)
         {
         <section class="kb-kaart">
-            <h2>Cloudgroepen (@cloudGroups.Count)</h2>
+            <h2>@T.Format("user-detail.cloud-groups-0", cloudGroups.Count)</h2>
             @if (person.Entra is null)
             {
                 <p class="kb-zacht">@T["user-detail.no-entra-account"]</p>
@@ -125,7 +125,7 @@ else
     {
     <div class="kb-kolommen">
         <section class="kb-kaart">
-            <h2>Alleen in Exchange (@exoGroups.Count)</h2>
+            <h2>@T.Format("user-detail.only-in-exchange-0", exoGroups.Count)</h2>
             @if (exoGroups.Count == 0) { <p class="kb-zacht">@T["user-detail.no-groups-that-exist-only"]</p> }
             <ul class="kb-lijst-plat">
                 @foreach (var g in exoGroups)

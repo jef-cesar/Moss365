@@ -37,8 +37,8 @@ else
             <table class="kb-tabel kb-naast">
                 <tbody>
                     <tr><th>@T["room-form.processing"]</th><td>@room.AutomateProcessing</td></tr>
-                    <tr><th>@T["room-detail.booking-window"]</th><td>@room.BookingWindowInDays dagen</td></tr>
-                    <tr><th>@T["room-detail.maximum-duration"]</th><td>@room.MaximumDurationInMinutes minuten</td></tr>
+                    <tr><th>@T["room-detail.booking-window"]</th><td>@T.Format("room-detail.0-days", room.BookingWindowInDays)</td></tr>
+                    <tr><th>@T["room-detail.maximum-duration"]</th><td>@T.Format("room-detail.0-minutes", room.MaximumDurationInMinutes)</td></tr>
                     <tr><th>@T["room-form.allow-conflicts"]</th><td>@YesNoText(room.AllowConflicts)</td></tr>
                     <tr><th>@T["room-detail.recurring"]</th><td>@YesNoText(room.AllowRecurringMeetings)</td></tr>
                     <tr><th>@T["room-form.organiser-in-subject"]</th><td>@YesNoText(room.AddOrganizerToSubject)</td></tr>

@@ -31,7 +31,7 @@
             }
         </ol>
         <details open="@ShowLog">
-            <summary>Tekstlog (@task.Log.Count regels)</summary>
+            <summary>@T.Format("task-progress.text-log-0-lines", task.Log.Count)</summary>
             <ul class="kb-log">
                 @foreach (var rule in task.Log.TakeLast(300))
                 {

@@ -64,7 +64,7 @@
 {
     <div class="kb-melding kb-fout">
         @T["edit-script.syntax-errors"]
-        <ul>@foreach (var f in syntaxErrors) { <li>regel @f.Rule: @f.Text</li> }</ul>
+        <ul>@foreach (var f in syntaxErrors) { <li>@T.Format("edit-script.line-0-1", f.Rule, f.Text)</li> }</ul>
     </div>
 }
 

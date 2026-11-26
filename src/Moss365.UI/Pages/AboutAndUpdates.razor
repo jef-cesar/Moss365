@@ -10,7 +10,7 @@
     <p>@T["update-panel.version"] <strong>@ManagementState.AppVersion</strong>.
         @if (State.UpdateAvailable)
         {
-            <span class="kb-label kb-label-let">versie @State.Update!.NewestVersion beschikbaar</span>
+            <span class="kb-label kb-label-let">@T.Format("about-and-updates.version-0-available", State.Update!.NewestVersion)</span>
         }
         else if (State.Update is { NewestVersion: not null })
         {

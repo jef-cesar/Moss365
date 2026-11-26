@@ -4,7 +4,7 @@
 @inject IJSRuntime JS
 
 <div class="kb-objectstatus @(State.IsChanged(Object) ? "kb-objectstatus-gewijzigd" : null)">
-    <span>Gegevens: @State.OriginOf(Object)</span>
+    <span>@T.Format("object-status.data-0", State.OriginOf(Object))</span>
     @if (State.IsChanged(Object))
     {
         <span class="kb-label kb-label-let">@T["object-status.changed-not-yet-refreshed"]</span>

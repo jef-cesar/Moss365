@@ -75,7 +75,7 @@ else
     </div>
 
     <section class="kb-kaart">
-        <h2>Leden (@members.Count)</h2>
+        <h2>@T.Format("group-detail.members-0", members.Count)</h2>
         @if (groupValue.Dynamic)
         {
             <div class="kb-melding">@T["group-detail.dynamic-group-the-members-follow"]</div>

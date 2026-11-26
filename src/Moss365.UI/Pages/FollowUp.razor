@@ -23,7 +23,7 @@
         <h2>@t.Description</h2>
         <p class="kb-zacht">
             <ObjectLink Id="@t.Upn" Text="@t.Upn" /> &middot; aangemaakt @t.Created.ToString("yyyy-MM-dd HH:mm")
-            @if (t.LastChecked is { } c) { <text> &middot; gecontroleerd @c.ToString("yyyy-MM-dd HH:mm")</text> }
+            @if (t.LastChecked is { } c) { <text> @T.Format("follow-up.checked-0", c.ToString("yyyy-MM-dd HH:mm"))</text> }
         </p>
         @if (t.LastMessage is not null)
         {

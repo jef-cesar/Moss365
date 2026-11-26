@@ -188,7 +188,7 @@
                 <label>@T["manage-ca.backup"]
                     <select class="kb-invoer" value="@backupPath" @onchange="ChooseBackup">
                         <option value="">@T["manage-ca.choose-a-backup"]</option>
-                        @foreach (var b in backups) { <option value="@b.FilePath">@b.Time.ToString("dd/MM/yyyy HH:mm") (@b.Policies beleiden)</option> }
+                        @foreach (var b in backups) { <option value="@b.FilePath">@T.Format("manage-ca.0-1-policies", b.Time.ToString("dd/MM/yyyy HH:mm"), b.Policies)</option> }
                     </select>
                 </label>
             }

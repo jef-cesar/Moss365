@@ -47,8 +47,7 @@
             @if (JobProfiles.Find(State.Config, request.JobProfile) is { } chosen)
             {
                 <span class="kb-zacht">
-                    @chosen.Groups.Count groepen, @chosen.Mailboxes.Count gedeelde postvakken@(chosen.Licences.Count > 0 ? ", licentie " + string.Join(", ", chosen.Licences) : null)
-                    komen mee (versie @chosen.Version).
+                    @T.Format("new-user.profile.comes", chosen.Groups.Count, chosen.Mailboxes.Count, chosen.Licences.Count > 0 ? T.Format("new-user.profile.licence", string.Join(", ", chosen.Licences)) : string.Empty, chosen.Version)
                 </span>
             }
         </div>

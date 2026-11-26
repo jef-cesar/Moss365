@@ -95,7 +95,7 @@
         }
         else
         {
-            <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0 || busy)" @onclick="() => confirm = true">Opruimen (@chosen.Count)</button>
+            <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0 || busy)" @onclick="() => confirm = true">@T.Format("database-maintenance.clean-up-0", chosen.Count)</button>
         }
         @if (results is not null)
         {

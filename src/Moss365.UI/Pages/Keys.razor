@@ -23,7 +23,7 @@
 @if (devices is not null)
 {
     <section class="kb-kaart">
-        <h2>Toestellen in Entra (@devices.Count)</h2>
+        <h2>@T.Format("keys.devices-in-entra-0", devices.Count)</h2>
         @if (devices.Count == 0) { <p class="kb-zacht">@T.Format("keys.no-device-found-in-entra", State.HasAd ? T["code.keys.the-buttons-below-also-search"] : null)</p> }
         <table class="kb-tabel">
             <thead><tr><th>@T["keys.device"]</th><th>@T["plan.system"]</th><th>@T["nested-groups.kind"]</th><th>@T["keys.last-seen"]</th><th></th></tr></thead>
@@ -43,8 +43,8 @@
         @if (State.HasAd && devices.All(d => !string.Equals(d.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
         {
             <div class="kb-filters">
-                <button class="kb-knop kb-klein" @onclick="() => ShowBitLocker(null, name.Trim())">BitLocker in AD (@name.Trim())</button>
-                <button class="kb-knop kb-klein" @onclick="() => ShowLaps(null, name.Trim())">LAPS in AD (@name.Trim())</button>
+                <button class="kb-knop kb-klein" @onclick="() => ShowBitLocker(null, name.Trim())">@T.Format("keys.bitlocker-in-ad-0", name.Trim())</button>
+                <button class="kb-knop kb-klein" @onclick="() => ShowLaps(null, name.Trim())">@T.Format("keys.laps-in-ad-0", name.Trim())</button>
             </div>
         }
     </section>
@@ -53,7 +53,7 @@
 @if (keys is not null)
 {
     <section class="kb-kaart kb-geheim">
-        <h2>BitLocker-herstelsleutels @shownFor</h2>
+        <h2>@T.Format("keys.bitlocker-recovery-keys-0", shownFor)</h2>
         @if (keys.Count == 0) { <p>@T["keys.no-key-found"]</p> }
         @foreach (var k in keys)
         {
@@ -69,7 +69,7 @@
 @if (laps is not null || lapsNone)
 {
     <section class="kb-kaart kb-geheim">
-        <h2>LAPS @shownFor</h2>
+        <h2>@T.Format("keys.laps-0", shownFor)</h2>
         @if (laps is { } l)
         {
             <p class="kb-zacht">Account @l.Account &middot; @l.Source @(l.Backup is { } b ? "· bewaard " + b.LocalDateTime.ToString("dd/MM/yyyy HH:mm") : null)</p>

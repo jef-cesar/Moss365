@@ -48,7 +48,7 @@ else
     </section>
 
     <section class="kb-kaart">
-        <h2>Geschiedenis (@runs.Count)</h2>
+        <h2>@T.Format("start-script.history-0", runs.Count)</h2>
         @if (runs.Count == 0)
         {
             <p class="kb-zacht">@T.Format("start-script.this-script-has-not-run", ScriptRuns.SaveDays)</p>

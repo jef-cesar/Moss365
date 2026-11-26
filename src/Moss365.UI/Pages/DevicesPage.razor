@@ -64,7 +64,7 @@
         </table>
         @if (State.Can(Permission.Manage) && !State.IsHistoric)
         {
-            <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="MakePlan">Computers uitschakelen (@chosen.Count)</button>
+            <button class="kb-knop" disabled="@(chosen.Count == 0)" @onclick="MakePlan">@T.Format("devices.disable-computers-0", chosen.Count)</button>
         }
     </section>
 }
@@ -72,7 +72,7 @@
 @if (State.IntuneDevices is { } devices)
 {
     <section class="kb-kaart">
-        <h2>Toestellen in Intune (@devices.Count)</h2>
+        <h2>@T.Format("devices.devices-in-intune-0", devices.Count)</h2>
         <div class="kb-kolommen">
             <div>
                 <h3>@T.Format("devices.not-compliant-0", DeviceAnalysis.NotCompliant(devices).Count)</h3>

@@ -22,7 +22,7 @@ else
     </div>
     <p class="kb-zacht">
         <CaLabel Status="b.Status" />
-        @if (b.Created is { } a) { <span>aangemaakt @a.LocalDateTime.ToString("dd/MM/yyyy")</span> }
+        @if (b.Created is { } a) { <span>@T.Format("ca-policy-detail.created-0", a.LocalDateTime.ToString("dd/MM/yyyy"))</span> }
         @if (b.Changed is { } g) { <span>@T.Format("ca-policy-detail.changed", g.LocalDateTime.ToString("dd/MM/yyyy"))</span> }
         @if (b.Status == CaStatus.Report) { <span>@T["ca-policy-detail.reportonly"]</span> }
     </p>
@@ -64,7 +64,7 @@ else
     }
 
     <section class="kb-kaart">
-        <h2>Wie valt eronder (@Under.Count)</h2>
+        <h2>@T.Format("ca-policy-detail.who-comes-under-it-0", Under.Count)</h2>
         <p class="kb-zacht">
             @T["ca-policy-detail.people-with-an-entra-account"]
         </p>

@@ -5,7 +5,7 @@
 @if (run is null)
 {
     <h1>@T["script-run-detail.run-not-found"]</h1>
-    <p class="kb-zacht">Runs worden @ScriptRuns.SaveDays dagen bewaard. <a href="scripts">@T["script-run-detail.back-to-the-scripts"]</a></p>
+    <p class="kb-zacht">@T.Format("script-run-detail.runs-are-kept-0-days", ScriptRuns.SaveDays) <a href="scripts">@T["script-run-detail.back-to-the-scripts"]</a></p>
 }
 else
 {

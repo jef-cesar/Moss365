@@ -4,8 +4,8 @@
 <div class="kb-filters">
     <span class="kb-segment" role="group" aria-label="@T["plan.result"]">
         <button class="kb-knop @(part == 0 ? "kb-primair" : null)" @onclick="() => part = 0">@T["script-result.output"]</button>
-        <button class="kb-knop @(part == 1 ? "kb-primair" : null)" @onclick="() => part = 1">Tabellen (@tables.Count)</button>
-        <button class="kb-knop @(part == 2 ? "kb-primair" : null)" @onclick="() => part = 2">Bestanden (@files.Count)</button>
+        <button class="kb-knop @(part == 1 ? "kb-primair" : null)" @onclick="() => part = 1">@T.Format("script-result.tables-0", tables.Count)</button>
+        <button class="kb-knop @(part == 2 ? "kb-primair" : null)" @onclick="() => part = 2">@T.Format("script-result.files-0", files.Count)</button>
         <button class="kb-knop @(part == 3 ? "kb-primair" : null)" @onclick="() => part = 3">@T["script-result.details"]</button>
     </span>
 </div>

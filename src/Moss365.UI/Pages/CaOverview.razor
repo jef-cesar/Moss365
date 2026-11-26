@@ -53,7 +53,7 @@ else
 
         case Part.Policies:
             <section class="kb-kaart">
-                <h2>Beleiden (@ca.Policies.Count)</h2>
+                <h2>@T.Format("ca-overview.policies-0", ca.Policies.Count)</h2>
                 <div class="kb-filters">
                     <button class="kb-knop" disabled="@effectBusy" @onclick="LoadEffect">@T["ca-policy-detail.load-effect-sign-ins-of"]</button>
                     @if (effectBusy) { <span class="kb-zacht">@T["message-trace-card.busy"]</span> }
@@ -130,7 +130,7 @@ else
 
         default:
             <section class="kb-kaart">
-                <h2>Benoemde locaties (@ca.Locations.Count)</h2>
+                <h2>@T.Format("ca-overview.named-locations-0", ca.Locations.Count)</h2>
                 @if (ca.Locations.Count == 0)
                 {
                     <p class="kb-zacht">@T["ca-overview.no-named-locations-with-the"]</p>
@@ -155,7 +155,7 @@ else
                 }
             </section>
             <section class="kb-kaart">
-                <h2>Authenticatiesterktes (@ca.Strengths.Count)</h2>
+                <h2>@T.Format("ca-overview.authentication-strengths-0", ca.Strengths.Count)</h2>
                 <table class="kb-tabel">
                     <thead><tr><th>@T["variables-editor.name"]</th><th>@T["nested-groups.kind"]</th><th>@T["ca-overview.allowed-methods"]</th><th>@T["ca-overview.used-in"]</th></tr></thead>
                     <tbody>

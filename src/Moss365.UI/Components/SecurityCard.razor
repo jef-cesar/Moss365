@@ -24,12 +24,12 @@
                     {
                         <span class="kb-label kb-label-goed">@T["security-card.registered"]</span>
                         <span>@string.Join(", ", m.Methods.Select(SecurityStatistics.MethodName))</span>
-                        @if (m.DefaultMethod.Length > 0) { <span class="kb-zacht">(standaard: @SecurityStatistics.MethodName(m.DefaultMethod))</span> }
+                        @if (m.DefaultMethod.Length > 0) { <span class="kb-zacht">@T.Format("security-card.default-0", SecurityStatistics.MethodName(m.DefaultMethod))</span> }
                     }
                     else
                     {
                         <span class="kb-label kb-rood">@T["security-card.no-mfa"]</span>
-                        @if (m.Methods.Count > 0) { <span class="kb-zacht">enkel: @string.Join(", ", m.Methods.Select(SecurityStatistics.MethodName))</span> }
+                        @if (m.Methods.Count > 0) { <span class="kb-zacht">@T.Format("security-card.only-0", string.Join(", ", m.Methods.Select(SecurityStatistics.MethodName)))</span> }
                     }
                 </td>
             </tr>

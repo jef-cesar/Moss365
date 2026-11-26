@@ -29,7 +29,7 @@ else
     </div>
 
     <section class="kb-kaart">
-        <h2>Actieve medewerkers zonder MFA (@WithoutMfa.Count)</h2>
+        <h2>@T.Format("security.active-employees-without-mfa-0", WithoutMfa.Count)</h2>
         @if (!b.MfaKnown)
         {
             <p class="kb-zacht">@T["security.unknown-the-mfa-registrations-could"]</p>
@@ -41,7 +41,7 @@ else
     </section>
 
     <section class="kb-kaart">
-        <h2>Entra-beheerrollen (@b.Roles.Count)</h2>
+        <h2>@T.Format("security.entra-admin-roles-0", b.Roles.Count)</h2>
         <p class="kb-zacht">@T["security.active-role-assignments-who-is"]</p>
         <KbTable Id="beheerrollen" ExportName="Beheerrollen" Items="b.Roles" Columns="roleColumns" DefaultSorting="rol" />
     </section>

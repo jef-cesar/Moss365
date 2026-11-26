@@ -16,7 +16,7 @@
         <select class="kb-invoer" @bind="days" aria-label="@T["security-checks.alerts"]"><option value="1">@T["security-checks.day"]</option><option value="7">@T["days.7"]</option><option value="30">@T["days.30"]</option></select>
     </label>
     @if (State.HasMicrosoft365) { <label><input type="checkbox" @bind="rules" /> @T["security-checks.also-check-inbox-rules-slow"]</label> }
-    @if (busy) { <span class="kb-zacht">bezig: @running</span> }
+    @if (busy) { <span class="kb-zacht">@T.Format("security-checks.busy-0", running)</span> }
 </div>
 
 <table class="kb-tabel">

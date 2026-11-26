@@ -180,7 +180,7 @@
     @if (State.HasMicrosoft365)
     {
     <section class="kb-kaart">
-        <h2>Gedeelde postvakken (@s.SharedMailboxes)</h2>
+        <h2>@T.Format("job-profile-editor.shared-mailboxes-0", s.SharedMailboxes)</h2>
         <BarList Bars="s.PermissionModel" />
         <div class="kb-tegels">
             <Tile Kpi="Kpis.WithDirectPermissions" />

@@ -53,7 +53,7 @@
         <p>@T["collaboration.sharing"] <strong>@sharing.Text</strong>
             @if (sharing.Attention) { <span class="kb-label kb-fout">@T["collaboration.attention-2"]</span> }</p>
         <p>@Html("collaboration.storage", DeviceAnalysis.Size(reading.Sites.Sum(s => s.StorageBytes)), reading.Sites.Count)</p>
-        <h3>Sites zonder activiteit in 90 dagen (@DeviceAnalysis.UnusedSites(reading, DateTimeOffset.Now).Count)</h3>
+        <h3>@T.Format("collaboration.sites-without-activity-in-90", DeviceAnalysis.UnusedSites(reading, DateTimeOffset.Now).Count)</h3>
         @SiteTable(DeviceAnalysis.UnusedSites(reading, DateTimeOffset.Now))
         <h3>@T["collaboration.largest-sites"]</h3>
         @SiteTable(reading.Sites.OrderByDescending(s => s.StorageBytes).Take(20).ToList())

@@ -65,7 +65,7 @@
             {
                 <div class="kb-melding">
                     <p>
-                        <strong>Versie @found.Version</strong> @(found.Downgrade ? T["code.update-panel.an-older-version-putting-back"] : "beschikbaar").
+                        <strong>@T.Format("update-panel.version-0", found.Version)</strong> @(found.Downgrade ? T["code.update-panel.an-older-version-putting-back"] : "beschikbaar").
                         @if (found.Sha256 is { } sha) { <span class="kb-zacht">@Html("update.sha", sha[..Math.Min(16, sha.Length)])</span> }
                     </p>
                     @if (found.Notes.Length > 0) { <pre class="kb-nota">@found.Notes</pre> }
@@ -81,7 +81,7 @@
                     <div class="kb-rij">
                         <button class="kb-knop kb-primair" disabled="@(busy || u.Blockers().Count > 0)" @onclick="Install">@(found.Downgrade ? "Nu terugzetten" : "Nu bijwerken")</button>
                         <button class="kb-knop" disabled="@busy" @onclick="Later">@T["update-panel.later"]</button>
-                        @if (progress is { } p) { <span class="kb-zacht">Downloaden… @p%</span> }
+                        @if (progress is { } p) { <span class="kb-zacht">@T.Format("update-panel.downloading-0", p)</span> }
                     </div>
                 </div>
             }

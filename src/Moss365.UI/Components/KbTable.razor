@@ -39,7 +39,7 @@
         }
         else
         {
-            <span>Exporteren mislukt: @export.Error</span>
+            <span>@Tx.Format("kb-table.export-failed-0", export.Error)</span>
         }
         <button class="kb-knop kb-klein" @onclick="() => export = null" aria-label="@Tx["kb-table.close-message"]">&times;</button>
     </div>

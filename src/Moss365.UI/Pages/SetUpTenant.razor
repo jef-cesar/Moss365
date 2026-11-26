@@ -106,7 +106,7 @@
         @if (d.Controller is not null && !string.Equals(State.Settings.AdServer.Trim(), d.Controller, StringComparison.OrdinalIgnoreCase))
         {
             <button class="kb-knop kb-primair" @onclick="() => State.TakeOverLocalDomain(d)">@T["set-up-tenant.take-over"]</button>
-            @if (State.Settings.AdServer.Length > 0) { <span class="kb-zacht">Nu ingevuld: @State.Settings.AdServer</span> }
+            @if (State.Settings.AdServer.Length > 0) { <span class="kb-zacht">@T.Format("set-up-tenant.filled-in-now-0", State.Settings.AdServer)</span> }
         }
         else if (State.Settings.AdFilled)
         {
@@ -136,7 +136,7 @@
     }
     else if (State.Settings.ManagementUpn.Length > 0)
     {
-        <p>Beheeraccount: @State.Settings.ManagementUpn</p>
+        <p>@T.Format("set-up-tenant.admin-account-0", State.Settings.ManagementUpn)</p>
     }
 </section>
 

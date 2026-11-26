@@ -22,7 +22,7 @@ else
     @if (State.Can(Permission.Manage))
     {
     <section class="kb-kaart">
-        <h2>Wijzigen (@selected.Count geselecteerd)</h2>
+        <h2>@T.Format("rooms.change-0-selected", selected.Count)</h2>
         <p class="kb-zacht">@T["rooms.leave-empty-do-not-change"]</p>
         <div class="kb-filters">
             <button class="kb-knop" @onclick="DefaultFill">@T["rooms.fill-in-the-standard"]</button>

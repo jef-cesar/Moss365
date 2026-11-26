@@ -30,7 +30,7 @@ else
             }
             else
             {
-                <button class="kb-knop" disabled="@busy" @onclick="() => confirmAll = true">Alles installeren wat ontbreekt (@Installable.Count)</button>
+                <button class="kb-knop" disabled="@busy" @onclick="() => confirmAll = true">@T.Format("this-computer.install-everything-that-is-missing", Installable.Count)</button>
             }
         }
     </div>

@@ -99,7 +99,7 @@
 <div class="kb-filters">
     <button class="kb-knop" @onclick="Save">@T["connections.save-settings"]</button>
     <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Everything)">@T["set-up-tenant.load-everything-live"]</button>
-    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">Live laden (@(State.HasAd && State.HasMicrosoft365 ? T["code.connections.ad-and-entra"] : State.HasAd ? "AD" : "Entra"))</button>
+    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">@T.Format("connections.load-live-0", State.HasAd && State.HasMicrosoft365 ? T["code.connections.ad-and-entra"] : State.HasAd ? "AD" : "Entra")</button>
     @if (State.HasMicrosoft365)
     {
         <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Rooms)">@T["connections.load-rooms-from-exchange"]</button>
