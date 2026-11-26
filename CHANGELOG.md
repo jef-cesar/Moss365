@@ -22,6 +22,10 @@ The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
   person (with undo). **Offboarding** now takes the devices of the person along: a personal device is retired in the
   same plan, and a company device gets a note to have it returned (it is wiped on *Toestellen* once it is back, never in
   the offboarding plan).
+- **Devices in the snapshots** (R17): every read on *Toestellen* keeps the computers in AD and the devices in Entra and
+  Intune as a snapshot, like the users (only what changed is stored; of "last seen" only whether it was within 90
+  days). On a date in the past, *Toestellen* shows the devices of then, and the overview keeps the device counts per day
+  for their trend.
 
 ## 0.39.0
 

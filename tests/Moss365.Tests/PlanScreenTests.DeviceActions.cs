@@ -234,4 +234,39 @@ public sealed partial class PlanScreenTests
         var cas = State.Data.Persons.First(p => p.Entra?.UserPrincipalName == "cas.vos@test.be");
         Assert.Contains("Geen toestellen in Intune", RenderComponent<UserDevicesCard>(p => p.Add(c => c.Person, cas)).Markup, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void DevicesAreKeptInTheSnapshotsAndShownOnADate()
+    {
+        var now = DateTimeOffset.Now;
+        var tables = DeviceSnapshot.Tables(
+            new[] { new AdComputer("PC-1", "CN=PC-1,OU=Werkposten,DC=test,DC=internal", "Windows 11 Pro", "10.0 (26100)", now.AddDays(-200), true, now.AddYears(-2)) },
+            new[] { new EntraDevice("o1", "dev-1", "PC-1", "Windows", "10.0.26100", true, now.AddDays(-1), "ServerAd") },
+            new[] { Laptop() with { Encrypted = true, Serial = "SN-1" } }, now);
+        Assert.Equal("True", tables[DeviceSnapshot.AdTable][0]["Stale"]);
+        Assert.Equal("False", tables[DeviceSnapshot.EntraTable][0]["Stale"]);
+        Assert.DoesNotContain(tables.Values.SelectMany(t => t).SelectMany(r => r.Values), v => v.Contains(now.ToString("HH:mm:ss"), StringComparison.Ordinal)); // no moment of last seen
+        var (ad, entra, intune) = DeviceSnapshot.Read(tables, now);
+        Assert.Null(Assert.Single(ad!).LastLogon); // not seen for 90 days
+        Assert.Equal(now, Assert.Single(entra!).LastSignIn);
+        Assert.Equal((true, "SN-1", "company"), (Assert.Single(intune!).Encrypted, intune![0].Serial, intune[0].Ownership));
+
+        // Reading on Toestellen makes a snapshot; reading again without changes stores nothing new
+        EntraFilled();
+        State.ReadDevicesAsync().GetAwaiter().GetResult();
+        var first = State.Database.SnapshotList().Last();
+        Assert.Contains(DeviceSnapshot.IntuneTable, first.Tables);
+        State.ReadDevicesAsync().GetAwaiter().GetResult();
+        var second = State.Database.SnapshotList().Last();
+        Assert.NotEqual(first.Id, second.Id);
+        Assert.DoesNotContain(State.Database.Differences(first.Id, second.Id), d => d.Table.StartsWith("toestellen-", StringComparison.Ordinal));
+        Assert.Contains("overzicht:devices-noncompliant", State.Database.ReadKpiSnapshot(DateOnly.FromDateTime(DateTime.Today)).Keys);
+
+        // On the date of the first read the devices come from the snapshot, read only
+        Assert.Null(State.ShowAsOf(first.Time));
+        Assert.Contains(State.IntuneDevices!, d => d.Name == "GSM-BO");
+        Assert.Contains(State.DeviceList, r => r.Name == "LAPTOP-1");
+        var page = RenderComponent<DevicesPage>();
+        Assert.True(page.FindAll("button").First(b => b.TextContent == "Toestellen lezen").HasAttribute("disabled"));
+    }
 }

@@ -93,7 +93,10 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   Intune devices are `IntuneDeviceAction` changes from `Devices/DevicePlans.cs` (safe: Helpdesk; rename and retire:
   Manage; wipe and fresh start: Manage, the device name typed, never a personal device); `DeviceSafety` checks every
   plan in the planner and in the engine (never a personal device, one device to wipe per plan), like `CaSafety`, and
-  `GraphConnection` asks Intune again before wiping. Only a rename can be undone.
+  `GraphConnection` asks Intune again before wiping. Only a rename or a new primary user can be undone. Offboarding
+  takes the person's devices along (`LeaverDevices`: retire a personal device, never a wipe). Every read on Toestellen
+  is a snapshot of the device tables (`Devices/DeviceSnapshot.cs`, `toestellen-*.csv`, no moment of last seen); on a
+  date in the past `AdComputers`/`IntuneDevices`/`EntraDevices` come from that snapshot.
   Own data (R18): `Security/LocalLogs.cs` decides which sign-ins are kept (failed, risky, administrators, emergency
   accounts) next to the whole directory audit log; table `LocalLog` (migration 5, `Storage/LocalLogStore.cs`, never a
   line twice) is filled after every read of Entra (`ManagementState.LocalLogs.cs`) while `Retention.KeepLocalLogs` is
