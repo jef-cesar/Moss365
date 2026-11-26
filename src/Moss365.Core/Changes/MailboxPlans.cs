@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Inventory;
 using static Moss365.Core.Changes.GroupPlans;
 
@@ -46,13 +47,13 @@ public static class MailboxPlans
     {
         if (d.Index.AccountOf(mailbox.Smtp, mailbox.Alias) is not { } account)
         {
-            return PlanOutcome.Of(Array.Empty<Change>(), new[] { $"Het account van {mailbox.DisplayName} staat niet in de geladen gegevens (AD of Entra). Laad live." });
+            return PlanOutcome.Of(Array.Empty<Change>(), new[] { Texts.T.Format("code.mailbox-plans.the-account-of-is-not", mailbox.DisplayName) });
         }
 
         var warning = allow
-            ? "Microsoft raadt aan om aanmelden met een gedeeld postvak te blokkeren: niemand hoort zich ermee aan te melden. Gebruik de toegangsgroep (SG-SM-...-Full)."
+            ? Texts.T["code.mailbox-plans.microsoft-recommends-blocking-sign-in"]
             : Analysis.Statistic.LastSignIn(account) is { } last && (DateTime.Now - last).TotalDays <= 90
-                ? $"Met dit account werd aangemeld op {last:dd/MM/yyyy}: gebruikt iemand het nog (bv. een scanner of toestel)?"
+                ? Texts.T.Format("code.mailbox-plans.this-account-signed-in-on", last)
                 : null;
         var change = account.Ad is { } ad
             ? new Change
@@ -61,9 +62,9 @@ public static class MailboxPlans
                 ChangeAction = allow ? ChangeAction.AdEnableAccount : ChangeAction.AdDisableAccount,
                 Target = ad.DistinguishedName,
                 TargetName = mailbox.DisplayName,
-                Description = allow ? "Aanmelden toestaan: AD-account van het postvak inschakelen" : "Aanmelden blokkeren: AD-account van het postvak uitschakelen (het postvak blijft werken)",
-                CurrentValue = ad.Enabled ? "kan aanmelden" : "aanmelden geblokkeerd",
-                NewValue = allow ? "kan aanmelden" : "aanmelden geblokkeerd",
+                Description = allow ? Texts.T["code.mailbox-plans.allow-sign-in-enable-the"] : Texts.T["code.mailbox-plans.block-sign-in-disable-the"],
+                CurrentValue = ad.Enabled ? Texts.T["code.mailbox-plans.can-sign-in"] : Texts.T["code.mailbox-plans.sign-in-blocked"],
+                NewValue = allow ? Texts.T["code.mailbox-plans.can-sign-in"] : Texts.T["code.mailbox-plans.sign-in-blocked"],
                 Warning = warning,
             }
             : account.Entra is { } entra
@@ -75,15 +76,15 @@ public static class MailboxPlans
                     TargetName = mailbox.DisplayName,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["accountEnabled"] = allow ? "true" : "false" },
                     Previous = new(StringComparer.OrdinalIgnoreCase) { ["accountEnabled"] = entra.AccountEnabled ? "true" : "false" },
-                    Description = allow ? "Aanmelden toestaan (Entra)" : "Aanmelden blokkeren in Entra (het postvak blijft werken)",
-                    CurrentValue = entra.AccountEnabled ? "kan aanmelden" : "aanmelden geblokkeerd",
-                    NewValue = allow ? "kan aanmelden" : "aanmelden geblokkeerd",
+                    Description = allow ? Texts.T["code.mailbox-plans.allow-sign-in-entra"] : Texts.T["code.mailbox-plans.block-sign-in-in-entra"],
+                    CurrentValue = entra.AccountEnabled ? Texts.T["code.mailbox-plans.can-sign-in"] : Texts.T["code.mailbox-plans.sign-in-blocked"],
+                    NewValue = allow ? Texts.T["code.mailbox-plans.can-sign-in"] : Texts.T["code.mailbox-plans.sign-in-blocked"],
                     Warning = warning,
                 }
                 : null;
         if (change is null)
         {
-            return PlanOutcome.Of(Array.Empty<Change>(), new[] { "Geen account gevonden." });
+            return PlanOutcome.Of(Array.Empty<Change>(), new[] { Texts.T["code.mailbox-plans.no-account-found"] });
         }
 
         return PlanOutcome.Of(new[] { change }, Array.Empty<string>());
@@ -124,7 +125,7 @@ public static class MailboxPlans
             var to = g.ForwardingTo.Trim();
             if (to.Length > 0 && !to.Contains('@'))
             {
-                errors.Add($"'{to}' is geen e-mailadres.");
+                errors.Add(Texts.T.Format("code.mailbox-plans.is-not-an-e-mail", to));
             }
             else
             {
@@ -144,12 +145,12 @@ public static class MailboxPlans
                 Target = p.Smtp,
                 TargetName = p.DisplayName,
                 Parameters = configure,
-                Description = "Instellingen van het postvak aanpassen",
+                Description = Texts.T["code.mailbox-plans.change-the-mailbox-settings"],
                 Previous = previous,
                 CurrentValue = string.Join(", ", old),
                 NewValue = string.Join(", ", newValue),
                 Warning = configure.TryGetValue("ForwardingSmtpAddress", out var f) && f.Length > 0 && !IsOwnDomain(f, p.Smtp)
-                    ? "Doorsturen naar een ander domein: controleer of dat mag." : null,
+                    ? Texts.T["code.mailbox-plans.forwarding-to-another-domain-check"] : null,
             });
         }
 
@@ -157,7 +158,7 @@ public static class MailboxPlans
         {
             if (snapshot is not ("Enabled" or "Disabled"))
             {
-                errors.Add("Automatisch antwoord kan enkel aan of uit.");
+                errors.Add(Texts.T["code.mailbox-plans.the-automatic-reply-can-only"]);
             }
             else
             {
@@ -168,7 +169,7 @@ public static class MailboxPlans
                     ap["ExternalMessage"] = g.AutoReplyExternal ?? p.AutoReplyExternal;
                     if (ap["InternalMessage"].Trim().Length == 0)
                     {
-                        errors.Add("Vul een tekst in voor het automatisch antwoord.");
+                        errors.Add(Texts.T["code.mailbox-plans.enter-a-text-for-the"]);
                     }
                 }
 
@@ -183,12 +184,12 @@ public static class MailboxPlans
                         Target = p.Smtp,
                         TargetName = p.DisplayName,
                         Parameters = ap,
-                        Description = snapshot == "Enabled" ? "Automatisch antwoord aanzetten" : "Automatisch antwoord uitzetten",
+                        Description = snapshot == "Enabled" ? Texts.T["code.mailbox-plans.turn-on-the-automatic-reply"] : Texts.T["absence-card.turn-off-automatic-reply"],
                         Previous = p.AutoReply.Length == 0 ? null : new(StringComparer.OrdinalIgnoreCase)
                         {
                             ["AutoReplyState"] = p.AutoReply, ["InternalMessage"] = p.AutoReplyInternal, ["ExternalMessage"] = p.AutoReplyExternal,
                         },
-                        CurrentValue = p.AutoReply.Length == 0 ? "(onbekend, niet live geladen)" : p.AutoReply,
+                        CurrentValue = p.AutoReply.Length == 0 ? Texts.T["code.mailbox-plans.unknown-not-loaded-live"] : p.AutoReply,
                         NewValue = snapshot,
                     });
                 }
@@ -208,7 +209,7 @@ public static class MailboxPlans
         var groupValue = index.AccessGroupOf(p);
         if (groupValue is null)
         {
-            return PlanOutcome.Error($"Er is nog geen toegangsgroep ({ObjectIndex.ExpectedAccessGroup(p)}). Maak die eerst aan.");
+            return PlanOutcome.Error(Texts.T.Format("code.mailbox-plans.there-is-no-access-group", ObjectIndex.ExpectedAccessGroup(p)));
         }
 
         var permissions = index.PermissionsOn(p);
@@ -224,7 +225,7 @@ public static class MailboxPlans
             if (r.Who.Kind == ObjectKind.Unknown)
             {
                 // E.g. a SID of a deleted account: only clean up, and not ticked by default
-                plan.Add(PermissionRoute(p, r, null, $"Onbekende rechthebbende {r.Trustee} (verwijderd account?)", selected: false));
+                plan.Add(PermissionRoute(p, r, null, Texts.T.Format("code.mailbox-plans.unknown-trustee-deleted-account", r.Trustee), selected: false));
                 continue;
             }
 
@@ -248,12 +249,12 @@ public static class MailboxPlans
                 after = memberBecomes.Id;
             }
 
-            plan.Add(PermissionRoute(p, r, after, $"Rechtstreeks {r.Permission} van {r.Who.Name} weghalen (loopt voortaan via {groupValue.Name})", selected: true));
+            plan.Add(PermissionRoute(p, r, after, Texts.T.Format("code.mailbox-plans.remove-direct-of-from-now", r.Permission, r.Who.Name, groupValue.Name), selected: true));
         }
 
         if (plan.Count == 0 && errors.Count == 0)
         {
-            errors.Add("Er zijn geen rechtstreekse rechten; alle toegang loopt al via de groep.");
+            errors.Add(Texts.T["code.mailbox-plans.there-are-no-direct-permissions"]);
         }
 
         return PlanOutcome.Of(plan, errors);
@@ -264,7 +265,7 @@ public static class MailboxPlans
     {
         if (data.Index.AccessGroupOf(p) is { } existing)
         {
-            return PlanOutcome.Error($"{existing.Name} bestaat al en geeft toegang tot dit postvak.");
+            return PlanOutcome.Error(Texts.T.Format("code.mailbox-plans.already-exists-and-gives-access", existing.Name));
         }
 
         var name = ObjectIndex.ExpectedAccessGroup(p);
@@ -278,13 +279,13 @@ public static class MailboxPlans
         var errors = new List<string>();
         var local = a.LocalPart.Trim().ToLowerInvariant();
         var domain = a.Domain.Trim().TrimStart('@').ToLowerInvariant();
-        if (a.DisplayName.Trim().Length == 0) errors.Add("Vul een weergavenaam in.");
-        if (local.Length == 0 || local.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_'))) errors.Add("Het adres mag enkel letters, cijfers, punt, streepje of underscore bevatten.");
-        if (domain.Length == 0) errors.Add("Kies een domein.");
+        if (a.DisplayName.Trim().Length == 0) errors.Add(Texts.T["code.mailbox-plans.enter-a-display-name"]);
+        if (local.Length == 0 || local.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_'))) errors.Add(Texts.T["code.mailbox-plans.the-address-may-only-contain"]);
+        if (domain.Length == 0) errors.Add(Texts.T["code.mailbox-plans.choose-a-domain"]);
         var smtp = $"{local}@{domain}";
         if (errors.Count == 0 && data.Index.Find(smtp) is { } exists)
         {
-            errors.Add($"{smtp} is al in gebruik ({exists.KindText} {exists.Name}).");
+            errors.Add(Texts.T.Format("code.mailbox-plans.is-already-in-use", smtp, exists.KindText, exists.Name));
         }
 
         if (errors.Count > 0)
@@ -299,7 +300,7 @@ public static class MailboxPlans
             Target = smtp,
             TargetName = a.DisplayName.Trim(),
             Parameters = P(("Name", a.DisplayName.Trim()), ("DisplayName", a.DisplayName.Trim()), ("Alias", local)),
-            Description = "Gedeeld postvak aanmaken (zonder licentie, aanmelden geblokkeerd)",
+            Description = Texts.T["code.mailbox-plans.create-a-shared-mailbox-without"],
             NewValue = smtp,
         };
         var groupName = $"SG-SM-{local}-Full";
@@ -314,7 +315,7 @@ public static class MailboxPlans
             var address = Address(data, member);
             if (address is null)
             {
-                errors.Add($"{member.Name} heeft geen e-mailadres en kan geen lid worden.");
+                errors.Add(Texts.T.Format("code.mailbox-plans.has-no-e-mail-address", member.Name));
                 continue;
             }
 
@@ -325,7 +326,7 @@ public static class MailboxPlans
                 Target = address,
                 TargetName = member.Name,
                 Parameters = P(("groep", groupValue.Target), ("groepNaam", groupName)),
-                Description = $"Lid maken van {groupName}: toegang tot {a.DisplayName.Trim()}",
+                Description = Texts.T.Format("code.mailbox-plans.make-member-of-access-to", groupName, a.DisplayName.Trim()),
                 DependentOf = groupValue.Id,
             });
         }
@@ -343,7 +344,7 @@ public static class MailboxPlans
         Target = $"{name.ToLowerInvariant()}@{domain}",
         TargetName = name,
         Parameters = P(("Name", name), ("DisplayName", name), ("Alias", name)),
-        Description = $"Mail-beveiligingsgroep {name} aanmaken (lidmaatschap gesloten)",
+        Description = Texts.T.Format("code.mailbox-plans.create-mail-enabled-security-group", name),
         NewValue = $"{name.ToLowerInvariant()}@{domain}",
     };
 
@@ -366,8 +367,8 @@ public static class MailboxPlans
                 Target = p.Smtp,
                 TargetName = p.DisplayName,
                 Parameters = P(("Recht", permission), ("Trustee", identity)),
-                Description = $"{name} krijgt {permission} op het postvak",
-                NewValue = $"{permission} voor {name}",
+                Description = Texts.T.Format("code.mailbox-plans.gets-on-the-mailbox", name, permission),
+                NewValue = Texts.T.Format("helpdesk.0-for-1", permission, name),
                 DependentOf = createGroup?.Id,
             };
         }
@@ -382,12 +383,12 @@ public static class MailboxPlans
         var who = data.Index.Ref(person);
         if (data.Index.MailboxPermissionsOf(person).Any(r => r.Mailbox == p))
         {
-            return PlanOutcome.Error($"{person.Name} heeft al toegang tot {p.DisplayName}.");
+            return PlanOutcome.Error(Texts.T.Format("code.mailbox-plans.already-has-access-to", person.Name, p.DisplayName));
         }
 
         return data.Index.AccessGroupOf(p) is { } g
             ? GroupPlans.AddMember(data, g, who)
-            : PlanOutcome.Error($"{p.DisplayName} heeft nog geen toegangsgroep ({ObjectIndex.ExpectedAccessGroup(p)}); maak die eerst aan op de pagina van het postvak.");
+            : PlanOutcome.Error(Texts.T.Format("code.mailbox-plans.has-no-access-group-yet", p.DisplayName, ObjectIndex.ExpectedAccessGroup(p)));
     }
 
     /// <summary>
@@ -401,14 +402,14 @@ public static class MailboxPlans
         var rules = index.MailboxPermissionsOf(person).Where(r => r.Mailbox == p).ToList();
         if (rules.Count == 0)
         {
-            return PlanOutcome.Error($"{person.Name} heeft geen toegang tot {p.DisplayName}.");
+            return PlanOutcome.Error(Texts.T.Format("code.mailbox-plans.has-no-access-to", person.Name, p.DisplayName));
         }
 
         var plan = new List<Change>();
         var errors = new List<string>();
         foreach (var r in rules.Where(r => r.ViaGroup is null))
         {
-            plan.Add(PermissionRoute(p, r, null, $"Rechtstreeks {r.Permission} van {person.Name} op {p.DisplayName} weghalen", selected: true));
+            plan.Add(PermissionRoute(p, r, null, Texts.T.Format("code.mailbox-plans.remove-direct-of-on", r.Permission, person.Name, p.DisplayName), selected: true));
         }
 
         foreach (var via in rules.Where(r => r.ViaGroup is not null).Select(r => r.ViaGroup!).DistinctBy(v => v.Key))
@@ -421,7 +422,7 @@ public static class MailboxPlans
             }
             else
             {
-                errors.Add($"De toegang loopt via {via.Name}, waar {person.Name} via een andere groep in zit; haal hem daar weg.");
+                errors.Add(Texts.T.Format("code.mailbox-plans.the-access-goes-through-which", via.Name, person.Name));
             }
         }
 
@@ -436,7 +437,7 @@ public static class MailboxPlans
         TargetName = p.DisplayName,
         Parameters = P(("Recht", r.Permission), ("Trustee", r.Trustee)),
         Description = description,
-        CurrentValue = $"{r.Permission} voor {r.Who.Name}",
+        CurrentValue = Texts.T.Format("helpdesk.0-for-1", r.Permission, r.Who.Name),
         NewValue = "(weg)",
         DependentOf = after,
         Selected = selected,

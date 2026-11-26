@@ -1,6 +1,7 @@
 using Moss365.Core.Storage;
 using Moss365.Core.Analysis;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -44,17 +45,17 @@ public static class Undo
     {
         if (!r.Succeeded)
         {
-            return "niet gelukt, dus niets terug te draaien";
+            return Texts.T["code.undo.did-not-succeed-so-nothing"];
         }
 
         if (WasAlreadySo(r))
         {
-            return "er veranderde niets (" + r.Message.TrimEnd('.') + ")";
+            return Texts.T.Format("undo.nothing-changed", r.Message.TrimEnd('.'));
         }
 
         if (!LegacyNames.TryParseEnum<ChangeAction>(r.ChangeAction, out var action))
         {
-            return "onbekende actie";
+            return Texts.T["code.undo.unknown-action"];
         }
 
         if (Opposite.ContainsKey(action) || action == ChangeAction.AdMove || action == ChangeAction.ExchangeGroupManager)
@@ -64,32 +65,32 @@ public static class Undo
 
         if (action == ChangeAction.AdWriteLogonScript)
         {
-            return r.Previous?.ContainsKey("inhoud") == true ? null : "een nieuw script verwijdert de app niet";
+            return r.Previous?.ContainsKey("inhoud") == true ? null : Texts.T["code.undo.the-app-does-not-delete"];
         }
 
         if (Attributes.Contains(action))
         {
-            return r.Previous is { Count: > 0 } ? null : "de vorige waarden staan niet in het logboek (wijziging van voor versie 0.5)";
+            return r.Previous is { Count: > 0 } ? null : Texts.T["code.undo.the-previous-values-are-not"];
         }
 
         return action switch
         {
             ChangeAction.AdCreateUser or ChangeAction.GraphCreateUser or ChangeAction.ExchangeCreateSharedMailbox or ChangeAction.ExchangeCreateGroup or ChangeAction.GraphCreateCaLocation
-                => "aangemaakte objecten verwijdert de app niet",
+                => Texts.T["code.undo.the-app-does-not-delete-2"],
             ChangeAction.GraphCreateApplication or ChangeAction.GraphUpdateApplication or ChangeAction.GraphCreateServicePrincipal
                 or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole
-                => "de app-registratie wijzig je via Tenants > Inrichten of in Entra",
-            ChangeAction.GraphCreateCaPolicy => "zet het beleid uit bij Conditional Access > Beheren (de app verwijdert geen beleiden)",
-            ChangeAction.GraphInviteGuest => "verwijder de gast via Gastgebruikers",
-            ChangeAction.GraphCreateTemporaryAccessPass => "een Temporary Access Pass verloopt vanzelf; intrekken kan in Entra",
-            ChangeAction.GraphSendMail => "een verstuurde mail kan niet terug",
-            ChangeAction.GraphRemoveGuest => "terugzetten via Entra > Verwijderde gebruikers (30 dagen)",
-            ChangeAction.AdSetPassword => "een vorig wachtwoord kan niet terug",
-            ChangeAction.GraphRevokeSessions => "afgemelde sessies kunnen niet terug",
-            ChangeAction.ExchangeConvertToSharedMailbox => "zet het postvak zelf terug om in Exchange (licentie nodig)",
-            ChangeAction.GraphAssignLicence or ChangeAction.GraphRemoveLicences => "licenties wijzig je via de gebruiker of Entra",
-            ChangeAction.AdUnlockAccount => "een account vergrendel je niet opnieuw",
-            _ => "deze wijziging kan de app niet terugdraaien",
+                => Texts.T["code.undo.you-change-the-app-registration"],
+            ChangeAction.GraphCreateCaPolicy => Texts.T["code.undo.turn-the-policy-off-in"],
+            ChangeAction.GraphInviteGuest => Texts.T["code.undo.remove-the-guest-through-guest"],
+            ChangeAction.GraphCreateTemporaryAccessPass => Texts.T["code.undo.a-temporary-access-pass-expires"],
+            ChangeAction.GraphSendMail => Texts.T["code.undo.a-sent-e-mail-cannot"],
+            ChangeAction.GraphRemoveGuest => Texts.T["code.undo.restore-through-entra-deleted-users"],
+            ChangeAction.AdSetPassword => Texts.T["code.undo.a-previous-password-cannot-come"],
+            ChangeAction.GraphRevokeSessions => Texts.T["code.undo.revoked-sessions-cannot-come-back"],
+            ChangeAction.ExchangeConvertToSharedMailbox => Texts.T["code.undo.convert-the-mailbox-back-yourself"],
+            ChangeAction.GraphAssignLicence or ChangeAction.GraphRemoveLicences => Texts.T["code.undo.you-change-licences-through-the"],
+            ChangeAction.AdUnlockAccount => Texts.T["code.undo.you-do-not-lock-an"],
+            _ => Texts.T["code.undo.the-app-cannot-undo-this"],
         };
     }
 
@@ -142,7 +143,7 @@ public static class Undo
                 var rdn = r.Target[..(r.Target.Length - previousOu.Length)].TrimEnd(',');
                 var now = Dn($"{rdn},{r.Parameters.GetValueOrDefault("doelOu")}");
                 w = New(r, ChangeAction.AdMove, now, new() { ["doelOu"] = previousOu },
-                    $"Terug naar {DnHelp.OuPath(previousOu)} verplaatsen", DnHelp.OuPathOfObject(now), DnHelp.OuPath(previousOu));
+                    Texts.T.Format("code.undo.move-back-to", DnHelp.OuPath(previousOu)), DnHelp.OuPathOfObject(now), DnHelp.OuPath(previousOu));
                 currentDn[r.Target] = r.Target;
             }
             else if (action == ChangeAction.ExchangeGroupManager)
@@ -163,12 +164,12 @@ public static class Undo
                     reversed[k] = v;
                 }
 
-                w = New(r, action, target, reversed, "Beheerder terugzetten: " + string.Join(", ",
-                    reversed.Where(p => p.Key is "Toevoegen" or "Verwijderen").Select(p => $"{p.Key.ToLowerInvariant()} {p.Value}")));
+                w = New(r, action, target, reversed, Texts.T.Format("undo.manager", string.Join(", ",
+                    reversed.Where(p => p.Key is "Toevoegen" or "Verwijderen").Select(p => Texts.T.Format(p.Key == "Toevoegen" ? "undo.manager.add" : "undo.manager.remove", p.Value)))));
             }
             else if (action == ChangeAction.AdWriteLogonScript && r.Previous?.GetValueOrDefault("inhoud") is { } before)
             {
-                w = New(r, action, target, new() { ["inhoud"] = before }, $"Logonscript {target} terugzetten naar de vorige versie",
+                w = New(r, action, target, new() { ["inhoud"] = before }, Texts.T.Format("code.undo.restore-logon-script-to-the", target),
                     previousValues: new(StringComparer.OrdinalIgnoreCase) { ["inhoud"] = r.Parameters.GetValueOrDefault("inhoud") ?? string.Empty });
             }
             else if (Attributes.Contains(action))
@@ -180,9 +181,9 @@ public static class Undo
                     parameters[k] = v;
                 }
 
-                w = New(r, action, target, parameters, "Terugzetten: " + r.Description,
+                w = New(r, action, target, parameters, Texts.T.Format("undo.restore", r.Description),
                     string.Join(", ", previous.Keys.Select(k => $"{k}: {r.Parameters.GetValueOrDefault(k)}")),
-                    string.Join(", ", previous.Select(p => $"{p.Key}: {(p.Value.Length == 0 ? "(leeg)" : p.Value)}")),
+                    string.Join(", ", previous.Select(p => $"{p.Key}: {(p.Value.Length == 0 ? Texts.T["undo.empty"] : p.Value)}")),
                     previousValues: previous.Keys.ToDictionary(k => k, k => r.Parameters.GetValueOrDefault(k) ?? string.Empty, StringComparer.OrdinalIgnoreCase));
             }
             else
@@ -193,7 +194,7 @@ public static class Undo
                     && MirrorUser.IsPrivileged(g))
                 {
                     w = New(r, opposite, target, parameters, Description(opposite, r),
-                        warning: $"{g.Name} is een bevoorrechte groep: zet ze enkel terug als dat echt nodig is.", selected: false);
+                        warning: Texts.T.Format("code.undo.is-a-privileged-group-only", g.Name), selected: false);
                 }
             }
 
@@ -250,15 +251,15 @@ public static class Undo
         var groupValue = r.Parameters.GetValueOrDefault("groep") ?? r.Parameters.GetValueOrDefault("groepNaam") ?? string.Empty;
         return a switch
         {
-            ChangeAction.AdAddGroupMember or ChangeAction.GraphAddGroupMember or ChangeAction.ExchangeAddGroupMember => $"Terug lid maken van {groupValue}",
-            ChangeAction.AdRemoveGroupMember or ChangeAction.GraphRemoveGroupMember or ChangeAction.ExchangeRemoveGroupMember => $"Terug uit {groupValue} halen",
-            ChangeAction.GraphAddOwner => $"Terug eigenaar maken: {r.Parameters.GetValueOrDefault("lid")}",
-            ChangeAction.GraphRemoveOwner => $"Eigenaar terug weghalen: {r.Parameters.GetValueOrDefault("lid")}",
-            ChangeAction.ExchangeAddMailboxPermission => $"{r.Parameters.GetValueOrDefault("Recht")} teruggeven aan {r.Parameters.GetValueOrDefault("Trustee")}",
-            ChangeAction.ExchangeRemoveMailboxPermission => $"{r.Parameters.GetValueOrDefault("Recht")} terug intrekken van {r.Parameters.GetValueOrDefault("Trustee")}",
-            ChangeAction.AdEnableAccount => "AD-account terug inschakelen",
-            ChangeAction.AdDisableAccount => "AD-account terug uitschakelen",
-            _ => "Terugdraaien: " + r.Description,
+            ChangeAction.AdAddGroupMember or ChangeAction.GraphAddGroupMember or ChangeAction.ExchangeAddGroupMember => Texts.T.Format("code.undo.make-member-of-again", groupValue),
+            ChangeAction.AdRemoveGroupMember or ChangeAction.GraphRemoveGroupMember or ChangeAction.ExchangeRemoveGroupMember => Texts.T.Format("code.undo.remove-from-again", groupValue),
+            ChangeAction.GraphAddOwner => Texts.T.Format("undo.owner.add", r.Parameters.GetValueOrDefault("lid")),
+            ChangeAction.GraphRemoveOwner => Texts.T.Format("undo.owner.remove", r.Parameters.GetValueOrDefault("lid")),
+            ChangeAction.ExchangeAddMailboxPermission => Texts.T.Format("undo.permission.add", r.Parameters.GetValueOrDefault("Recht"), r.Parameters.GetValueOrDefault("Trustee")),
+            ChangeAction.ExchangeRemoveMailboxPermission => Texts.T.Format("undo.permission.remove", r.Parameters.GetValueOrDefault("Recht"), r.Parameters.GetValueOrDefault("Trustee")),
+            ChangeAction.AdEnableAccount => Texts.T["code.undo.enable-the-ad-account-again"],
+            ChangeAction.AdDisableAccount => Texts.T["code.undo.disable-the-ad-account-again"],
+            _ => Texts.T.Format("undo.reverse", r.Description),
         };
     }
 

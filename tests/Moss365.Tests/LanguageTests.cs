@@ -40,7 +40,10 @@ public sealed class LanguageTests
             {
                 var text = Translator.Dictionaries[l.Code][key];
                 Assert.True(Holes(english) == Holes(text), $"{l.Code} {key}: {text}");
-                _ = string.Format(CultureInfo.InvariantCulture, text, Enumerable.Repeat<object>(1.5, 10).ToArray()); // valid format
+                // valid format; a date format ({0:d}, {0:g}) is checked with a date
+                var values = Enumerable.Range(0, 10)
+                    .Select(i => Regex.IsMatch(text, @"\{" + i + @":[dgDGtTMyHhms]") ? (object)new DateTime(2026, 1, 2, 3, 4, 5) : 1.5).ToArray();
+                _ = string.Format(CultureInfo.InvariantCulture, text, values);
             }
         }
     }
