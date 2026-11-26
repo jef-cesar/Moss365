@@ -65,6 +65,19 @@ Every version becomes a release on GitHub; the section under the version is the 
   licence). Removing from an AD group or a mailbox is a plan as always; admin roles are removed in Entra itself, because
   Moss365 deliberately has no permission to change roles. Only an administrator records a review; the auditor sees
   everything.
+- **The overview** (R19) is the start screen of a tenant, in four blocks: **security** (hardening score, open advice,
+  accounts without MFA, administrators, since your last visit), **devices** (not compliant, not seen, systems no longer
+  supported, not encrypted), **hygiene and costs** (inactive accounts, guests to confirm, euros a month on licences that
+  bring nothing, data quality) and **work** (access reviews due, requests, scheduled actions waiting, follow-up, app
+  secrets, failed changes, the status of Microsoft 365). Every tile clicks through to the list behind it and shows its
+  trend against 7, 30 or 90 days ago ("−3 in 30 days, better"); the counts are kept per day after every read (only
+  counts, never names). The order of the blocks follows the role (the helpdesk sees the work first) and can be changed
+  per person. The inventory (folders and files) moved to the settings, *Inventaris*.
+- **All tenants together** (U20), under the settings: per tenant only scores and counts, side by side, read when the page
+  opens from each tenant's own database (locked tenants stay locked). Nothing is stored or exported together, no tenant
+  is opened for it, and no name of a person or object leaves a tenant (a test checks every file stays the same).
+- **Board summary**, on the overview: one page (HTML, prints as PDF) with the four blocks and their trends, the hardening
+  score over time and the report of the last quarter; only numbers, and the access log notes who saved it.
 - **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
   address; anything else (such as a script link or a file share) is no longer clickable.
 - **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.

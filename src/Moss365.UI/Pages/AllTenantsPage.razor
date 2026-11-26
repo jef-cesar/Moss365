@@ -1,0 +1,84 @@
+@page "/alle-tenants"
+@layout SettingsLayout
+@using Moss365.Core.Analysis
+@using Moss365.Core.Reporting
+@inject IServiceProvider Services
+@* All tenants (R19, U20): per tenant only scores and counts, side by side, read now from each tenant's own database
+   (unlocked tenants only). Nothing is stored or exported together, and no name of a person or object leaves a tenant. *@
+
+<h1>@T["menu.alle-tenants"]</h1>
+
+<p class="kb-zacht">@T["all-tenants.intro"]</p>
+
+@if (Hub is null)
+{
+    <div class="kb-melding">@T["all-tenants.only-app"]</div>
+}
+else
+{
+    <table class="kb-tabel" id="alle-tenants">
+        <thead>
+            <tr>
+                <th>@T["all-tenants.tenant"]</th>
+                @foreach (var column in Columns)
+                {
+                    <th class="kb-getal">@column.Label</th>
+                }
+                <th>@T["all-tenants.date"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in summaries)
+            {
+                <tr>
+                    <td>@s.Tenant.Name</td>
+                    @if (s.Locked)
+                    {
+                        <td colspan="@(Columns.Count + 1)" class="kb-zacht">@T["all-tenants.locked"]</td>
+                    }
+                    else if (s.Counts is not { Values.Count: > 0 } counts)
+                    {
+                        <td colspan="@(Columns.Count + 1)" class="kb-zacht">@T["all-tenants.no-counts"]</td>
+                    }
+                    else
+                    {
+                        @foreach (var column in Columns)
+                        {
+                            <td class="kb-getal">@Value(counts, column)</td>
+                        }
+                        <td>@counts.Date?.ToString("d", T.Culture)</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p class="kb-zacht">@T["all-tenants.nothing-stored"]</p>
+}
+
+@code {
+    private sealed record Column(string Key, string Label, string Unit = "");
+
+    private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
+
+    // Only scores and counts: the hardening score, the people and what needs attention (U20)
+    private static IReadOnlyList<Column> Columns => new Column[]
+    {
+        new(Overview.CountPrefix + "hardening", T["overview.hardening"], "%"),
+        new(Kpis.Active.Key, Kpis.Active.Label),
+        new(Kpis.Guests.Key, Kpis.Guests.Label),
+        new(Kpis.WithoutMfa.Key, Kpis.WithoutMfa.Label),
+        new(Kpis.AdministratorsWithoutMfa.Key, Kpis.AdministratorsWithoutMfa.Label),
+        new(Kpis.Privileged.Key, Kpis.Privileged.Label),
+        new(Kpis.Inactive90.Key, Kpis.Inactive90.Label),
+        new(Overview.CountPrefix + "advice-open", T["overview.advice-open"]),
+        new(Overview.CountPrefix + "reviews-due", T["overview.reviews-due"]),
+        new(Overview.CountPrefix + "licence-waste", T["overview.licence-waste"], "€"),
+    };
+
+    private IReadOnlyList<TenantSummary> summaries = Array.Empty<TenantSummary>();
+
+    protected override void OnInitialized() => summaries = Hub?.Summaries(Columns.Select(c => c.Key).ToList()) ?? Array.Empty<TenantSummary>();
+
+    private static string Value(Moss365.Core.Storage.TenantCounts counts, Column column)
+        => counts.Values.TryGetValue(column.Key, out var v) ? Overview.Format(v, column.Unit) : "–";
+}

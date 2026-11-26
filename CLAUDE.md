@@ -7,7 +7,8 @@ blocklist). The maintainer does not write code: changes must be tested, document
 Motto: **data under your own control** ("data in eigen beheer"): the Desktop stays a full edition after 1.0 (U14); no
 feature needs a server or a service of the makers.
 
-Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R14 are done (0.37.0); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
+Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R14 are done (0.37.0); R16 to R20 have their first
+version in 0.39.0 (what is still open per step is in the roadmap); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
 per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. The code targets .NET 10 (U22, in the CHANGELOG under 0.39.0: .NET 8 has no support since 10 November 2026; `bunit` stays 1.40 until a separate move to bUnit 2). Next, before 1.0 (decided 26 November 2026, U15): R16 security advice (explanation, solving as a plan, guided for high risk, exceptions, hardening score, compromised account), R17 devices and Intune (a destructive action: one device per plan, never a personal device; a device record is deleted only after 90 days disabled), R18 own data (sign-in and audit logs kept locally, reading without a window), R19 the overview (All tenants: only scores and counts, never stored together), R20 access reviews; then the native-speaker review of R15 and 1.0. Open work is in the
 GitHub issues (label `roadmap` per step, `limitation`, `test`). The interface texts move to dictionaries (R15, [docs/translating.md](docs/translating.md)): new text in a screen goes through `T["key"]` (in Core and Connections `Texts.T["key"]`, never in a `static readonly` field or `const`) with the key in all five `Localization/Texts/*.json`, and `tests/Moss365.Tests/Localization/untranslated.txt` may only go down; the inventory
 keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots). Script headers are English since 0.18 (`Name:`, `Version:`, ...); the
@@ -106,6 +107,12 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   Access reviews (R20): `Security/AccessReviews.cs` (privileged AD groups, admin roles, shared mailboxes; reviewer and
   interval per subject in document `toegangsreviews`; each decision a change log line with action `Review`; removals
   as plans, admin roles never: no permission to change roles), page `toegangsreviews` (Security to see, Manage to record).
+  The overview (R19): `Reporting/Overview.cs` (tiles with a key, block, link and trend; the layout per role, kept per
+  person in document `overzicht-indeling`), computed by `ManagementState.Overview.cs`; after a read the own tiles are kept
+  per day in `KpiStand` with the prefix `overzicht:` (counts only). The start screen shows the blocks; the inventory is
+  the settings page `inventaris`. All tenants: `TenantHub.Summaries` with `Database.ReadCounts` (opened only to read,
+  no migration, no state of the tenant), page `alle-tenants`; never stored or exported together. Board summary:
+  `Reporting/BoardSummary.cs` (overview, scores and `PeriodReport.AppendBody`).
   Reporting (0.37, `Reporting/`): `PeriodReport` (from `ReadKpiSnapshot` and the change log; `ToHtml`/`ToCsv`, CSV never
   starts a cell with a formula), `DataQuality`, `Standards` (checks mapped to NIS2/CIS), `GuestRenewal` (document
   `gastenverlenging`), `StaffRequests` (document `aanvragen`; decisions are change log lines with action `Request`),

@@ -47,10 +47,11 @@ public sealed class UiTests : TestContext, IDisposable
     [Fact]
     public void OverviewShowsTheSources()
     {
-        var cut = RenderComponent<Start>();
-        Assert.Contains("Inventaris-20261016-1343", cut.Markup);
-        Assert.Contains("niet gevonden", cut.Markup);
-        Assert.Contains("nog zonder afdeling", cut.Markup);
+        // Since R19 the inventory (folders and files) is a settings page; the start screen is the overview
+        var inventory = RenderComponent<InventoryPage>();
+        Assert.Contains("Inventaris-20261016-1343", inventory.Markup);
+        Assert.Contains("niet gevonden", inventory.Markup);
+        Assert.Contains("nog zonder afdeling", RenderComponent<Start>().Markup);
     }
 
     [Fact]

@@ -536,6 +536,10 @@ itself.
 
 The inventory part of today's start screen (folders and files) moves to the settings.
 
+Done in 0.39.0: the overview in four blocks with trends (7, 30 or 90 days) and links, the layout per role (adjustable
+per person), the overview on a date in the past (the tiles that come from the data), All tenants (U20) and the board
+summary; the inventory moved to the settings.
+
 ### Access reviews (R20)
 
 | Proposal | Why |

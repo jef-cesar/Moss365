@@ -556,6 +556,7 @@ public sealed partial class ManagementState
         if ((components & (InventoryComponent.Ad | InventoryComponent.Entra)) != 0)
         {
             SaveKpiSnapshot();
+            SaveOverviewCounts();
         }
 
         // Keep only the latest live inventories (those of Export-Inventaris.ps1 stay)

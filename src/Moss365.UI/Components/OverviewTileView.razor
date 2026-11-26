@@ -1,0 +1,27 @@
+@using Moss365.Core.Reporting
+@* A tile of the overview (R19): the number, what it counts, the trend against a period ago, and the link to the list
+   behind it. A point of attention gets the attention style with an icon and text (never colour alone). *@
+
+<a class="kb-tegel @(Tile.Let ? "kb-tegel-let" : null)" href="@Tile.Link" id="@($"tegel-{Tile.Key}")">
+    <div class="kb-tegel-getal">@Number</div>
+    <div>@Tile.Label</div>
+    @if (Overview.Trend(Tile, Days) is { } trend)
+    {
+        <div class="kb-zacht">@trend</div>
+    }
+    @if (Tile.Value is null)
+    {
+        <div class="kb-zacht">@T["overview.not-known"]</div>
+    }
+    @if (Tile.Let)
+    {
+        <div class="kb-status-let">@T["mailboxes.check"]</div>
+    }
+</a>
+
+@code {
+    [Parameter, EditorRequired] public OverviewTile Tile { get; set; } = default!;
+    [Parameter] public int Days { get; set; } = 30;
+
+    private string Number => Overview.Number(Tile);
+}
