@@ -8,7 +8,7 @@
         <div class="kb-taak-kop">
             <h2>@task.Name</h2>
             <span class="kb-zacht">
-                gestart @task.Start.ToString("HH:mm:ss")
+                @T.Format("task-progress.started", task.Start.ToString("HH:mm:ss"))
                 @if (task.End is { } end) { <text> @T.Format("task-progress.0-at-1", task.Cancelled ? T["word.cancelled"] : task.WithErrors ? T["code.task-progress.done-with-errors"] : T["word.done"], end.ToString("HH:mm:ss"))</text> }
             </span>
             @if (task.Busy)

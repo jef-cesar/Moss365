@@ -79,7 +79,7 @@ public sealed class BackgroundTask
         ? Steps.Count(s => s.Status == StepStatus.Busy) > 1
             ? $"{Steps.Count(s => s.Status == StepStatus.Busy)} bezig: {string.Join(", ", Steps.Where(s => s.Status == StepStatus.Busy).Select(s => s.Name))}"
             : $"{Current?.Name ?? Name}: {Current?.Message ?? "bezig..."}"
-        : Cancelled ? $"{Name}: geannuleerd"
+        : Cancelled ? Texts.T.Format("code.background-task.cancelled", Name)
         : WithErrors ? Texts.T.Format("code.background-task.failed-at", Name, End)
-        : $"{Name}: klaar om {End:HH:mm}";
+        : Texts.T.Format("code.background-task.done-at", Name, End);
 }

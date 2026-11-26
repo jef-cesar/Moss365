@@ -1,7 +1,7 @@
 @* Label for a verdict, the state of a policy or "applies"; always with text, never colour alone *@
 @if (Verdict is { } o)
 {
-    <span class="kb-label @Class(o)">@(o switch { CaVerdict.InOrder => "✓ in orde", CaVerdict.Info => "info", CaVerdict.Attention => "⚠ aandacht", _ => "✕ probleem" })</span>
+    <span class="kb-label @Class(o)">@(o switch { CaVerdict.InOrder => T["code.ca-label.in-order"], CaVerdict.Info => "info", CaVerdict.Attention => T["code.ca-label.attention"], _ => T["code.ca-label.problem"] })</span>
 }
 else if (Status is { } s)
 {

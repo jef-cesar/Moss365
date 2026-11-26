@@ -67,8 +67,8 @@
             @foreach (var s in Library)
             {
                 <li>
-                    <label><input type="checkbox" checked="@State.IsPinned(s)" @onchange="e => State.Pin(s, e.Value is true)" aria-label="Vastzetten @s.Header.Name" />
-                        @s.Header.Name <span class="kb-zacht">@(s.Header.Version.Length > 0 ? "versie " + s.Header.Version : string.Empty)</span></label>
+                    <label><input type="checkbox" checked="@State.IsPinned(s)" @onchange="e => State.Pin(s, e.Value is true)" aria-label="@T.Format("library.pin", s.Header.Name)" />
+                        @s.Header.Name <span class="kb-zacht">@(s.Header.Version.Length > 0 ? T.Format("library.version", s.Header.Version) : string.Empty)</span></label>
                 </li>
             }
         </ul>
@@ -142,7 +142,7 @@
         confirm = false;
         var list = changes!.Where(c => chosen.Contains(c.Entry.Path)).ToList();
         errors = await State.TakeLibraryAsync(list);
-        done = $"{list.Count - errors.Count} script(s) gedownload.";
+        done = T.Format("code.library-panel.script-s-downloaded", list.Count - errors.Count);
         changes = await State.CheckLibraryAsync(Folder);
         chosen.Clear();
         busy = false;
@@ -153,6 +153,6 @@
         LibraryChangeKind.New => T["word.new"],
         LibraryChangeKind.Changed => T["word.changed"],
         LibraryChangeKind.TooNew => T.Format("code.library-panel.needs-moss365-or-newer", c.Entry.MinimumApp),
-        _ => "vastgezet in deze tenant",
+        _ => T["code.library-panel.pinned-in-this-tenant"],
     };
 }

@@ -92,7 +92,7 @@
         </div>
     </div>
     <h3>@T["statistics.new-accounts-per-month"]</h3>
-    <ColumnChart Columns="BiStatistics.CreatedPerMonth(State.KpiSource, Division)" Title="@T["code.statistics.new-accounts-per-month-the"]" ColumnTitle="Maand"
+    <ColumnChart Columns="BiStatistics.CreatedPerMonth(State.KpiSource, Division)" Title="@T["code.statistics.new-accounts-per-month-the"]" ColumnTitle="@T["period.month"]"
                   Series="@(new[] { new ColumnChart.SeriesItem("Nieuwe accounts") })" />
 </section>
 
@@ -102,7 +102,7 @@
         @Html("statistics.history")
     </p>
     <span class="kb-segment" role="group" aria-label="@T["statistics.trend-per"]">
-        @foreach (var (p, text) in new[] { (TrendPeriod.Day, "Dag"), (TrendPeriod.Week, "Week"), (TrendPeriod.Month, "Maand"), (TrendPeriod.Year, "Jaar") })
+        @foreach (var (p, text) in new[] { (TrendPeriod.Day, T["period.day"]), (TrendPeriod.Week, T["period.week"]), (TrendPeriod.Month, T["period.month"]), (TrendPeriod.Year, T["period.year"]) })
         {
             <button class="kb-knop @(period == p ? "kb-primair" : null)" aria-pressed="@(period == p)" @onclick="() => ChoosePeriod(p)">@text</button>
         }
@@ -167,7 +167,7 @@
         {
             <p class="kb-zacht">@T["statistics.no-licence-data-loaded"]</p>
         }
-        <BarList Bars="s.Licences" Warning="Statistic.AlmostFull" WarningText="bijna vol" />
+        <BarList Bars="s.Licences" Warning="Statistic.AlmostFull" WarningText="@T["code.statistics.almost-full"]" />
     </section>
     }
     <section class="kb-kaart">
@@ -224,7 +224,7 @@
         <Tile Count="State.CountFollowUpTasks" Label="@T["statistics.follow-up-tasks-open"]" Link="opvolging" />
     </div>
     <h3>@T["statistics.changes-per-week"]</h3>
-    <ColumnChart Columns="perWeek" Title="@T["code.statistics.changes-run-per-week-the"]" ColumnTitle="Week" EmptyText="@T["code.statistics.no-changes-run-in-the"]"
+    <ColumnChart Columns="perWeek" Title="@T["code.statistics.changes-run-per-week-the"]" ColumnTitle="@T["period.week"]" EmptyText="@T["code.statistics.no-changes-run-in-the"]"
                   Series="@(new[] { new ColumnChart.SeriesItem("Gelukt", "goed"), new ColumnChart.SeriesItem("Mislukt", "kritiek") })" />
 </section>
 

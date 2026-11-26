@@ -21,7 +21,7 @@ else
     {
         <p class="kb-zacht">
             @T["requests.job-profile"] <a href="@($"functieprofielen?profiel={Uri.EscapeDataString(jp.Profile.Id)}&gebruiker={Uri.EscapeDataString(person.Key)}")">@jp.Profile.Name</a>
-            (@jp.How)@(jp.Missing > 0 ? $": {jp.Missing} ontbreekt" : null)@(jp.Extra > 0 ? T.Format("code.user-detail.more-than-the-profile", jp.Extra) : null).
+            (@jp.How)@(jp.Missing > 0 ? T.Format("code.user-detail.missing", jp.Missing) : null)@(jp.Extra > 0 ? T.Format("code.user-detail.more-than-the-profile", jp.Extra) : null).
         </p>
     }
 
@@ -135,7 +135,7 @@ else
             </ul>
         </section>
         <section class="kb-kaart">
-            <h2>Gedeelde postvakken (@mailboxPermissions.Select(r => r.Mailbox).Distinct().Count())</h2>
+            <h2>@T.Format("user-detail.shared-mailboxes", mailboxPermissions.Select(r => r.Mailbox).Distinct().Count())</h2>
             @if (mailboxPermissions.Count == 0) { <p class="kb-zacht">@T["user-detail.no-permissions-on-shared-mailboxes"]</p> }
             <table class="kb-tabel">
                 <tbody>
@@ -284,10 +284,10 @@ else
         yield return R(T["reports.manager"], a is null ? null : ManagerName(a.Manager, null), e is null ? null : ManagerName(null, e.ManagerId));
         yield return R(T["edit-user.description"], a?.Description, null, compare: false);
         yield return R("OU", a?.OuPath, e is null ? null : DnHelp.OuPathOfObject(e.OnPremisesDistinguishedName), compare: false);
-        yield return R(T["word.enabled-2"], a is null ? null : (a.Enabled ? "ja" : "nee"), e is null ? null : (e.AccountEnabled ? "ja" : "nee"));
+        yield return R(T["word.enabled-2"], a is null ? null : (a.Enabled ? T["compare.yes"] : T["compare.no"]), e is null ? null : (e.AccountEnabled ? T["compare.yes"] : T["compare.no"]));
         yield return R(T["statistics.last-sign-in"], a?.LastLogonDate, e?.LastSignIn, compare: false);
         yield return R(T["cleanup.created"], a?.WhenCreated, e?.CreatedDateTime, compare: false);
-        yield return R(T["word.password-never-expires"], a is null ? null : (a.PasswordNeverExpires ? "ja" : "nee"), null, compare: false);
+        yield return R(T["word.password-never-expires"], a is null ? null : (a.PasswordNeverExpires ? T["compare.yes"] : T["compare.no"]), null, compare: false);
         yield return R(T["edit-user.logon-script"], a?.ScriptPath, null, compare: false);
         yield return R(T["job-profile-editor.licences"], null, e is null ? null : string.Join(", ", e.Licences), compare: false);
         yield return R(T["word.kind-of-account"], null, e?.UserType, compare: false);

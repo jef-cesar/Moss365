@@ -31,7 +31,7 @@
                 <td class="kb-zacht">@c?.Summary</td>
                 <td><span class="kb-filters">
                     <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => Run(key)">@T["library-panel.check"]</button>
-                    @if (c is { Rows.Count: > 0 }) { <button class="kb-knop kb-klein" @onclick="() => open = open == key ? null : key">@(open == key ? "Verbergen" : $"Details ({c.Rows.Count})")</button> }
+                    @if (c is { Rows.Count: > 0 }) { <button class="kb-knop kb-klein" @onclick="() => open = open == key ? null : key">@(open == key ? T["word.hide"] : $"Details ({c.Rows.Count})")</button> }
                 </span></td>
             </tr>
             @if (open == key && c is not null)

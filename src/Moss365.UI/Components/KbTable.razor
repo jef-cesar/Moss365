@@ -69,7 +69,7 @@
 {
     <div class="kb-melding">
         @Tx.Format("kb-table.the-0-rows-on-this", currentPage.Count)
-        <button class="kb-link" @onclick="ChooseAll">Alle @filtered.Count(CanSelect)@(session.CountActive > 0 ? " gefilterde" : string.Empty) rijen kiezen</button>
+        <button class="kb-link" @onclick="ChooseAll">@Tx.Format(session.CountActive > 0 ? "table.choose-all-filtered" : "table.choose-all", filtered.Count(CanSelect))</button>
     </div>
 }
 
@@ -118,12 +118,12 @@
                                 break;
                             case FilterKind.Choice:
                                 <details class="kb-keuzefilter">
-                                    <summary>@(f.Choices.Count == 0 ? "(alle)" : f.Choices.Count == 1 ? f.Choices.First() : $"{f.Choices.Count} gekozen")</summary>
+                                    <summary>@(f.Choices.Count == 0 ? Tx["code.kb-table.all"] : f.Choices.Count == 1 ? f.Choices.First() : Tx.Format("kb-table.0-chosen", f.Choices.Count))</summary>
                                     <div class="kb-keuzefilter-lijst">
                                         @foreach (var w in Values(k))
                                         {
                                             var value = w;
-                                            <label><input type="checkbox" checked="@f.Choices.Contains(value)" @onchange="e => SetChoice(column, value, e)" /> @(value.Length == 0 ? "(leeg)" : value)</label>
+                                            <label><input type="checkbox" checked="@f.Choices.Contains(value)" @onchange="e => SetChoice(column, value, e)" /> @(value.Length == 0 ? Tx["undo.empty"] : value)</label>
                                         }
                                     </div>
                                 </details>

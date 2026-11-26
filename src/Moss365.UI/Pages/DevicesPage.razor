@@ -10,7 +10,7 @@
     @T["devices.computers-in-ad-that-no"]
 </p>
 
-<button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? T["code.collaboration.reading"] : "Toestellen lezen")</button>
+<button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? T["code.collaboration.reading"] : T["code.devices.read-devices"])</button>
 @if (State.DevicesNote is { } note)
 {
     <div class="kb-melding">@note</div>
@@ -19,7 +19,7 @@
 @if (State.AdComputers is { } computers)
 {
     <section class="kb-kaart">
-        <h2>Computers in AD (@computers.Count(c => c.Enabled) ingeschakeld)</h2>
+        <h2>@T.Format("devices.computers-in-ad", computers.Count(c => c.Enabled))</h2>
         <div class="kb-kolommen">
             <div>
                 <h3>@T["devices.systems"]</h3>

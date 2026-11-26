@@ -46,7 +46,7 @@ else
                             <tr class="@(p.Key == person?.Key ? "kb-actief" : null)">
                                 <td><a href="@Searcher.Link(p)">@p.Name</a></td>
                                 <td>@UserDesired.Of(p).JobTitle</td>
-                                <td>@(a is { } x && x.ProfileId == profile.Id ? $"versie {x.Version}, {x.Applied.LocalDateTime:dd/MM/yyyy}" + (x.Version < profile.Version ? " (oudere versie)" : null) : "functie")</td>
+                                <td>@(a is { } x && x.ProfileId == profile.Id ? T.Format("code.job-profiles.version", x.Version, x.Applied.LocalDateTime) + (x.Version < profile.Version ? (" " + T["code.job-profiles.older-version"]) : null) : "functie")</td>
                                 <td class="kb-getal">@items.Count(i => i.Status == ProfileStatus.Missing)</td>
                                 <td class="kb-getal">@items.Count(i => i.Status == ProfileStatus.Extra)</td>
                                 <td><button class="kb-knop kb-klein" @onclick="() => Go(profile.Id, p.Key)">@T["script-run-panel.view"]</button></td>

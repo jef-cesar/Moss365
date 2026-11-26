@@ -261,7 +261,7 @@ public sealed partial class ManagementState
         if (ConfigModifications > 0)
         {
             yield return new OpenItem("organisatie", OpenKind.Settings,
-                $"Niet bewaard: {ConfigModifications} {(ConfigModifications == 1 ? "wijziging" : "wijzigingen")}")
+                Texts.T.Format(ConfigModifications == 1 ? "state.not-saved.one" : "state.not-saved", ConfigModifications))
             {
                 Count = ConfigModifications,
                 Screen = "Organisatie",
@@ -357,7 +357,7 @@ public sealed partial class ManagementState
     {
         RolesMode.Off => null,
         _ when Graph()?.AppRoles is { Count: > 0 } r && PermissionTable.FromClaims(r) != Role.No => null,
-        RolesMode.Required => Graph()?.AppRoles is null ? Texts.T["code.management-state.not-signed-in-yet-read"] : "Geen rol in Moss365: enkel lezen.",
+        RolesMode.Required => Graph()?.AppRoles is null ? Texts.T["code.management-state.not-signed-in-yet-read"] : Texts.T["code.management-state.no-role-in-moss365-read"],
         _ => Texts.T["code.management-state.roles-not-required-yet-everyone"],
     };
 
@@ -432,7 +432,7 @@ public sealed partial class ManagementState
                 : InventoryLoader.ImportFolders(Files, folder, int.MaxValue);
             Log.Information("Inventaris ingelezen: {Aantal} map(pen)", count);
             LoadInventory();
-            return count == 0 ? "Geen nieuwe inventarismappen gevonden (Inventaris-...)." : $"{count} inventarismap(pen) ingelezen in {Tenant.Name}.";
+            return count == 0 ? Texts.T["code.management-state.no-new-inventory-folders-found"] : Texts.T.Format("code.management-state.inventory-folder-s-read-into", count, Tenant.Name);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -727,7 +727,7 @@ public sealed partial class ManagementState
             var succeeded = results.Where(r => r.Status == ResultStatus.Succeeded).Select(r => r.ChangeId).ToHashSet();
             task.Changes.RemoveAll(w => succeeded.Contains(w.Id));
             task.LastMessage = task.Changes.Count == 0
-                ? "Alles afgewerkt."
+                ? Texts.T["code.management-state.everything-done"]
                 : (Texts.T.Format("code.management-state.succeeded-still-open", succeeded.Count, task.Changes.Count) + " ") + string.Join("; ", results.Where(r => r.Status != ResultStatus.Succeeded).Select(r => r.Message).Distinct());
         }
 

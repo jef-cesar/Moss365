@@ -30,7 +30,7 @@ else
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<ChartPart> Share { get; set; } = Array.Empty<ChartPart>();
-    [Parameter] public string EmptyText { get; set; } = "Geen gegevens.";
+    [Parameter] public string EmptyText { get; set; } = T["code.distribution.no-data"];
 
     private int Total => Share.Sum(d => d.Count);
 

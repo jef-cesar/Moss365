@@ -11,7 +11,7 @@ else
     <h1>@room.DisplayName</h1>
     <ObjectStatus Object="State.Data.Index.Ref(room.Smtp)" />
     <p class="kb-zacht">
-        Vergaderruimte &middot; @room.Smtp
+        @T["room-detail.meeting-room"] &middot; @room.Smtp
         @if (room.Hidden) { <span class="kb-label">@T["room-detail.hidden-in-the-address-list"]</span> }
     </p>
 
@@ -98,7 +98,7 @@ else
         </p>
         <div class="kb-filters">
             <span class="kb-segment" role="group" aria-label="@T["security.period"]">
-                @foreach (var (k, text) in new[] { (CalendarChoice.ThisWeek, "Deze week"), (CalendarChoice.NextWeek, "Volgende week"), (CalendarChoice.Selected, "Gekozen periode") })
+                @foreach (var (k, text) in new[] { (CalendarChoice.ThisWeek, T["code.room-detail.this-week"]), (CalendarChoice.NextWeek, T["code.room-detail.next-week"]), (CalendarChoice.Selected, T["code.room-detail.chosen-period"]) })
                 {
                     <button class="kb-knop @(calendarChoice == k ? "kb-primair" : null)" @onclick="() => calendarChoice = k">@text</button>
                 }
@@ -167,8 +167,8 @@ else
     private static IReadOnlyList<Column<Appointment>> calendarColumns => new List<Column<Appointment>>
     {
         new() { Key = "begin", Title = T["reports.start"], Cell = a => b => b.AddContent(0, a.WholeDay ? a.Begin.ToString("ddd dd/MM/yyyy") : a.Begin.ToString("ddd dd/MM/yyyy HH:mm")), SortBy = a => a.Begin, Text = a => a.Begin.ToString("yyyy-MM-dd HH:mm") },
-        new() { Key = "einde", Title = T["reports.end"], Cell = a => b => b.AddContent(0, a.WholeDay ? "hele dag" : a.End.Date == a.Begin.Date ? a.End.ToString("HH:mm") : a.End.ToString("dd/MM HH:mm")), SortBy = a => a.End, Text = a => a.End.ToString("yyyy-MM-dd HH:mm") },
-        new() { Key = "onderwerp", Title = T["message-trace-card.subject"], Cell = a => b => b.AddContent(0, a.SubjectText + (a.Cancelled ? " (geannuleerd)" : string.Empty)), SortBy = a => a.SubjectText },
+        new() { Key = "einde", Title = T["reports.end"], Cell = a => b => b.AddContent(0, a.WholeDay ? T["code.room-detail.all-day"] : a.End.Date == a.Begin.Date ? a.End.ToString("HH:mm") : a.End.ToString("dd/MM HH:mm")), SortBy = a => a.End, Text = a => a.End.ToString("yyyy-MM-dd HH:mm") },
+        new() { Key = "onderwerp", Title = T["message-trace-card.subject"], Cell = a => b => b.AddContent(0, a.SubjectText + (a.Cancelled ? (" " + T["code.room-detail.cancelled"]) : string.Empty)), SortBy = a => a.SubjectText },
         new() { Key = "organisator", Title = T["room-detail.organiser"], Cell = a => b => b.AddContent(0, a.Organiser), SortBy = a => a.Organiser },
         new() { Key = "status", Title = "Status", Cell = a => b => b.AddContent(0, a.StatusText), SortBy = a => a.StatusText },
         new() { Key = "adres", Title = T["room-detail.address-of-the-organiser"], Hidden = true, Cell = a => b => b.AddContent(0, a.OrganiserAddress), SortBy = a => a.OrganiserAddress },

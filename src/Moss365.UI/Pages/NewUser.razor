@@ -55,7 +55,7 @@
     <div class="kb-raster">
         <label>@T["nested-groups.kind"]
             <select class="kb-invoer" @bind="request.Population" @bind:after="Clear">
-                <option value="">@(InCloud ? "(geen)" : "(kies)")</option>
+                <option value="">@(InCloud ? T["plan.none"] : T["script-form.choose"])</option>
                 @foreach (var p in State.Config.Populations)
                 {
                     <option value="@p.Name">@p.Name (@(InCloud ? p.UpnDomain : p.Ou))</option>
@@ -217,7 +217,7 @@
                     {
                         @(InCloud ? T["code.new-user.these-steps-become-a-follow"] : T["code.new-user.these-steps-become-a-follow-2"])
                     }
-                    @(InCloud ? T["code.new-user.exchange-creates-the-mailbox-a"] : T["code.new-user.entra-connect-synchronises-every-30"]) werk ze daarna af in <a href="opvolging">@T["menu.opvolging"]</a>.
+                    @(InCloud ? T["code.new-user.exchange-creates-the-mailbox-a"] : T["code.new-user.entra-connect-synchronises-every-30"]) @Html("new-user.finish-in-follow-up")
                 </p>
             }
         </section>

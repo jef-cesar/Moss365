@@ -43,8 +43,8 @@
 
     private static string Prefix(ScriptEvent g) => g.Kind switch
     {
-        EventKind.Warning => "WAARSCHUWING: ",
-        EventKind.Error => "FOUT: ",
+        EventKind.Warning => (T["code.script-output-list.warning"] + " "),
+        EventKind.Error => (T["code.script-output-list.error"] + " "),
         _ => string.Empty,
     };
 

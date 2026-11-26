@@ -32,7 +32,7 @@
                 }
             </tbody>
         </table>
-        <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0 || State.IsHistoric)" @onclick="TakeOver">Overnemen (@suggestions.Count(s => chosen.Contains(Key(s))))</button>
+        <button class="kb-knop kb-primair" disabled="@(chosen.Count == 0 || State.IsHistoric)" @onclick="TakeOver">@T.Format("suggestions.take-over", suggestions.Count(s => chosen.Contains(Key(s))))</button>
     }
     @if (State.HasMicrosoft365 && State.Data.Security is null && State.Data.Persons.Count > 0)
     {

@@ -49,4 +49,10 @@ The same word everywhere for: plan, snapshot, tenant, role, change log (keys `te
   property (`=>`), so that it follows the language. The test `EveryKeyUsedInTheScreensExists` checks the keys in the
   screens, Core and the connections.
 - A result that means "it was already so" (no undo) uses one of the keys in `Undo.AlreadyKeys`.
+- A name that is also a key (a KPI value, a filter, a link) is never the translated text: keep a fixed key and translate
+  only what is shown (see `Group.KindKey` and `Group.KindTextOf`, `SecurityStatistics.MethodGroup`, `Difference.Attribute`
+  and `AttributeText`).
+- The scanner (`tests/Moss365.Tests/Localization/TextScanner.cs`) sees text in markup, next to expressions and control
+  flow, and in the parameters of components. It does not see strings inside a C# expression in the markup
+  (`@(x ? "a" : "b")`): put those in the dictionary yourself.
 - A new language: add a `LanguageInfo` to `Translator.Languages` and a dictionary with every key.

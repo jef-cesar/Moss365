@@ -78,10 +78,10 @@ else if (Columns.Count > 0)
     public sealed record SeriesItem(string Name, string Colour = "reeks");
 
     [Parameter, EditorRequired] public IReadOnlyList<ChartColumn> Columns { get; set; } = Array.Empty<ChartColumn>();
-    [Parameter] public IReadOnlyList<SeriesItem> Series { get; set; } = new[] { new SeriesItem("Aantal") };
+    [Parameter] public IReadOnlyList<SeriesItem> Series { get; set; } = new[] { new SeriesItem(Tx["suggestions-panel.number"]) };
     [Parameter] public string Title { get; set; } = string.Empty;
-    [Parameter] public string ColumnTitle { get; set; } = "Periode";
-    [Parameter] public string EmptyText { get; set; } = "Nog niets in deze periode.";
+    [Parameter] public string ColumnTitle { get; set; } = Tx["security.period"];
+    [Parameter] public string EmptyText { get; set; } = Tx["code.column-chart.nothing-in-this-period-yet"];
 
     // Sizes in the units of the viewBox
     private const int B = 640, H = 200, L = 40, R = 8, T = 14, Under = 24;

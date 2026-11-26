@@ -28,14 +28,14 @@ public sealed partial class ManagementState
     {
         if (_factory is null)
         {
-            return "Niet beschikbaar in deze omgeving.";
+            return Texts.T["code.management-state-tasks.not-available-in-this-environment"];
         }
 
         var clean = TenantLookup.Clean(domainOrId);
         var result = await _factory.FindTenantAsync(domainOrId, cancel);
         if (result.TenantId is not { } id)
         {
-            return result.Error ?? "Geen tenant gevonden.";
+            return result.Error ?? Texts.T["code.management-state-setup.no-tenant-found"];
         }
 
         if (!string.Equals(Settings.TenantId.Trim(), id, StringComparison.OrdinalIgnoreCase))
@@ -99,7 +99,7 @@ public sealed partial class ManagementState
             .ExecuteAsync(plan, context, progress, cancel);
         Log.Information("Wizard: plan uitgevoerd: {Gelukt} gelukt, {Mislukt} mislukt", results.Count(r => r.Status == ResultStatus.Succeeded), results.Count(r => r.Status == ResultStatus.Failed));
 
-        progress?.Report("Opnieuw nakijken...");
+        progress?.Report(Texts.T["code.management-state-setup.checking-again"]);
         await ReadSetupAsync(progress, cancel);
         TakeOverClientId();
         Changed?.Invoke();

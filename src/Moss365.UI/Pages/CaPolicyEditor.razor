@@ -15,7 +15,7 @@
 else if (!State.Can(Permission.Manage) || State.IsHistoric)
 {
     <h1>@T["menu.conditional-access"]</h1>
-    <div class="kb-melding">@(State.IsHistoric ? T["code.ca-policy-editor.you-are-looking-at-the"] : "Een beleid bewerken kan enkel wie mag beheren.")</div>
+    <div class="kb-melding">@(State.IsHistoric ? T["code.ca-policy-editor.you-are-looking-at-the"] : T["code.ca-policy-editor.only-who-may-manage-can"])</div>
 }
 else if (edit is null)
 {
@@ -69,7 +69,7 @@ else
                 <ObjectPicker Label="@T["ca-policy-editor.include-user"]" Kinds="UserKinds" Selected="r => AddUser(edit.UsersIn, r)" />
                 <ObjectPicker Label="@T["ca-policy-editor.include-group"]" Kinds="GroupKinds" Selected="r => AddGroup(edit.GroupsIn, r)" />
             </div>
-            @(RolePicker(edit.RolesIn, "Rol opnemen"))
+            @(RolePicker(edit.RolesIn, T["code.ca-policy-editor.include-role"]))
         }
         <h3>@T["ca-policy-detail.excluded"]</h3>
         @if (MissingEmergency > 0)
@@ -87,7 +87,7 @@ else
             <ObjectPicker Label="@T["ca-policy-editor.exclude-user"]" Kinds="UserKinds" Selected="r => AddUser(edit.UsersOff, r)" />
             <ObjectPicker Label="@T["ca-policy-editor.exclude-group"]" Kinds="GroupKinds" Selected="r => AddGroup(edit.GroupsOff, r)" />
         </div>
-        @(RolePicker(edit.RolesOff, "Rol uitzonderen"))
+        @(RolePicker(edit.RolesOff, T["code.ca-policy-editor.exclude-role"]))
     </section>
 
     <section class="kb-kaart">
@@ -107,7 +107,7 @@ else
             @if (edit.AppsMode == CaAppsMode.Selected)
             {
                 @(Chips(edit.AppsIn, CaReader.AppName, T["word.app"]))
-                @(AppPicker(edit.AppsIn, "App opnemen"))
+                @(AppPicker(edit.AppsIn, T["code.ca-policy-editor.include-app"]))
             }
             @if (edit.AppsMode == CaAppsMode.UserAction)
             {
@@ -120,7 +120,7 @@ else
             {
                 <h3>@T["ca-policy-editor.excluded-apps"]</h3>
                 @(Chips(edit.AppsOff, CaReader.AppName, T["word.app"]))
-                @(AppPicker(edit.AppsOff, "App uitzonderen"))
+                @(AppPicker(edit.AppsOff, T["code.ca-policy-editor.exclude-app"]))
             }
         }
     </section>
@@ -248,11 +248,11 @@ else
             }
             <h3>@T["ca-policy-editor.who-comes-under-it"]</h3>
             <p>
-                @T["ca-policy-editor.after-the-change"] <strong>@impact.After</strong> personen
+                @T["ca-policy-editor.after-the-change"] <strong>@impact.After</strong> @T["ca-policy-editor.people"]
                 @if (current is not null) { <text>(<span class="kb-ca-erbij">+@impact.Added.Count</span>, <span class="kb-ca-eraf">−@impact.Removed.Count</span>)</text> }.
             </p>
-            @if (impact.Added.Count > 0) { <p class="kb-zacht">Komen erbij: @string.Join(", ", impact.Added.Take(15).Select(p => p.Name))@(impact.Added.Count > 15 ? " ..." : null)</p> }
-            @if (impact.Removed.Count > 0) { <p class="kb-zacht">Vallen weg: @string.Join(", ", impact.Removed.Take(15).Select(p => p.Name))@(impact.Removed.Count > 15 ? " ..." : null)</p> }
+            @if (impact.Added.Count > 0) { <p class="kb-zacht">@T["ca-policy-editor.added"] @string.Join(", ", impact.Added.Take(15).Select(p => p.Name))@(impact.Added.Count > 15 ? " ..." : null)</p> }
+            @if (impact.Removed.Count > 0) { <p class="kb-zacht">@T["ca-policy-editor.removed"] @string.Join(", ", impact.Removed.Take(15).Select(p => p.Name))@(impact.Removed.Count > 15 ? " ..." : null)</p> }
             <details>
                 <summary>@T["ca-policy-editor.json-for-graph"]</summary>
                 <pre class="kb-json">@(current is null ? CaEditor.ToJson(edit) : CaEditor.Patch(current, edit) is { Length: > 0 } patch ? patch : T["code.ca-policy-editor.no-change"])</pre>
@@ -311,7 +311,7 @@ else
 
     private bool IsCopy => Nav.Uri.Split('?')[0].EndsWith("/kopie", StringComparison.OrdinalIgnoreCase);
 
-    private string Title => current is null ? (IsCopy ? T["code.ca-policy-editor.copy-of-a-policy"] : "Nieuw beleid") : $"{current.Name} bewerken";
+    private string Title => current is null ? (IsCopy ? T["code.ca-policy-editor.copy-of-a-policy"] : "Nieuw beleid") : T.Format("code.ca-policy-editor.edit", current.Name);
 
     protected override void OnParametersSet()
     {

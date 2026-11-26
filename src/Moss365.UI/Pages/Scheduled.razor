@@ -183,9 +183,9 @@ else
 
     private static string RecurrenceText(Recurrence h) => h switch
     {
-        Recurrence.Daily => "(elke dag)",
-        Recurrence.Weekly => "(elke week)",
-        Recurrence.Monthly => "(elke maand)",
+        Recurrence.Daily => T["code.scheduled.every-day"],
+        Recurrence.Weekly => T["code.scheduled.every-week"],
+        Recurrence.Monthly => T["code.scheduled.every-month"],
         _ => string.Empty,
     };
 }

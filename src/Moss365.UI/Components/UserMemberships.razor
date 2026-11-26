@@ -35,7 +35,7 @@
     </div>
     @if (addGroups.Count > 0)
     {
-        <p>Erbij: @foreach (var g in addGroups) { <span class="kb-label">@g.Name <button class="kb-knop kb-klein" aria-label="@($"{g.Name} niet toevoegen")" @onclick="() => addGroups.Remove(g)">&times;</button></span> }</p>
+        <p>@T["user-memberships.added"] @foreach (var g in addGroups) { <span class="kb-label">@g.Name <button class="kb-knop kb-klein" aria-label="@T.Format("user-memberships.do-not-add", g.Name)" @onclick="() => addGroups.Remove(g)">&times;</button></span> }</p>
     }
 
     @if (State.HasMicrosoft365)
@@ -67,7 +67,7 @@
         </div>
         @if (addMailboxes.Count > 0)
         {
-            <p>Toegang erbij: @foreach (var m in addMailboxes) { <span class="kb-label">@m.DisplayName <button class="kb-knop kb-klein" aria-label="@($"{m.DisplayName} niet toevoegen")" @onclick="() => addMailboxes.Remove(m)">&times;</button></span> }</p>
+            <p>@T["user-memberships.access-added"] @foreach (var m in addMailboxes) { <span class="kb-label">@m.DisplayName <button class="kb-knop kb-klein" aria-label="@T.Format("user-memberships.do-not-add", m.DisplayName)" @onclick="() => addMailboxes.Remove(m)">&times;</button></span> }</p>
         }
     }
 
@@ -121,7 +121,7 @@
         var found = State.Data.Index.Groups.Where(Fits).FirstOrDefault(g => string.Equals(g.Name, name, StringComparison.CurrentCultureIgnoreCase));
         if (found is null)
         {
-            errors = new[] { $"Geen groep \"{name}\" gevonden." };
+            errors = new[] { T.Format("code.user-memberships.no-group-found", name) };
             return;
         }
 

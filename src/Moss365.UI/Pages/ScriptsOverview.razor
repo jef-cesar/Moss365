@@ -107,7 +107,7 @@
 
     private RenderFragment Actions(ScriptFile s) => @<span class="kb-acties-rij">
         <a class="kb-knop kb-klein" href="@StartLink(s)">@T["script-run-panel.start"]</a>
-        <a class="kb-knop kb-klein" href="@($"scripts/bewerken?sleutel={Uri.EscapeDataString(s.Key)}")">@(s.BuiltIn ? "Kopie bewerken" : "Bewerken")</a>
+        <a class="kb-knop kb-klein" href="@($"scripts/bewerken?sleutel={Uri.EscapeDataString(s.Key)}")">@(s.BuiltIn ? T["code.scripts-overview.edit-a-copy"] : T["edit-user.edit"])</a>
         <button class="kb-knop kb-klein" @onclick="() => Export(s)">@T["kb-table.export"]</button>
         @if (!s.BuiltIn)
         {

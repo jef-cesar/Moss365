@@ -60,7 +60,7 @@
                     }
                 </fieldset>
                 <div class="kb-rij">
-                    <button class="kb-knop kb-primair" disabled="@(method == EncryptionMethod.None)" @onclick="() => Next(info)">@(info is null ? "Volgende" : "Bewaren")</button>
+                    <button class="kb-knop kb-primair" disabled="@(method == EncryptionMethod.None)" @onclick="() => Next(info)">@(info is null ? T["code.encryption-panel.next"] : T["action.save"])</button>
                     <button class="kb-knop" @onclick="Reset">@T["action.cancel"]</button>
                 </div>
                 break;
@@ -173,7 +173,7 @@
     private void Renew(EncryptionInfo? info)
     {
         string? recovery = null;
-        Run(() => recovery = Hub!.RenewKey(State.Tenant, info?.Method == EncryptionMethod.Password ? password : null), "Nieuwe sleutel gemaakt.");
+        Run(() => recovery = Hub!.RenewKey(State.Tenant, info?.Method == EncryptionMethod.Password ? password : null), T["code.encryption-panel.new-key-made"]);
         if (recovery is not null)
         {
             recoveryKey = recovery;

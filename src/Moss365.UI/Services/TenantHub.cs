@@ -46,7 +46,7 @@ public sealed partial class TenantHub : IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
         {
-            messages.Add((Texts.T["code.tenant-hub.moving-the-data-of-the"] + " ") + ex.Message + " Er werd niets verwijderd.");
+            messages.Add((Texts.T["code.tenant-hub.moving-the-data-of-the"] + " ") + ex.Message + (" " + Texts.T["code.tenant-hub.nothing-was-removed"]));
         }
 
         App ??= new AppDatabase(Path.Combine(environment.Root, AppDatabase.FileName));
@@ -128,7 +128,7 @@ public sealed partial class TenantHub : IDisposable
     {
         if (App.Tenants().All(t => t.Id != id))
         {
-            throw new ArgumentException("Onbekende tenant.", nameof(id));
+            throw new ArgumentException(Texts.T["code.tenant-hub.unknown-tenant"], nameof(id));
         }
 
         App.SetSetting(CurrentKey, id);
@@ -241,7 +241,7 @@ public sealed partial class TenantHub : IDisposable
             protection = CanProtect(EncryptionMethod.WindowsAccount)
                 ? Protection(key, EncryptionMethod.WindowsAccount, null, null)
                 : TenantKeys.CheckPassword(password, password) is { } bad
-                    ? throw new InvalidDataException(bad + " De herstelde tenant krijgt dat wachtwoord.")
+                    ? throw new InvalidDataException(bad + (" " + Texts.T["code.tenant-hub.the-restored-tenant-gets-that"]))
                     : TenantKeys.WithPassword(key, password!);
         }
 

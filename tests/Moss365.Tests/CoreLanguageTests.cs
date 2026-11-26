@@ -80,6 +80,32 @@ public sealed class CoreLanguageTests
     }
 
     [Fact]
+    public void KindsOfGroupsAndMfaMethodsHaveAFixedKey()
+    {
+        var d = TestData.AppEnvironment();
+        var group = d.Index.Groups.First(g => g.Ad is not null);
+        var kpi = Kpis.GroupKind(group.KindKey);
+        var count = Kpis.Groups(kpi, new KpiSource(d, TestData.Config(), DateTime.Now)).Count;
+        Assert.True(count > 0);
+        using (Texts.Scope("en"))
+        {
+            Assert.StartsWith("AD ", group.KindText, StringComparison.Ordinal);
+            Assert.Equal(group.KindText, Kpis.Find(kpi.Key)!.Label);
+            Assert.Equal("Code from an app", Kpis.Method("softwareOneTimePasscode").Label);
+            Assert.Equal("Security key or passkey", SecurityStatistics.MethodName("passKeyDeviceBound"));
+            Assert.Equal("Department", AdEntraComparison.AttributeText("Department"));
+        }
+
+        // The key is the same in every language, so a link keeps working after a change of language
+        using (Texts.Scope("de"))
+        {
+            Assert.Equal(count, Kpis.Groups(Kpis.Find(kpi.Key)!, new KpiSource(d, TestData.Config(), DateTime.Now)).Count);
+        }
+
+        Assert.Equal("Dienst (Department)", AdEntraComparison.AttributeText("Department"));
+    }
+
+    [Fact]
     public void TheDefaultMailsKeepTheirPlaceholders()
     {
         using (Texts.Scope("pt-BR"))

@@ -57,8 +57,8 @@
 
     public static string KindName(VariableKind s) => s switch
     {
-        VariableKind.YesNo => "Ja/nee",
-        VariableKind.Items => "Lijst (meerdere)",
+        VariableKind.YesNo => T["code.variables-editor.yes-no"],
+        VariableKind.Items => T["code.variables-editor.list-several"],
         _ => s.ToString(),
     };
 

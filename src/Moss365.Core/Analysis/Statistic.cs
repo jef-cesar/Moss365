@@ -80,7 +80,7 @@ public sealed record Statistic(
             Groups: groups.Count,
             EmptyGroups: groups.Count(g => !g.Dynamic && (g.Cloud?.CountMembers ?? g.Exo?.CountMembers ?? g.Ad?.CountMembers) == 0),
             DynamicGroups: groups.Count(g => g.Dynamic),
-            GroupsPerKind: groups.GroupBy(g => g.KindText).Select(g => new Bar(g.Key, g.Count(), Link: Kpis.GroupKind(g.Key).Link)).OrderByDescending(s => s.Count).ToList(),
+            GroupsPerKind: groups.GroupBy(g => g.KindKey).Select(g => new Bar(Group.KindTextOf(g.Key), g.Count(), Link: Kpis.GroupKind(g.Key).Link)).OrderByDescending(s => s.Count).ToList(),
             SharedMailboxes: shared.Count,
             PermissionModel: Kpis.PermissionModels.Select(m => new Bar(Kpis.Display(m), model.Count(x => x == m), shared.Count, Kpis.PermissionModel(m).Link)).ToList(),
             DirectPermissions: index.Permissions.Count(r => r.Direct),
@@ -135,26 +135,29 @@ public sealed record SecurityStatistics(
             usersInRole.Where(r => SecurityData.IsCriticalRole(r.Role) && b.MfaOf(r.MemberId) is { MfaRegistered: false })
                 .Select(r => r.MemberId).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             b.Roles.GroupBy(r => r.Role).Select(g => new Bar(g.Key, g.Count(), Link: "beveiliging")).OrderByDescending(s => s.Count).ToList(),
-            registrations.SelectMany(m => m.Methods.Select(MethodName).Distinct()).GroupBy(n => n)
-                .Select(g => new Bar(g.Key, g.Count(), registrations.Count, Kpis.Method(g.Key).Link))
+            registrations.SelectMany(m => m.Methods.Select(MethodGroup).Distinct()).GroupBy(n => n)
+                .Select(g => new Bar(MethodName(g.Key), g.Count(), registrations.Count, Kpis.Method(g.Key).Link))
                 .OrderByDescending(s => s.Count).ToList());
     }
 
-    /// <summary>Readable name of an MFA method from the report.</summary>
-    public static string MethodName(string method) => method switch
+    /// <summary>The method as it counts in the statistics: the passkeys count together with the FIDO2 keys.</summary>
+    public static string MethodGroup(string method) => method is "passKeyDeviceBound" or "passKeyDeviceBoundAuthenticator" ? "fido2SecurityKey" : method;
+
+    /// <summary>Readable name of an MFA method from the report, in the language of the interface.</summary>
+    public static string MethodName(string method) => MethodGroup(method) switch
     {
-        "microsoftAuthenticatorPush" => "Authenticator (melding)",
-        "microsoftAuthenticatorPasswordless" => "Authenticator (zonder wachtwoord)",
-        "softwareOneTimePasscode" => "Code uit een app",
-        "hardwareOneTimePasscode" => "Hardwaretoken",
-        "mobilePhone" => "Sms of telefoon",
-        "alternateMobilePhone" => "Tweede gsm-nummer",
-        "officePhone" => "Kantoortelefoon",
-        "email" => "E-mail (enkel wachtwoordherstel)",
-        "fido2SecurityKey" or "passKeyDeviceBound" or "passKeyDeviceBoundAuthenticator" => "Beveiligingssleutel of passkey",
+        "microsoftAuthenticatorPush" => Localization.Texts.T["mfa-method.authenticator-push"],
+        "microsoftAuthenticatorPasswordless" => Localization.Texts.T["mfa-method.authenticator-passwordless"],
+        "softwareOneTimePasscode" => Localization.Texts.T["mfa-method.software-otp"],
+        "hardwareOneTimePasscode" => Localization.Texts.T["mfa-method.hardware-otp"],
+        "mobilePhone" => Localization.Texts.T["mfa-method.mobile-phone"],
+        "alternateMobilePhone" => Localization.Texts.T["mfa-method.alternate-mobile"],
+        "officePhone" => Localization.Texts.T["mfa-method.office-phone"],
+        "email" => Localization.Texts.T["mfa-method.email"],
+        "fido2SecurityKey" => Localization.Texts.T["mfa-method.fido2"],
+        "temporaryAccessPass" => Localization.Texts.T["mfa-method.tap"],
+        "securityQuestion" => Localization.Texts.T["mfa-method.security-question"],
         "windowsHelloForBusiness" => "Windows Hello",
-        "temporaryAccessPass" => "Tijdelijke toegangspas",
-        "securityQuestion" => "Beveiligingsvragen",
-        _ => method,
+        var other => other,
     };
 }

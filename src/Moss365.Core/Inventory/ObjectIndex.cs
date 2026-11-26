@@ -30,13 +30,13 @@ public sealed record ObjectRef(ObjectKind Kind, string Key, string Name, string 
 
     public string KindText => Kind switch
     {
-        ObjectKind.User => "gebruiker",
-        ObjectKind.Group => "groep",
-        ObjectKind.Mailbox => "postvak",
+        ObjectKind.User => Texts.T["object.kind.user"],
+        ObjectKind.Group => Texts.T["object.kind.group"],
+        ObjectKind.Mailbox => Texts.T["object.kind.mailbox"],
         ObjectKind.Room => "room",
-        ObjectKind.Device => "apparaat",
-        ObjectKind.Contact => "contactpersoon",
-        _ => "onbekend",
+        ObjectKind.Device => Texts.T["object.kind.device"],
+        ObjectKind.Contact => Texts.T["object.kind.contact"],
+        _ => Texts.T["report.status.unknown"],
     };
 
     public bool IsSame(ObjectRef? other) => other is not null && other.Kind == Kind && string.Equals(other.Key, Key, StringComparison.OrdinalIgnoreCase);
@@ -67,23 +67,53 @@ public sealed class Group
         : Exo is not null ? WriteRoute.Exchange
         : WriteRoute.No;
 
-    public string KindText
+    /// <summary>The kind of the group as a fixed key, the same in every language (for KPIs and links):
+    /// "ad-security", "ad-distribution" (with "+entra" when synchronised), "cloud-Security" (with "+dynamic"),
+    /// "exo-RoomList", or "group".</summary>
+    public string KindKey
     {
         get
         {
             if (Ad is not null)
             {
-                var kind = $"AD-{(string.Equals(Ad.Category, "Distribution", StringComparison.OrdinalIgnoreCase) ? "distributiegroep" : "beveiligingsgroep")}";
-                return Cloud is not null ? kind + (" " + Texts.T["code.object-index.synchronised-to-entra"]) : kind;
+                var kind = string.Equals(Ad.Category, "Distribution", StringComparison.OrdinalIgnoreCase) ? "ad-distribution" : "ad-security";
+                return Cloud is not null ? kind + "+entra" : kind;
             }
 
             if (Cloud is not null)
             {
-                return Cloud.TypeText + (Dynamic ? (" " + Texts.T["code.object-index.dynamic"]) : string.Empty);
+                return "cloud-" + Cloud.Type + (Dynamic ? "+dynamic" : string.Empty);
             }
 
-            return Exo?.TypeText ?? "Groep";
+            return Exo is not null ? "exo-" + Exo.Type : "group";
         }
+    }
+
+    public string KindText => KindTextOf(KindKey);
+
+    /// <summary>The readable kind for a <see cref="KindKey"/>, in the language of the interface.</summary>
+    public static string KindTextOf(string key)
+    {
+        var parts = key.Split('+');
+        var text = parts[0] switch
+        {
+            "ad-security" => Texts.T["group.kind.ad-security"],
+            "ad-distribution" => Texts.T["group.kind.ad-distribution"],
+            var c when c.StartsWith("cloud-", StringComparison.Ordinal) && Enum.TryParse<CloudGroupType>(c[6..], out var type) => CloudGroup.TypeTextOf(type),
+            var e when e.StartsWith("exo-", StringComparison.Ordinal) => ExoGroup.TypeTextOf(e[4..]),
+            _ => Texts.T["word.group"],
+        };
+        if (parts.Contains("entra"))
+        {
+            text += " " + Texts.T["code.object-index.synchronised-to-entra"];
+        }
+
+        if (parts.Contains("dynamic"))
+        {
+            text += " " + Texts.T["code.object-index.dynamic"];
+        }
+
+        return text;
     }
 
     public string Layers => string.Join(" + ", new[] { Ad is null ? null : "AD", Cloud is null ? null : "Entra", Exo is null ? null : "Exchange" }.Where(l => l is not null));

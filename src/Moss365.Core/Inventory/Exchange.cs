@@ -17,12 +17,15 @@ public sealed record ExoGroup
     public int? CountMembers { get; init; }
     public IReadOnlyList<ExoMember> Members { get; init; } = Array.Empty<ExoMember>();
 
-    public string TypeText => Type switch
+    public string TypeText => TypeTextOf(Type);
+
+    /// <summary>The kind of an Exchange group (its RecipientTypeDetails) in the language of the interface.</summary>
+    public static string TypeTextOf(string type) => type switch
     {
-        "MailUniversalSecurityGroup" => "Mail-beveiligingsgroep",
-        "MailUniversalDistributionGroup" => "Distributielijst",
+        "MailUniversalSecurityGroup" => Localization.Texts.T["group.kind.mail-security"],
+        "MailUniversalDistributionGroup" => Localization.Texts.T["group.kind.distribution"],
         "RoomList" => "Room list",
-        _ => Type,
+        _ => type,
     };
 }
 
@@ -56,10 +59,10 @@ public sealed record Mailbox
 
     public string TypeText => Type switch
     {
-        "SharedMailbox" => "Gedeeld postvak",
-        "SchedulingMailbox" => "Planning (Bookings)",
+        "SharedMailbox" => Localization.Texts.T["mailbox.kind.shared"],
+        "SchedulingMailbox" => Localization.Texts.T["mailbox.kind.scheduling"],
         "DiscoveryMailbox" => "Discovery",
-        "EquipmentMailbox" => "Apparatuur",
+        "EquipmentMailbox" => Localization.Texts.T["mailbox.kind.equipment"],
         _ => Type,
     };
 

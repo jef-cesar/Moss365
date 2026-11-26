@@ -79,7 +79,7 @@
                         <p class="kb-zacht">@T["update-panel.before-installing-the-app-makes"]</p>
                     }
                     <div class="kb-rij">
-                        <button class="kb-knop kb-primair" disabled="@(busy || u.Blockers().Count > 0)" @onclick="Install">@(found.Downgrade ? "Nu terugzetten" : "Nu bijwerken")</button>
+                        <button class="kb-knop kb-primair" disabled="@(busy || u.Blockers().Count > 0)" @onclick="Install">@(found.Downgrade ? T["code.update-panel.roll-back-now"] : T["code.update-panel.update-now"])</button>
                         <button class="kb-knop" disabled="@busy" @onclick="Later">@T["update-panel.later"]</button>
                         @if (progress is { } p) { <span class="kb-zacht">@T.Format("update-panel.downloading-0", p)</span> }
                     </div>
