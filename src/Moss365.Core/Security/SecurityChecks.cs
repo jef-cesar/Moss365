@@ -13,10 +13,22 @@ public enum CheckStatus
     Unknown,
 }
 
-public sealed record CheckRow(string Object, string Detail, CheckStatus Status, string? Href = null);
+public sealed record CheckRow(string Object, string Detail, CheckStatus Status, string? Href = null)
+{
+    /// <summary>The risk of this line is accepted until this date (R16).</summary>
+    public DateOnly? AcceptedUntil { get; init; }
+}
 
 public sealed record SecurityCheck(string Key, string Title, CheckStatus Status, string Summary, IReadOnlyList<CheckRow> Rows)
 {
+    /// <summary>When the check ran (R16: the last result is kept in the tenant database).</summary>
+    public DateTimeOffset? Time { get; init; }
+
+    /// <summary>The risk of the whole check is accepted until this date (R16), with who and why.</summary>
+    public DateOnly? AcceptedUntil { get; init; }
+
+    public string? AcceptedNote { get; init; }
+
     public static SecurityCheck Unknown(string key, string title, string why) => new(key, title, CheckStatus.Unknown, why, Array.Empty<CheckRow>());
 
     public string StatusText => Status switch

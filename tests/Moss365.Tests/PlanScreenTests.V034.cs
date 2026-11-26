@@ -1,7 +1,9 @@
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
 using Moss365.Core.Inventory;
 using Moss365.Core.Security;
 using Moss365.UI.Pages;
+using Moss365.UI.Services;
 using Xunit;
 
 namespace Moss365.Tests;
@@ -75,6 +77,50 @@ public sealed partial class PlanScreenTests
         Assert.Contains(alerts.Rows, r => r.Object == "Domain Admins" && r.Detail.Contains("nieuw lid", StringComparison.Ordinal));
         Assert.Contains(alerts.Rows, r => r.Object == "bo.janssens");
         Assert.Equal(CheckStatus.Unknown, SecurityChecks.Alerts(null, now, null).Status);
+    }
+
+    [Fact]
+    public void AdviceExplainsAcceptsARiskAndGivesAScore()
+    {
+        EntraFilled();
+        Assert.All(State.SecurityCheckList(), c => Assert.NotNull(SecurityAdvice.Info(c.Key)));
+        var cut = RenderComponent<SecurityChecksPage>();
+        Assert.Contains("Nog niet berekend", cut.Markup, StringComparison.Ordinal);
+
+        cut.FindAll("button").First(b => b.TextContent == "Alles nakijken").Click();
+        cut.WaitForAssertion(() => Assert.Equal(State.SecurityCheckList().Count, State.SecurityCheckResults.Count), TimeSpan.FromSeconds(5));
+        var before = State.HardeningScore;
+        Assert.NotNull(before);
+        cut.WaitForAssertion(() => Assert.Contains(" / 100", cut.Markup, StringComparison.Ordinal));
+
+        // The explanation (i) of a check, with the attack technique
+        const string apps = "Geheimen en certificaten van apps";
+        AngleSharp.Dom.IElement Row() => cut.FindAll("tr").First(tr => tr.TextContent.Contains(apps, StringComparison.Ordinal) && tr.QuerySelector("button[aria-label='Uitleg']") is not null);
+        Row().QuerySelector("button[aria-label='Uitleg']")!.Click();
+        Assert.Contains("Wat is het?", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("https://attack.mitre.org/techniques/T1098/001/", cut.Markup, StringComparison.Ordinal);
+
+        // Accepting the risk: with a reason, in the change log, the score goes up
+        Assert.Equal(CheckStatus.Problem, State.SecurityCheckResults["app-geheimen"].Status);
+        Row().QuerySelectorAll("button").First(b => b.TextContent == "Risico aanvaarden").Click();
+        cut.Find("input[aria-label='Reden']").Input("vernieuwd bij de leverancier op 1 december");
+        cut.FindAll("button").First(b => b.TextContent == "Aanvaarden").Click();
+        Assert.NotNull(State.SecurityCheckResults["app-geheimen"].AcceptedUntil);
+        Assert.Contains("Aanvaard tot", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains(State.ChangeLog.Recent(10), l => l.ChangeAction == "AcceptRisk" && l.Message.Contains("leverancier", StringComparison.Ordinal));
+        Assert.True(State.HardeningScore > before);
+
+        // Lifting it: the advice counts again
+        cut.FindAll("button").First(b => b.TextContent == "Opheffen").Click();
+        Assert.Empty(State.AcceptedRisks);
+        Assert.Equal(before, State.HardeningScore);
+        Assert.Equal(2, State.ChangeLog.Recent(10).Count(l => l.ChangeAction == "AcceptRisk"));
+
+        // The results are kept in the tenant database: after a restart the last result is still there
+        using var again = ActivatorUtilities.CreateInstance<ManagementState>(Services);
+        Assert.Equal(CheckStatus.Problem, again.SecurityCheckResults["app-geheimen"].Status);
+        Assert.NotNull(again.SecurityCheckResults["app-geheimen"].Time);
+        Assert.Equal(before, again.HardeningScore);
     }
 
     [Fact]

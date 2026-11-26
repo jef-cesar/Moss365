@@ -73,7 +73,10 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   message trace go through `ManagementState.Helpdesk.cs`, which writes the access log. "Stay signed in" keeps the MSAL
   cache in the tenant database, DPAPI-encrypted (`ProtectedTokenStore`), only when chosen. Security checks (0.34):
   `Security/SecurityChecks.cs` computes OK/attention/problem/unknown from readings (`IGraphConnection.ReadAppsAsync`, ...,
-  `IAdConnection.ReadSecurityAsync`/`ReadGpoAsync`, `IExchangeConnection.ReadForwardingAsync`); run by `ManagementState.SecurityChecks.cs`. Licences (0.35): `Licences/LicenceAnalysis.cs`
+  `IAdConnection.ReadSecurityAsync`/`ReadGpoAsync`, `IExchangeConnection.ReadForwardingAsync`); run by `ManagementState.SecurityChecks.cs`. Advice (R16): `Security/SecurityAdvice.cs` (the explanation per check in
+  `advice.<key>.what/why/fix/risk`, weights, MITRE and Learn links, accepted risks as change log lines `AcceptRisk`,
+  the hardening score); document `beveiligingscontroles` keeps the last results, the accepted risks and the score per
+  day. `SecurityCheckResults` applies the accepted risks; an unknown result never replaces a real one kept earlier. Licences (0.35): `Licences/LicenceAnalysis.cs`
   (waste, costs with `OrganisationConfig.LicencePrices`, against job profiles); `GraphRemoveLicences` takes optional `skuIds`.
   Devices, Teams and SharePoint (0.36): `Devices/DeviceAnalysis.cs` (stale computers, systems, Intune, groups without
   owner/with guests/unused, sites); reads `IAdConnection.ReadComputersAsync`, `IGraphConnection.ReadIntuneDevicesAsync`/

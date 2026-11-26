@@ -10,6 +10,14 @@ Every version becomes a release on GitHub; the section under the version is the 
 - **.NET 10** instead of .NET 8: .NET 8 gets no security updates since 10 November 2026, and Moss365 ships the runtime
   itself, so this update also brings a supported runtime (until November 2028). The packages moved along (SQLite,
   ASP.NET Core components, the WebView, MSAL, the directory and protection libraries). Nothing changes in how you work.
+- **Security advice** (R16, first part), on *Beveiligingscontroles*:
+  - every check has an **ⓘ**: what it is, why it matters, what you do about it and what can go wrong, with the attack
+    technique (MITRE ATT&CK) and a link to Microsoft Learn;
+  - a risk can be **accepted** for a whole check or for one line, with a reason and an end date (at most a year); it
+    goes to the change log as evidence, and after that date the advice is back;
+  - the last result of every check is **kept** in the tenant database, with the date it was checked;
+  - a **hardening score** of Moss365's own, over AD and Microsoft 365 together and weighted per check, with the score
+    of an earlier day next to it.
 - **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
   address; anything else (such as a script link or a file share) is no longer clickable.
 - **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.
