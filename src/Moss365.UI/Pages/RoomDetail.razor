@@ -164,7 +164,7 @@ else
     private string calendarPeriod = string.Empty;
     private IReadOnlyList<Appointment>? appointments;
 
-    private static readonly IReadOnlyList<Column<Appointment>> calendarColumns = new List<Column<Appointment>>
+    private static IReadOnlyList<Column<Appointment>> calendarColumns => new List<Column<Appointment>>
     {
         new() { Key = "begin", Title = T["reports.start"], Cell = a => b => b.AddContent(0, a.WholeDay ? a.Begin.ToString("ddd dd/MM/yyyy") : a.Begin.ToString("ddd dd/MM/yyyy HH:mm")), SortBy = a => a.Begin, Text = a => a.Begin.ToString("yyyy-MM-dd HH:mm") },
         new() { Key = "einde", Title = T["reports.end"], Cell = a => b => b.AddContent(0, a.WholeDay ? "hele dag" : a.End.Date == a.Begin.Date ? a.End.ToString("HH:mm") : a.End.ToString("dd/MM HH:mm")), SortBy = a => a.End, Text = a => a.End.ToString("yyyy-MM-dd HH:mm") },

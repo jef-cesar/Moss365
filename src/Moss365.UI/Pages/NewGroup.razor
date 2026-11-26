@@ -78,13 +78,13 @@
 @code {
     private static readonly ObjectKind[] Persons = { ObjectKind.User };
 
-    private static readonly (NewGroupKind, string, string)[] Kinds =
+    private static (NewGroupKind, string, string)[] Kinds => new[]
     {
-        (NewGroupKind.AdSecurity, "AD-beveiligingsgroep", "Voor rechten op mappen, programma's en toestellen; gesynchroniseerd naar Entra."),
+        (NewGroupKind.AdSecurity, T["new-group.ad"], T["new-group.ad.help"]),
         (NewGroupKind.CloudSecurity, T["code.new-group.security-group-in-the-cloud"], T["code.new-group.for-permissions-and-licences-in"]),
-        (NewGroupKind.Microsoft365, "Microsoft 365-groep", "Samenwerken: gedeelde mailbox, agenda, bestanden; Teams mogelijk."),
-        (NewGroupKind.MailSecurity, "Mail-beveiligingsgroep", T["code.new-group.permissions-and-mail-e-g"]),
-        (NewGroupKind.Distribution, "Distributielijst", T["code.new-group.only-mail-to-a-group"]),
+        (NewGroupKind.Microsoft365, T["new-group.m365"], T["new-group.m365.help"]),
+        (NewGroupKind.MailSecurity, T["new-group.mailsecurity"], T["code.new-group.permissions-and-mail-e-g"]),
+        (NewGroupKind.Distribution, T["new-group.distribution"], T["code.new-group.only-mail-to-a-group"]),
     };
 
     private const string Form = "groepen/nieuw";

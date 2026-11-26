@@ -103,9 +103,9 @@ else
 }
 
 @code {
-    private static readonly (WasteKind, string)[] Kinds =
+    private static (WasteKind, string)[] Kinds => new[]
     {
-        (WasteKind.Disabled, "Uitgeschakeld"), (WasteKind.SharedMailbox, "Gedeelde postvakken"), (WasteKind.Duplicate, "Dubbele plannen"), (WasteKind.Unused, "Niet gebruikt (90 dagen)"),
+        (WasteKind.Disabled, T["licences.kind.disabled"]), (WasteKind.SharedMailbox, T["menu.postvakken"]), (WasteKind.Duplicate, T["licences.kind.duplicate"]), (WasteKind.Unused, T["licences.kind.unused"]),
     };
 
     private WasteKind? filter;

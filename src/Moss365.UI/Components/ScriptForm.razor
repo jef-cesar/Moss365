@@ -72,11 +72,11 @@ else
     [Parameter, EditorRequired] public Dictionary<string, string> Values { get; set; } = new();
     [Parameter] public EventCallback ValuesChanged { get; set; }
 
-    private static readonly (string Value, string Text)[] Relative =
+    private static (string Value, string Text)[] Relative => new[]
     {
-        (string.Empty, "(vaste datum)"), ("@vandaag", "vandaag"), ("@gisteren", "gisteren"), ("@werkjaar.van", "begin werkjaar (1/9)"),
-        ("@werkjaar.tot", "einde werkjaar (31/8)"), ("@dezemaand.van", "begin deze maand"), ("@dezemaand.tot", "einde deze maand"),
-        ("@vorigemaand.van", "begin vorige maand"), ("@vorigemaand.tot", "einde vorige maand"),
+        (string.Empty, T["script-form.fixed"]), ("@vandaag", T["script-form.today"]), ("@gisteren", T["script-form.yesterday"]), ("@werkjaar.van", T["script-form.workyear.from"]),
+        ("@werkjaar.tot", T["script-form.workyear.to"]), ("@dezemaand.van", T["script-form.thismonth.from"]), ("@dezemaand.tot", T["script-form.thismonth.to"]),
+        ("@vorigemaand.van", T["script-form.lastmonth.from"]), ("@vorigemaand.tot", T["script-form.lastmonth.to"]),
     };
 
     private string Value(string name) => Values.TryGetValue(name, out var w) ? w : string.Empty;

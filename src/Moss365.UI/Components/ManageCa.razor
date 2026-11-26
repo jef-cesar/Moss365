@@ -289,7 +289,7 @@
     private bool auditBusy;
     private string? auditError;
 
-    private static readonly IReadOnlyList<Column<CaAuditEntry>> auditColumns = new List<Column<CaAuditEntry>>
+    private static IReadOnlyList<Column<CaAuditEntry>> auditColumns => new List<Column<CaAuditEntry>>
     {
         new() { Key = "tijd", Title = T["sign-in-list.time"], Cell = a => b => b.AddContent(0, a.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")), SortBy = a => -a.Time.UtcTicks, Text = a => a.Time.LocalDateTime.ToString("yyyy-MM-dd HH:mm") },
         new() { Key = "wie", Title = T["script-result.who"], Cell = a => b => b.AddContent(0, a.Who), SortBy = a => a.Who },
@@ -402,7 +402,7 @@
 
     private void Restore(CaPolicy old)
         => Show(CaPlans.Restore(old, Ca.Policies.FirstOrDefault(b => b.Id == old.Id), State.Data, State.Config, State.OwnUpn),
-            $"Conditional Access: terugzetten uit de back-up van {backup?.Time:dd/MM/yyyy HH:mm}");
+            T.Format("manage-ca.restorecontext", backup?.Time.ToString("dd/MM/yyyy HH:mm")));
 
     private async Task LoadAudit()
     {

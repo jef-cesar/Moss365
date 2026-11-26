@@ -17,22 +17,22 @@
 @code {
     [Parameter] public TenantSystems Value { get; set; } = TenantSystems.Both;
     [Parameter] public EventCallback<TenantSystems> ValueChanged { get; set; }
-    [Parameter] public string Legend { get; set; } = "Systemen";
+    [Parameter] public string Legend { get; set; } = T["systems.legend"];
 
     private readonly string name = "systemen-" + Guid.NewGuid().ToString("N");
 
-    private static readonly (TenantSystems, string, string)[] Options =
+    private static (TenantSystems, string, string)[] Options => new[]
     {
-        (TenantSystems.Both, "AD en Microsoft 365", "Hybride: on-prem Active Directory, gesynchroniseerd naar Entra ID."),
-        (TenantSystems.Microsoft365, "Enkel Microsoft 365", "Cloud: Entra ID en Exchange Online, geen Active Directory."),
-        (TenantSystems.ActiveDirectory, "Enkel Active Directory", "On-prem: geen Microsoft 365."),
+        (TenantSystems.Both, T["systems.both"], T["systems.both.help"]),
+        (TenantSystems.Microsoft365, T["systems.cloud"], T["systems.cloud.help"]),
+        (TenantSystems.ActiveDirectory, T["systems.ad"], T["systems.ad.help"]),
     };
 
     /// <summary>The words for a choice, for in a sentence.</summary>
     public static string Text(TenantSystems s) => s switch
     {
-        TenantSystems.ActiveDirectory => "enkel Active Directory",
-        TenantSystems.Microsoft365 => "enkel Microsoft 365",
-        _ => "Active Directory en Microsoft 365",
+        TenantSystems.ActiveDirectory => T["systems.text.ad"],
+        TenantSystems.Microsoft365 => T["systems.text.cloud"],
+        _ => T["code.tenants.active-directory-and-microsoft-365"],
     };
 }

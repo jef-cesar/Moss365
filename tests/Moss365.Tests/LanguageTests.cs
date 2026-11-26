@@ -46,6 +46,17 @@ public sealed class LanguageTests
     }
 
     [Fact]
+    public void NoTextIsFrozenInAStaticField()
+    {
+        // A static readonly field is filled once: its texts would keep the language of that moment
+        var frozen = Directory.GetFiles(Path.Combine(Repo(), "src"), "*.*", SearchOption.AllDirectories)
+            .Where(f => (f.EndsWith(".razor", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal)) && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .SelectMany(f => Regex.Matches(File.ReadAllText(f), @"static readonly[^;]*?\bTx?(\[""|\.Format\()", RegexOptions.Singleline).Select(_ => Path.GetFileName(f)))
+            .ToList();
+        Assert.True(frozen.Count == 0, string.Join(", ", frozen));
+    }
+
+    [Fact]
     public void AttributesTakeTheirTextAsAnExpression()
     {
         // title=T["x"] (without @ and quotes) shows the code instead of the text

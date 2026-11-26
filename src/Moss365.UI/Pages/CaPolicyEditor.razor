@@ -284,17 +284,17 @@ else
     private static readonly ObjectKind[] UserKinds = { ObjectKind.User };
     private static readonly ObjectKind[] GroupKinds = { ObjectKind.Group };
 
-    private static readonly (CaStatus, string, string)[] Statuses =
+    private static (CaStatus, string, string)[] Statuses => new[]
     {
-        (CaStatus.Report, "Alleen rapport", "Entra meet wat het beleid zou doen, maar dwingt niets af."),
-        (CaStatus.On, "Aan", "Het beleid wordt afgedwongen."),
-        (CaStatus.Off, "Uit", "Het beleid doet niets."),
+        (CaStatus.Report, T["word.reportonly"], T["ca-editor.state.report.help"]),
+        (CaStatus.On, T["ca-editor.state.on"], T["ca-editor.state.on.help"]),
+        (CaStatus.Off, T["word.off"], T["ca-editor.state.off.help"]),
     };
 
-    private static readonly (CaAppsMode, string)[] AppModes =
+    private static (CaAppsMode, string)[] AppModes => new[]
     {
-        (CaAppsMode.All, "Alle cloud-apps"), (CaAppsMode.Office365, "Office 365"), (CaAppsMode.AdminPortals, "Microsoft-beheerportalen"),
-        (CaAppsMode.Selected, "Gekozen apps"), (CaAppsMode.UserAction, "Een gebruikersactie"),
+        (CaAppsMode.All, T["ca-editor.apps.all"]), (CaAppsMode.Office365, "Office 365"), (CaAppsMode.AdminPortals, T["ca-overview.microsoft-admin-portals"]),
+        (CaAppsMode.Selected, T["ca-editor.apps.selected"]), (CaAppsMode.UserAction, T["ca-editor.apps.useraction"]),
     };
 
     private CaPolicy? current;

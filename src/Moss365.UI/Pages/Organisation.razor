@@ -143,7 +143,7 @@
                     <tr>
                         <td><code>"@x.Value"</code></td>
                         <td class="kb-getal">@x.Count</td>
-                        <td>@(x.InConfig ? $"schrijfvariant van \"{State.Config.SearchDepartment(x.Value)?.Department}\"" : T["code.organisation.not-in-the-list"])</td>
+                        <td>@(x.InConfig ? T.Format("organisation.variant", State.Config.SearchDepartment(x.Value)?.Department) : T["code.organisation.not-in-the-list"])</td>
                         <td>
                             @if (!x.InConfig)
                             {
@@ -289,11 +289,11 @@
     private string newEmergencyAccount = string.Empty;
     private string? rolesError;
 
-    private static readonly (RolesMode, string, string)[] RoleModes =
+    private static (RolesMode, string, string)[] RoleModes => new[]
     {
-        (RolesMode.Off, "Zonder rollen", "Iedereen die de app hier gebruikt, mag alles. Voor een klein team of één beheerder."),
-        (RolesMode.Transition, "Rollen als ze er zijn", "Wie een rol heeft, mag wat de rol zegt; wie geen rol heeft, mag nog alles (de overgang)."),
-        (RolesMode.Required, "Rollen verplicht", T["code.organisation.whoever-has-no-role-may"]),
+        (RolesMode.Off, T["organisation.roles.off"], T["organisation.roles.off.help"]),
+        (RolesMode.Transition, T["organisation.roles.transition"], T["organisation.roles.transition.help"]),
+        (RolesMode.Required, T["organisation.roles.required"], T["code.organisation.whoever-has-no-role-may"]),
     };
 
     private void ChooseRoles(RolesMode mode)
@@ -365,7 +365,7 @@
         Set(() => added = OrganisationTemplates.Apply(State.Config, template));
         (exchangeMessage, exchangeError) = (added.Count == 0
             ? T.Format("code.organisation.the-template-adds-nothing-everything", template.Name)
-            : $"Uit het sjabloon {template.Name}: {string.Join(", ", added)}. Kijk na en bewaar.", false);
+            : T.Format("organisation.fromtemplate", template.Name, string.Join(", ", added)), false);
     }
 
     private void Export()
