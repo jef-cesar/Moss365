@@ -25,7 +25,7 @@
         @Html("about.releases")
     </p>
     <div class="kb-filters">
-        <CopyField Value="@(State.Update?.Link ?? State.ReleasesLink)" Label="Link naar de releases" />
+        <CopyField Value="@(State.Update?.Link ?? State.ReleasesLink)" Label="@T["code.about-and-updates.link-to-the-releases"]" />
         <button class="kb-knop" disabled="@searches" @onclick="SearchUpdate">@T["update-panel.search-now"]</button>
     </div>
     <label><input type="checkbox" checked="@State.Settings.SearchUpdates" @onchange="SetUpdateSearch" /> @T["about-and-updates.search-for-a-new-version"]</label>

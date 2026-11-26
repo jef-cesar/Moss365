@@ -86,7 +86,7 @@
         }
         catch (Exception ex)
         {
-            error = "Opvolging lezen mislukt: " + ex.Message;
+            error = (T["code.follow-up.reading-the-follow-up-failed"] + " ") + ex.Message;
         }
     }
 

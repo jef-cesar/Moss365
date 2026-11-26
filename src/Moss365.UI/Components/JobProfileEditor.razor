@@ -43,7 +43,7 @@
         <label>@T["variables-editor.name"] <input class="kb-invoer" @bind="newName" @bind:event="oninput" placeholder="@T["job-profile-editor.e-g-reception-employee"]" aria-label="@T["job-profile-editor.name-of-the-new-profile"]" /></label>
         <button class="kb-knop" disabled="@(!CanAdd)" @onclick="AddEmpty">@T["job-profile-editor.empty-profile"]</button>
     </div>
-    <PersonPicker Label="Of neem over van een gebruiker (groepen, postvakken, licenties en gegevens)" Selected="example" SelectedChanged="p => example = p" />
+    <PersonPicker Label="@T["code.job-profile-editor.or-take-over-from-a"]" Selected="example" SelectedChanged="p => example = p" />
     <div class="kb-rij">
         <button class="kb-knop" disabled="@(!CanAdd || example is null)" @onclick="AddFromPerson">Profiel maken van @(example?.Name ?? "deze gebruiker")</button>
     </div>
@@ -181,7 +181,7 @@
     {
         if (State.Config.JobProfiles.Any(p => string.Equals(p.Name, profile.Name, StringComparison.CurrentCultureIgnoreCase)))
         {
-            error = $"Er is al een profiel \"{profile.Name}\".";
+            error = T.Format("code.job-profile-editor.there-is-already-a-profile", profile.Name);
             return;
         }
 

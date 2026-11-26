@@ -31,7 +31,7 @@ else
                     }
                     @if (groupValue.Cloud is { } cloud)
                     {
-                        <tr><th>@T["group-detail.kind-in-entra"]</th><td>@cloud.TypeText @(cloud.FromAd ? "(uit AD)" : null)</td></tr>
+                        <tr><th>@T["group-detail.kind-in-entra"]</th><td>@cloud.TypeText @(cloud.FromAd ? T["code.group-detail.from-ad"] : null)</td></tr>
                         @if (cloud.Dynamic) { <tr><th>@T["group-detail.rule"]</th><td><code>@cloud.MembershipRule</code></td></tr> }
                         @if (cloud.GroupLicence) { <tr><th>@T["licences.licence"]</th><td>@T["group-detail.assigns-a-licence-to-the"]</td></tr> }
                     }
@@ -70,7 +70,7 @@ else
                     @if (message is not null) { <span class="kb-zacht">@message</span> }
                 </div>
             }
-            <ObjectPicker Label="Beheerder of eigenaar toevoegen" Kinds="Persons" Selected="r => Plan(GroupPlans.Administrator(State.Data, groupValue, r, true))" />
+            <ObjectPicker Label="@T["code.group-detail.add-manager-or-owner"]" Kinds="Persons" Selected="r => Plan(GroupPlans.Administrator(State.Data, groupValue, r, true))" />
         </section>
     </div>
 
@@ -160,7 +160,7 @@ else
     }
     @if (plan is not null)
     {
-        <PlanView Plan="plan" Context="@($"Groep {groupValue.Name}")" Title="Wijzigingen aan de groep" Executed="AfterExecute" />
+        <PlanView Plan="plan" Context="@($"Groep {groupValue.Name}")" Title="@T["code.group-detail.changes-to-the-group"]" Executed="AfterExecute" />
     }
 }
 
@@ -225,7 +225,7 @@ else
         Moss365.Core.Analysis.WriteRoute.ActiveDirectory => "AD",
         Moss365.Core.Analysis.WriteRoute.Graph => "Entra (Graph)",
         Moss365.Core.Analysis.WriteRoute.Exchange => "Exchange",
-        _ => "niet (automatisch)",
+        _ => T["code.group-detail.not-automatic"],
     };
 
     private void Choose(ObjectRef r, ChangeEventArgs e)

@@ -21,7 +21,7 @@
     [Parameter] public string? Progress { get; set; }
     [Parameter] public int? Percent { get; set; }
     [Parameter] public bool Follow { get; set; }
-    [Parameter] public string EmptyText { get; set; } = "Nog geen uitvoer.";
+    [Parameter] public string EmptyText { get; set; } = T["code.script-output-list.no-output-yet"];
 
     private ElementReference box;
 

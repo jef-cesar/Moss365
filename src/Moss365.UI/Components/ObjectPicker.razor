@@ -26,7 +26,7 @@
 
 @code {
     [Parameter] public string? Label { get; set; }
-    [Parameter] public string Placeholder { get; set; } = "Zoek op naam of adres";
+    [Parameter] public string Placeholder { get; set; } = T["mailboxes.search-by-name-or-address"];
     [Parameter] public IReadOnlyCollection<ObjectKind>? Kinds { get; set; }
 
     /// <summary>Also guest users (0.31), e.g. to make them members of a group.</summary>

@@ -13,7 +13,7 @@
 @switch (part)
 {
     case 0:
-        <ScriptOutputList Events="Events" EmptyText="Het script gaf geen tekst." />
+        <ScriptOutputList Events="Events" EmptyText="@T["code.script-result.the-script-gave-no-text"]" />
         break;
     case 1:
         @if (tables.Count == 0)
@@ -127,7 +127,7 @@
         var target = Path.Combine(State.ExportFolder, "Scripts", $"{Run.Key}-{Run.FolderName}", file.Path[(FilesFolder.Length + 1)..].Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         File.WriteAllBytes(target, State.Files.ReadBytes(file.Path)!);
-        State.Access("Bestand van een script-run geopend", file.Name);
+        State.Access(T["code.script-result.file-of-a-script-run"], file.Name);
         opened = target;
         State.AppEnvironment.ShowFile(target);
     }

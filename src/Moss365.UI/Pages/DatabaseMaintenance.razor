@@ -27,7 +27,7 @@
         <button class="kb-knop" disabled="@busy" @onclick="Compact">@T["database-maintenance.compact"]</button>
         @if (checkResult is not null)
         {
-            <span class="@(checkResult == "ok" ? "kb-ok" : "kb-waarschuwing")">@(checkResult == "ok" ? "De databank is in orde." : "Problemen: " + checkResult)</span>
+            <span class="@(checkResult == "ok" ? "kb-ok" : "kb-waarschuwing")">@(checkResult == "ok" ? T["code.database-maintenance.the-database-is-in-order"] : "Problemen: " + checkResult)</span>
         }
         @if (compacted is not null) { <span class="kb-ok">@compacted</span> }
     </div>
@@ -184,7 +184,7 @@
         CleanupPart.AccessLog => "Toegangslog",
         CleanupPart.TechnicalLog => "Technisch log",
         CleanupPart.ScriptRuns => "Scriptruns",
-        _ => "Kopieën voor een update",
+        _ => T["code.database-maintenance.copies-before-an-update"],
     };
 
     private static string Size(long bytes)

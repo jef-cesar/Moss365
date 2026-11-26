@@ -6,7 +6,7 @@
 <h1>@T["menu.verbindingen"]</h1>
 
 <LeaveConfirm Active="State.SettingsChanged" Saving="Save" Discard="State.DiscardSettings"
-                   Text="Je hebt de verbindingsinstellingen aangepast maar nog niet bewaard. Het AD-wachtwoord wordt nooit bewaard." />
+                   Text="@T["code.connections.you-changed-the-connection-settings"]" />
 
 <p class="kb-zacht">
     @Html("connections.intro", State.Database.FilePath)
@@ -99,7 +99,7 @@
 <div class="kb-filters">
     <button class="kb-knop" @onclick="Save">@T["connections.save-settings"]</button>
     <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Everything)">@T["set-up-tenant.load-everything-live"]</button>
-    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">Live laden (@(State.HasAd && State.HasMicrosoft365 ? "AD en Entra" : State.HasAd ? "AD" : "Entra"))</button>
+    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">Live laden (@(State.HasAd && State.HasMicrosoft365 ? T["code.connections.ad-and-entra"] : State.HasAd ? "AD" : "Entra"))</button>
     @if (State.HasMicrosoft365)
     {
         <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Rooms)">@T["connections.load-rooms-from-exchange"]</button>
@@ -117,7 +117,7 @@
     <input type="checkbox" @bind="State.Settings.QuickLoad" @bind:after="State.SaveSettings" />
     @T["connections.quick-load-only-what-changed"]
     <span class="kb-zacht">
-        (AD: @(State.AdCanQuick ? "kan" : "volgende keer alles"); Entra-groepen: @(State.EntraCanQuick ? "kan" : "volgende keer alles").
+        (AD: @(State.AdCanQuick ? "kan" : T["code.connections.everything-next-time"]); Entra-groepen: @(State.EntraCanQuick ? "kan" : T["code.connections.everything-next-time"]).
         Gebruikers in Entra en Exchange lezen altijd alles; minstens één keer per week leest de app alles.)
     </span>
 </label>
@@ -132,7 +132,7 @@
     <ul class="kb-lijst-plat">
         @foreach (var part in new[] { "AD", "Entra", "Rooms", "Postvakken" })
         {
-            <li><strong>@part</strong>: @(State.LiveOn.TryGetValue(part, out var t) ? $"live geladen om {t:HH:mm}" : "uit de inventaris")</li>
+            <li><strong>@part</strong>: @(State.LiveOn.TryGetValue(part, out var t) ? $"live geladen om {t:HH:mm}" : T["code.connections.from-the-inventory"])</li>
         }
         @if (State.SavedInventory is { } folder) { <li class="kb-zacht">Laatst bewaard als inventaris: @System.IO.Path.GetFileName(folder)</li> }
     </ul>
@@ -141,7 +141,7 @@
         <tbody>
             @foreach (var b in State.Data.Sources)
             {
-                <tr><td>@b.File</td><td>@(b.Folder is null ? "niet gevonden" : System.IO.Path.GetFileName(b.Folder))</td><td class="kb-getal">@b.Rows</td></tr>
+                <tr><td>@b.File</td><td>@(b.Folder is null ? T["start.notfound"] : System.IO.Path.GetFileName(b.Folder))</td><td class="kb-getal">@b.Rows</td></tr>
             }
         </tbody>
     </table>
@@ -192,6 +192,6 @@
     private void Load(LoadKind kind)
     {
         State.SaveSettings();
-        message = State.StartLoading(kind) ? null : State.TaskBusy ? "Er loopt al een taak." : null;
+        message = State.StartLoading(kind) ? null : State.TaskBusy ? T["code.connections.a-task-is-already-running"] : null;
     }
 }

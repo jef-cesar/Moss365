@@ -78,7 +78,7 @@
     }
     @if (plan is not null)
     {
-        <PlanView @key="planKey" Plan="plan" Context="@($"Groepen en postvakken {Person.Name}")" Title="Groepen en postvakken" Executed="Done" />
+        <PlanView @key="planKey" Plan="plan" Context="@($"Groepen en postvakken {Person.Name}")" Title="@T["code.user-memberships.groups-and-mailboxes"]" Executed="Done" />
     }
 </section>
 

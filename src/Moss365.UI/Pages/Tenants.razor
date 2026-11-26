@@ -64,7 +64,7 @@ else
                             @SystemsText(t.Systems)
                         }
                     </td>
-                    <td><code>@(t.TenantId ?? "(nog niet gekend)")</code></td>
+                    <td><code>@(t.TenantId ?? T["code.tenants.not-known-yet"])</code></td>
                     <td class="kb-zacht"><code>tenants\@t.Id</code></td>
                     <td>
                         <span class="kb-filters">
@@ -171,12 +171,12 @@ else
         try
         {
             var path = hub.Backup(t, Path.Combine(State.AppEnvironment.ExportFolder, "Back-ups"));
-            (message, error) = ($"Back-up van \"{t.Name}\" bewaard: {path}", false);
+            (message, error) = (T.Format("code.tenants.backup-of-saved", t.Name, path), false);
             State.AppEnvironment.ShowFile(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
         {
-            (message, error) = ("Back-up mislukt: " + ex.Message, true);
+            (message, error) = ((T["code.tenants.backup-failed"] + " ") + ex.Message, true);
         }
     }
 
@@ -185,7 +185,7 @@ else
         try
         {
             var t = hub.Restore(restoreFile.Trim().Trim('"'), restoreName, restoreKey.Length > 0 ? restoreKey : null, restorePassword.Length > 0 ? restorePassword : null);
-            (message, error) = ($"Teruggezet als \"{t.Name}\". Open de tenant om hem te gebruiken.", false);
+            (message, error) = (T.Format("code.tenants.restored-as-open-the-tenant", t.Name), false);
             restoreFile = restoreName = restoreKey = restorePassword = string.Empty;
         }
         catch (Exception ex) when (ex is IOException or ArgumentException or InvalidDataException or UnauthorizedAccessException)
@@ -218,7 +218,7 @@ else
     {
         TenantSystems.ActiveDirectory => "Active Directory",
         TenantSystems.Microsoft365 => "Microsoft 365",
-        _ => "Active Directory en Microsoft 365",
+        _ => T["code.tenants.active-directory-and-microsoft-365"],
     };
 
     private void Save(TenantHub hub, TenantInfo t)
@@ -265,7 +265,7 @@ else
         }
         else
         {
-            (message, error) = ("Dat wachtwoord of die herstelsleutel past niet.", true);
+            (message, error) = (T["code.tenants.that-password-or-recovery-key"], true);
         }
     }
 
@@ -287,7 +287,7 @@ else
         {
             var folder = hub.Remove(t.Id);
             removing = null;
-            (message, error) = ($"\"{t.Name}\" staat niet meer in de lijst." + (folder is null ? string.Empty : $" De gegevens staan in {folder}."), false);
+            (message, error) = (T.Format("code.tenants.is-no-longer-in-the", t.Name) + (folder is null ? string.Empty : $" De gegevens staan in {folder}."), false);
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
         {

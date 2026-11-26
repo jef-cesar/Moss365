@@ -36,7 +36,7 @@
         var moment = new DateTimeOffset(date.ToDateTime(hour), TimeZoneInfo.Local.GetUtcOffset(date.ToDateTime(hour)));
         if (moment <= DateTimeOffset.Now)
         {
-            error = "Kies een moment in de toekomst (of voer het plan nu uit).";
+            error = T["code.schedule.choose-a-moment-in-the"];
             return;
         }
 

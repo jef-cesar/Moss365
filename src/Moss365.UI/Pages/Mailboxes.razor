@@ -14,7 +14,7 @@
 
 
 <div class="kb-tegels">
-    @foreach (var (label, filter) in new[] { ("Alleen via groep", "groep"), ("Groep en rechtstreeks", "beide"), ("Alleen rechtstreeks", "direct"), ("Zonder rechten", "geen") })
+    @foreach (var (label, filter) in new[] { ("Alleen via groep", "groep"), (T["code.mailboxes.group-and-direct"], "beide"), ("Alleen rechtstreeks", "direct"), ("Zonder rechten", "geen") })
     {
         <button class="kb-tegel @(z.Model == filter ? "kb-actief" : null)" @onclick="() => { z.Kpi = null; z.Model = z.Model == filter ? null : filter; }">
             <div class="kb-tegel-getal">@All.Count(p => Model(p) == filter)</div><div>@label</div>

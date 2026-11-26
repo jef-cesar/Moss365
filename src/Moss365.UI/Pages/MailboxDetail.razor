@@ -40,7 +40,7 @@ else
                         </td>
                     </tr>
                     <tr><th>@T["security.account"]</th><td><ObjectLink Object="State.Data.Index.Ref(account)" /> <span class="kb-zacht">@account.Source</span></td></tr>
-                    <tr><th>@T["statistics.last-sign-in"]</th><td>@(Statistic.LastSignIn(account)?.ToString("dd/MM/yyyy HH:mm") ?? "nooit (of onbekend)")</td></tr>
+                    <tr><th>@T["statistics.last-sign-in"]</th><td>@(Statistic.LastSignIn(account)?.ToString("dd/MM/yyyy HH:mm") ?? T["code.mailbox-detail.never-or-unknown"])</td></tr>
                 </tbody>
             </table>
             <div class="kb-filters" hidden="@(!State.Can(Permission.Manage))">
@@ -76,7 +76,7 @@ else
                             <button class="kb-knop kb-klein" @onclick="@(() => Plan(GroupPlans.RemoveMember(State.Data, groupValue, l.Object), "Toegang intrekken"))">@T["group-detail.remove"]</button></li>
                     }
                 </ul>
-                <ObjectPicker Label="Toegang geven aan" Kinds="Persons" Selected="@(r => Plan(GroupPlans.AddMember(State.Data, groupValue, r), "Toegang geven"))" />
+                <ObjectPicker Label="@T["code.mailbox-detail.give-access-to"]" Kinds="Persons" Selected="@(r => Plan(GroupPlans.AddMember(State.Data, groupValue, r), "Toegang geven"))" />
             }
         </section>
 
@@ -232,7 +232,7 @@ else
     {
         desired.ForwardingTo = extra.DisableForwarding ? string.Empty : string.IsNullOrWhiteSpace(extra.Forwarding) ? null : extra.Forwarding;
         desired.AutoReply = extra.AutoReply.Length == 0 ? null : extra.AutoReply;
-        Plan(MailboxPlans.Settings(mailbox!, desired), "Instellingen van het postvak");
+        Plan(MailboxPlans.Settings(mailbox!, desired), T["code.mailbox-detail.settings-of-the-mailbox"]);
     }
 
     private void Plan(PlanOutcome u, string title)

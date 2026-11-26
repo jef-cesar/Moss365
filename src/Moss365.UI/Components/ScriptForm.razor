@@ -108,11 +108,11 @@ else
     private static string Hint(VariableKind s) => s switch
     {
         VariableKind.User => "UPN, bv. voornaam.naam@...",
-        VariableKind.Group => "naam of adres van de groep",
-        VariableKind.Mailbox => "adres van het postvak",
-        VariableKind.Room => "adres van de room",
-        VariableKind.File => "volledig pad naar een bestand",
-        VariableKind.Folder => "volledig pad naar een map",
+        VariableKind.Group => T["code.script-form.name-or-address-of-the"],
+        VariableKind.Mailbox => T["code.script-form.address-of-the-mailbox"],
+        VariableKind.Room => T["code.script-form.address-of-the-room"],
+        VariableKind.File => T["code.script-form.full-path-to-a-file"],
+        VariableKind.Folder => T["code.script-form.full-path-to-a-folder"],
         _ => string.Empty,
     };
 

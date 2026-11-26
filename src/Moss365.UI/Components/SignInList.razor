@@ -24,7 +24,7 @@ else
                     <td>@a.App <span class="kb-zacht">@a.Client</span></td>
                     <td>@a.Location</td>
                     <td><code>@a.Ip</code></td>
-                    <td>@(a.Succeeded ? "gelukt" : $"mislukt ({a.ErrorCode})") <span class="kb-zacht">@a.Reason</span></td>
+                    <td>@(a.Succeeded ? "gelukt" : T.Format("code.sign-in-list.failed", a.ErrorCode)) <span class="kb-zacht">@a.Reason</span></td>
                     @if (WithCa)
                     {
                         <td>

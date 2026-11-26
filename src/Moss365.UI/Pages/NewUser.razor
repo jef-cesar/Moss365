@@ -126,7 +126,7 @@
             <label><input type="checkbox" @bind="request.DefaultAdGroups" @bind:after="Clear" /> @T["new-user.add-the-default-groups-of"]</label>
         </div>
     }
-    <PersonPicker Label="Groepen overnemen van (optioneel, spiegelgebruiker)" Selected="request.Mirror" SelectedChanged="ChooseMirror" />
+    <PersonPicker Label="@T["code.new-user.take-over-groups-from-optional"]" Selected="request.Mirror" SelectedChanged="ChooseMirror" />
     <div class="kb-filters">
         <button class="kb-knop kb-primair" @onclick="MakeProposal">@T["new-user.preview"]</button>
         <button class="kb-knop" @onclick="Empty">@T["rooms.clear"]</button>
@@ -193,10 +193,10 @@
         }
 
         <section class="kb-kaart">
-            <h2>@(InCloud ? "Zodra het postvak bestaat" : "Na de synchronisatie naar Entra") (@proposal.AfterSynchronisation.Count)</h2>
+            <h2>@(InCloud ? T["code.new-user.as-soon-as-the-mailbox"] : T["code.new-user.after-the-synchronisation-to-entra"]) (@proposal.AfterSynchronisation.Count)</h2>
             @if (proposal.AfterSynchronisation.Count == 0)
             {
-                <p class="kb-zacht">@(InCloud ? "Geen mailgroepen of toegang tot gedeelde postvakken." : "Geen licentie of cloudgroepen.")</p>
+                <p class="kb-zacht">@(InCloud ? T["code.new-user.no-mail-groups-or-access"] : T["code.new-user.no-licence-or-cloud-groups"])</p>
             }
             else
             {
@@ -216,9 +216,9 @@
                     }
                     else
                     {
-                        @(InCloud ? "Deze stappen worden een opvolgtaak zodra het account aangemaakt is." : "Deze stappen worden een opvolgtaak zodra het account in AD aangemaakt is.")
+                        @(InCloud ? T["code.new-user.these-steps-become-a-follow"] : T["code.new-user.these-steps-become-a-follow-2"])
                     }
-                    @(InCloud ? "Exchange maakt het postvak enkele minuten na de licentie;" : "Entra Connect synchroniseert standaard om de 30 minuten;") werk ze daarna af in <a href="opvolging">@T["menu.opvolging"]</a>.
+                    @(InCloud ? T["code.new-user.exchange-creates-the-mailbox-a"] : T["code.new-user.entra-connect-synchronises-every-30"]) werk ze daarna af in <a href="opvolging">@T["menu.opvolging"]</a>.
                 </p>
             }
         </section>
@@ -259,7 +259,7 @@
     private string FreeText(string sku)
     {
         var l = State.Data.Licences.FirstOrDefault(x => string.Equals(x.SkuPartNumber, sku, StringComparison.OrdinalIgnoreCase));
-        return l is null ? string.Empty : $"({l.Free} vrij van {l.Total})";
+        return l is null ? string.Empty : T.Format("code.new-user.free-of", l.Free, l.Total);
     }
 
     private DateTimeOffset? scheduled;

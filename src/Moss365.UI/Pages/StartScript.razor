@@ -124,11 +124,11 @@ else
         var errors = ScriptValues.Check(script.Header, current);
         if (errors.Count > 0)
         {
-            planMessage = "Vul eerst de waarden in: " + string.Join(" ", errors);
+            planMessage = (T["code.start-script.fill-in-the-values-first"] + " ") + string.Join(" ", errors);
             return;
         }
 
         State.Schedule(ScheduledPlans.Script(script.Key, script.BuiltIn, script.Header.Name, current, new DateTimeOffset(whenValue), recurrence, State.User));
-        planMessage = $"Ingepland voor {whenValue:dd/MM/yyyy HH:mm}, met de waarden van het formulier. Zie Acties > Gepland.";
+        planMessage = T.Format("code.start-script.scheduled-for-with-the-values", whenValue);
     }
 }

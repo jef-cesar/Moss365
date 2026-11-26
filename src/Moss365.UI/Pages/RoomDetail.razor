@@ -141,7 +141,7 @@ else
 
     @if (plan is not null)
     {
-        <PlanView Plan="plan" Context="@($"Room {room.DisplayName}")" Title="Wijzigingen aan de room" />
+        <PlanView Plan="plan" Context="@($"Room {room.DisplayName}")" Title="@T["code.room-detail.changes-to-the-room"]" />
     }
 }
 
@@ -195,11 +195,11 @@ else
             var (list, message) = await State.ReadCalendarAsync(room, start, until);
             appointments = list;
             calendarMessage = message;
-            calendarPeriod = $"{start:dd/MM/yyyy} tot en met {until.AddDays(-1):dd/MM/yyyy}";
+            calendarPeriod = T.Format("code.room-detail.up-to-and-including", start, until.AddDays(-1));
         }
         catch (Exception ex)
         {
-            calendarMessage = "Agenda lezen mislukt: " + ex.Message;
+            calendarMessage = (T["code.room-detail.reading-the-calendar-failed"] + " ") + ex.Message;
         }
         finally
         {

@@ -42,7 +42,7 @@
 </section>
 
 @code {
-    [Parameter] public string Title { get; set; } = "Voorstellen uit de gegevens";
+    [Parameter] public string Title { get; set; } = T["code.suggestions-panel.suggestions-from-the-data"];
 
     /// <summary>After taking over (the organisation page reloads its form).</summary>
     [Parameter] public EventCallback TakenOver { get; set; }
@@ -65,7 +65,7 @@
         var list = suggestions.Where(s => chosen.Contains(Key(s))).ToList();
         State.TakeOver(list);
         chosen.Clear();
-        takenOver = $"{list.Count} voorstel(len) overgenomen bij Organisatie.";
+        takenOver = T.Format("code.suggestions-panel.suggestion-s-taken-over-under", list.Count);
         suggestions = State.Suggestions();
         await TakenOver.InvokeAsync();
     }
@@ -87,7 +87,7 @@
         SuggestionKind.EmergencyAccount => "Noodaccount",
         SuggestionKind.Company => "Bedrijf",
         SuggestionKind.NewUsersOu => "OU nieuwe gebruikers",
-        SuggestionKind.OffboardingOu => "OU bij uitstroom",
+        SuggestionKind.OffboardingOu => T["code.suggestions-panel.ou-on-offboarding"],
         SuggestionKind.GroupsOu => "OU nieuwe groepen",
         SuggestionKind.LocalPart => "Accountnaam",
         SuggestionKind.DisplayName => "Weergavenaam",

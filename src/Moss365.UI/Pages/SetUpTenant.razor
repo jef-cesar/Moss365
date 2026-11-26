@@ -40,7 +40,7 @@
         @T["set-up-tenant.sign-in-with-an-administrator"]
     </p>
     <div class="kb-rij">
-        <button class="kb-knop kb-primair" disabled="@(busy || !State.SetupAvailable)" @onclick="Read">@(State.SetupReading is null ? "Aanmelden en nakijken" : "Opnieuw nakijken")</button>
+        <button class="kb-knop kb-primair" disabled="@(busy || !State.SetupAvailable)" @onclick="Read">@(State.SetupReading is null ? T["code.set-up-tenant.sign-in-and-check"] : "Opnieuw nakijken")</button>
         @if (busy && progress is not null) { <span class="kb-zacht">@progress</span> }
         @if (State.SetupSignedInAs is { } who) { <span class="kb-zacht">Aangemeld als @who</span> }
     </div>
@@ -75,7 +75,7 @@
             @T["set-up-tenant.give-myself-the-profiles-administrator"]</label>
         @if (a.Plan.Count > 0)
         {
-            <PlanView @key="planKey" Plan="a.Plan" Title="Wat de wizard in Entra doet" Context="@($"Tenant inrichten {State.Tenant.Name}")" Run="(p, c, r) => State.ExecuteSetupAsync(p, c, r)" Executed="AfterPlan" />
+            <PlanView @key="planKey" Plan="a.Plan" Title="@T["code.set-up-tenant.what-the-wizard-does-in"]" Context="@($"Tenant inrichten {State.Tenant.Name}")" Run="(p, c, r) => State.ExecuteSetupAsync(p, c, r)" Executed="AfterPlan" />
         }
         else
         {
@@ -149,7 +149,7 @@
 
 @if (State.Data.Persons.Count > 0)
 {
-    <SuggestionsPanel Title="7. Voorstellen voor de organisatie en noodaccounts" />
+    <SuggestionsPanel Title="@T["code.set-up-tenant.7-suggestions-for-the-organisation"]" />
 }
 
 @code {

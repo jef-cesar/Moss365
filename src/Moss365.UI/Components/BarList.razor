@@ -18,11 +18,11 @@
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<Bar> Bars { get; set; } = Array.Empty<Bar>();
     [Parameter] public Func<Bar, bool>? Warning { get; set; }
-    [Parameter] public string WarningText { get; set; } = "let op";
+    [Parameter] public string WarningText { get; set; } = T["collaboration.attention-2"];
 
     private int Max => Bars.Count == 0 ? 0 : Bars.Max(s => s.Count);
 
     private static string Title(Bar s) => s.Total is { } t
-        ? $"{s.Name}: {s.Count} van {t} ({s.Part:P0}), {t - s.Count} vrij"
+        ? T.Format("code.bar-list.of-free", s.Name, s.Count, t, s.Part, t - s.Count)
         : $"{s.Name}: {s.Count}";
 }

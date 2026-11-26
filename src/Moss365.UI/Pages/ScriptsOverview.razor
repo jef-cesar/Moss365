@@ -77,7 +77,7 @@
         columns = new List<Column<ScriptFile>>
         {
             new() { Key = "naam", Title = "Naam", Cell = s => @<a href="@StartLink(s)">@s.Header.Name</a>, SortBy = s => s.Header.Name },
-            new() { Key = "omschrijving", Title = "Wat het doet", Cell = s => @<span class="kb-zacht">@s.Header.Description</span>, SortBy = s => s.Header.Description },
+            new() { Key = "omschrijving", Title = T["edit-script.what-it-does"], Cell = s => @<span class="kb-zacht">@s.Header.Description</span>, SortBy = s => s.Header.Description },
             new() { Key = "verbinding", Title = "Verbinding", Cell = s => @<text>@ScriptText.ConnectionText(s.Header.Connection)</text>, SortBy = s => ScriptText.ConnectionText(s.Header.Connection) },
             new() { Key = "soort", Title = "Soort", Cell = s => @<span class="kb-label @(s.Header.Writes ? "kb-label-let" : null)">@(s.Header.Writes ? "wijzigt" : "leest")</span>, SortBy = s => s.Header.Writes, Text = s => s.Header.Writes ? "wijzigt" : "leest" },
             new() { Key = "herkomst", Title = "Herkomst", Cell = s => @<text>@s.Origin<br /><span class="kb-zacht">@s.Folder</span></text>, SortBy = s => s.Origin + s.Folder, Text = s => s.Origin },
@@ -138,13 +138,13 @@
             await using var source = e.File.OpenReadStream(2 * 1024 * 1024);
             using var reader = new StreamReader(source, System.Text.Encoding.UTF8);
             var s = ScriptLibrary.ImportText(State.ScriptFolders, await reader.ReadToEndAsync(), e.File.Name);
-            message = $"Geimporteerd als eigen script: {s.Header.Name}. Kijk het na voor je het start.";
+            message = T.Format("code.scripts-overview.imported-as-own-script-check", s.Header.Name);
             Load();
         }
         catch (Exception ex)
         {
             error = true;
-            message = "Importeren mislukt: " + ex.Message;
+            message = (T["code.scripts-overview.import-failed"] + " ") + ex.Message;
         }
     }
 
@@ -154,7 +154,7 @@
         Directory.CreateDirectory(folder);
         var target = Path.Combine(folder, s.FileName);
         File.WriteAllText(target, ScriptLibrary.Text(State.ScriptFolders, s), new System.Text.UTF8Encoding(true));
-        message = $"Geexporteerd naar {target}.";
+        message = T.Format("code.scripts-overview.exported-to", target);
         error = false;
         State.AppEnvironment.ShowFile(target);
     }
@@ -163,7 +163,7 @@
     {
         ScriptLibrary.Remove(State.ScriptFolders, s);
         remove = null;
-        message = $"{s.Header.Name} is verwijderd. De runs blijven bewaard.";
+        message = T.Format("code.scripts-overview.has-been-removed-the-runs", s.Header.Name);
         error = false;
         Load();
     }

@@ -137,7 +137,7 @@
         }
         catch (Exception ex)
         {
-            errors = new[] { "Rapport bewaren mislukt: " + ex.Message };
+            errors = new[] { (T["code.cleanup.saving-the-report-failed"] + " ") + ex.Message };
         }
     }
 }

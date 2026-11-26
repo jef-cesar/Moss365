@@ -64,7 +64,7 @@
     /// <summary>For a licence: Microsoft counts the assigned licences itself; says so when that differs from the list.</summary>
     private string? LicenceDifference => ActiveKpi is { } k && k.Key.StartsWith("licentie:", StringComparison.Ordinal)
         && State.Data.Licences.FirstOrDefault(l => l.SkuPartNumber == k.Value) is { } l && l.Assigned != KpiRows.Count
-            ? $"Microsoft telt {l.Assigned} toegewezen; het verschil zijn accounts die niet geladen zijn."
+            ? T.Format("code.users.microsoft-counts-assigned-the-difference", l.Assigned)
             : null;
 
     private string? Cleanup => ActiveKpi?.Key switch

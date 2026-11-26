@@ -170,7 +170,7 @@ else
         }
         catch (Exception ex)
         {
-            error = "Aanmeldingen lezen mislukt: " + ex.Message + " (nodig: rol Reports Reader of Security Reader, en Entra ID P1).";
+            error = (T["code.security-card.reading-sign-ins-failed"] + " ") + ex.Message + (" " + T["code.security-card.needed-role-reports-reader-or"]);
         }
         finally
         {

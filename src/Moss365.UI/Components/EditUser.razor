@@ -7,7 +7,7 @@
     @if (!open)
     {
         <p class="kb-zacht">
-            @(AttributePlans.ViaAd(Person) ? "Dit account komt uit AD: de app wijzigt het in AD, Entra volgt na de synchronisatie." : "Cloudaccount: de app wijzigt het via Microsoft Graph.")
+            @(AttributePlans.ViaAd(Person) ? T["code.edit-user.this-account-comes-from-ad"] : T["code.edit-user.cloud-account-the-app-changes"])
             UPN en e-mailadres pas je hier niet aan.
         </p>
         <button class="kb-knop" @onclick="Open">@T["edit-user.edit"]</button>

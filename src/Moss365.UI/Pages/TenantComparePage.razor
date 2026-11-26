@@ -74,7 +74,7 @@ else
         }
         catch (TenantLockedException)
         {
-            message = $"{tenant.Name} is versleuteld en nog niet ontgrendeld: open die tenant eerst.";
+            message = T.Format("code.tenant-compare.is-encrypted-and-not-unlocked", tenant.Name);
         }
     }
 }

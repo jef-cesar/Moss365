@@ -69,7 +69,7 @@ else
             <section class="kb-kaart">
                 <h2>@T["ca-overview.what-if"]</h2>
                 <p class="kb-zacht">@T["ca-overview.choose-a-person-and-a"]</p>
-                <PersonPicker Label="Wie meldt zich aan" @bind-Selected="whatIfPerson" />
+                <PersonPicker Label="@T["code.ca-overview.who-signs-in"]" @bind-Selected="whatIfPerson" />
                 <div class="kb-filters">
                     <label>@T["sign-in-list.app"]
                         <select class="kb-invoer" @bind="scenarioApp">
@@ -163,7 +163,7 @@ else
                         {
                             <tr>
                                 <td>@s.Name</td>
-                                <td>@(s.BuiltIn ? "van Microsoft" : "eigen")</td>
+                                <td>@(s.BuiltIn ? T["code.ca-overview.from-microsoft"] : "eigen")</td>
                                 <td class="kb-zacht">@string.Join(", ", s.Combinations)</td>
                                 <td>@string.Join(", ", ca.Policies.Where(b => b.StrengthId == s.Id).Select(b => b.Name))</td>
                             </tr>
@@ -173,7 +173,7 @@ else
             </section>
             <section class="kb-kaart">
                 <h2>@T["ca-overview.security-defaults"]</h2>
-                <p>@(ca.SecurityDefaults switch { true => "Staan aan.", false => "Staan uit (normaal als je Conditional Access gebruikt).", _ => "Onbekend." })</p>
+                <p>@(ca.SecurityDefaults switch { true => T["code.ca-overview.are-on"], false => T["code.ca-overview.are-off-normal-when-you"], _ => "Onbekend." })</p>
             </section>
             break;
 
@@ -194,7 +194,7 @@ else
             yield return (Part.Check, "Controle");
             yield return (Part.Policies, "Beleiden");
             yield return (Part.WhatIf, "Wat als");
-            yield return (Part.Locations, "Locaties en sterktes");
+            yield return (Part.Locations, T["code.ca-overview.locations-and-strengths"]);
             if (State.Can(Permission.Manage))
             {
                 yield return (Part.Manage, "Beheren");
@@ -282,7 +282,7 @@ else
         {
             new() { Key = "oordeel", Title = "Oordeel", Cell = b => @<CaLabel Verdict="b.Verdict" />, SortBy = b => -(int)b.Verdict, Text = b => b.VerdictText },
             new() { Key = "onderwerp", Title = "Onderwerp", Cell = b => @<strong>@b.Subject</strong>, SortBy = b => b.Subject },
-            new() { Key = "uitleg", Title = "Wat de app ziet", Cell = b => @<text>@b.Explanation</text>, SortBy = b => b.Explanation },
+            new() { Key = "uitleg", Title = T["code.ca-overview.what-the-app-sees"], Cell = b => @<text>@b.Explanation</text>, SortBy = b => b.Explanation },
             new() { Key = "advies", Title = "Advies", Cell = b => @<span class="kb-zacht">@b.Advice</span>, SortBy = b => b.Advice },
             new() { Key = "betreft", Title = "Betreft", Cell = b => Concerns(b), Text = b => string.Join(", ", b.Policies.Select(x => x.Name).Concat(b.Persons.Select(p => p.Upn))) },
         };
@@ -335,7 +335,7 @@ else
         }
         catch (Exception ex)
         {
-            effectError = "Aanmeldingen lezen mislukt: " + ex.Message + " (nodig: rol Reports Reader of Security Reader, en Entra ID P1).";
+            effectError = (T["code.security-card.reading-sign-ins-failed"] + " ") + ex.Message + (" " + T["code.security-card.needed-role-reports-reader-or"]);
         }
         finally
         {

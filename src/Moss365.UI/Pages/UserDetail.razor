@@ -21,7 +21,7 @@ else
     {
         <p class="kb-zacht">
             @T["requests.job-profile"] <a href="@($"functieprofielen?profiel={Uri.EscapeDataString(jp.Profile.Id)}&gebruiker={Uri.EscapeDataString(person.Key)}")">@jp.Profile.Name</a>
-            (@jp.How)@(jp.Missing > 0 ? $": {jp.Missing} ontbreekt" : null)@(jp.Extra > 0 ? $", {jp.Extra} meer dan het profiel" : null).
+            (@jp.How)@(jp.Missing > 0 ? $": {jp.Missing} ontbreekt" : null)@(jp.Extra > 0 ? T.Format("code.user-detail.more-than-the-profile", jp.Extra) : null).
         </p>
     }
 
@@ -209,7 +209,7 @@ else
 
         var assigned = State.ProfileAssignments().GetValueOrDefault(p.Key);
         var profile = JobProfiles.Find(State.Config, assigned?.ProfileId);
-        var how = assigned is { } a && profile is not null ? $"versie {a.Version} gekregen op {a.Applied.LocalDateTime:dd/MM/yyyy}" : "volgens de functie";
+        var how = assigned is { } a && profile is not null ? T.Format("code.user-detail.version-received-on", a.Version, a.Applied.LocalDateTime) : T["code.user-detail.by-job-title"];
         profile ??= State.Config.JobProfiles.FirstOrDefault(jp => !string.IsNullOrWhiteSpace(jp.JobTitle)
             && string.Equals(jp.JobTitle.Trim(), UserDesired.Of(p).JobTitle?.Trim(), StringComparison.OrdinalIgnoreCase));
         if (profile is null)

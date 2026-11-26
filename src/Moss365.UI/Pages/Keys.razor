@@ -24,7 +24,7 @@
 {
     <section class="kb-kaart">
         <h2>Toestellen in Entra (@devices.Count)</h2>
-        @if (devices.Count == 0) { <p class="kb-zacht">Geen toestel gevonden in Entra@(State.HasAd ? "; de knoppen hieronder zoeken ook in AD" : null).</p> }
+        @if (devices.Count == 0) { <p class="kb-zacht">Geen toestel gevonden in Entra@(State.HasAd ? T["code.keys.the-buttons-below-also-search"] : null).</p> }
         <table class="kb-tabel">
             <thead><tr><th>@T["keys.device"]</th><th>@T["plan.system"]</th><th>@T["nested-groups.kind"]</th><th>@T["keys.last-seen"]</th><th></th></tr></thead>
             <tbody>

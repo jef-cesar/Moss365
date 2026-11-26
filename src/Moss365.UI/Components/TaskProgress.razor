@@ -9,7 +9,7 @@
             <h2>@task.Name</h2>
             <span class="kb-zacht">
                 gestart @task.Start.ToString("HH:mm:ss")
-                @if (task.End is { } end) { <text> &middot; @(task.Cancelled ? "geannuleerd" : task.WithErrors ? "klaar met fouten" : "klaar") om @end.ToString("HH:mm:ss")</text> }
+                @if (task.End is { } end) { <text> &middot; @(task.Cancelled ? "geannuleerd" : task.WithErrors ? T["code.task-progress.done-with-errors"] : "klaar") om @end.ToString("HH:mm:ss")</text> }
             </span>
             @if (task.Busy)
             {

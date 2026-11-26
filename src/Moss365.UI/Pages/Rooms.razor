@@ -37,7 +37,7 @@ else
 
     @if (plan is not null)
     {
-        <PlanView Plan="plan" Context="@($"Rooms ({selected.Count})")" Title="Wijzigingen aan de rooms" Executed="AfterExecute" />
+        <PlanView Plan="plan" Context="@($"Rooms ({selected.Count})")" Title="@T["code.rooms.changes-to-the-rooms"]" Executed="AfterExecute" />
     }
 }
 

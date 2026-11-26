@@ -47,7 +47,7 @@
 
     private void Reload() => _ = InvokeAsync(StateHasChanged);
 
-    private void Refresh() => message = State.StartRefresh(new[] { Object }) ? null : "Kon niet starten (verbinding ingesteld?).";
+    private void Refresh() => message = State.StartRefresh(new[] { Object }) ? null : T["code.object-status.could-not-start-connection-set"];
 
     public void Dispose() => State.Changed -= Reload;
 }

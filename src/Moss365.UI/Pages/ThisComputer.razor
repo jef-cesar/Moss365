@@ -175,7 +175,7 @@ else
     private static string InstallText(CheckRule r) => r.Module switch
     {
         "PowerShell7" => "Installeert PowerShell 7 via winget (Microsoft); Windows vraagt om bevestiging",
-        "RSAT" => "Installeert de AD-module als Windows-onderdeel; Windows vraagt beheerdersrechten",
-        _ => $"Installeert {r.Module} voor jouw account uit de PowerShell Gallery",
+        "RSAT" => T["code.this-computer.installs-the-ad-module-as"],
+        _ => T.Format("code.this-computer.installs-for-your-account-from", r.Module),
     };
 }

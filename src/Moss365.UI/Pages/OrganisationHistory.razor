@@ -49,7 +49,7 @@ else
             }
             else
             {
-                <p>@list.Count verschil(len)@(list.Count > Max ? $"; de eerste {Max} hieronder" : string.Empty).</p>
+                <p>@list.Count verschil(len)@(list.Count > Max ? T.Format("code.organisation-history.the-first-below", Max) : string.Empty).</p>
                 @foreach (var g in list.Take(Max).GroupBy(c => c.Table))
                 {
                     <h3>@TableName(g.Key) <span class="kb-zacht">(@g.Count())</span></h3>
@@ -110,29 +110,29 @@ else
     private void Compare()
     {
         changes = State.Differences(EndOf(from), EndOf(until));
-        message = changes is null ? "Voor een van beide datums is er geen momentopname." : null;
+        message = changes is null ? T["code.organisation-history.there-is-no-snapshot-for"] : null;
         State.Access("Verschillen tussen datums bekeken", $"{from:yyyy-MM-dd} {until:yyyy-MM-dd}");
     }
 
-    private void Recompute() => recomputed = $"{State.RecomputeKpis()} dag(en) herberekend.";
+    private void Recompute() => recomputed = T.Format("code.organisation-history.day-s-recalculated", State.RecomputeKpis());
 
     private static string TableName(string table) => table switch
     {
         "ad-gebruikers.csv" => "AD-gebruikers",
         "ad-groepen.csv" => "AD-groepen",
-        "ad-groepsleden.csv" => "Leden van AD-groepen",
+        "ad-groepsleden.csv" => T["code.organisation-history.members-of-ad-groups"],
         "entra-gebruikers.csv" => "Entra-gebruikers",
         "entra-groepen.csv" => "Cloudgroepen",
-        "entra-groepsleden.csv" => "Leden van cloudgroepen",
+        "entra-groepsleden.csv" => T["code.organisation-history.members-of-cloud-groups"],
         "entra-licenties.csv" => "Licenties",
         "entra-mfa.csv" => "MFA-registraties",
         "entra-rollen.csv" => "Beheerrollen",
         "entra-ca.json" => "Conditional Access",
         "exo-rooms-overzicht.csv" => "Rooms",
         "exo-groepen.csv" => "Exchange-groepen",
-        "exo-groepsleden.csv" => "Leden van Exchange-groepen",
+        "exo-groepsleden.csv" => T["code.organisation-history.members-of-exchange-groups"],
         "exo-postvakken-niet-gebruikers.csv" => "Gedeelde postvakken",
-        "exo-gedeelde-postvakrechten.csv" => "Rechten op postvakken",
+        "exo-gedeelde-postvakrechten.csv" => T["code.organisation-history.permissions-on-mailboxes"],
         _ => table,
     };
 

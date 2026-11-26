@@ -11,7 +11,7 @@
 </p>
 
 <LeaveConfirm Active="changed" CanSave="@(Errors.Count == 0)" Saving="Save" Discard="Undone"
-                   Text="Je hebt de organisatie aangepast maar nog niet bewaard." />
+                   Text="@T["code.organisation.you-changed-the-organisation-but"]" />
 
 <div class="kb-filters kb-plak">
     <button class="kb-knop kb-primair" disabled="@(!changed || Errors.Count > 0)" @onclick="Save">@T["action.save"]</button>
@@ -144,7 +144,7 @@
                     <tr>
                         <td><code>"@x.Value"</code></td>
                         <td class="kb-getal">@x.Count</td>
-                        <td>@(x.InConfig ? $"schrijfvariant van \"{State.Config.SearchDepartment(x.Value)?.Department}\"" : "niet in de lijst")</td>
+                        <td>@(x.InConfig ? $"schrijfvariant van \"{State.Config.SearchDepartment(x.Value)?.Department}\"" : T["code.organisation.not-in-the-list"])</td>
                         <td>
                             @if (!x.InConfig)
                             {
@@ -262,7 +262,7 @@
         }
     </div>
     @if (rolesError is not null) { <div class="kb-melding kb-fout">@rolesError</div> }
-    <p class="kb-zacht">Nu: @(State.ProfileMessage ?? (State.Config.RolesModeEffective == RolesMode.Off ? "zonder rollen, iedereen mag alles." : "volgens je rol: " + PermissionTable.Text(State.Roles, "en") + ".")) Vergeet niet te bewaren.</p>
+    <p class="kb-zacht">Nu: @(State.ProfileMessage ?? (State.Config.RolesModeEffective == RolesMode.Off ? T["code.organisation.without-roles-everyone-may-do"] : (T["code.organisation.according-to-your-role"] + " ") + PermissionTable.Text(State.Roles, "en") + ".")) Vergeet niet te bewaren.</p>
 </section>
 }
 
@@ -294,7 +294,7 @@
     {
         (RolesMode.Off, "Zonder rollen", "Iedereen die de app hier gebruikt, mag alles. Voor een klein team of één beheerder."),
         (RolesMode.Transition, "Rollen als ze er zijn", "Wie een rol heeft, mag wat de rol zegt; wie geen rol heeft, mag nog alles (de overgang)."),
-        (RolesMode.Required, "Rollen verplicht", "Wie geen rol heeft, mag enkel lezen. Kan enkel als jij zelf een rol met Instellingen hebt."),
+        (RolesMode.Required, "Rollen verplicht", T["code.organisation.whoever-has-no-role-may"]),
     };
 
     private void ChooseRoles(RolesMode mode)
@@ -349,7 +349,7 @@
 
     private bool Is(string? part) => string.Equals(Part, part, StringComparison.OrdinalIgnoreCase);
 
-    private string PartTitle => MenuModel.OrganisationParts.FirstOrDefault(p => p.Href == (Part is null ? "organisatie" : "organisatie/" + Part))?.Text ?? "Bedrijf en naamgeving";
+    private string PartTitle => MenuModel.OrganisationParts.FirstOrDefault(p => p.Href == (Part is null ? "organisatie" : "organisatie/" + Part))?.Text ?? T["menu.organisatie.bedrijf"];
 
     private string templateKey = string.Empty;
     private string? exchangeMessage;
@@ -365,7 +365,7 @@
         IReadOnlyList<string> added = Array.Empty<string>();
         Set(() => added = OrganisationTemplates.Apply(State.Config, template));
         (exchangeMessage, exchangeError) = (added.Count == 0
-            ? $"Het sjabloon {template.Name} voegt niets toe: alles staat er al."
+            ? T.Format("code.organisation.the-template-adds-nothing-everything", template.Name)
             : $"Uit het sjabloon {template.Name}: {string.Join(", ", added)}. Kijk na en bewaar.", false);
     }
 
@@ -382,7 +382,7 @@
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            (exchangeMessage, exchangeError) = ("Exporteren mislukt: " + ex.Message, true);
+            (exchangeMessage, exchangeError) = ((T["code.organisation.export-failed"] + " ") + ex.Message, true);
         }
     }
 
@@ -402,11 +402,11 @@
                 State.Config.EmergencyAccounts = keepEmergency;
                 State.Config.SetRoles(keepRoles);
             });
-            (exchangeMessage, exchangeError) = ($"Geïmporteerd uit {e.File.Name}. Kijk na en bewaar.", false);
+            (exchangeMessage, exchangeError) = (T.Format("code.organisation.imported-from-check-and-save", e.File.Name), false);
         }
         catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or InvalidOperationException)
         {
-            (exchangeMessage, exchangeError) = ("Dit is geen bestand met instellingen van Moss365: " + ex.Message, true);
+            (exchangeMessage, exchangeError) = ((T["code.organisation.this-is-not-a-file"] + " ") + ex.Message, true);
         }
     }
 
@@ -511,7 +511,7 @@
         }
         catch (Exception ex)
         {
-            message = "Bewaren mislukt: " + ex.Message;
+            message = (T["code.organisation.saving-failed"] + " ") + ex.Message;
         }
     }
 
@@ -525,7 +525,7 @@
     private void Restore()
     {
         State.RestoreDefaultConfig();
-        message = "Terug naar de meegeleverde lijst.";
+        message = T["code.organisation.back-to-the-list-that"];
         Recompute();
     }
 }

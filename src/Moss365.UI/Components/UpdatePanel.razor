@@ -65,7 +65,7 @@
             {
                 <div class="kb-melding">
                     <p>
-                        <strong>Versie @found.Version</strong> @(found.Downgrade ? "(een oudere versie: terugzetten)" : "beschikbaar").
+                        <strong>Versie @found.Version</strong> @(found.Downgrade ? T["code.update-panel.an-older-version-putting-back"] : "beschikbaar").
                         @if (found.Sha256 is { } sha) { <span class="kb-zacht">@Html("update.sha", sha[..Math.Min(16, sha.Length)])</span> }
                     </p>
                     @if (found.Notes.Length > 0) { <pre class="kb-nota">@found.Notes</pre> }

@@ -40,9 +40,19 @@ public sealed class LanguageTests
             {
                 var text = Translator.Dictionaries[l.Code][key];
                 Assert.True(Holes(english) == Holes(text), $"{l.Code} {key}: {text}");
-                _ = string.Format(CultureInfo.InvariantCulture, text, DateTime.Now, DateTime.Now, DateTime.Now); // valid format
+                _ = string.Format(CultureInfo.InvariantCulture, text, Enumerable.Repeat<object>(1.5, 10).ToArray()); // valid format
             }
         }
+    }
+
+    [Fact]
+    public void AttributesTakeTheirTextAsAnExpression()
+    {
+        // title=T["x"] (without @ and quotes) shows the code instead of the text
+        var wrong = Directory.GetFiles(Ui, "*.razor", SearchOption.AllDirectories)
+            .SelectMany(f => Regex.Matches(File.ReadAllText(f), @"[\w-]+=Tx?(\[|\.Format)").Select(m => $"{Path.GetFileName(f)}: {m.Value}"))
+            .ToList();
+        Assert.True(wrong.Count == 0, string.Join(", ", wrong));
     }
 
     [Fact]

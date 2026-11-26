@@ -10,7 +10,7 @@
     @T["devices.computers-in-ad-that-no"]
 </p>
 
-<button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? "Bezig met lezen..." : "Toestellen lezen")</button>
+<button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? T["code.collaboration.reading"] : "Toestellen lezen")</button>
 @if (State.DevicesNote is { } note)
 {
     <div class="kb-melding">@note</div>

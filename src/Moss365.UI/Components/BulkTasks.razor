@@ -12,8 +12,8 @@
                     @if (State.Can(Permission.GroupMembers))
                     {
                         <div>
-                            <ObjectPicker Label="Toevoegen aan groep" Kinds="GroupKind" Selected="g => Group(g, true)" />
-                            <ObjectPicker Label="Verwijderen uit groep" Kinds="GroupKind" Selected="g => Group(g, false)" />
+                            <ObjectPicker Label="@T["code.bulk-tasks.add-to-group"]" Kinds="GroupKind" Selected="g => Group(g, true)" />
+                            <ObjectPicker Label="@T["code.bulk-tasks.remove-from-group"]" Kinds="GroupKind" Selected="g => Group(g, false)" />
                         </div>
                     }
                     @if (State.Can(Permission.Manage))
@@ -56,11 +56,11 @@
                 <div class="kb-bulk-taken">
                     @if (State.Can(Permission.GroupMembers))
                     {
-                        <ObjectPicker Label="Gebruiker toevoegen aan alle gekozen groepen" Kinds="PersonKind" Selected="InGroups" />
+                        <ObjectPicker Label="@T["code.bulk-tasks.add-user-to-all-chosen"]" Kinds="PersonKind" Selected="InGroups" />
                     }
                     @if (State.Can(Permission.Manage))
                     {
-                        <ObjectPicker Label="Beheerder (of eigenaar) maken van alle gekozen groepen" Kinds="PersonKind" Selected="Administrator" />
+                        <ObjectPicker Label="@T["code.bulk-tasks.make-manager-or-owner-of"]" Kinds="PersonKind" Selected="Administrator" />
                     }
                 </div>
                 break;
@@ -68,7 +68,7 @@
                 <div class="kb-bulk-taken">
                     @if (State.Can(Permission.GroupMembers))
                     {
-                        <ObjectPicker Label="Toegang geven aan (via de toegangsgroep)" Kinds="PersonKind" Selected="Access" />
+                        <ObjectPicker Label="@T["code.bulk-tasks.give-access-to-through-the"]" Kinds="PersonKind" Selected="Access" />
                     }
                     @if (State.Can(Permission.Manage))
                     {
@@ -134,15 +134,15 @@
     {
         if (State.Data.Index.Group(r.Key) is { } g)
         {
-            Show(BulkPlans.UsersInGroup(State.Data, Persons(), g, add), add ? $"Toevoegen aan {g.Name}" : $"Verwijderen uit {g.Name}");
+            Show(BulkPlans.UsersInGroup(State.Data, Persons(), g, add), add ? T.Format("code.bulk-tasks.add-to", g.Name) : T.Format("code.bulk-tasks.remove-from", g.Name));
         }
     }
 
-    private void Hide(bool hide) => Show(BulkPlans.Hide(Mailboxes(), hide), hide ? "Verbergen in de adreslijst" : "Tonen in de adreslijst");
+    private void Hide(bool hide) => Show(BulkPlans.Hide(Mailboxes(), hide), hide ? T["bulk-tasks.hide-in-the-address-list"] : T["bulk-tasks.show-in-the-address-list"]);
 
     private void Block() => Show(BulkPlans.BlockSignIn(State.Data, Mailboxes()), "Aanmelden blokkeren");
 
-    private void Attribute() => Show(BulkPlans.Attribute(State.Data, State.Config, Persons(), attribute, value.Trim()), $"{AttributeLabel(attribute)} wordt {value.Trim()}");
+    private void Attribute() => Show(BulkPlans.Attribute(State.Data, State.Config, Persons(), attribute, value.Trim()), T.Format("code.bulk-tasks.becomes", AttributeLabel(attribute), value.Trim()));
 
     private static string AttributeLabel(string field) => field switch
     {
@@ -157,7 +157,7 @@
     {
         if (State.Data.SearchPerson(r.Key) is { } p)
         {
-            Show(BulkPlans.UserInGroups(State.Data, Groups(), p), $"{p.Name} toevoegen aan de groepen");
+            Show(BulkPlans.UserInGroups(State.Data, Groups(), p), T.Format("code.bulk-tasks.add-to-the-groups", p.Name));
         }
     }
 
@@ -178,7 +178,7 @@
     {
         if (State.Data.SearchPerson(r.Key) is { } p)
         {
-            Show(BulkPlans.AdministratorForGroups(State.Data, Groups(), p), $"{p.Name} beheerder van de groepen");
+            Show(BulkPlans.AdministratorForGroups(State.Data, Groups(), p), T.Format("code.bulk-tasks.manager-of-the-groups", p.Name));
         }
     }
 
@@ -186,7 +186,7 @@
     {
         if (State.Data.SearchPerson(r.Key) is { } p)
         {
-            Show(BulkPlans.AccessToMailboxes(State.Data, Mailboxes(), p), $"Toegang voor {p.Name}");
+            Show(BulkPlans.AccessToMailboxes(State.Data, Mailboxes(), p), T.Format("code.bulk-tasks.access-for", p.Name));
         }
     }
 }

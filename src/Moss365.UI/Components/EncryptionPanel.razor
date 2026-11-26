@@ -41,7 +41,7 @@
         {
             case Step.Choose:
                 <fieldset class="kb-formulier">
-                    <legend>@(info is null ? "Hoe open je de databank?" : "Andere beveiliging van de sleutel")</legend>
+                    <legend>@(info is null ? T["code.encryption-panel.how-do-you-open-the"] : T["code.encryption-panel.other-protection-of-the-key"])</legend>
                     @foreach (var m in new[] { EncryptionMethod.WindowsAccount, EncryptionMethod.Password, EncryptionMethod.AdGroup })
                     {
                         <label class="@(hub.CanProtect(m) ? null : "kb-zacht")">
@@ -160,7 +160,7 @@
 
         if (info is not null)
         {
-            Run(() => Hub!.ChangeProtection(State.Tenant, method, password, group), "De sleutel is nu beveiligd met: " + MethodText(method) + ".");
+            Run(() => Hub!.ChangeProtection(State.Tenant, method, password, group), (T["code.encryption-panel.the-key-is-now-protected"] + " ") + MethodText(method) + ".");
             return;
         }
 
@@ -221,8 +221,8 @@
 
     private static string MethodExplanation(EncryptionMethod m) => m switch
     {
-        EncryptionMethod.WindowsAccount => "niets te typen; enkel jij, aangemeld op deze pc, opent de databank.",
-        EncryptionMethod.Password => "bij het openen van de tenant; goed voor gedeelde pc's. Kwijt = enkel nog de herstelsleutel.",
-        _ => "elke beheerder in de groep opent de databank, op een pc in het domein (DPAPI-NG).",
+        EncryptionMethod.WindowsAccount => T["code.encryption-panel.nothing-to-type-only-you"],
+        EncryptionMethod.Password => T["code.encryption-panel.when-opening-the-tenant-good"],
+        _ => T["code.encryption-panel.every-administrator-in-the-group"],
     };
 }

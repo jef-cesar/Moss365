@@ -14,34 +14,22 @@ public static class UiText
 {
     public const string SettingKey = "language";
 
-    private static readonly AsyncLocal<Translator?> Local = new();
-    private static Translator _global = new("nl");
-
-    public static Translator T => Local.Value ?? _global;
+    public static Translator T => Texts.T;
 
     /// <summary>The same as <see cref="T"/>, for generic components whose type parameter is called T.</summary>
     public static Translator Tx => T;
 
     /// <summary>Another language for this flow only (tests), without touching the rest of the app.</summary>
-    public static IDisposable Scope(string language)
-    {
-        var before = Local.Value;
-        Local.Value = new Translator(language);
-        return new Restore(() => Local.Value = before);
-    }
-
-    private sealed class Restore(Action undo) : IDisposable
-    {
-        public void Dispose() => undo();
-    }
+    public static IDisposable Scope(string language) => Texts.Scope(language);
 
     /// <summary>The language now and whether it was chosen (or follows the system).</summary>
     public static string? Chosen { get; private set; }
 
     public static void Use(string language)
     {
-        _global = new Translator(language);
-        var culture = _global.Culture;
+        var translator = new Translator(language);
+        Texts.Use(translator);
+        var culture = translator.Culture;
         CultureInfo.DefaultThreadCurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
         CultureInfo.CurrentCulture = culture;

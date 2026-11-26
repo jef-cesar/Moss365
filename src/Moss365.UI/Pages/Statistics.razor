@@ -46,7 +46,7 @@
         }
         @if (State.HasAd && State.HasMicrosoft365)
         {
-            <Tile Count="s.DifferencesAdEntra.Sum(v => v.Count)" Label="verschillen AD en Entra" Link="vergelijk" />
+            <Tile Count="s.DifferencesAdEntra.Sum(v => v.Count)" Label="@T["code.statistics.differences-ad-and-entra"]" Link="vergelijk" />
         }
     </div>
 </section>
@@ -63,7 +63,7 @@
         </label>
     </div>
     <p class="kb-zacht">
-        Actieve medewerkers@(Division is null ? "" : $" van {Division}"). De filter geldt voor de grafieken van deze kaart; de tegels hierboven tellen altijd alles.
+        Actieve medewerkers@(Division is null ? "" : (" " + T.Format("code.statistics.of", Division))). De filter geldt voor de grafieken van deze kaart; de tegels hierboven tellen altijd alles.
     </p>
     <div class="kb-kolommen">
         <div>
@@ -93,7 +93,7 @@
         </div>
     </div>
     <h3>@T["statistics.new-accounts-per-month"]</h3>
-    <ColumnChart Columns="BiStatistics.CreatedPerMonth(State.KpiSource, Division)" Title="Nieuwe accounts per maand, de laatste 12 maanden" ColumnTitle="Maand"
+    <ColumnChart Columns="BiStatistics.CreatedPerMonth(State.KpiSource, Division)" Title="@T["code.statistics.new-accounts-per-month-the"]" ColumnTitle="Maand"
                   Series="@(new[] { new ColumnChart.SeriesItem("Nieuwe accounts") })" />
 </section>
 
@@ -225,7 +225,7 @@
         <Tile Count="State.CountFollowUpTasks" Label="opvolgtaken open" Link="opvolging" />
     </div>
     <h3>@T["statistics.changes-per-week"]</h3>
-    <ColumnChart Columns="perWeek" Title="Uitgevoerde wijzigingen per week, de laatste 12 weken" ColumnTitle="Week" EmptyText="Nog geen wijzigingen uitgevoerd in de laatste 12 weken."
+    <ColumnChart Columns="perWeek" Title="@T["code.statistics.changes-run-per-week-the"]" ColumnTitle="Week" EmptyText="@T["code.statistics.no-changes-run-in-the"]"
                   Series="@(new[] { new ColumnChart.SeriesItem("Gelukt", "goed"), new ColumnChart.SeriesItem("Mislukt", "kritiek") })" />
 </section>
 

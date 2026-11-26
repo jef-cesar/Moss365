@@ -15,7 +15,7 @@
 else if (!State.Can(Permission.Manage) || State.IsHistoric)
 {
     <h1>@T["menu.conditional-access"]</h1>
-    <div class="kb-melding">@(State.IsHistoric ? "Je bekijkt het verleden: daar wijzigt de app niets." : "Een beleid bewerken kan enkel wie mag beheren.")</div>
+    <div class="kb-melding">@(State.IsHistoric ? T["code.ca-policy-editor.you-are-looking-at-the"] : "Een beleid bewerken kan enkel wie mag beheren.")</div>
 }
 else if (edit is null)
 {
@@ -44,7 +44,7 @@ else
                 <label class="kb-keuze @(edit.Status == s ? "kb-actief" : null)">
                     <input type="radio" name="status" checked="@(edit.Status == s)" disabled="@disabled" @onchange="() => Set(() => edit.Status = s)" aria-label="@text" />
                     <strong>@text</strong>
-                    <span class="kb-zacht">@(disabled ? "Een nieuw beleid begint in alleen rapport of uit." : explanation)</span>
+                    <span class="kb-zacht">@(disabled ? T["code.ca-policy-editor.a-new-policy-starts-in"] : explanation)</span>
                 </label>
             }
         </div>
@@ -53,7 +53,7 @@ else
     <section class="kb-kaart">
         <h2>@T["script-result.who"]</h2>
         <div class="kb-filters">
-            @foreach (var (m, text) in new[] { (CaUsersMode.All, "Alle gebruikers"), (CaUsersMode.Selected, "Gekozen gebruikers, groepen of rollen"), (CaUsersMode.None, "Niemand") })
+            @foreach (var (m, text) in new[] { (CaUsersMode.All, "Alle gebruikers"), (CaUsersMode.Selected, T["code.ca-policy-editor.chosen-users-groups-or-roles"]), (CaUsersMode.None, "Niemand") })
             {
                 <label><input type="radio" name="wie" checked="@(edit.UsersMode == m)" @onchange="() => Set(() => edit.UsersMode = m)" aria-label="@text" /> @text</label>
             }
@@ -154,7 +154,7 @@ else
             </fieldset>
             <fieldset class="kb-veldgroep">
                 <legend>@T["ca-policy-editor.authentication-transfer"]</legend>
-                @(Checks(edit.Transfer, CaEditor.TransferChoices, t => t == "deviceCodeFlow" ? "Aanmelden met een toestelcode" : "Verificatie-overdracht"))
+                @(Checks(edit.Transfer, CaEditor.TransferChoices, t => t == "deviceCodeFlow" ? T["code.ca-policy-editor.sign-in-with-a-device"] : "Verificatie-overdracht"))
             </fieldset>
             <fieldset class="kb-veldgroep">
                 <legend>@T["ca-policy-editor.device-filter"]</legend>
@@ -255,7 +255,7 @@ else
             @if (impact.Removed.Count > 0) { <p class="kb-zacht">Vallen weg: @string.Join(", ", impact.Removed.Take(15).Select(p => p.Name))@(impact.Removed.Count > 15 ? " ..." : null)</p> }
             <details>
                 <summary>@T["ca-policy-editor.json-for-graph"]</summary>
-                <pre class="kb-json">@(current is null ? CaEditor.ToJson(edit) : CaEditor.Patch(current, edit) is { Length: > 0 } patch ? patch : "(geen wijziging)")</pre>
+                <pre class="kb-json">@(current is null ? CaEditor.ToJson(edit) : CaEditor.Patch(current, edit) is { Length: > 0 } patch ? patch : T["code.ca-policy-editor.no-change"])</pre>
             </details>
         }
         <div class="kb-filters">
@@ -272,7 +272,7 @@ else
         }
         @if (outcome.Plan.Count > 0)
         {
-            <PlanView Plan="outcome.Plan" Context="@($"Conditional Access: {(current is null ? "nieuw beleid" : "beleid wijzigen")} {edit.Name.Trim()}")" Title="Wijziging aan Conditional Access" Executed="AfterExecute" />
+            <PlanView Plan="outcome.Plan" Context="@($"Conditional Access: {(current is null ? "nieuw beleid" : "beleid wijzigen")} {edit.Name.Trim()}")" Title="@T["code.manage-ca.change-to-conditional-access"]" Executed="AfterExecute" />
         }
     }
     @if (done is not null) { <div class="kb-melding kb-goed">@done</div> }
@@ -311,7 +311,7 @@ else
 
     private bool IsCopy => Nav.Uri.Split('?')[0].EndsWith("/kopie", StringComparison.OrdinalIgnoreCase);
 
-    private string Title => current is null ? (IsCopy ? "Kopie van een beleid" : "Nieuw beleid") : $"{current.Name} bewerken";
+    private string Title => current is null ? (IsCopy ? T["code.ca-policy-editor.copy-of-a-policy"] : "Nieuw beleid") : $"{current.Name} bewerken";
 
     protected override void OnParametersSet()
     {
@@ -366,7 +366,7 @@ else
         }
         catch (System.Text.Json.JsonException ex)
         {
-            errors.Add("De instellingen geven geen geldige JSON: " + ex.Message);
+            errors.Add((T["code.ca-policy-editor.the-settings-do-not-give"] + " ") + ex.Message);
         }
 
         Errors = errors.Distinct().ToList();
@@ -416,7 +416,7 @@ else
         }
         else
         {
-            outcome = PlanOutcome.Error($"{r.Name} heeft geen Entra-account; Conditional Access geldt enkel in Entra.");
+            outcome = PlanOutcome.Error(T.Format("code.ca-policy-editor.has-no-entra-account-conditional", r.Name));
         }
     }
 
@@ -428,7 +428,7 @@ else
         }
         else
         {
-            outcome = PlanOutcome.Error($"{r.Name} bestaat niet in Entra (een AD-groep die niet gesynchroniseerd wordt, of een mailgroep).");
+            outcome = PlanOutcome.Error(T.Format("code.ca-policy-editor.does-not-exist-in-entra", r.Name));
         }
     }
 
@@ -480,7 +480,7 @@ else
                     <option value="@id">@CaReader.AppName(id)</option>
                 }
             </select>
-            <input class="kb-invoer" placeholder="of de app-id (GUID)" @bind="appId" aria-label="App-id" />
+            <input class="kb-invoer" placeholder="@T["code.ca-policy-editor.or-the-app-id-guid"]" @bind="appId" aria-label="App-id" />
             <button class="kb-knop kb-klein" disabled="@(!Guid.TryParse(appId.Trim(), out _))" @onclick="() => Set(() => { Toggle(list, appId.Trim(), true); appId = string.Empty; })">Toevoegen</button>
         </div>
     };
@@ -508,8 +508,8 @@ else
         if (results.Any(r => r.Status == ResultStatus.Succeeded))
         {
             done = current is null
-                ? "Het beleid is gemaakt. Na het opnieuw lezen staat het bij Conditional Access > Beleiden."
-                : "Het beleid is gewijzigd. Conditional Access wordt opnieuw gelezen.";
+                ? T["code.ca-policy-editor.the-policy-has-been-created"]
+                : T["code.ca-policy-editor.the-policy-has-been-changed"];
         }
     }
 }

@@ -202,7 +202,7 @@ else
         }
     }
 
-    private static string? WhyNotBack(LogEntry r) => Undo.WhyNot(r) is { } reason ? $"Kan niet ongedaan gemaakt worden: {reason}" : null;
+    private static string? WhyNotBack(LogEntry r) => Undo.WhyNot(r) is { } reason ? T.Format("code.change-log.cannot-be-undone", reason) : null;
 
     private void MakeUndoPlan()
     {
@@ -229,7 +229,7 @@ else
         }
         catch (Exception ex)
         {
-            error = "Logboek lezen mislukt: " + ex.Message;
+            error = (T["code.change-log.reading-the-change-log-failed"] + " ") + ex.Message;
         }
     }
 

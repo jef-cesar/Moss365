@@ -107,7 +107,7 @@
     private string? oneTimeText;
     private string? loaded;
 
-    private string Title => once ? "Eenmalig script" : builtInSource is not null ? $"Kopie van {builtInSource}" : path is null ? "Nieuw script" : $"Script bewerken: {header.Name}";
+    private string Title => once ? "Eenmalig script" : builtInSource is not null ? T.Format("code.edit-script.copy-of", builtInSource) : path is null ? "Nieuw script" : $"Script bewerken: {header.Name}";
 
     protected override void OnParametersSet()
     {
@@ -198,7 +198,7 @@
     {
         if (header.Name.Trim().Length == 0)
         {
-            message = "Geef het script een naam.";
+            message = T["code.edit-script.give-the-script-a-name"];
             return;
         }
 
@@ -207,7 +207,7 @@
         path = file.FilePath;
         builtInSource = null;
         changedOutsideApp = false;
-        message = withoutErrors ? $"Opgeslagen als {Path.GetFileName(file.FilePath)}." : "Opgeslagen, maar met syntaxfouten: zo kan het niet draaien.";
+        message = withoutErrors ? $"Opgeslagen als {Path.GetFileName(file.FilePath)}." : T["code.edit-script.saved-but-with-syntax-errors"];
         if (start && withoutErrors)
         {
             Nav.NavigateTo($"scripts/starten/{Uri.EscapeDataString(file.Key)}");
@@ -218,7 +218,7 @@
     {
         if (!await Check())
         {
-            message = "Los eerst de syntaxfouten op.";
+            message = T["code.edit-script.solve-the-syntax-errors-first"];
             return;
         }
 

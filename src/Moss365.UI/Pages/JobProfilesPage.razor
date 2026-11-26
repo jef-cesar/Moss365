@@ -33,7 +33,7 @@ else
             <h2>Wie heeft @profile.Name (@holders.Count)</h2>
             @if (holders.Count == 0)
             {
-                <p class="kb-zacht">Nog niemand: niemand kreeg dit profiel via de app@(string.IsNullOrWhiteSpace(profile.JobTitle) ? null : $", en niemand heeft de functie \"{profile.JobTitle}\"").</p>
+                <p class="kb-zacht">Nog niemand: niemand kreeg dit profiel via de app@(string.IsNullOrWhiteSpace(profile.JobTitle) ? null : T.Format("code.job-profiles.and-nobody-has-the-job", profile.JobTitle)).</p>
             }
             else
             {
@@ -57,7 +57,7 @@ else
             }
         </section>
 
-        <PersonPicker Label="Profiel toepassen op een gebruiker" Selected="person" SelectedChanged="p => Go(profile.Id, p?.Key)" />
+        <PersonPicker Label="@T["code.job-profiles.apply-profile-to-a-user"]" Selected="person" SelectedChanged="p => Go(profile.Id, p?.Key)" />
 
         @if (person is not null)
         {

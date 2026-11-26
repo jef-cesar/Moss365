@@ -117,7 +117,7 @@ else
         catch (Exception ex)
         {
             actions = new();
-            message = "Gepland lezen mislukt: " + ex.Message;
+            message = (T["code.scheduled.reading-the-scheduled-actions-failed"] + " ") + ex.Message;
         }
     }
 
@@ -152,7 +152,7 @@ else
         var succeeded = results.Count(r => r.Status == ResultStatus.Succeeded);
         if (succeeded == 0)
         {
-            message = "Niets gelukt; de actie blijft gepland.";
+            message = T["code.scheduled.nothing-succeeded-the-action-stays"];
             return;
         }
 
@@ -176,8 +176,8 @@ else
 
         State.RemoveScheduled(selected.Id);
         message = selected.AfterSynchronisation.Count > 0 && selected.Kind == ScheduledKind.Onboarding
-            ? "Uitgevoerd en uit Gepland gehaald. De stappen na de synchronisatie staan bij Opvolging."
-            : "Uitgevoerd en uit Gepland gehaald.";
+            ? T["code.scheduled.run-and-removed-from-scheduled"]
+            : T["code.scheduled.run-and-removed-from-scheduled-2"];
         OnParametersSet();
     }
 

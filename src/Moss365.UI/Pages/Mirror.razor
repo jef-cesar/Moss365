@@ -39,7 +39,7 @@
         @foreach (var layer in new[] { "AD", "Cloud" }.Where(l => l == "AD" ? State.HasAd : State.HasMicrosoft365))
         {
             <section class="kb-kaart">
-                <h2>@(layer == "AD" ? "On-prem AD" : "Cloud (Entra en Exchange)")</h2>
+                <h2>@(layer == "AD" ? "On-prem AD" : T["code.mirror.cloud-entra-and-exchange"])</h2>
                 <table class="kb-tabel">
                     <thead><tr><th>@T["nested-groups.group"]</th><th>@T["nested-groups.kind"]</th><th>@T["service-health-card.status"]</th><th>@T["mirror.via"]</th><th>@T["mirror.note"]</th></tr></thead>
                     <tbody>

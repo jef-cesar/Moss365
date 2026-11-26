@@ -43,7 +43,7 @@
     </div>
     @if (request.Kind == NewGroupKind.AdSecurity)
     {
-        <p class="kb-zacht">@T["new-group.in-the-ou"] <strong>@(string.IsNullOrWhiteSpace(State.Config.GroupsOu) ? "(nog niet ingesteld bij Organisatie)" : State.Config.GroupsOu)</strong>.</p>
+        <p class="kb-zacht">@T["new-group.in-the-ou"] <strong>@(string.IsNullOrWhiteSpace(State.Config.GroupsOu) ? T["code.new-group.not-set-yet-under-organisation"] : State.Config.GroupsOu)</strong>.</p>
     }
 
     <PersonPicker Label="@(request.Kind is NewGroupKind.CloudSecurity or NewGroupKind.Microsoft365 ? "Eigenaar" : "Beheerder")"
@@ -81,10 +81,10 @@
     private static readonly (NewGroupKind, string, string)[] Kinds =
     {
         (NewGroupKind.AdSecurity, "AD-beveiligingsgroep", "Voor rechten op mappen, programma's en toestellen; gesynchroniseerd naar Entra."),
-        (NewGroupKind.CloudSecurity, "Beveiligingsgroep in de cloud", "Voor rechten en licenties in Microsoft 365, zonder AD."),
+        (NewGroupKind.CloudSecurity, T["code.new-group.security-group-in-the-cloud"], T["code.new-group.for-permissions-and-licences-in"]),
         (NewGroupKind.Microsoft365, "Microsoft 365-groep", "Samenwerken: gedeelde mailbox, agenda, bestanden; Teams mogelijk."),
-        (NewGroupKind.MailSecurity, "Mail-beveiligingsgroep", "Rechten én mail, bv. toegang tot een gedeeld postvak (via Exchange)."),
-        (NewGroupKind.Distribution, "Distributielijst", "Enkel mail naar een groep mensen (via Exchange)."),
+        (NewGroupKind.MailSecurity, "Mail-beveiligingsgroep", T["code.new-group.permissions-and-mail-e-g"]),
+        (NewGroupKind.Distribution, "Distributielijst", T["code.new-group.only-mail-to-a-group"]),
     };
 
     private const string Form = "groepen/nieuw";

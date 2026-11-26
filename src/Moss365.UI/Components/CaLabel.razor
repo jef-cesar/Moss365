@@ -9,7 +9,7 @@ else if (Status is { } s)
 }
 else if (Applies is { } g)
 {
-    <span class="kb-label @(g switch { CaApplies.Yes => "kb-label-goed", CaApplies.Maybe => "kb-label-let", _ => null })">@(g switch { CaApplies.Yes => "geldt", CaApplies.Maybe => "misschien", _ => "geldt niet" })</span>
+    <span class="kb-label @(g switch { CaApplies.Yes => "kb-label-goed", CaApplies.Maybe => "kb-label-let", _ => null })">@(g switch { CaApplies.Yes => "geldt", CaApplies.Maybe => "misschien", _ => T["code.ca-label.does-not-apply"] })</span>
 }
 
 @code {

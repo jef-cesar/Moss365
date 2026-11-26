@@ -58,7 +58,7 @@ else
             new() { Key = "ad", Title = "AD", Cell = v => @<text>@v.AdValue</text>, SortBy = v => v.AdValue },
             new() { Key = "entra", Title = "Entra", Cell = v => @<text>@v.EntraValue</text>, SortBy = v => v.EntraValue },
             new() { Key = "toelichting", Title = "Toelichting", Cell = v => @<text>@v.Explanation</text>, SortBy = v => v.Explanation },
-            new() { Key = "rechtzetten", Title = "Rechtzetten", Filter = FilterKind.No, Cell = v => @<text>@if (FixCan(v)) { <button class="kb-knop kb-klein" @onclick="() => Fix(v)" title="De waarde in AD rechtzetten; Entra volgt na de synchronisatie">Rechtzetten in AD</button> }</text> },
+            new() { Key = "rechtzetten", Title = "Rechtzetten", Filter = FilterKind.No, Cell = v => @<text>@if (FixCan(v)) { <button class="kb-knop kb-klein" @onclick="() => Fix(v)" title="@T["code.compare.correct-the-value-in-ad"]">Rechtzetten in AD</button> }</text> },
             new() { Key = "ou", Title = "OU", Hidden = true, Cell = v => @<text>@v.Person.Ad?.OuPath</text>, SortBy = v => v.Person.Ad?.OuPath },
         };
     }

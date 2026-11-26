@@ -104,7 +104,7 @@
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or System.Text.Json.JsonException or TaskCanceledException)
         {
-            errors = new[] { "Nakijken mislukt: " + ex.Message };
+            errors = new[] { (T["code.library-panel.check-failed"] + " ") + ex.Message };
         }
         finally
         {
@@ -152,7 +152,7 @@
     {
         LibraryChangeKind.New => "nieuw",
         LibraryChangeKind.Changed => "gewijzigd",
-        LibraryChangeKind.TooNew => $"vraagt Moss365 {c.Entry.MinimumApp} of nieuwer",
+        LibraryChangeKind.TooNew => T.Format("code.library-panel.needs-moss365-or-newer", c.Entry.MinimumApp),
         _ => "vastgezet in deze tenant",
     };
 }

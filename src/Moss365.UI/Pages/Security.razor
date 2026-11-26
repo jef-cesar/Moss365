@@ -4,7 +4,7 @@
 <h1>@T["group.beveiliging"]</h1>
 
 <p class="kb-zacht">
-    MFA-registraties en beheerrollen uit Entra (@(State.Data.Security is null ? "niet geladen" : State.OriginOf(new ObjectRef(ObjectKind.User, "", "")))),
+    MFA-registraties en beheerrollen uit Entra (@(State.Data.Security is null ? T["code.security.not-loaded"] : State.OriginOf(new ObjectRef(ObjectKind.User, "", "")))),
     en bevoorrechte AD-groepen. Mislukte aanmeldingen lees je live. Signalen om na te kijken, geen conclusies.
 </p>
 
@@ -118,7 +118,7 @@ else
 
     protected override void OnInitialized()
     {
-        State.Access("Beveiliging bekeken", "MFA, beheerrollen en bevoorrechte groepen");
+        State.Access("Beveiliging bekeken", T["code.security.mfa-admin-roles-and-privileged"]);
         mfaColumns = new List<Column<Person>>
         {
             new() { Key = "naam", Title = "Naam", Cell = p => @<ObjectLink Object="State.Data.Index.Ref(p)" />, SortBy = p => p.Name },
@@ -156,12 +156,12 @@ else
             failed = await State.ReadSignInsAsync(null, days, onlyFailed: true);
             if (failed is null)
             {
-                error = "Vul eerst de Entra-gegevens in (scherm Verbindingen).";
+                error = T["code.security-card.fill-in-the-entra-details"];
             }
         }
         catch (Exception ex)
         {
-            error = "Aanmeldingen lezen mislukt: " + ex.Message + " (nodig: rol Reports Reader of Security Reader, en Entra ID P1).";
+            error = (T["code.security-card.reading-sign-ins-failed"] + " ") + ex.Message + (" " + T["code.security-card.needed-role-reports-reader-or"]);
         }
         finally
         {

@@ -20,8 +20,8 @@
 
     <div class="kb-filters">
         <span class="kb-segment" role="group" aria-label="@T["manage-ca.manage"]">
-            @foreach (var (o, text) in new[] { (Section.Status, "Aan en uit"), (Section.Exclusions, "Uitzonderingen"), (Section.New, "Nieuw beleid"),
-                                                 (Section.Locations, "Benoemde locaties"), (Section.Backups, "Back-ups"), (Section.Audit, "Wie wijzigde wat") })
+            @foreach (var (o, text) in new[] { (Section.Status, T["code.manage-ca.on-and-off"]), (Section.Exclusions, "Uitzonderingen"), (Section.New, "Nieuw beleid"),
+                                                 (Section.Locations, "Benoemde locaties"), (Section.Backups, "Back-ups"), (Section.Audit, T["code.manage-ca.who-changed-what"]) })
             {
                 <button class="kb-knop @(component == o ? "kb-primair" : null)" @onclick="() => Choose(o)">@text</button>
             }
@@ -245,7 +245,7 @@
 
 @if (plan is not null)
 {
-    <PlanView Plan="plan" Context="@planContext" Title="Wijziging aan Conditional Access" Executed="AfterExecute" />
+    <PlanView Plan="plan" Context="@planContext" Title="@T["code.manage-ca.change-to-conditional-access"]" Executed="AfterExecute" />
 }
 
 @code {
@@ -308,7 +308,7 @@
 
     private static string ButtonText(CaStatus s) => s switch { CaStatus.On => "Aanzetten", CaStatus.Report => "Alleen rapport", _ => "Uitzetten" };
 
-    private static string DifferenceText(string kind) => kind switch { "nieuw" => "nieuw sinds de back-up", "verdwenen" => "bestaat niet meer", _ => "gewijzigd" };
+    private static string DifferenceText(string kind) => kind switch { "nieuw" => T["code.manage-ca.new-since-the-backup"], "verdwenen" => T["code.manage-ca.no-longer-exists"], _ => "gewijzigd" };
 
     private void Choose(Section o)
     {
@@ -341,7 +341,7 @@
 
         if (exclusionUntil.ToDateTime(new TimeOnly(23, 59)) <= DateTime.Now)
         {
-            errors = new[] { "Kies een einddatum in de toekomst." };
+            errors = new[] { T["code.manage-ca.choose-an-end-date-in"] };
             plan = null;
             return;
         }
@@ -358,7 +358,7 @@
 
     private void New()
         => Show(CaTemplates.Plan(template, new CaTemplateOptions(pilotGroup.Length == 0 ? null : pilotGroup, countries.Length == 0 ? null : countries),
-            State.Data, State.Config, State.OwnUpn), "Conditional Access: nieuw beleid uit een sjabloon");
+            State.Data, State.Config, State.OwnUpn), T["code.manage-ca.conditional-access-new-policy-from"]);
 
     private void Edit(NamedLocation? l)
     {
@@ -380,7 +380,7 @@
         {
             var path = Moss365.Core.Storage.CaBackup.Save(Ca, State.Files, DateTime.Now);
             backupMessage = path is null
-                ? (Ca.Policies.Any(b => b.Json.Length == 0) ? "Geen back-up: de beleiden komen niet rechtstreeks uit Entra. Laad eerst live." : "Geen nieuwe back-up nodig: er veranderde niets sinds de vorige.")
+                ? (Ca.Policies.Any(b => b.Json.Length == 0) ? T["code.manage-ca.no-backup-the-policies-do"] : T["code.manage-ca.no-new-backup-needed-nothing"])
                 : $"Bewaard: {path[(path.LastIndexOf('/') + 1)..]}";
         }
         catch (IOException ex)
@@ -413,16 +413,16 @@
             audit = await State.ReadCaAuditAsync(30);
             if (audit is null)
             {
-                auditError = "Graph is niet ingesteld (Verbindingen).";
+                auditError = T["code.manage-ca.graph-is-not-set-up"];
             }
         }
         catch (NoPermissionError ex)
         {
-            auditError = "Je account mag het auditlogboek niet lezen (rol Reports Reader, Security Reader of Global Reader nodig). " + ex.Message;
+            auditError = (T["code.manage-ca.your-account-may-not-read"] + " ") + ex.Message;
         }
         catch (Exception ex)
         {
-            auditError = "Auditlogboek lezen mislukt: " + ex.Message;
+            auditError = (T["code.manage-ca.reading-the-audit-log-failed"] + " ") + ex.Message;
         }
         finally
         {

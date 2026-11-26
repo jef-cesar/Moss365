@@ -27,7 +27,7 @@
     @if (outcome is not null)
     {
         @foreach (var e in outcome.Errors) { <div class="kb-melding kb-fout">@e</div> }
-        @if (outcome.Plan.Count > 0) { <PlanView Plan="outcome.Plan" Context="@($"Afwezigheid {Person.Name}")" Title="Afwezig en doorsturen" Executed="AfterExecute" /> }
+        @if (outcome.Plan.Count > 0) { <PlanView Plan="outcome.Plan" Context="@($"Afwezigheid {Person.Name}")" Title="@T["absence-card.away-and-forwarding"]" Executed="AfterExecute" /> }
     }
     @if (scheduled is not null) { <div class="kb-melding kb-goed">@Html("absence.forwardend", scheduled.Value.ToString("dd/MM/yyyy"))</div> }
 </section>

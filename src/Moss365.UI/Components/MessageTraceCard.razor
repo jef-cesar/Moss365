@@ -18,7 +18,7 @@
     @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
     @if (rows is not null)
     {
-        <p>@Shown.Count bericht(en)@(Shown.Count(r => !Delivered(r)) is var n && n > 0 ? $", waarvan {n} niet afgeleverd" : null).</p>
+        <p>@Shown.Count bericht(en)@(Shown.Count(r => !Delivered(r)) is var n && n > 0 ? T.Format("code.message-trace-card.of-which-not-delivered", n) : null).</p>
         <table class="kb-tabel">
             <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["absence-card.from"]</th><th>@T["message-trace-card.to"]</th><th>@T["message-trace-card.subject"]</th><th>@T["service-health-card.status"]</th></tr></thead>
             <tbody>

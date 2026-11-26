@@ -10,7 +10,7 @@
     @T["collaboration.microsoft-365-groups-and-teams"]
 </p>
 
-<button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? "Bezig met lezen..." : "Teams en SharePoint lezen")</button>
+<button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? T["code.collaboration.reading"] : T["code.collaboration.read-teams-and-sharepoint"])</button>
 @if (State.DevicesNote is { } note) { <div class="kb-melding">@note</div> }
 @if (State.Collaboration?.Note is { } note2) { <div class="kb-melding">@note2</div> }
 
