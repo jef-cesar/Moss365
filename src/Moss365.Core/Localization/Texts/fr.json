@@ -3565,5 +3565,14 @@
   "access-reviews.app-in-entra": "Retirez « {0} » de {1} dans Entra (Applications d'entreprise, l'application, Autorisations) : Moss365 ne fait que lire les inscriptions d'applications.",
   "access-reviews.standard": "{0} révisions d'accès sur {1} à faire",
   "report.reviews": "{0} révisés sur cette période : {1} gardés, {2} à retirer. À faire maintenant : {3} sur {4}.",
-  "code.security-checks.consent-of-users": "consentement de {0} utilisateur(s) : {1}"
+  "code.security-checks.consent-of-users": "consentement de {0} utilisateur(s) : {1}",
+  "setup.parts": "Parties avec une autorisation propre",
+  "setup.parts.help": "Ces autorisations ne sont demandées pour ce tenant que si vous activez la partie ; la désactiver retire l'autorisation à la prochaine exécution de l'assistant.",
+  "setup.part.entra-device-cleanup": "Nettoyer les anciens appareils dans Entra",
+  "setup.part.entra-device-cleanup.help": "Désactiver un appareil non vu depuis 90 jours, puis le supprimer après 90 jours de désactivation (U18). Microsoft ne le permet qu'avec Directory.AccessAsUser.All : l'application peut alors tout faire dans l'annuaire ce que vous pouvez faire en tant qu'administrateur.",
+  "setup.part.compliance-policies": "Stratégies de conformité de base",
+  "setup.part.compliance-policies.help": "Créer les stratégies de conformité de base à partir des modèles d'Appareils, sous forme de plan. La lecture de la conformité par stratégie fonctionne sans cela.",
+  "setup.part.take-away": "Encore accordée pour une partie désactivée : {0}",
+  "setup.part.consent-away": "Retirer du consentement administrateur pour {0} : {1}",
+  "setup.part.not-allowed": "Seul qui peut modifier les paramètres active ou désactive une partie, et pas dans le passé."
 }

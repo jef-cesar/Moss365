@@ -38,7 +38,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   `$batch` calls of 20 (`GraphClient.BatchGetAsync`), with a request of its own for what the batch did not answer.
 - Set-up (`Core/Setup`, R5): `TenantSetup.Assess` compares what the wizard read with `AppManifest` and plans only the
   difference; `TenantSetupConnection` runs it with the Graph PowerShell client. Keep `AppManifest` and
-  `tools/Register-App.ps1` the same (permissions, app role ids).
+  `tools/Register-App.ps1` the same (permissions, app role ids). A broad or rarely needed permission belongs to a part
+  (`Setup/PermissionParts.cs`, U25, U26; `OrganisationConfig.PermissionParts`; `-Onderdelen` in the script): asked
+  only when the part is on, taken away when it is off, and the engine refuses the changes of a part that is off.
 - Maintenance (`Storage/Maintenance.cs`): retention in `OrganisationConfig.Retention`; cleaning up is always preview,
   confirmation, archive (change log, access log), then remove. `RemoveSnapshots` keeps every remaining date exact
   (a test compares all of them).

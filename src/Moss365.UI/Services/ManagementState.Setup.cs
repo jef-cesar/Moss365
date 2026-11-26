@@ -16,7 +16,25 @@ public sealed partial class ManagementState
 
     public SetupChoices SetupChoices { get; set; } = new();
 
-    public SetupAssessment? SetupAssessment => SetupReading is { } r ? TenantSetup.Assess(r, SetupChoices) : null;
+    public SetupAssessment? SetupAssessment => SetupReading is { } r ? TenantSetup.Assess(r, SetupChoices with { Parts = Config.PermissionParts }) : null;
+
+    /// <summary>Turns a part with a permission of its own on or off (U25, U26); the wizard then plans the difference.</summary>
+    public void SetPermissionPart(string part, bool on)
+    {
+        if (IsHistoric || !Can(Core.Permissions.Permission.Settings))
+        {
+            throw new InvalidOperationException(Core.Localization.Texts.T["setup.part.not-allowed"]);
+        }
+
+        Config.PermissionParts.RemoveAll(p => string.Equals(p, part, StringComparison.OrdinalIgnoreCase));
+        if (on)
+        {
+            Config.PermissionParts.Add(part);
+        }
+
+        SaveConfig();
+        Changed?.Invoke();
+    }
 
     /// <summary>The wizard can work: the Windows app, with a tenant ID.</summary>
     public bool SetupAvailable => _factory?.Setup(Settings.TenantId) is not null;

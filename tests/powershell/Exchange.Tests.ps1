@@ -276,7 +276,7 @@ Describe 'Register-App.ps1' {
         $r[0].Type | Should -Be 'Scope'
     }
 
-    It 'asks for the permissions up to and including 0.39 at once, and nothing beyond' {
+    It 'asks for the permissions up to and including 0.40 at once, and nothing beyond' {
         @($Rechten) | Sort-Object | Should -Be (@(
             'Application.Read.All', 'AuditLog.Read.All', 'Calendars.Read.Shared', 'Directory.Read.All', 'Group.ReadWrite.All',
             'GroupMember.ReadWrite.All', 'OnPremDirectorySynchronization.Read.All', 'Policy.Read.All',
@@ -285,9 +285,24 @@ Describe 'Register-App.ps1' {
             'SecurityEvents.Read.All', 'RoleManagement.Read.Directory', 'IdentityRiskyUser.Read.All',
             'DeviceManagementManagedDevices.Read.All', 'Reports.Read.All', 'SharePointTenantSettings.Read.All',
             'ServiceHealth.Read.All', 'ServiceMessage.Read.All',
-            'DeviceManagementManagedDevices.PrivilegedOperations.All', 'DeviceManagementManagedDevices.ReadWrite.All') | Sort-Object)
+            'DeviceManagementManagedDevices.PrivilegedOperations.All', 'DeviceManagementManagedDevices.ReadWrite.All',
+            'DeviceManagementConfiguration.Read.All') | Sort-Object)
         # No permissions that can do more than needed (e.g. read all mail, or write the whole directory)
         @($Rechten | Where-Object { $_ -in 'Mail.Read', 'Mail.ReadWrite', 'Directory.ReadWrite.All', 'RoleManagement.ReadWrite.Directory' }).Count | Should -Be 0
+    }
+
+    It 'asks the permission of a part only when it is turned on, the same as the app (U25, U26)' {
+        $OnderdeelRechten['entra-device-cleanup'] | Should -Be @('Directory.AccessAsUser.All')
+        $OnderdeelRechten['compliance-policies'] | Should -Be @('DeviceManagementConfiguration.ReadWrite.All')
+        $code = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\..\src\Moss365.Core\Setup\PermissionParts.cs') -Raw
+        foreach ($k in $OnderdeelRechten.Keys) {
+            $code | Should -Match ([regex]::Escape("`"$k`""))
+            foreach ($r in $OnderdeelRechten[$k]) { $code | Should -Match ([regex]::Escape("`"$r`"")) }
+        }
+        $Rechten | Should -Not -Contain 'Directory.AccessAsUser.All'
+        . (Join-Path $PSScriptRoot '..\..\tools\Register-App.ps1') -Onderdelen 'compliance-policies'
+        $Rechten | Should -Contain 'DeviceManagementConfiguration.ReadWrite.All'
+        $Rechten | Should -Not -Contain 'Directory.AccessAsUser.All'
     }
 
     It 'stops at an unknown permission' {

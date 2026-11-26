@@ -3565,5 +3565,14 @@
   "access-reviews.app-in-entra": "Remova \"{0}\" de {1} no Entra (Aplicativos empresariais, o aplicativo, Permissões): o Moss365 só lê os registros de aplicativos.",
   "access-reviews.standard": "{0} de {1} revisões de acesso pendentes",
   "report.reviews": "{0} revisados neste período: {1} mantidos, {2} a remover. Pendentes agora: {3} de {4}.",
-  "code.security-checks.consent-of-users": "consentimento de {0} usuário(s): {1}"
+  "code.security-checks.consent-of-users": "consentimento de {0} usuário(s): {1}",
+  "setup.parts": "Partes com permissão própria",
+  "setup.parts.help": "Essas permissões só são pedidas para este tenant quando você ativa a parte; desativar remove a permissão na próxima execução do assistente.",
+  "setup.part.entra-device-cleanup": "Limpar dispositivos antigos no Entra",
+  "setup.part.entra-device-cleanup.help": "Desativar um dispositivo não visto há 90 dias e excluí-lo depois de 90 dias desativado (U18). A Microsoft só permite isso com Directory.AccessAsUser.All: o aplicativo pode então fazer no diretório tudo o que você pode como administrador.",
+  "setup.part.compliance-policies": "Políticas de conformidade básicas",
+  "setup.part.compliance-policies.help": "Criar as políticas de conformidade básicas a partir dos modelos em Dispositivos, como plano. Ler a conformidade por política funciona sem isso.",
+  "setup.part.take-away": "Ainda concedida para uma parte desativada: {0}",
+  "setup.part.consent-away": "Remover do consentimento de administrador para {0}: {1}",
+  "setup.part.not-allowed": "Só quem pode alterar as configurações ativa ou desativa uma parte, e não no passado."
 }

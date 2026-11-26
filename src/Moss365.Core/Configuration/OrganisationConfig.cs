@@ -77,6 +77,10 @@ public sealed class OrganisationConfig
     /// not filled in.</summary>
     public int PasswordMaxAgeDays { get; set; }
 
+    /// <summary>The parts with a permission of their own that are on for this tenant (U25, U26,
+    /// <see cref="Setup.PermissionParts"/>); the wizard asks for their permissions.</summary>
+    public List<string> PermissionParts { get; set; } = new();
+
     /// <summary>The reminder e-mail for a password that expires ({naam}, {datum}, {dagen}); empty = the default text.</summary>
     public string? PasswordReminderText { get; set; }
 

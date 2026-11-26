@@ -3565,5 +3565,14 @@
   "access-reviews.app-in-entra": "Haal \"{0}\" van {1} weg in Entra (Bedrijfstoepassingen, de app, Machtigingen): Moss365 leest app-registraties alleen.",
   "access-reviews.standard": "{0} van {1} toegangsreviews te doen",
   "report.reviews": "{0} gereviewd in deze periode: {1} behouden, {2} te verwijderen. Nu te doen: {3} van {4}.",
-  "code.security-checks.consent-of-users": "toestemming van {0} gebruiker(s): {1}"
+  "code.security-checks.consent-of-users": "toestemming van {0} gebruiker(s): {1}",
+  "setup.parts": "Onderdelen met een eigen recht",
+  "setup.parts.help": "Deze rechten worden alleen voor deze tenant gevraagd als je het onderdeel aanzet; uitzetten haalt het recht weg bij de volgende uitvoering van de wizard.",
+  "setup.part.entra-device-cleanup": "Oude toestellen opkuisen in Entra",
+  "setup.part.entra-device-cleanup.help": "Een toestel uitschakelen dat 90 dagen niet gezien werd, en het verwijderen na 90 dagen uitgeschakeld (U18). Microsoft laat dat alleen toe met Directory.AccessAsUser.All: de app mag dan alles in de directory wat jij als beheerder mag.",
+  "setup.part.compliance-policies": "Basisnalevingsbeleid",
+  "setup.part.compliance-policies.help": "Het basisnalevingsbeleid maken uit de sjablonen op Toestellen, als plan. Naleving per beleid lezen werkt ook zonder dit.",
+  "setup.part.take-away": "Nog gegeven voor een onderdeel dat uit staat: {0}",
+  "setup.part.consent-away": "Weghalen uit de beheerderstoestemming voor {0}: {1}",
+  "setup.part.not-allowed": "Alleen wie de instellingen mag wijzigen, zet een onderdeel aan of uit, en niet in het verleden."
 }

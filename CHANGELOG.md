@@ -13,6 +13,11 @@ The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
   permission to change roles or apps. The period report has a section on the reviews of the period, and a review that
   is due counts as "attention" with the standards (NIS2 21.2.i and CIS 6).
 - The consent of users in the check of app permissions is now in the language of the interface.
+- **Permissions per part** (R16, U25, U26): *Tenant inrichten* has parts with a permission of their own, asked only for
+  a tenant that turns the part on, and taken away again when it is turned off: *clean up old devices in Entra*
+  (Directory.AccessAsUser.All, which Microsoft requires for disabling and deleting devices) and *baseline compliance
+  policies* (DeviceManagementConfiguration.ReadWrite.All). `Register-App.ps1` takes the same parts with `-Onderdelen`.
+  Every tenant gets the read permission DeviceManagementConfiguration.Read.All, for compliance per policy.
 
 ## 0.39.0
 

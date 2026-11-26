@@ -615,6 +615,8 @@ U14 to U24 interactively on 26 November 2026.
 | U22 | **.NET 10 before R16** | **First move from .NET 8 to .NET 10** (supported until November 2028): .NET 8 gets no security updates since 10 November 2026, and the app ships the runtime itself. Then R16; the tests in a test tenant (issue 19) run alongside |
 | U23 | **Approval before a release** | **Every release waits for the maintainer's approval** in GitHub before it is published and offered as an update. Not chosen now: a separate job with write permissions, pinned actions, `main` only through pull requests, signing before 1.0 |
 | U24 | **Encryption by default** | **A new tenant is encrypted with the Windows account (A) by default**; changes U7. Backups (issue 22) and the roles mode (Transition) stay as they are for now |
+| U25 | **Clean-up of devices in Entra** (26 November 2026) | Disabling and deleting old devices in Entra needs Directory.AccessAsUser.All (the app may then do everything in the directory the administrator may): **only for a tenant that turns the part "clean up old devices in Entra" on**; without it, Moss365 cleans up Intune and shows the list for Entra |
+| U26 | **Compliance policies** (26 November 2026) | **Reading** compliance per policy (DeviceManagementConfiguration.Read.All) for every tenant; **making** baseline compliance policies from templates (ReadWrite.All) only for a tenant that turns that part on. Together with U25 this is the start of "write permissions per part" (R16) |
 
 ## 13. The steps to 1.0
 

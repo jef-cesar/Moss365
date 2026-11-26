@@ -73,6 +73,17 @@
             @T["set-up-tenant.make-a-group-per-profile"]</label>
         <label><input type="checkbox" checked="@State.SetupChoices.AssignSignedIn" @onchange="e => Choose(c => c with { AssignSignedIn = e.Value is true })" />
             @T["set-up-tenant.give-myself-the-profiles-administrator"]</label>
+        <fieldset class="kb-kaart" id="onderdelen">
+            <legend>@T["setup.parts"]</legend>
+            <p class="kb-zacht">@T["setup.parts.help"]</p>
+            @foreach (var part in Moss365.Core.Setup.PermissionParts.All)
+            {
+                var key = part.Key;
+                <label><input type="checkbox" checked="@Moss365.Core.Setup.PermissionParts.IsOn(State.Config.PermissionParts, key)" disabled="@(!State.Can(Permission.Settings) || State.IsHistoric)"
+                              @onchange="e => SetPart(key, e.Value is true)" /> @part.Name <span class="kb-zacht">(@string.Join(", ", part.GraphScopes))</span></label>
+                <p class="kb-zacht">@part.Explanation</p>
+            }
+        </fieldset>
         @if (a.Plan.Count > 0)
         {
             <PlanView @key="planKey" Plan="a.Plan" Title="@T["code.set-up-tenant.what-the-wizard-does-in"]" Context="@($"Tenant inrichten {State.Tenant.Name}")" Run="(p, c, r) => State.ExecuteSetupAsync(p, c, r)" Executed="AfterPlan" />
@@ -180,6 +191,12 @@
         planKey++;
         busy = false;
         progress = null;
+    }
+
+    private void SetPart(string key, bool on)
+    {
+        State.SetPermissionPart(key, on);
+        planKey++;
     }
 
     private void Choose(Func<SetupChoices, SetupChoices> change)

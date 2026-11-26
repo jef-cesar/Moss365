@@ -3565,5 +3565,14 @@
   "access-reviews.app-in-entra": "Remove \"{0}\" of {1} in Entra (Enterprise applications, the app, Permissions): Moss365 only reads app registrations.",
   "access-reviews.standard": "{0} of {1} access reviews due",
   "report.reviews": "{0} reviewed in this period: {1} kept, {2} to remove. Due now: {3} of {4}.",
-  "code.security-checks.consent-of-users": "consent of {0} user(s): {1}"
+  "code.security-checks.consent-of-users": "consent of {0} user(s): {1}",
+  "setup.parts": "Parts with a permission of their own",
+  "setup.parts.help": "These permissions are only asked for this tenant when you turn the part on; turning it off takes the permission away at the next run of the wizard.",
+  "setup.part.entra-device-cleanup": "Clean up old devices in Entra",
+  "setup.part.entra-device-cleanup.help": "Disable a device that was not seen for 90 days, and delete it after 90 days disabled (U18). Microsoft only allows this with Directory.AccessAsUser.All: the app may then do everything in the directory you may as an administrator.",
+  "setup.part.compliance-policies": "Baseline compliance policies",
+  "setup.part.compliance-policies.help": "Make the baseline compliance policies from the templates on Toestellen, as a plan. Reading compliance per policy works without this.",
+  "setup.part.take-away": "Still given for a part that is off: {0}",
+  "setup.part.consent-away": "Take away from the admin consent for {0}: {1}",
+  "setup.part.not-allowed": "Only whoever may change the settings turns a part on or off, and not in the past."
 }

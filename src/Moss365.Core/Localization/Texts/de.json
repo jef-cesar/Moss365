@@ -3565,5 +3565,14 @@
   "access-reviews.app-in-entra": "Entfernen Sie \"{0}\" von {1} in Entra (Unternehmensanwendungen, die App, Berechtigungen): Moss365 liest App-Registrierungen nur.",
   "access-reviews.standard": "{0} von {1} Zugriffsüberprüfungen fällig",
   "report.reviews": "{0} in diesem Zeitraum überprüft: {1} behalten, {2} zu entfernen. Jetzt fällig: {3} von {4}.",
-  "code.security-checks.consent-of-users": "Zustimmung von {0} Benutzer(n): {1}"
+  "code.security-checks.consent-of-users": "Zustimmung von {0} Benutzer(n): {1}",
+  "setup.parts": "Teile mit einer eigenen Berechtigung",
+  "setup.parts.help": "Diese Berechtigungen werden für diesen Mandanten nur angefordert, wenn Sie den Teil einschalten; Ausschalten entzieht die Berechtigung beim nächsten Lauf des Assistenten.",
+  "setup.part.entra-device-cleanup": "Alte Geräte in Entra bereinigen",
+  "setup.part.entra-device-cleanup.help": "Ein Gerät deaktivieren, das 90 Tage nicht gesehen wurde, und es nach 90 Tagen Deaktivierung löschen (U18). Microsoft erlaubt das nur mit Directory.AccessAsUser.All: Die App darf dann alles im Verzeichnis, was Sie als Administrator dürfen.",
+  "setup.part.compliance-policies": "Basis-Konformitätsrichtlinien",
+  "setup.part.compliance-policies.help": "Die Basis-Konformitätsrichtlinien aus den Vorlagen unter Geräte erstellen, als Plan. Das Lesen der Konformität pro Richtlinie geht auch ohne.",
+  "setup.part.take-away": "Noch erteilt für einen ausgeschalteten Teil: {0}",
+  "setup.part.consent-away": "Aus der Administratorzustimmung für {0} entfernen: {1}",
+  "setup.part.not-allowed": "Nur wer die Einstellungen ändern darf, schaltet einen Teil ein oder aus, und nicht in der Vergangenheit."
 }
