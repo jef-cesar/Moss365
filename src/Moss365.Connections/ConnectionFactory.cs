@@ -16,7 +16,14 @@ public sealed class ConnectionFactory : IConnectionFactory
     private MsalTokenSource? _token;
     private string? _tokenKey;
 
-    public ConnectionFactory(SignInStatus? signIn = null) => _signIn = signIn;
+    /// <summary>Reading without a window (R18): never a sign-in link, only the kept sign-in.</summary>
+    private readonly bool _withoutWindow;
+
+    public ConnectionFactory(SignInStatus? signIn = null, bool withoutWindow = false)
+    {
+        _signIn = signIn;
+        _withoutWindow = withoutWindow;
+    }
 
     /// <summary>Why Exchange could not use the same sign-in, or null.</summary>
     public string? ExchangeMessage => _token?.ExchangeMessage;
@@ -145,7 +152,7 @@ public sealed class ConnectionFactory : IConnectionFactory
             if (_token is null || _tokenKey != key)
             {
                 var cache = settings.RememberSignIn && settings.TokenCache is { } store && OperatingSystem.IsWindows() ? new Check.ProtectedTokenStore(store) : null;
-                _token = new MsalTokenSource(settings.TenantId, settings.ClientId, settings.ManagementUpn, _signIn, cache: cache);
+                _token = new MsalTokenSource(settings.TenantId, settings.ClientId, settings.ManagementUpn, _signIn, cache: cache, silentOnly: _withoutWindow);
                 _tokenKey = key;
             }
 

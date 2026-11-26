@@ -154,7 +154,8 @@ public sealed partial class ManagementState
 
         if (kind is LoadKind.AdAndEntra or LoadKind.Everything)
         {
-            if (EffectiveSettings.AdFilled)
+            // Without a window (R18) nobody can type the AD password or sign in: those parts wait for the app
+            if (EffectiveSettings.AdFilled && !(_readingWithoutWindow && AdNeedsPassword))
             {
                 steps.Add(new(Texts.T["code.management-state-tasks.read-ad"], "AD", async (p, ct) =>
                 {
@@ -167,7 +168,7 @@ public sealed partial class ManagementState
                 }));
             }
 
-            if (EffectiveSettings.GraphFilled)
+            if (EffectiveSettings.GraphFilled && !(_readingWithoutWindow && !EffectiveSettings.RememberSignIn))
             {
                 steps.Add(new(Texts.T["code.management-state-tasks.read-entra"], "Entra", async (p, ct) =>
                 {

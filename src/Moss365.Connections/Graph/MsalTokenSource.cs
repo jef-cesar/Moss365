@@ -29,11 +29,17 @@ public sealed class MsalTokenSource
     /// <param name="graphScopes">The Graph permissions to ask for; default .default (what the app registration has).</param>
     private readonly bool _cached;
 
+    /// <summary>Only the kept sign-in, never a sign-in link (reading without a window, R18).</summary>
+    private readonly bool _silentOnly;
+
     /// <param name="cache">Keeps the sign-in between starts (0.33, already encrypted by the caller); null = only while
     /// the app is open.</param>
+    /// <param name="silentOnly">Never ask to sign in (reading without a window): without a kept sign-in, a token
+    /// request fails.</param>
     public MsalTokenSource(string tenantId, string clientId, string? loginHint, SignInStatus? status = null, IEnumerable<string>? graphScopes = null,
-        ITokenCacheStore? cache = null)
+        ITokenCacheStore? cache = null, bool silentOnly = false)
     {
+        _silentOnly = silentOnly;
         GraphScopes = graphScopes?.Select(x => x.Contains("://", StringComparison.Ordinal) ? x : "https://graph.microsoft.com/" + x).ToArray() ?? DefaultGraphScopes;
         _app = PublicClientApplicationBuilder.Create(clientId.Trim())
             .WithTenantId(tenantId.Trim())
@@ -82,7 +88,7 @@ public sealed class MsalTokenSource
     /// missing).</summary>
     public string? ExchangeMessage { get; private set; }
 
-    public Task<string> TokenAsync(CancellationToken cancel) => TokenForAsync(GraphScopes, cancel);
+    public Task<string> TokenAsync(CancellationToken cancel) => TokenForAsync(GraphScopes, cancel, silent: _silentOnly);
 
     /// <summary>A valid sign-in without a sign-in link (renewed silently), or false when you have to sign in
     /// again.</summary>

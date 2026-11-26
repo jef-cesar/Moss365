@@ -51,6 +51,13 @@ Every version becomes a release on GitHub; the section under the version is the 
     administrators (privileged AD groups, from the snapshots; admin roles, from the audit log), changes to Conditional
     Access, new app consents and sign-ins of emergency accounts. What Moss365 did itself is in the change log and is
     left out.
+  - **Reading without a window** (U19), under *Instellingen*, *Lezen zonder venster*: a task in the Windows Task
+    Scheduler reads the tenant every day at the hour you choose, without opening Moss365: AD and Entra into a snapshot,
+    and the sign-in and audit logs. It only reads (never a write, scheduled actions keep waiting), runs under your own
+    Windows account while you are signed in to Windows, runs later when the PC was off, and leaves the reading to the
+    app when Moss365 is open. Microsoft 365 needs *Aangemeld blijven*; AD with a separate account (whose password is
+    only typed in the app) and a tenant encrypted with a password wait for the app. The page says what it can read
+    and how the last read went.
 - **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
   address; anything else (such as a script link or a file share) is no longer clickable.
 - **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.

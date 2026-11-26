@@ -37,12 +37,31 @@ public interface IAppEnvironment
     void ShowFile(string path)
     {
     }
+
+    /// <summary>The Windows Task Scheduler for reading without a window (R18); null outside the Windows app.</summary>
+    IUnattendedScheduler? Scheduler => null;
+}
+
+/// <summary>The Windows Task Scheduler for reading without a window (R18): one task per tenant.</summary>
+public interface IUnattendedScheduler
+{
+    /// <summary>Makes or replaces the task of a tenant at the hour; an error, or null.</summary>
+    string? Plan(string tenantId, int hour);
+
+    /// <summary>Removes the task of a tenant (nothing happens when there is none); an error, or null.</summary>
+    string? Remove(string tenantId);
+
+    /// <summary>The hour of the task of a tenant, or null when there is none.</summary>
+    int? PlannedHour(string tenantId);
 }
 
 /// <summary>For tests: inventory folders to import, the bundled organisation, and the data folder (the folder of the
 /// third path, for compatibility with older tests).</summary>
 public sealed record FixedEnvironment(string InventoryBase, string ConfigDefaultPath, string ConfigUsersPath, string? Export = null, string? Scripts = null) : IAppEnvironment
 {
+    /// <summary>A Task Scheduler for tests (R18).</summary>
+    public IUnattendedScheduler? Scheduler { get; set; }
+
     public string Root => Path.GetDirectoryName(ConfigUsersPath) ?? ".";
 
     public string? InventoryImport => InventoryBase;
@@ -65,8 +84,11 @@ public sealed partial class ManagementState
     private string? _graphKey;
 
     /// <param name="databaseKey">The key of the tenant database when it is encrypted (R6), or null.</param>
-    public ManagementState(IAppEnvironment environment, IConnectionFactory? factory = null, SignInStatus? signIn = null, TenantInfo? tenant = null, byte[]? databaseKey = null)
+    /// <param name="withoutWindow">Reading without a window (R18): no automatic refresh and no search for updates.</param>
+    public ManagementState(IAppEnvironment environment, IConnectionFactory? factory = null, SignInStatus? signIn = null, TenantInfo? tenant = null, byte[]? databaseKey = null,
+        bool withoutWindow = false)
     {
+        WithoutWindow = withoutWindow;
         _environment = environment;
         _factory = factory;
         SignInEvent = signIn ?? new SignInStatus();
@@ -96,6 +118,11 @@ public sealed partial class ManagementState
         LoadConfig();
         LoadInventory();
         CleanupScriptRuns();
+        if (WithoutWindow)
+        {
+            return;
+        }
+
         StartAutoRefresh();
         if (Settings.SearchUpdates && _factory?.Updates is not null)
         {

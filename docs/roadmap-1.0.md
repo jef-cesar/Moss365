@@ -519,6 +519,11 @@ compliance per policy, the devices in offboarding, the clean-up (U18) and the de
 | **Reading without a window** (U19): a task in the Windows Task Scheduler starts Moss365 without a window at an **hour you choose**, per tenant. It only reads: it never writes, and scheduled actions keep waiting for an administrator. It runs under your own Windows account and needs "stay signed in" and a tenant without encryption or with the Windows account or AD group (not with a password); AD only when a domain controller is reachable at that hour | A snapshot every day, without gaps and without a server |
 | **Since your last visit**: at opening, what changed outside Moss365 since you last opened the tenant (new administrators, changed policies, new app consents, emergency account sign-ins) | The alerts of the Server, on the Desktop |
 
+Done in 0.39.0: all three. The logs are kept after every read of Entra (failed, risky, administrator and emergency
+account sign-ins and the whole directory audit log); reading without a window reads AD and Entra (not Exchange) and
+skips while the app is open; since your last visit compares the snapshots and the kept logs, without what Moss365 did
+itself.
+
 ### The overview (R19)
 
 | Proposal | Why |

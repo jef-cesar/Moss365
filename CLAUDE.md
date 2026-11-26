@@ -98,7 +98,11 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   (Permission.SignIns, writes the access log). Since your last visit: `Security/SinceLastVisit.cs` (audit lines,
   privileged AD groups between the snapshot of the last visit and now, emergency sign-ins, minus the change log);
   the start screen marks the visit once per session (`ManagementState.BeginVisit`, document `laatste-bezoek`), reading
-  without a window never does.
+  without a window never does. Reading without a window: `Scheduling/Unattended.cs` (the task XML for the Task
+  Scheduler, an interactive token and never a password, what a tenant can read), `Moss365.exe --lezen <tenant id>`
+  (`Desktop/Headless.cs`: skips while the app is open, never a sign-in link, `ConnectionFactory(withoutWindow: true)`),
+  `ManagementState.RunUnattendedAsync` (AD and Entra only, never a write), `IAppEnvironment.Scheduler` (schtasks in
+  `Desktop/WindowsTaskScheduler.cs`), page `lezen-zonder-venster`.
   Reporting (0.37, `Reporting/`): `PeriodReport` (from `ReadKpiSnapshot` and the change log; `ToHtml`/`ToCsv`, CSV never
   starts a cell with a formula), `DataQuality`, `Standards` (checks mapped to NIS2/CIS), `GuestRenewal` (document
   `gastenverlenging`), `StaffRequests` (document `aanvragen`; decisions are change log lines with action `Request`),

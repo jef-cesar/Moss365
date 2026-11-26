@@ -48,6 +48,7 @@ public static class MenuModel
         new MenuGroup("Deze tenant", new MenuItem[]
         {
             new("organisatie", "Organisatie"), new("verbindingen", "Verbindingen"), new("inrichten", "Tenant inrichten"), new("databank", "Databank en versleuteling"),
+            new("lezen-zonder-venster", "Lezen zonder venster"),
         }),
         new MenuGroup("Alle tenants", new MenuItem[] { new("tenants", "Tenants"), new("tenantvergelijking", "Tenants vergelijken") }),
         new MenuGroup("Deze pc en de app", new MenuItem[] { new("controle", "Controle van deze pc"), new("taal", "Taal"), new("updates", "Versie en updates") }),
