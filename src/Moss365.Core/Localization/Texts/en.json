@@ -3351,7 +3351,7 @@
   "device.action.wipe": "Wipe {0}: back to factory settings, all data is removed",
   "device.action.freshStart": "Fresh start for {0}: installed apps and user data are removed, Windows is updated",
   "device.action.cannot-undo": "This cannot be undone.",
-  "device.undo.not": "Only a new name of a device can be undone; Intune does not take back other actions.",
+  "device.undo.not": "Only a new name or a new primary user of a device can be undone; Intune does not take back other actions.",
   "device.action.unknown": "Unknown action on a device.",
   "device.action.windows-only": "This action is for Windows devices only.",
   "device.action.rename-invalid": "A new name has at most {0} characters (letters, digits and hyphens) and is not only digits.",
@@ -3574,5 +3574,11 @@
   "setup.part.compliance-policies.help": "Make the baseline compliance policies from the templates on Toestellen, as a plan. Reading compliance per policy works without this.",
   "setup.part.take-away": "Still given for a part that is off: {0}",
   "setup.part.consent-away": "Take away from the admin consent for {0}: {1}",
-  "setup.part.not-allowed": "Only whoever may change the settings turns a part on or off, and not in the past."
+  "setup.part.not-allowed": "Only whoever may change the settings turns a part on or off, and not in the past.",
+  "device.action.primaryUser": "Make {1} the primary user of {0}",
+  "device.action.primary-user-same": "That person is already the primary user.",
+  "device.new-primary-user": "New primary user",
+  "device.primary-user-cloud": "Only a person with an account in Entra can be the primary user.",
+  "device.leaver.return": "Have the company device {0} returned; wipe it on Toestellen once it is back.",
+  "device.leaver.read-first": "The devices of this person are not in the plan yet: read the devices first on"
 }

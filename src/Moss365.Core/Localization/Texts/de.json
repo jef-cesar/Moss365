@@ -3351,7 +3351,7 @@
   "device.action.wipe": "{0} zurücksetzen: Werkseinstellungen, alle Daten werden entfernt",
   "device.action.freshStart": "Neuer Start für {0}: installierte Apps und Benutzerdaten werden entfernt, Windows wird aktualisiert",
   "device.action.cannot-undo": "Dies kann nicht rückgängig gemacht werden.",
-  "device.undo.not": "Nur ein neuer Gerätename kann rückgängig gemacht werden; Intune nimmt andere Aktionen nicht zurück.",
+  "device.undo.not": "Nur ein neuer Name oder ein neuer primärer Benutzer eines Geräts kann rückgängig gemacht werden; Intune nimmt andere Aktionen nicht zurück.",
   "device.action.unknown": "Unbekannte Aktion auf einem Gerät.",
   "device.action.windows-only": "Diese Aktion gibt es nur für Windows-Geräte.",
   "device.action.rename-invalid": "Ein neuer Name hat höchstens {0} Zeichen (Buchstaben, Ziffern und Bindestriche) und besteht nicht nur aus Ziffern.",
@@ -3574,5 +3574,11 @@
   "setup.part.compliance-policies.help": "Die Basis-Konformitätsrichtlinien aus den Vorlagen unter Geräte erstellen, als Plan. Das Lesen der Konformität pro Richtlinie geht auch ohne.",
   "setup.part.take-away": "Noch erteilt für einen ausgeschalteten Teil: {0}",
   "setup.part.consent-away": "Aus der Administratorzustimmung für {0} entfernen: {1}",
-  "setup.part.not-allowed": "Nur wer die Einstellungen ändern darf, schaltet einen Teil ein oder aus, und nicht in der Vergangenheit."
+  "setup.part.not-allowed": "Nur wer die Einstellungen ändern darf, schaltet einen Teil ein oder aus, und nicht in der Vergangenheit.",
+  "device.action.primaryUser": "{1} zum primären Benutzer von {0} machen",
+  "device.action.primary-user-same": "Diese Person ist bereits der primäre Benutzer.",
+  "device.new-primary-user": "Neuer primärer Benutzer",
+  "device.primary-user-cloud": "Nur eine Person mit einem Konto in Entra kann der primäre Benutzer sein.",
+  "device.leaver.return": "Lassen Sie das Unternehmensgerät {0} zurückgeben; setzen Sie es unter Geräte zurück, sobald es zurück ist.",
+  "device.leaver.read-first": "Die Geräte dieser Person sind noch nicht im Plan: Lesen Sie zuerst die Geräte ein unter"
 }

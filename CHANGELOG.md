@@ -18,6 +18,10 @@ The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
   (Directory.AccessAsUser.All, which Microsoft requires for disabling and deleting devices) and *baseline compliance
   policies* (DeviceManagementConfiguration.ReadWrite.All). `Register-App.ps1` takes the same parts with `-Onderdelen`.
   Every tenant gets the read permission DeviceManagementConfiguration.Read.All, for compliance per policy.
+- **Devices** (R17): on the panel of a device, *Nieuwe primaire gebruiker* makes a plan that gives the device to another
+  person (with undo). **Offboarding** now takes the devices of the person along: a personal device is retired in the
+  same plan, and a company device gets a note to have it returned (it is wiped on *Toestellen* once it is back, never in
+  the offboarding plan).
 
 ## 0.39.0
 

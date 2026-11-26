@@ -58,6 +58,14 @@
 
     @if (plan is not null)
     {
+        @foreach (var note in deviceNotes)
+        {
+            <div class="kb-melding">@note</div>
+        }
+        @if (State.HasMicrosoft365 && State.IntuneDevices is null)
+        {
+            <p class="kb-zacht">@T["device.leaver.read-first"] <a href="toestellen">@T["menu.toestellen"]</a></p>
+        }
         <PlanView Plan="plan" Context="@($"Uitstroom {person.Name}")" Title="@T["menu.uitstroom"]" Executed="AfterExecute" />
     }
 }
@@ -115,5 +123,19 @@
         }
     }
 
-    private void MakePlan() => plan = person is null ? null : PlanBuilder.Offboarding(State.Data, State.Config, person, options);
+    // The devices of the person (R17): retire a personal device; a company device is returned, never wiped in this plan
+    private IReadOnlyList<string> deviceNotes = Array.Empty<string>();
+
+    private void MakePlan()
+    {
+        if (person is null)
+        {
+            plan = null;
+            return;
+        }
+
+        var devices = Moss365.Core.Devices.LeaverDevices.Plan(State.IntuneDevices ?? Array.Empty<Moss365.Core.Devices.IntuneDevice>(), person);
+        plan = PlanBuilder.Offboarding(State.Data, State.Config, person, options).Concat(devices.Plan).ToList();
+        deviceNotes = devices.Notes;
+    }
 }

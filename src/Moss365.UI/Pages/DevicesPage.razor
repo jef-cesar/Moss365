@@ -179,6 +179,7 @@
                     <button class="kb-knop kb-klein" @onclick='() => DeviceAction(device, "rename")'>@T["device.button.rename"]</button>
                     <button class="kb-knop kb-klein" @onclick='() => DeviceAction(device, "retire")'>@T["device.button.retire"]</button>
                 </div>
+                <PersonPicker Label="@T["device.new-primary-user"]" Selected="null" SelectedChanged="p => PrimaryUser(device, p)" />
                 @if (device.Personal)
                 {
                     <p class="kb-zacht">@T["device.personal-only-retire"]</p>
@@ -236,6 +237,20 @@
     private void Select(DeviceRecord r) => (selected, newName, typedName, deviceOutcome) = (r, string.Empty, string.Empty, null);
 
     private void DeviceAction(IntuneDevice device, string action) => deviceOutcome = DevicePlans.Action(device, action, newName, typedName);
+
+    // A new primary user (R17): someone with an Entra account; the previous one is kept for undo
+    private void PrimaryUser(IntuneDevice device, Person? person)
+    {
+        if (person is null)
+        {
+            return;
+        }
+
+        var previous = State.Data.EntraUsers.FirstOrDefault(u => string.Equals(u.UserPrincipalName, device.Owner, StringComparison.OrdinalIgnoreCase))?.Id;
+        deviceOutcome = person.Entra is { } user
+            ? DevicePlans.PrimaryUser(device, user, previous)
+            : Moss365.Core.Changes.PlanOutcome.Of(Array.Empty<Moss365.Core.Changes.Change>(), new[] { T["device.primary-user-cloud"] });
+    }
 
     private static string FindingText(string f) => T[$"devices.finding.{f}"];
 

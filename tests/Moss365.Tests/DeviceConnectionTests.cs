@@ -38,4 +38,17 @@ public class DeviceConnectionTests
         Assert.DoesNotContain(fake.Requests, v => v.Url.EndsWith("/d2/wipe", StringComparison.Ordinal));
         Assert.Contains("persoonlijk toestel", r[3].Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task ANewPrimaryUserGoesToTheBetaOfIntune()
+    {
+        var fake = new FakeGraph().Op(HttpMethod.Post, Beta + "/deviceManagement/managedDevices/d1/users/$ref", "", HttpStatusCode.NoContent);
+        var device = new IntuneDevice("d1", "LAPTOP-1", "an@test.be", "Windows", "10.0.26100", "compliant", null, "company");
+        var change = DevicePlans.PrimaryUser(device, new Moss365.Core.Inventory.EntraUser { Id = "u-bo", UserPrincipalName = "bo@test.be" }, "u-an").Plan.Single();
+
+        var r = Assert.Single(await Make(fake).ExecuteAsync(new[] { change }, CancellationToken.None));
+
+        Assert.Equal(ResultStatus.Succeeded, r.Status);
+        Assert.Contains("\"@odata.id\":\"https://graph.microsoft.com/beta/users/u-bo\"", fake.Requests.Single().Content, StringComparison.Ordinal);
+    }
 }

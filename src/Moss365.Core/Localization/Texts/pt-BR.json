@@ -3351,7 +3351,7 @@
   "device.action.wipe": "Apagar {0}: volta às configurações de fábrica, todos os dados são removidos",
   "device.action.freshStart": "Novo início para {0}: aplicativos instalados e dados do usuário são removidos, o Windows é atualizado",
   "device.action.cannot-undo": "Isso não pode ser desfeito.",
-  "device.undo.not": "Só um novo nome de dispositivo pode ser desfeito; o Intune não desfaz outras ações.",
+  "device.undo.not": "Só um novo nome ou um novo usuário principal de um dispositivo pode ser desfeito; o Intune não desfaz outras ações.",
   "device.action.unknown": "Ação desconhecida em um dispositivo.",
   "device.action.windows-only": "Esta ação é apenas para dispositivos Windows.",
   "device.action.rename-invalid": "Um novo nome tem no máximo {0} caracteres (letras, dígitos e hífens) e não é só de dígitos.",
@@ -3574,5 +3574,11 @@
   "setup.part.compliance-policies.help": "Criar as políticas de conformidade básicas a partir dos modelos em Dispositivos, como plano. Ler a conformidade por política funciona sem isso.",
   "setup.part.take-away": "Ainda concedida para uma parte desativada: {0}",
   "setup.part.consent-away": "Remover do consentimento de administrador para {0}: {1}",
-  "setup.part.not-allowed": "Só quem pode alterar as configurações ativa ou desativa uma parte, e não no passado."
+  "setup.part.not-allowed": "Só quem pode alterar as configurações ativa ou desativa uma parte, e não no passado.",
+  "device.action.primaryUser": "Tornar {1} o usuário principal de {0}",
+  "device.action.primary-user-same": "Essa pessoa já é o usuário principal.",
+  "device.new-primary-user": "Novo usuário principal",
+  "device.primary-user-cloud": "Só uma pessoa com conta no Entra pode ser o usuário principal.",
+  "device.leaver.return": "Peça a devolução do dispositivo da empresa {0}; apague-o em Dispositivos assim que voltar.",
+  "device.leaver.read-first": "Os dispositivos desta pessoa ainda não estão no plano: leia primeiro os dispositivos em"
 }

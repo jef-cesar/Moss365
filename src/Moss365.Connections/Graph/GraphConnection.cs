@@ -1312,6 +1312,9 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             case "defenderScan": await _client.PostAsync($"{path}/windowsDefenderScan", new Dictionary<string, object> { ["quickScan"] = true }, cancel); break;
             case "rename": await _client.PostAsync($"{beta}{path}/setDeviceName", new Dictionary<string, object> { ["deviceName"] = w.P("naam") }, cancel); break;
             case "retire": await _client.PostAsync($"{path}/retire", null, cancel); break;
+            case "primaryUser":
+                await _client.PostAsync($"{beta}{path}/users/$ref", new Dictionary<string, object> { ["@odata.id"] = $"{beta}/users/{Uri.EscapeDataString(w.P("gebruiker"))}" }, cancel);
+                break;
             case "wipe": await _client.PostAsync($"{path}/wipe", new Dictionary<string, object> { ["keepEnrollmentData"] = false, ["keepUserData"] = false }, cancel); break;
             case "freshStart": await _client.PostAsync($"{path}/cleanWindowsDevice", new Dictionary<string, object> { ["keepUserData"] = false }, cancel); break;
             default: return ChangeResult.Error(w, Texts.T["device.action.unknown"]);

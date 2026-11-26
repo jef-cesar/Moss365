@@ -3351,7 +3351,7 @@
   "device.action.wipe": "{0} wissen: terug naar de fabrieksinstellingen, alle gegevens gaan weg",
   "device.action.freshStart": "Nieuwe start voor {0}: geïnstalleerde apps en gebruikersgegevens gaan weg, Windows wordt bijgewerkt",
   "device.action.cannot-undo": "Dit kan niet ongedaan gemaakt worden.",
-  "device.undo.not": "Alleen een nieuwe naam van een toestel kan ongedaan gemaakt worden; Intune neemt andere acties niet terug.",
+  "device.undo.not": "Alleen een nieuwe naam of een nieuwe primaire gebruiker van een toestel kan ongedaan gemaakt worden; Intune neemt andere acties niet terug.",
   "device.action.unknown": "Onbekende actie op een toestel.",
   "device.action.windows-only": "Deze actie is alleen voor Windows-toestellen.",
   "device.action.rename-invalid": "Een nieuwe naam heeft hoogstens {0} tekens (letters, cijfers en koppeltekens) en bestaat niet alleen uit cijfers.",
@@ -3574,5 +3574,11 @@
   "setup.part.compliance-policies.help": "Het basisnalevingsbeleid maken uit de sjablonen op Toestellen, als plan. Naleving per beleid lezen werkt ook zonder dit.",
   "setup.part.take-away": "Nog gegeven voor een onderdeel dat uit staat: {0}",
   "setup.part.consent-away": "Weghalen uit de beheerderstoestemming voor {0}: {1}",
-  "setup.part.not-allowed": "Alleen wie de instellingen mag wijzigen, zet een onderdeel aan of uit, en niet in het verleden."
+  "setup.part.not-allowed": "Alleen wie de instellingen mag wijzigen, zet een onderdeel aan of uit, en niet in het verleden.",
+  "device.action.primaryUser": "{1} de primaire gebruiker van {0} maken",
+  "device.action.primary-user-same": "Die persoon is al de primaire gebruiker.",
+  "device.new-primary-user": "Nieuwe primaire gebruiker",
+  "device.primary-user-cloud": "Alleen iemand met een account in Entra kan de primaire gebruiker zijn.",
+  "device.leaver.return": "Laat het toestel {0} van de organisatie inleveren; wis het op Toestellen zodra het terug is.",
+  "device.leaver.read-first": "De toestellen van deze persoon staan nog niet in het plan: lees eerst de toestellen in op"
 }

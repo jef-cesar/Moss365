@@ -3351,7 +3351,7 @@
   "device.action.wipe": "Effacer {0} : retour aux paramètres d'usine, toutes les données sont supprimées",
   "device.action.freshStart": "Nouveau départ pour {0} : les applications installées et les données utilisateur sont supprimées, Windows est mis à jour",
   "device.action.cannot-undo": "Cette action est irréversible.",
-  "device.undo.not": "Seul un nouveau nom d'appareil peut être annulé ; Intune ne revient pas sur les autres actions.",
+  "device.undo.not": "Seuls un nouveau nom ou un nouvel utilisateur principal d'un appareil peuvent être annulés ; Intune ne revient pas sur les autres actions.",
   "device.action.unknown": "Action inconnue sur un appareil.",
   "device.action.windows-only": "Cette action est réservée aux appareils Windows.",
   "device.action.rename-invalid": "Un nouveau nom compte au plus {0} caractères (lettres, chiffres et traits d'union) et ne contient pas que des chiffres.",
@@ -3574,5 +3574,11 @@
   "setup.part.compliance-policies.help": "Créer les stratégies de conformité de base à partir des modèles d'Appareils, sous forme de plan. La lecture de la conformité par stratégie fonctionne sans cela.",
   "setup.part.take-away": "Encore accordée pour une partie désactivée : {0}",
   "setup.part.consent-away": "Retirer du consentement administrateur pour {0} : {1}",
-  "setup.part.not-allowed": "Seul qui peut modifier les paramètres active ou désactive une partie, et pas dans le passé."
+  "setup.part.not-allowed": "Seul qui peut modifier les paramètres active ou désactive une partie, et pas dans le passé.",
+  "device.action.primaryUser": "Faire de {1} l'utilisateur principal de {0}",
+  "device.action.primary-user-same": "Cette personne est déjà l'utilisateur principal.",
+  "device.new-primary-user": "Nouvel utilisateur principal",
+  "device.primary-user-cloud": "Seule une personne avec un compte dans Entra peut être l'utilisateur principal.",
+  "device.leaver.return": "Faites rendre l'appareil de l'entreprise {0} ; effacez-le dans Appareils dès qu'il est rendu.",
+  "device.leaver.read-first": "Les appareils de cette personne ne sont pas encore dans le plan : lisez d'abord les appareils dans"
 }

@@ -803,7 +803,7 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
             => Task.FromResult<IReadOnlyList<Core.Devices.IntuneDevice>?>(new[]
             {
                 new Core.Devices.IntuneDevice("d1", "LAPTOP-1", "an.peeters@test.be", "Windows", "10.0.22631", "compliant", DateTimeOffset.Now.AddDays(-1), "company") { EntraDeviceId = "e-dev-1", Serial = "SN-0001", Model = "Latitude 5440", Encrypted = true },
-                new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal") { EntraDeviceId = "e-dev-2" },
+                new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo.janssens@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal") { EntraDeviceId = "e-dev-2" },
                 new Core.Devices.IntuneDevice("d3", "LAPTOP-OUD", "cas@test.be", "Windows", "10.0.19045", "compliant", DateTimeOffset.Now.AddDays(-60), "company"),
             });
 

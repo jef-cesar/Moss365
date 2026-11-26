@@ -1,6 +1,7 @@
 using Bunit;
 using Moss365.Core.Changes;
 using Moss365.Core.Devices;
+using Microsoft.Extensions.DependencyInjection;
 using Moss365.Core.Permissions;
 using Moss365.UI.Components;
 using Moss365.UI.Pages;
@@ -167,6 +168,51 @@ public sealed partial class PlanScreenTests
     }
 
     [Fact]
+    public void ANewPrimaryUserIsAPlanThatCanBeUndone()
+    {
+        var an = State.Data.EntraUsers.First(u => u.UserPrincipalName == "an.peeters@test.be");
+        var bo = State.Data.EntraUsers.First(u => u.UserPrincipalName == "bo.janssens@test.be");
+        var change = Assert.Single(DevicePlans.PrimaryUser(Laptop(), bo, an.Id).Plan);
+        Assert.Equal(("primaryUser", bo.Id, an.Id), (change.P("actie"), change.P("gebruiker"), change.Previous!["gebruiker"]));
+        Assert.Equal(DeviceActionLevel.Management, DevicePlans.LevelOf(change));
+        Assert.NotNull(PermissionTable.Refusal(Role.Helpdesk, change));
+        Assert.NotEmpty(DevicePlans.PrimaryUser(Laptop(), an, an.Id).Errors); // already the primary user
+        Assert.NotEmpty(DevicePlans.Action(Laptop(), "primaryUser").Errors); // only with a person
+
+        var entry = new LogEntry(DateTimeOffset.Now, "beheerder@test.be", "c", "Graph", nameof(ChangeAction.IntuneDeviceAction), change.Target, change.TargetName,
+            change.Description, change.Parameters, nameof(ResultStatus.Succeeded), string.Empty, Previous: change.Previous);
+        Assert.Null(Undo.WhyNot(entry));
+        Assert.Equal(an.Id, Assert.Single(Undo.Plan(new[] { entry }).Plan).P("gebruiker"));
+    }
+
+    [Fact]
+    public void OffboardingRetiresPersonalDevicesAndAsksToReturnCompanyDevices()
+    {
+        var bo = State.Data.Persons.First(p => p.Entra?.UserPrincipalName == "bo.janssens@test.be");
+        var devices = new[]
+        {
+            Laptop("personal") with { Id = "p1", Name = "GSM-BO", Owner = "BO.JANSSENS@test.be" },
+            Laptop() with { Id = "c1", Name = "LAPTOP-BO", Owner = "bo.janssens@test.be" },
+            Laptop() with { Id = "x1", Name = "LAPTOP-AN" },
+        };
+        var (plan, notes) = LeaverDevices.Plan(devices, bo);
+        var retire = Assert.Single(plan);
+        Assert.Equal(("p1", "retire"), (retire.Target, retire.P("actie")));
+        Assert.Contains("LAPTOP-BO", Assert.Single(notes), StringComparison.Ordinal);
+        Assert.DoesNotContain(plan, c => DevicePlans.LevelOf(c) == DeviceActionLevel.Destructive); // never a wipe in offboarding
+
+        // On the offboarding screen, once the devices were read
+        EntraFilled();
+        Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>().NavigateTo("uitstroom/" + Uri.EscapeDataString(bo.Key));
+        var cut = RenderComponent<Offboarding>(p => p.Add(x => x.Key, bo.Key));
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Assert.Contains("Lees eerst de toestellen in", cut.Markup.Replace("lees eerst", "Lees eerst", StringComparison.Ordinal), StringComparison.Ordinal);
+        State.ReadDevicesAsync().GetAwaiter().GetResult();
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Assert.Contains("GSM-BO buiten gebruik stellen", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheUserPageShowsTheDevicesOfThePerson()
     {
         EntraFilled();
@@ -184,6 +230,8 @@ public sealed partial class PlanScreenTests
         Assert.Contains("organisatie", row.TextContent, StringComparison.Ordinal);
 
         var bo = State.Data.Persons.First(p => p.Entra?.UserPrincipalName == "bo.janssens@test.be");
-        Assert.Contains("Geen toestellen in Intune", RenderComponent<UserDevicesCard>(p => p.Add(c => c.Person, bo)).Markup, StringComparison.Ordinal);
+        Assert.Contains("persoonlijk", Assert.Single(RenderComponent<UserDevicesCard>(p => p.Add(c => c.Person, bo)).FindAll("tbody tr")).TextContent, StringComparison.Ordinal);
+        var cas = State.Data.Persons.First(p => p.Entra?.UserPrincipalName == "cas.vos@test.be");
+        Assert.Contains("Geen toestellen in Intune", RenderComponent<UserDevicesCard>(p => p.Add(c => c.Person, cas)).Markup, StringComparison.Ordinal);
     }
 }

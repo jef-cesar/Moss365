@@ -33,6 +33,7 @@ public static class DevicePlans
         new("defenderScan", DeviceActionLevel.Safe, WindowsOnly: true),
         new("rename", DeviceActionLevel.Management),
         new("retire", DeviceActionLevel.Management),
+        new("primaryUser", DeviceActionLevel.Management),
         new("wipe", DeviceActionLevel.Destructive),
         new("freshStart", DeviceActionLevel.Destructive, WindowsOnly: true),
     };
@@ -52,9 +53,38 @@ public static class DevicePlans
     /// The plan for one action on one device. A rename needs a valid new name; a destructive action needs the device
     /// name typed exactly, and is refused for a personal device.
     /// </summary>
+    /// <summary>A new primary user (management): the device and its company apps follow that person. The previous
+    /// primary user is kept for undo when known.</summary>
+    public static PlanOutcome PrimaryUser(IntuneDevice device, Inventory.EntraUser user, string? previousUserId)
+    {
+        if (string.Equals(user.UserPrincipalName, device.Owner, StringComparison.OrdinalIgnoreCase))
+        {
+            return PlanOutcome.Of(Array.Empty<Change>(), new[] { Texts.T["device.action.primary-user-same"] });
+        }
+
+        return PlanOutcome.Of(new[]
+        {
+            new Change
+            {
+                TargetSystem = TargetSystem.Graph,
+                ChangeAction = ChangeAction.IntuneDeviceAction,
+                Target = device.Id,
+                TargetName = device.Name,
+                Parameters = new(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["actie"] = "primaryUser", ["toestel"] = device.Name, ["eigendom"] = device.Ownership, ["gebruiker"] = user.Id, ["gebruikerNaam"] = user.UserPrincipalName,
+                },
+                Previous = string.IsNullOrEmpty(previousUserId) ? null : new(StringComparer.OrdinalIgnoreCase) { ["gebruiker"] = previousUserId, ["gebruikerNaam"] = device.Owner },
+                Description = Texts.T.Format("device.action.primaryUser", device.Name, user.UserPrincipalName),
+                CurrentValue = device.Owner,
+                NewValue = user.UserPrincipalName,
+            },
+        }, Array.Empty<string>());
+    }
+
     public static PlanOutcome Action(IntuneDevice device, string action, string? newName = null, string? typedName = null)
     {
-        if (Info(action) is not { } info)
+        if (Info(action) is not { } info || action == "primaryUser")
         {
             return PlanOutcome.Of(Array.Empty<Change>(), new[] { Texts.T["device.action.unknown"] });
         }
@@ -116,6 +146,39 @@ public static class DevicePlans
                 Warning = info.Level == DeviceActionLevel.Destructive ? Texts.T["device.action.cannot-undo"] : null,
             },
         }, Array.Empty<string>());
+    }
+}
+
+/// <summary>The devices of a person and what offboarding does with them (R17): retire a personal device; a company device
+/// is returned, and wiped on Toestellen once it is back (never in the offboarding plan itself).</summary>
+public static class LeaverDevices
+{
+    /// <summary>The Intune devices whose primary user is this person (by UPN or address).</summary>
+    public static IReadOnlyList<IntuneDevice> Of(IEnumerable<IntuneDevice> devices, Inventory.Person person)
+    {
+        var names = new[] { person.Entra?.UserPrincipalName, person.Entra?.Mail, person.Ad?.UserPrincipalName }
+            .Where(n => !string.IsNullOrEmpty(n)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return devices.Where(d => names.Contains(d.Owner)).OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
+    /// <summary>Retire for every personal device; a note per company device to return.</summary>
+    public static (IReadOnlyList<Change> Plan, IReadOnlyList<string> Notes) Plan(IEnumerable<IntuneDevice> devices, Inventory.Person person)
+    {
+        var plan = new List<Change>();
+        var notes = new List<string>();
+        foreach (var d in Of(devices, person))
+        {
+            if (d.Personal)
+            {
+                plan.AddRange(DevicePlans.Action(d, "retire").Plan);
+            }
+            else
+            {
+                notes.Add(Texts.T.Format("device.leaver.return", d.Name));
+            }
+        }
+
+        return (plan, notes);
     }
 }
 
