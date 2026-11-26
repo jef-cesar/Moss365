@@ -87,6 +87,12 @@ public sealed partial class Database
         CREATE INDEX Version_Object ON Version (ObjectId, UntilSnapshot);
         CREATE INDEX Version_From ON Version (FromSnapshot);
         """,
+
+        // 5 (0.39): the sign-in and audit logs kept locally (R18); one row per line of Microsoft
+        """
+        CREATE TABLE LocalLog (Kind TEXT NOT NULL, Id TEXT NOT NULL, Time TEXT NOT NULL, Json TEXT NOT NULL, PRIMARY KEY (Kind, Id));
+        CREATE INDEX LocalLog_Time ON LocalLog (Kind, Time);
+        """,
     };
 
     /// <param name="key">The key of an encrypted database (R6), or null.</param>

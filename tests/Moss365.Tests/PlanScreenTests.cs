@@ -500,7 +500,7 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
         WaitOnTask();
 
         var task = State.Job!;
-        Assert.Equal(new[] { "AD lezen", "Entra lezen", "Beveiliging lezen (MFA en beheerrollen)", "Conditional Access lezen", "Rooms, postvakken en groepen lezen (Exchange)", "Bewaren als inventaris" },
+        Assert.Equal(new[] { "AD lezen", "Entra lezen", "Beveiliging lezen (MFA en beheerrollen)", "Conditional Access lezen", "Aanmeldingen en auditlogboek lokaal bewaren", "Rooms, postvakken en groepen lezen (Exchange)", "Bewaren als inventaris" },
             task.Steps.Select(s => s.Name));
         Assert.All(task.Steps, s => Assert.Equal(StepStatus.Done, s.Status));
         Assert.Contains(task.Log, r => r.Contains("AD gelezen"));
@@ -684,6 +684,10 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
         public bool CalendarNoPermission { get; set; }
         public List<(string Address, DateTime Of, DateTime Until)> CalendarRead { get; } = new();
         public List<SignInEvent> SignIns { get; } = new();
+
+        /// <summary>The directory audit log (R18); with AuditNoPermission reading fails as with a 403.</summary>
+        public List<Core.Security.AuditEvent> Audits { get; } = new();
+        public bool AuditNoPermission { get; set; }
         public CaData? Ca { get; set; }
         public FakeScripts FakeScripts { get; } = new();
 
@@ -866,6 +870,14 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public Task<IReadOnlyList<SignInEvent>> ReadSignInsAsync(int days, int max, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<SignInEvent>>(f.SignIns.Take(max).ToList());
+
+        public Task<IReadOnlyList<SignInEvent>> ReadSignInsToKeepAsync(DateTimeOffset since, IReadOnlyCollection<string> userIds, int max, CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<SignInEvent>>(f.SignIns.Where(a => a.Time > since && (!a.Succeeded || a.Risky || userIds.Contains(a.UserId))).Take(max).ToList());
+
+        public Task<IReadOnlyList<Core.Security.AuditEvent>> ReadDirectoryAuditsAsync(DateTimeOffset since, int max, CancellationToken cancel)
+            => f.AuditNoPermission
+                ? throw new NoPermissionError("Forbidden")
+                : Task.FromResult<IReadOnlyList<Core.Security.AuditEvent>>(f.Audits.Where(a => a.Time > since).Take(max).ToList());
 
         public Task<CaData?> ReadConditionalAccessAsync(IProgress<string>? progress, CancellationToken cancel) => Task.FromResult(f.Ca);
 

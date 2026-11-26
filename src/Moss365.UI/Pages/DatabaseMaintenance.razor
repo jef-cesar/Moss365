@@ -48,7 +48,10 @@
         <label>@T["database-maintenance.technical-log-days"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.TechnicalLogDays" @bind:after="Modified" /></label>
         <label>@T["database-maintenance.script-runs-days"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.ScriptRunDays" @bind:after="Modified" /></label>
         <label>@T["database-maintenance.copies-before-an-update-days"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.MigrationCopyDays" @bind:after="Modified" /></label>
+        <label>@T["local-logs.days"] <input type="number" min="1" class="kb-invoer" @bind="State.Config.Retention.LocalLogDays" @bind:after="Modified" /></label>
     </div>
+    <p><label><input type="checkbox" @bind="State.Config.Retention.KeepLocalLogs" @bind:after="Modified" /> @T["local-logs.keep"]</label></p>
+    <p class="kb-zacht">@T["local-logs.keep.help"]</p>
     <button class="kb-knop kb-primair" disabled="@(!modified)" @onclick="SaveRetention">@T["action.save"]</button>
     @if (saved) { <span class="kb-ok">@T["database-maintenance.saved"]</span> }
 </section>
@@ -183,6 +186,7 @@
         CleanupPart.AccessLog => T["change-log.access-log"],
         CleanupPart.TechnicalLog => T["word.technical-log"],
         CleanupPart.ScriptRuns => T["word.script-runs"],
+        CleanupPart.LocalLogs => T["maintenance.part.local-logs"],
         _ => T["code.database-maintenance.copies-before-an-update"],
     };
 

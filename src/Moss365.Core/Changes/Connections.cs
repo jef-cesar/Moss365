@@ -241,6 +241,19 @@ public interface IGraphConnection
     Task<IReadOnlyList<CaAuditEntry>> ReadCaAuditAsync(int days, CancellationToken cancel)
         => Task.FromResult<IReadOnlyList<CaAuditEntry>>(Array.Empty<CaAuditEntry>());
 
+    /// <summary>
+    /// Sign-ins since a time that are worth keeping locally (R18): the failed ones, those of the given users
+    /// (administrators, emergency accounts) and the risky ones, at most max per part. No permission or no licence
+    /// (sign-in logs need Entra ID P1): <see cref="NoPermissionError"/>.
+    /// </summary>
+    Task<IReadOnlyList<SignInEvent>> ReadSignInsToKeepAsync(DateTimeOffset since, IReadOnlyCollection<string> userIds, int max, CancellationToken cancel)
+        => Task.FromResult<IReadOnlyList<SignInEvent>>(Array.Empty<SignInEvent>());
+
+    /// <summary>The directory audit log since a time (R18), at most max lines; no permission:
+    /// <see cref="NoPermissionError"/>.</summary>
+    Task<IReadOnlyList<Security.AuditEvent>> ReadDirectoryAuditsAsync(DateTimeOffset since, int max, CancellationToken cancel)
+        => Task.FromResult<IReadOnlyList<Security.AuditEvent>>(Array.Empty<Security.AuditEvent>());
+
     /// <summary>Conditional Access policies, named locations, strengths and role names; null when the connection cannot
     /// do that.</summary>
     Task<CaData?> ReadConditionalAccessAsync(IProgress<string>? progress, CancellationToken cancel)

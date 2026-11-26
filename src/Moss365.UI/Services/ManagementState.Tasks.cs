@@ -213,6 +213,16 @@ public sealed partial class ManagementState
 
                     SaveCaBackup(ca, p);
                 }));
+
+                // R18: after the security data (the administrators), in the same lane
+                if (Config.Retention.KeepLocalLogs)
+                {
+                    steps.Add(new(Texts.T["local-logs.step"], "Entra", async (p, ct) =>
+                    {
+                        var graph = Graph() ?? throw new InvalidOperationException(Texts.T["code.management-state-tasks.entra-is-not-set-up"]);
+                        await CollectLocalLogsAsync(graph, p, ct);
+                    }));
+                }
             }
 
             if (steps.Count == 0)

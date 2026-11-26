@@ -18,6 +18,7 @@ public static class Access
             "statistieken" or "gebruikers" or "gebruiker" or "gasten" or "groepen" or "groep" or "postvak" or "room" or "rooms" or "vergelijk" => Permission.View,
             "postvakken" => p == "postvakken/nieuw" ? Permission.Manage : Permission.View,
             "beveiliging" or "conditional-access" or "controles" => Permission.Security,
+            "bewaarde-logboeken" => Permission.SignIns,
             "spiegel" or "functieprofielen" => Permission.CompareMirror,
             "nieuw" or "uitstroom" or "gepland" or "opvolging" => Permission.Actions,
             "opkuis" => Permission.Manage,
@@ -40,7 +41,7 @@ public static class Access
         var first = path.Split('?', '#')[0].Split('/')[0];
         return first switch
         {
-            "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "beveiliging" or "conditional-access" or "inrichten" => hasMicrosoft365,
+            "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "beveiliging" or "conditional-access" or "inrichten" or "bewaarde-logboeken" => hasMicrosoft365,
             "vergelijk" => hasAd && hasMicrosoft365,
             "logonscripts" or "wachtwoorden" => hasAd,
             "licenties" or "samenwerking" or "gastenverlenging" => hasMicrosoft365,

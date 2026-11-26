@@ -48,6 +48,9 @@ public sealed partial class ManagementState
         var copies = now.AddDays(-Math.Max(1, r.MigrationCopyDays));
         output.Add(new(CleanupPart.MigrationCopies, Database.OldMigrationCopies(copies).Count, copies,
             Texts.T.Format("code.management-state-maintenance.copies-from-before-an-update", Math.Max(1, r.MigrationCopyDays))));
+
+        var local = now.AddDays(-Math.Max(1, r.LocalLogDays));
+        output.Add(new(CleanupPart.LocalLogs, Database.CountLocalLogs(local), local, Texts.T.Format("local-logs.cleanup", Math.Max(1, r.LocalLogDays))));
         return output;
     }
 
@@ -112,6 +115,10 @@ public sealed partial class ManagementState
 
                 case CleanupPart.ScriptRuns:
                     output.Add(new(part, ScriptRuns.Cleanup(ScriptFolders, now, Math.Max(1, r.ScriptRunDays)), null));
+                    break;
+
+                case CleanupPart.LocalLogs:
+                    output.Add(new(part, Database.RemoveLocalLogs(now.AddDays(-Math.Max(1, r.LocalLogDays))), null));
                     break;
 
                 case CleanupPart.MigrationCopies:

@@ -938,7 +938,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
 
         return new SignInEvent(time, S(a, "userId"), S(a, "userPrincipalName"), S(a, "userDisplayName"), S(a, "appDisplayName"),
-            S(a, "ipAddress"), location, code, code == 0 ? string.Empty : reason, S(a, "clientAppUsed"), ca);
+            S(a, "ipAddress"), location, code, code == 0 ? string.Empty : reason, S(a, "clientAppUsed"), ca, S(a, "id"), S(a, "riskLevelDuringSignIn"));
     }
 
     internal static EntraUser ToUser(JsonElement u, IReadOnlyDictionary<string, string> skuName)
@@ -1110,6 +1110,91 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         {
             throw new NoPermissionError(ex.Message);
         }
+    }
+
+    // ------------------------------------------------------------------ logs kept locally (R18)
+
+    private static string Iso(DateTimeOffset t) => t.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+
+    public async Task<IReadOnlyList<SignInEvent>> ReadSignInsToKeepAsync(DateTimeOffset since, IReadOnlyCollection<string> userIds, int max, CancellationToken cancel)
+    {
+        var after = $"createdDateTime gt {Iso(since)}";
+        var output = new List<SignInEvent>();
+        try
+        {
+            output.AddRange(await SignInPagesAsync($"{after} and status/errorCode ne 0", max, cancel));
+
+            // Administrators and emergency accounts: 15 per request, so that the filter stays short
+            foreach (var chunk in userIds.Where(i => i.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Chunk(15))
+            {
+                var users = string.Join(" or ", chunk.Select(i => $"userId eq '{i.Replace("'", "''", StringComparison.Ordinal)}'"));
+                output.AddRange(await SignInPagesAsync($"{after} and ({users})", max, cancel));
+            }
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
+        {
+            throw new NoPermissionError(ex.Message);
+        }
+
+        try
+        {
+            // Risky sign-ins need Entra ID P2: without it Graph answers with an error, which only skips this part
+            output.AddRange(await SignInPagesAsync($"{after} and riskState eq 'atRisk'", max, cancel));
+        }
+        catch (GraphError)
+        {
+        }
+
+        return output.Where(e => e.Id.Length > 0).DistinctBy(e => e.Id, StringComparer.OrdinalIgnoreCase).OrderByDescending(e => e.Time).ToList();
+    }
+
+    private async Task<List<SignInEvent>> SignInPagesAsync(string filter, int max, CancellationToken cancel)
+    {
+        var output = new List<SignInEvent>();
+        string? next = $"/auditLogs/signIns?$filter={Uri.EscapeDataString(filter)}&$top=999";
+        while (next is not null && output.Count < max)
+        {
+            var currentPage = await _client.GetAsync(next, cancel);
+            if (currentPage.TryGetProperty("value", out var values))
+            {
+                output.AddRange(values.EnumerateArray().Select(ToSignIn));
+            }
+
+            next = currentPage.TryGetProperty("@odata.nextLink", out var nl) ? nl.GetString() : null;
+        }
+
+        return output.Count > max ? output.GetRange(0, max) : output;
+    }
+
+    public async Task<IReadOnlyList<Core.Security.AuditEvent>> ReadDirectoryAuditsAsync(DateTimeOffset since, int max, CancellationToken cancel)
+    {
+        var output = new List<Core.Security.AuditEvent>();
+        string? next = $"/auditLogs/directoryAudits?$filter={Uri.EscapeDataString($"activityDateTime gt {Iso(since)}")}&$top=500";
+        try
+        {
+            while (next is not null && output.Count < max)
+            {
+                var currentPage = await _client.GetAsync(next, cancel);
+                if (currentPage.TryGetProperty("value", out var values))
+                {
+                    output.AddRange(values.EnumerateArray().Select(ToAudit));
+                }
+
+                next = currentPage.TryGetProperty("@odata.nextLink", out var nl) ? nl.GetString() : null;
+            }
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
+        {
+            throw new NoPermissionError(ex.Message);
+        }
+
+        return output.Count > max ? output.GetRange(0, max) : output;
+    }
+
+    internal static Core.Security.AuditEvent ToAudit(JsonElement a)
+    {
+        var ca = ToCaAudit(a);
+        return new Core.Security.AuditEvent(S(a, "id"), ca.Time, ca.Activity, S(a, "category"), S(a, "loggedByService"), ca.Who, ca.TargetId, ca.TargetName, ca.Result);
     }
 
     internal static CaAuditEntry ToCaAudit(JsonElement a)

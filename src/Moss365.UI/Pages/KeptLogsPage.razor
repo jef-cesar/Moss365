@@ -1,0 +1,97 @@
+@page "/bewaarde-logboeken"
+@inherits RefreshingPage
+@using Moss365.Core.Security
+@* The sign-in and audit logs kept in the tenant database (R18, U19): Microsoft keeps them 7 to 30 days, here they stay
+   for the retention period. Viewing them goes to the access log (who viewed what, never the content). *@
+
+<h1>@T["menu.bewaarde-logboeken"]</h1>
+
+<p class="kb-zacht">@T.Format("local-logs.help", State.Config.Retention.LocalLogDays)</p>
+
+@if (!State.Config.Retention.KeepLocalLogs)
+{
+    <div class="kb-melding">@T["local-logs.off"] <a href="databank">@T["menu.databank"]</a></div>
+}
+
+@if (State.LocalLogsLast is { } last)
+{
+    <p class="kb-zacht">@T.Format("local-logs.last", last.Time.LocalDateTime.ToString("g", T.Culture), last.SignIns, last.Audits)</p>
+    @if (last.Message is { } message)
+    {
+        <div class="kb-melding">@message</div>
+    }
+}
+else
+{
+    <p class="kb-zacht">@T["local-logs.none-yet"]</p>
+}
+
+<div class="kb-filters">
+    <label>@T["local-logs.from"] <input type="date" class="kb-invoer" @bind="from" @bind:after="Load" /></label>
+    <label>@T["local-logs.until"] <input type="date" class="kb-invoer" @bind="until" @bind:after="Load" /></label>
+    <label>@T["local-logs.search"] <input class="kb-invoer" @bind="text" @bind:event="oninput" aria-label="@T["local-logs.search"]" /></label>
+</div>
+
+<section class="kb-kaart" id="aanmeldingen">
+    <h2>@T.Format("local-logs.sign-ins", signIns.Count)</h2>
+    <div class="kb-filters">
+        <button class="kb-knop kb-klein" aria-pressed="@(reason is null ? "true" : "false")" @onclick="() => reason = null">@T["devices.combined.all"]</button>
+        @foreach (var r in LocalLogs.Reasons)
+        {
+            var n = signIns.Count(k => k.Reasons.Contains(r));
+            <button class="kb-knop kb-klein" aria-pressed="@(reason == r ? "true" : "false")" @onclick="() => reason = r">@ReasonText(r) (@n)</button>
+        }
+    </div>
+    <KbTable Id="bewaarde-aanmeldingen" ExportName="Bewaarde-aanmeldingen" Items="LocalLogs.Filter(signIns, reason, text).ToList()" Columns="signInColumns" />
+</section>
+
+<section class="kb-kaart" id="audit">
+    <h2>@T.Format("local-logs.audits", audits.Count)</h2>
+    <KbTable Id="bewaard-auditlogboek" ExportName="Bewaard-auditlogboek" Items="LocalLogs.Filter(audits, text).ToList()" Columns="auditColumns" />
+</section>
+
+@code {
+    private DateTime from = DateTime.Today.AddDays(-30);
+    private DateTime until = DateTime.Today;
+    private string text = string.Empty;
+    private string? reason;
+    private IReadOnlyList<KeptSignIn> signIns = Array.Empty<KeptSignIn>();
+    private IReadOnlyList<AuditEvent> audits = Array.Empty<AuditEvent>();
+    private IReadOnlyList<Column<KeptSignIn>> signInColumns = Array.Empty<Column<KeptSignIn>>();
+    private IReadOnlyList<Column<AuditEvent>> auditColumns = Array.Empty<Column<AuditEvent>>();
+
+    private static string ReasonText(string r) => T[$"local-logs.reason.{r}"];
+
+    protected override void OnInitialized()
+    {
+        signInColumns = new List<Column<KeptSignIn>>
+        {
+            new() { Key = "tijd", Title = T["local-logs.col.time"], Cell = k => @<text>@k.SignIn.Time.LocalDateTime.ToString("g", T.Culture)</text>, SortBy = k => k.SignIn.Time },
+            new() { Key = "gebruiker", Title = T["sign-in-list.user"], Cell = k => @<text>@k.SignIn.Upn</text>, SortBy = k => k.SignIn.Upn },
+            new() { Key = "app", Title = T["ca-policy-detail.apps"], Cell = k => @<text>@k.SignIn.App</text>, SortBy = k => k.SignIn.App },
+            new() { Key = "plaats", Title = T["local-logs.col.place"], Cell = k => @<text>@k.SignIn.Location</text>, SortBy = k => k.SignIn.Location },
+            new() { Key = "ip", Title = T["local-logs.col.ip"], Cell = k => @<text>@k.SignIn.Ip</text>, SortBy = k => k.SignIn.Ip, Hidden = true },
+            new() { Key = "resultaat", Title = T["local-logs.col.result"], Cell = k => @<text>@(k.SignIn.Succeeded ? "✓" : k.SignIn.Reason)</text>, SortBy = k => k.SignIn.ErrorCode, Text = k => k.SignIn.Succeeded ? "OK" : k.SignIn.Reason },
+            new() { Key = "waarom", Title = T["local-logs.col.why"], Cell = k => @<text>@string.Join(", ", k.Reasons.Select(ReasonText))</text>, SortBy = k => string.Join(", ", k.Reasons.Select(ReasonText)) },
+        };
+        auditColumns = new List<Column<AuditEvent>>
+        {
+            new() { Key = "tijd", Title = T["local-logs.col.time"], Cell = a => @<text>@a.Time.LocalDateTime.ToString("g", T.Culture)</text>, SortBy = a => a.Time },
+            new() { Key = "activiteit", Title = T["local-logs.col.activity"], Cell = a => @<text>@a.Activity</text>, SortBy = a => a.Activity },
+            new() { Key = "wie", Title = T["script-result.who"], Cell = a => @<text>@a.By</text>, SortBy = a => a.By },
+            new() { Key = "doel", Title = T["local-logs.col.target"], Cell = a => @<text>@a.TargetName</text>, SortBy = a => a.TargetName },
+            new() { Key = "dienst", Title = T["local-logs.col.service"], Cell = a => @<text>@a.Service</text>, SortBy = a => a.Service, Hidden = true },
+            new() { Key = "resultaat", Title = T["local-logs.col.result"], Cell = a => @<text>@a.Result</text>, SortBy = a => a.Result },
+        };
+        Load();
+    }
+
+    private void Load()
+    {
+        var start = new DateTimeOffset(from.Date);
+        var end = new DateTimeOffset(until.Date.AddDays(1));
+        signIns = State.KeptSignIns(start, end);
+        audits = State.KeptAudits(start, end);
+        State.Access("Bewaarde logboeken bekeken", T.Format("local-logs.access", from.ToString("yyyy-MM-dd", T.Culture), until.ToString("yyyy-MM-dd", T.Culture), signIns.Count, audits.Count));
+    }
+}

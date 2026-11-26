@@ -19,6 +19,12 @@ public sealed class RetentionSettings
 
     /// <summary>The automatic copies made before a migration (tenant.db.bak-...); the newest always stays.</summary>
     public int MigrationCopyDays { get; set; } = 30;
+
+    /// <summary>Keep the sign-in and audit logs locally (R18, U19): on by default.</summary>
+    public bool KeepLocalLogs { get; set; } = true;
+
+    /// <summary>How long the local sign-in and audit logs are kept.</summary>
+    public int LocalLogDays { get; set; } = 365;
 }
 
 /// <summary>One part of the database: how many rows and roughly how many bytes of content.</summary>
@@ -32,6 +38,7 @@ public enum CleanupPart
     TechnicalLog,
     ScriptRuns,
     MigrationCopies,
+    LocalLogs,
 }
 
 /// <summary>What a clean-up would remove from one part, before anything is removed.</summary>
@@ -73,6 +80,7 @@ public sealed partial class Database
             Add(Texts.T["maintenance.part.other-files"], "SELECT COUNT(*), COALESCE(SUM(length(Content)), 0) FROM File WHERE Path NOT LIKE 'runs/%' AND Path NOT LIKE 'inventory/%' AND Path NOT LIKE 'ca-backup/%' AND Path NOT LIKE 'scripts/%';");
             Add(Texts.T["maintenance.part.settings"], "SELECT COUNT(*), COALESCE(SUM(length(Json)), 0) FROM Document;");
             Add(Texts.T["maintenance.part.kpi"], "SELECT COUNT(*), COUNT(*) * 24 FROM KpiStand;");
+            Add(Texts.T["maintenance.part.local-logs"], "SELECT COUNT(*), COALESCE(SUM(length(Json)), 0) FROM LocalLog;");
             return output;
         }
     }

@@ -30,6 +30,7 @@ public static class MenuModel
         new MenuGroup("Beveiliging", new MenuItem[]
         {
             new("beveiliging", "Overzicht beveiliging"), new("controles", "Beveiligingscontroles"), new("conditional-access", "Conditional Access"),
+            new("bewaarde-logboeken", "Bewaarde logboeken"),
         }),
         new MenuGroup("Inzicht", new MenuItem[]
         {

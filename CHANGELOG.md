@@ -40,6 +40,13 @@ Every version becomes a release on GitHub; the section under the version is the 
   - The app registration needs two new permissions for these actions: `DeviceManagementManagedDevices.PrivilegedOperations.All`
     and, only because Microsoft asks it for a new BitLocker key, `DeviceManagementManagedDevices.ReadWrite.All`. The
     wizard (*Tenant instellen*) adds them; until then the actions fail with a message, reading works as before.
+- **Own data** (R18):
+  - the **sign-in and audit logs are kept locally** (U19), on by default: after every read of Entra, the failed and
+    risky sign-ins, those of administrators and emergency accounts, and the whole directory audit log go to the tenant
+    database, for a year (*Databank en versleuteling*, next to the other retention periods; cleaning up shows a preview
+    first, as always). Microsoft itself keeps them 7 to 30 days. The new screen *Bewaarde logboeken* (under
+    Beveiliging) is for whoever may see sign-ins, and viewing it goes to the access log. Sign-in logs need Entra ID P1;
+    without it the screen says so and the audit log is still kept.
 - **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
   address; anything else (such as a script link or a file share) is no longer clickable.
 - **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.

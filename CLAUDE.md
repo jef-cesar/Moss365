@@ -91,6 +91,11 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   Manage; wipe and fresh start: Manage, the device name typed, never a personal device); `DeviceSafety` checks every
   plan in the planner and in the engine (never a personal device, one device to wipe per plan), like `CaSafety`, and
   `GraphConnection` asks Intune again before wiping. Only a rename can be undone.
+  Own data (R18): `Security/LocalLogs.cs` decides which sign-ins are kept (failed, risky, administrators, emergency
+  accounts) next to the whole directory audit log; table `LocalLog` (migration 5, `Storage/LocalLogStore.cs`, never a
+  line twice) is filled after every read of Entra (`ManagementState.LocalLogs.cs`) while `Retention.KeepLocalLogs` is
+  on (the default) and cleaned up by maintenance after `Retention.LocalLogDays`; screen `bewaarde-logboeken`
+  (Permission.SignIns, writes the access log).
   Reporting (0.37, `Reporting/`): `PeriodReport` (from `ReadKpiSnapshot` and the change log; `ToHtml`/`ToCsv`, CSV never
   starts a cell with a formula), `DataQuality`, `Standards` (checks mapped to NIS2/CIS), `GuestRenewal` (document
   `gastenverlenging`), `StaffRequests` (document `aanvragen`; decisions are change log lines with action `Request`),
