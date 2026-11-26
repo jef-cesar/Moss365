@@ -798,9 +798,18 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
         public Task<IReadOnlyList<Core.Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Devices.IntuneDevice>?>(new[]
             {
-                new Core.Devices.IntuneDevice("d1", "LAPTOP-1", "an@test.be", "Windows", "10.0.22631", "compliant", DateTimeOffset.Now.AddDays(-1), "company"),
-                new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal"),
+                new Core.Devices.IntuneDevice("d1", "LAPTOP-1", "an@test.be", "Windows", "10.0.22631", "compliant", DateTimeOffset.Now.AddDays(-1), "company") { EntraDeviceId = "e-dev-1", Serial = "SN-0001", Model = "Latitude 5440", Encrypted = true },
+                new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal") { EntraDeviceId = "e-dev-2" },
                 new Core.Devices.IntuneDevice("d3", "LAPTOP-OUD", "cas@test.be", "Windows", "10.0.19045", "compliant", DateTimeOffset.Now.AddDays(-60), "company"),
+            });
+
+        public Task<IReadOnlyList<Core.Devices.EntraDevice>?> ReadEntraDevicesAsync(CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Devices.EntraDevice>?>(new[]
+            {
+                new Core.Devices.EntraDevice("o1", "e-dev-1", "LAPTOP-1", "Windows", "10.0.22631", true, DateTimeOffset.Now.AddDays(-1), "AzureAd"),
+                new Core.Devices.EntraDevice("o2", "e-dev-2", "GSM-BO", "iOS", "16.1", true, DateTimeOffset.Now.AddDays(-3), "Workplace"),
+                new Core.Devices.EntraDevice("o3", "e-dev-3", "PC-NIEUW", "Windows", "10.0.22631", true, DateTimeOffset.Now.AddDays(-2), "ServerAd"),
+                new Core.Devices.EntraDevice("o4", "e-dev-4", "TABLET-X", "Windows", "10.0.26100", true, DateTimeOffset.Now.AddDays(-5), "AzureAd"),
             });
 
         public Task<Core.Devices.CollaborationReading?> ReadCollaborationAsync(CancellationToken cancel)

@@ -11,7 +11,33 @@ public sealed record AdComputer(string Name, string DistinguishedName, string Op
 }
 
 /// <summary>A device in Intune.</summary>
-public sealed record IntuneDevice(string Id, string Name, string Owner, string OperatingSystem, string Version, string Compliance, DateTimeOffset? LastSync, string Ownership);
+public sealed record IntuneDevice(string Id, string Name, string Owner, string OperatingSystem, string Version, string Compliance, DateTimeOffset? LastSync, string Ownership)
+{
+    public string Serial { get; init; } = string.Empty;
+
+    public string Model { get; init; } = string.Empty;
+
+    public string Manufacturer { get; init; } = string.Empty;
+
+    public bool? Encrypted { get; init; }
+
+    public DateTimeOffset? Enrolled { get; init; }
+
+    /// <summary>The deviceId of its record in Entra (not the object id), to find that record.</summary>
+    public string EntraDeviceId { get; init; } = string.Empty;
+
+    /// <summary>A personal device (bring your own): only retire, never wipe (R17).</summary>
+    public bool Personal => string.Equals(Ownership, "personal", StringComparison.OrdinalIgnoreCase);
+}
+
+/// <summary>A device in Entra ID: joined (AzureAd), hybrid joined (ServerAd) or registered (Workplace) (R17).</summary>
+public sealed record EntraDevice(string Id, string DeviceId, string Name, string OperatingSystem, string Version, bool Enabled, DateTimeOffset? LastSignIn, string TrustType);
+
+/// <summary>One device over AD, Entra and Intune (R17), with what deserves a look (keys of <see cref="DeviceAnalysis.Findings"/>).</summary>
+public sealed record DeviceRecord(string Name, AdComputer? Ad, EntraDevice? Entra, IntuneDevice? Intune, IReadOnlyList<string> Findings)
+{
+    public DateTimeOffset? LastSeen => new[] { Ad?.LastLogon, Entra?.LastSignIn, Intune?.LastSync }.Where(d => d is not null).DefaultIfEmpty(null).Max();
+}
 
 /// <summary>A Microsoft 365 group (or Team): owners and activity, read live.</summary>
 public sealed record GroupActivity(string Id, string Name, bool IsTeam, int Owners, DateTimeOffset? LastActivity);
@@ -45,6 +71,87 @@ public static class DeviceAnalysis
 
     /// <summary>Is this system (with its version) no longer supported by Microsoft? From the life cycle data (R17).</summary>
     public static bool Outdated(string os) => Lifecycle.Of(os, string.Empty, DateTimeOffset.Now).Status == SupportStatus.Ended;
+
+    /// <summary>What a device in the one list can have: in AD but not in Entra, not in Intune, only in Intune, more than one
+    /// record in Entra, not seen for 90 days.</summary>
+    public static IReadOnlyList<string> Findings { get; } = new[] { "ad-only", "not-managed", "intune-orphan", "duplicate", "stale" };
+
+    /// <summary>
+    /// One list over AD, Entra and Intune (R17): Intune and Entra by the Entra device id, AD and Entra by name for a
+    /// hybrid joined device. A source that was not read (null) gives no findings about it.
+    /// </summary>
+    public static IReadOnlyList<DeviceRecord> Combine(IReadOnlyList<AdComputer>? ad, IReadOnlyList<EntraDevice>? entra, IReadOnlyList<IntuneDevice>? intune, DateTimeOffset now, int staleDays = 90)
+    {
+        var entraList = entra ?? Array.Empty<EntraDevice>();
+        var intuneList = intune ?? Array.Empty<IntuneDevice>();
+        var intuneByEntra = new Dictionary<string, IntuneDevice>(StringComparer.OrdinalIgnoreCase);
+        foreach (var i in intuneList.Where(i => i.EntraDeviceId.Length > 0))
+        {
+            intuneByEntra.TryAdd(i.EntraDeviceId, i);
+        }
+
+        var adByName = new Dictionary<string, AdComputer>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in ad ?? Array.Empty<AdComputer>())
+        {
+            adByName.TryAdd(c.Name, c);
+        }
+
+        var duplicates = entraList.GroupBy(e => e.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var usedIntune = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var usedAd = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var found = new List<(string Name, AdComputer? Ad, EntraDevice? Entra, IntuneDevice? Intune)>();
+        foreach (var e in entraList)
+        {
+            var i = e.DeviceId.Length > 0 ? intuneByEntra.GetValueOrDefault(e.DeviceId) : null;
+            if (i is not null)
+            {
+                usedIntune.Add(i.Id);
+            }
+
+            AdComputer? c = null;
+            if (string.Equals(e.TrustType, "ServerAd", StringComparison.OrdinalIgnoreCase) && adByName.TryGetValue(e.Name, out var computer) && usedAd.Add(computer.Name))
+            {
+                c = computer;
+            }
+
+            found.Add((e.Name, c, e, i));
+        }
+
+        found.AddRange(intuneList.Where(i => !usedIntune.Contains(i.Id)).Select(i => (i.Name, (AdComputer?)null, (EntraDevice?)null, (IntuneDevice?)i)));
+        found.AddRange((ad ?? Array.Empty<AdComputer>()).Where(c => !usedAd.Contains(c.Name)).Select(c => (c.Name, (AdComputer?)c, (EntraDevice?)null, (IntuneDevice?)null)));
+
+        return found.Select(f =>
+        {
+            var points = new List<string>();
+            if (entra is not null && f.Ad is { Enabled: true } && f.Entra is null)
+            {
+                points.Add("ad-only");
+            }
+
+            if (intune is not null && f.Entra is { Enabled: true } && f.Intune is null)
+            {
+                points.Add("not-managed");
+            }
+
+            if (entra is not null && f.Intune is not null && f.Entra is null)
+            {
+                points.Add("intune-orphan");
+            }
+
+            if (f.Entra is not null && duplicates.Contains(f.Name))
+            {
+                points.Add("duplicate");
+            }
+
+            var record = new DeviceRecord(f.Name, f.Ad, f.Entra, f.Intune, points);
+            if ((f.Ad?.Enabled ?? f.Entra?.Enabled ?? true) && (record.LastSeen is not { } seen || seen < now.AddDays(-staleDays)))
+            {
+                points.Add("stale");
+            }
+
+            return record;
+        }).OrderByDescending(r => r.Findings.Count).ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
 
     public static IReadOnlyList<IntuneDevice> NotCompliant(IReadOnlyList<IntuneDevice> devices)
         => devices.Where(d => d.Compliance is not ("compliant" or "unknown" or "")).OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();

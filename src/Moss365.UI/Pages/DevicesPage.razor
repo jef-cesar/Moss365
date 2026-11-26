@@ -96,6 +96,42 @@
     </section>
 }
 
+@if (State.AdComputers is not null || State.IntuneDevices is not null || State.EntraDevices is not null)
+{
+    var list = State.DeviceList;
+    <section class="kb-kaart" id="een-lijst">
+        <h2>@T.Format("devices.combined", list.Count)</h2>
+        <p class="kb-zacht">@T["devices.combined.help"]</p>
+        <div class="kb-filters">
+            <button class="kb-knop kb-klein" aria-pressed="@(finding is null ? "true" : "false")" @onclick="() => finding = null">@T["devices.combined.all"]</button>
+            @foreach (var f in DeviceAnalysis.Findings)
+            {
+                var n = list.Count(r => r.Findings.Contains(f));
+                @if (n > 0)
+                {
+                    <button class="kb-knop kb-klein" aria-pressed="@(finding == f ? "true" : "false")" @onclick="() => finding = f">@FindingText(f) (@n)</button>
+                }
+            }
+        </div>
+        <table class="kb-tabel">
+            <thead><tr><th>@T["keys.device"]</th><th>@T["devices.col.ad"]</th><th>@T["devices.col.entra"]</th><th>@T["devices.col.intune"]</th><th>@T["keys.last-seen"]</th><th>@T["devices.col.points"]</th></tr></thead>
+            <tbody>
+                @foreach (var r in list.Where(r => finding is null || r.Findings.Contains(finding)).Take(200))
+                {
+                    <tr>
+                        <td>@r.Name</td>
+                        <td>@(r.Ad is null ? string.Empty : r.Ad.Enabled ? "✓" : T["device.disabled"])</td>
+                        <td>@(r.Entra is null ? string.Empty : TrustText(r.Entra.TrustType))</td>
+                        <td>@(r.Intune?.Compliance ?? string.Empty)</td>
+                        <td>@(r.LastSeen?.LocalDateTime.ToString("dd/MM/yyyy") ?? T["word.never"])</td>
+                        <td>@string.Join(", ", r.Findings.Select(FindingText))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
 @if (outcome is not null && outcome.Plan.Count > 0)
 {
     <PlanView Plan="outcome.Plan" Context="@T["devices.old-computers"]" Title="@T["devices.disable-computers"]" />
@@ -113,6 +149,18 @@
             _ => @<text></text>,
         };
     }
+
+    private string? finding;
+
+    private static string FindingText(string f) => T[$"devices.finding.{f}"];
+
+    private static string TrustText(string trust) => trust switch
+    {
+        "AzureAd" => T["devices.trust.joined"],
+        "ServerAd" => T["devices.trust.hybrid"],
+        "Workplace" => T["devices.trust.registered"],
+        _ => trust,
+    };
 
     private bool busy;
     private int days = 90;

@@ -3313,5 +3313,20 @@
   "advice.solve.reversible-warning": "A senha guardada com criptografia reversível só some quando a senha muda: peça à pessoa que a troque, ou defina uma nova.",
   "advice.solve.not-found": "{0} não está nos dados lidos; leia o AD de novo.",
   "advice.solve.unknown-flag": "O Moss365 não pode alterar este sinalizador.",
-  "devices.support-ends": "o suporte termina em {0}"
+  "devices.support-ends": "o suporte termina em {0}",
+  "devices.combined": "Uma lista sobre AD, Entra e Intune ({0} dispositivos)",
+  "devices.combined.help": "Cada dispositivo uma vez, com onde está: um computador no AD, seu registro no Entra (ingressado, ingressado híbrido ou registrado) e seu registro no Intune. O que merece uma olhada está marcado.",
+  "devices.combined.all": "Todos",
+  "devices.col.ad": "AD",
+  "devices.col.entra": "Entra",
+  "devices.col.intune": "Intune",
+  "devices.col.points": "A verificar",
+  "devices.finding.ad-only": "no AD, não no Entra (sem ingresso híbrido)",
+  "devices.finding.not-managed": "no Entra, não no Intune",
+  "devices.finding.intune-orphan": "no Intune, não no Entra",
+  "devices.finding.duplicate": "mais de um registro no Entra",
+  "devices.finding.stale": "não visto há 90 dias",
+  "devices.trust.joined": "ingressado",
+  "devices.trust.hybrid": "ingressado híbrido",
+  "devices.trust.registered": "registrado"
 }

@@ -10,6 +10,11 @@ public sealed partial class ManagementState
 
     public IReadOnlyList<IntuneDevice>? IntuneDevices { get; private set; }
 
+    public IReadOnlyList<EntraDevice>? EntraDevices { get; private set; }
+
+    /// <summary>One list over AD, Entra and Intune (R17), from what was read.</summary>
+    public IReadOnlyList<DeviceRecord> DeviceList => DeviceAnalysis.Combine(AdComputers, EntraDevices, IntuneDevices, DateTimeOffset.Now);
+
     public CollaborationReading? Collaboration { get; private set; }
 
     /// <summary>What did not work in the last read of devices or collaboration (shown on the screen).</summary>
@@ -39,6 +44,8 @@ public sealed partial class ManagementState
                 {
                     notes.Add(Texts.T["code.management-state-devices.intune-cannot-be-read-licence"]);
                 }
+
+                EntraDevices = await graph.ReadEntraDevicesAsync(cancel);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

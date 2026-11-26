@@ -3313,5 +3313,20 @@
   "advice.solve.reversible-warning": "Le mot de passe conservé avec chiffrement réversible ne disparaît qu'au changement du mot de passe : demandez à la personne de le changer, ou définissez-en un nouveau.",
   "advice.solve.not-found": "{0} ne figure pas dans les données lues ; relisez AD.",
   "advice.solve.unknown-flag": "Moss365 ne peut pas modifier cet indicateur.",
-  "devices.support-ends": "fin du support le {0}"
+  "devices.support-ends": "fin du support le {0}",
+  "devices.combined": "Une liste sur AD, Entra et Intune ({0} appareils)",
+  "devices.combined.help": "Chaque appareil une seule fois, avec où il se trouve : un ordinateur dans AD, son enregistrement dans Entra (joint, joint hybride ou inscrit) et son enregistrement dans Intune. Ce qui mérite un coup d'œil est signalé.",
+  "devices.combined.all": "Tous",
+  "devices.col.ad": "AD",
+  "devices.col.entra": "Entra",
+  "devices.col.intune": "Intune",
+  "devices.col.points": "À examiner",
+  "devices.finding.ad-only": "dans AD, pas dans Entra (pas de jonction hybride)",
+  "devices.finding.not-managed": "dans Entra, pas dans Intune",
+  "devices.finding.intune-orphan": "dans Intune, pas dans Entra",
+  "devices.finding.duplicate": "plus d'un enregistrement dans Entra",
+  "devices.finding.stale": "pas vu depuis 90 jours",
+  "devices.trust.joined": "joint",
+  "devices.trust.hybrid": "joint hybride",
+  "devices.trust.registered": "inscrit"
 }

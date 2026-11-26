@@ -3313,5 +3313,20 @@
   "advice.solve.reversible-warning": "Het wachtwoord dat met omkeerbare versleuteling bewaard is, verdwijnt pas als het wachtwoord verandert: vraag de persoon het te wijzigen, of zet een nieuw.",
   "advice.solve.not-found": "{0} staat niet in de gelezen gegevens; lees AD opnieuw.",
   "advice.solve.unknown-flag": "Moss365 mag deze vlag niet wijzigen.",
-  "devices.support-ends": "ondersteuning stopt {0}"
+  "devices.support-ends": "ondersteuning stopt {0}",
+  "devices.combined": "Eén lijst over AD, Entra en Intune ({0} toestellen)",
+  "devices.combined.help": "Elk toestel één keer, met waar het staat: een computer in AD, zijn record in Entra (gekoppeld, hybride gekoppeld of geregistreerd) en zijn record in Intune. Wat een blik verdient, is gemarkeerd.",
+  "devices.combined.all": "Alle",
+  "devices.col.ad": "AD",
+  "devices.col.entra": "Entra",
+  "devices.col.intune": "Intune",
+  "devices.col.points": "Aandachtspunten",
+  "devices.finding.ad-only": "in AD, niet in Entra (geen hybride koppeling)",
+  "devices.finding.not-managed": "in Entra, niet in Intune",
+  "devices.finding.intune-orphan": "in Intune, niet in Entra",
+  "devices.finding.duplicate": "meer dan één record in Entra",
+  "devices.finding.stale": "90 dagen niet gezien",
+  "devices.trust.joined": "gekoppeld",
+  "devices.trust.hybrid": "hybride gekoppeld",
+  "devices.trust.registered": "geregistreerd"
 }

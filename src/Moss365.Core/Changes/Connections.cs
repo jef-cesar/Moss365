@@ -201,6 +201,9 @@ public interface IGraphConnection
     /// <summary>Devices in Intune (0.36); null where that cannot be read (licence, permission).</summary>
     Task<IReadOnlyList<Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Devices.IntuneDevice>?>(null);
 
+    /// <summary>Devices in Entra ID: joined, hybrid joined or registered (R17); null where that cannot be read.</summary>
+    Task<IReadOnlyList<Devices.EntraDevice>?> ReadEntraDevicesAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Devices.EntraDevice>?>(null);
+
     /// <summary>Microsoft 365 groups and Teams (owners, activity) and SharePoint sites (storage, activity) (0.36).</summary>
     Task<Devices.CollaborationReading?> ReadCollaborationAsync(CancellationToken cancel) => Task.FromResult<Devices.CollaborationReading?>(null);
 

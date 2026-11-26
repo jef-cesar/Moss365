@@ -441,14 +441,39 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
     // ------------------------------------------------------------------ devices, Teams and SharePoint (0.36)
 
+    public async Task<IReadOnlyList<Core.Devices.EntraDevice>?> ReadEntraDevicesAsync(CancellationToken cancel)
+    {
+        try
+        {
+            const string select = "id,deviceId,displayName,operatingSystem,operatingSystemVersion,accountEnabled,approximateLastSignInDateTime,trustType";
+            return (await _client.GetAllAsync($"/devices?$select={select}&$top=999", cancel))
+                .Select(d => new Core.Devices.EntraDevice(S(d, "id"), S(d, "deviceId"), S(d, "displayName"), S(d, "operatingSystem"), S(d, "operatingSystemVersion"),
+                    !d.TryGetProperty("accountEnabled", out var on) || on.ValueKind != JsonValueKind.False, Date(d, "approximateLastSignInDateTime"), S(d, "trustType")))
+                .ToList();
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
+        {
+            return null;
+        }
+    }
+
     public async Task<IReadOnlyList<Core.Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel)
     {
         try
         {
-            const string select = "id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managedDeviceOwnerType";
+            const string select = "id,deviceName,userPrincipalName,operatingSystem,osVersion,complianceState,lastSyncDateTime,managedDeviceOwnerType,"
+                + "serialNumber,model,manufacturer,isEncrypted,enrolledDateTime,azureADDeviceId";
             return (await _client.GetAllAsync($"/deviceManagement/managedDevices?$select={select}&$top=999", cancel))
                 .Select(d => new Core.Devices.IntuneDevice(S(d, "id"), S(d, "deviceName"), S(d, "userPrincipalName"), S(d, "operatingSystem"), S(d, "osVersion"),
-                    S(d, "complianceState"), Date(d, "lastSyncDateTime"), S(d, "managedDeviceOwnerType")))
+                    S(d, "complianceState"), Date(d, "lastSyncDateTime"), S(d, "managedDeviceOwnerType"))
+                {
+                    Serial = S(d, "serialNumber"),
+                    Model = S(d, "model"),
+                    Manufacturer = S(d, "manufacturer"),
+                    Encrypted = d.TryGetProperty("isEncrypted", out var enc) && enc.ValueKind is JsonValueKind.True or JsonValueKind.False ? enc.GetBoolean() : null,
+                    Enrolled = Date(d, "enrolledDateTime"),
+                    EntraDeviceId = S(d, "azureADDeviceId"),
+                })
                 .ToList();
         }
         catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.BadRequest)

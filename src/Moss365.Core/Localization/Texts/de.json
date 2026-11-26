@@ -3313,5 +3313,20 @@
   "advice.solve.reversible-warning": "Das mit umkehrbarer Verschlüsselung gespeicherte Kennwort verschwindet erst, wenn sich das Kennwort ändert: Bitten Sie die Person, es zu ändern, oder setzen Sie ein neues.",
   "advice.solve.not-found": "{0} ist nicht in den gelesenen Daten; lesen Sie AD erneut.",
   "advice.solve.unknown-flag": "Moss365 darf dieses Kennzeichen nicht ändern.",
-  "devices.support-ends": "Support endet am {0}"
+  "devices.support-ends": "Support endet am {0}",
+  "devices.combined": "Eine Liste über AD, Entra und Intune ({0} Geräte)",
+  "devices.combined.help": "Jedes Gerät einmal, mit seinem Ort: ein Computer in AD, sein Eintrag in Entra (eingebunden, hybrid eingebunden oder registriert) und sein Eintrag in Intune. Was einen Blick verdient, ist markiert.",
+  "devices.combined.all": "Alle",
+  "devices.col.ad": "AD",
+  "devices.col.entra": "Entra",
+  "devices.col.intune": "Intune",
+  "devices.col.points": "Zu prüfen",
+  "devices.finding.ad-only": "in AD, nicht in Entra (keine Hybrideinbindung)",
+  "devices.finding.not-managed": "in Entra, nicht in Intune",
+  "devices.finding.intune-orphan": "in Intune, nicht in Entra",
+  "devices.finding.duplicate": "mehr als ein Eintrag in Entra",
+  "devices.finding.stale": "seit 90 Tagen nicht gesehen",
+  "devices.trust.joined": "eingebunden",
+  "devices.trust.hybrid": "hybrid eingebunden",
+  "devices.trust.registered": "registriert"
 }
