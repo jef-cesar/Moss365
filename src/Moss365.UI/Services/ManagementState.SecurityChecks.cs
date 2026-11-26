@@ -32,8 +32,11 @@ public sealed partial class ManagementState
         return list;
     }
 
-    /// <summary>Runs one check (reads what it needs) and keeps the result.</summary>
-    public async Task<SecurityCheck> RunSecurityCheckAsync(string key, int alertDays = 7, bool withRules = false, CancellationToken cancel = default)
+    /// <summary>
+    /// Runs one check (reads what it needs) and keeps the result. Within a round (all checks after each other), what
+    /// more than one check needs (the app registrations) is read once.
+    /// </summary>
+    public async Task<SecurityCheck> RunSecurityCheckAsync(string key, int alertDays = 7, bool withRules = false, CancellationToken cancel = default, SecurityCheckRound? round = null)
     {
         var now = DateTimeOffset.Now;
         SecurityCheck check;
@@ -43,8 +46,8 @@ public sealed partial class ManagementState
             {
                 "meldingen" => Alerts(alertDays),
                 "doorsturen" => SecurityChecks.Forwarding(await ForwardingAsync(withRules, cancel), Core.Changes.CloudUserPlans.Domains(Data)),
-                "app-geheimen" => SecurityChecks.AppCredentials(Graph() is { } g1 ? await g1.ReadAppsAsync(cancel) : null, now),
-                "app-rechten" => SecurityChecks.AppPermissions(Graph() is { } g2 ? await g2.ReadAppsAsync(cancel) : null),
+                "app-geheimen" => SecurityChecks.AppCredentials(await AppsAsync(round, cancel), now),
+                "app-rechten" => SecurityChecks.AppPermissions(await AppsAsync(round, cancel)),
                 "secure-score" => SecurityChecks.SecureScore(Graph() is { } g3 ? await g3.ReadSecureScoreAsync(cancel) : null),
                 "rollen" => SecurityChecks.Roles(Graph() is { } g4 ? await g4.ReadRoleAssignmentsAsync(cancel) : null),
                 "zwakke-mfa" => SecurityChecks.WeakMfa(Data),
@@ -64,6 +67,17 @@ public sealed partial class ManagementState
         return check;
     }
 
+    /// <summary>The app registrations: read once per round, or fresh for a check on its own.</summary>
+    private Task<AppsReading?> AppsAsync(SecurityCheckRound? round, CancellationToken cancel)
+    {
+        if (Graph() is not { } graph)
+        {
+            return Task.FromResult<AppsReading?>(null);
+        }
+
+        return round is null ? graph.ReadAppsAsync(cancel) : (round.Apps ??= graph.ReadAppsAsync(cancel));
+    }
+
     private async Task<IReadOnlyList<ForwardingRule>?> ForwardingAsync(bool withRules, CancellationToken cancel)
         => HasMicrosoft365 && _factory?.Exchange(EffectiveSettings) is { } exchange ? await exchange.ReadForwardingAsync(withRules, null, cancel) : null;
 
@@ -74,4 +88,10 @@ public sealed partial class ManagementState
         var before = snapshot is null ? null : DataAt(since);
         return SecurityChecks.Alerts(before, Data, snapshot?.Time);
     }
+}
+
+/// <summary>One round of checks after each other ("check everything"): what more than one check reads, is read once.</summary>
+public sealed class SecurityCheckRound
+{
+    internal Task<AppsReading?>? Apps { get; set; }
 }

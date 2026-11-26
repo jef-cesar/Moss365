@@ -36,6 +36,11 @@ public sealed class Version05Tests : IDisposable
         Assert.Contains("\"'@som\"", text);
         Assert.Contains("\"gewoon \"\"tekst\"\"\"", text);
 
+        // A tab or carriage return before the sign does not get past it
+        var hidden = CsvWriter.Text(new[] { "A" }, new[] { new[] { "\t=1+1" }, new[] { "\r@som" } }, forExcel: true);
+        Assert.Contains("\"'\t=1+1\"", hidden);
+        Assert.Contains("\"'\r@som\"", hidden);
+
         // The inventory (which the app reads back itself) stays unchanged
         Assert.Contains("\"=HYPERLINK", CsvWriter.Text(new[] { "A" }, new[] { new[] { "=HYPERLINK(\"x\")" } }));
         Assert.Equal("Opkuis-Medewerkers-180d", CsvWriter.FileName("Opkuis-Medewerkers-180d"));

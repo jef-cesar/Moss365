@@ -69,13 +69,13 @@
 
     private string? HealthScript => State.ReadScripts().FirstOrDefault(s => string.Equals(s.Key, "Get-AdHealth", StringComparison.OrdinalIgnoreCase))?.Key;
 
-    private async Task Run(string key)
+    private async Task Run(string key, SecurityCheckRound? round = null)
     {
         busy = true;
         running = State.SecurityCheckList().FirstOrDefault(c => c.Key == key).Title ?? key;
         try
         {
-            await State.RunSecurityCheckAsync(key, days, rules);
+            await State.RunSecurityCheckAsync(key, days, rules, round: round);
         }
         finally
         {
@@ -83,11 +83,13 @@
         }
     }
 
+    // One round: what more than one check reads (the app registrations) is read once
     private async Task All()
     {
+        var round = new SecurityCheckRound();
         foreach (var (key, _) in State.SecurityCheckList())
         {
-            await Run(key);
+            await Run(key, round);
         }
     }
 

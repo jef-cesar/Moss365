@@ -78,6 +78,34 @@ public sealed partial class PlanScreenTests
     }
 
     [Fact]
+    public void AlertsSeeAccountsEnabledAgainInAdAndEntra()
+    {
+        var now = State.Data;
+        var cloud = now.EntraUsers.First() with { AccountEnabled = true, OnPremisesSyncEnabled = false };
+        var current = now with { EntraUsers = now.EntraUsers.Select(e => e.Id == cloud.Id ? cloud : e).ToList() };
+        var before = current with
+        {
+            EntraUsers = current.EntraUsers.Select(e => e.Id == cloud.Id ? e with { AccountEnabled = false } : e).ToList(),
+            AdUsers = current.AdUsers.Select(a => a.SamAccountName == "bo.janssens" ? a with { Enabled = false, SamAccountName = "BO.JANSSENS" } : a).ToList(),
+        };
+
+        var alerts = SecurityChecks.Alerts(before, current, DateTimeOffset.Now.AddDays(-7));
+        Assert.Contains(alerts.Rows, r => r.Object == cloud.UserPrincipalName);
+        Assert.Contains(alerts.Rows, r => r.Object == "bo.janssens"); // names are compared without case
+    }
+
+    [Fact]
+    public void SecureScoreLinksAreOnlyWebAddresses()
+    {
+        var score = SecurityChecks.SecureScore(new SecureScoreReading(new[] { (DateTimeOffset.Now, 50.0, 100.0) },
+            new[] { ("MFA", 10.0, "https://security.microsoft.com/securescore"), ("Script", 9.0, "javascript:alert(1)"), ("Share", 8.0, "file://server/share/x.exe"), ("Empty", 7.0, "") }));
+        Assert.Equal("https://security.microsoft.com/securescore", score.Rows.Single(r => r.Object == "MFA").Href);
+        Assert.Null(score.Rows.Single(r => r.Object == "Script").Href);
+        Assert.Null(score.Rows.Single(r => r.Object == "Share").Href);
+        Assert.Null(score.Rows.Single(r => r.Object == "Empty").Href);
+    }
+
+    [Fact]
     public void RolesSecureScoreAndRisk()
     {
         var roles = SecurityChecks.Roles(Enumerable.Range(1, 6).Select(i => new RoleAssignmentInfo("Global Administrator", $"admin{i}", "permanent", null)).ToList());
@@ -96,6 +124,7 @@ public sealed partial class PlanScreenTests
         cut.Find("input[type=checkbox]").Change(true); // with inbox rules
         cut.FindAll("button").First(b => b.TextContent == "Alles nakijken").Click();
         cut.WaitForAssertion(() => Assert.Equal(State.SecurityCheckList().Count, State.SecurityCheckResults.Count), TimeSpan.FromSeconds(5));
+        Assert.Single(_factory.WasRead, w => w == "apps"); // one round reads the app registrations once, for two checks
         Assert.Equal(CheckStatus.Problem, State.SecurityCheckResults["doorsturen"].Status);
         Assert.Equal(CheckStatus.Problem, State.SecurityCheckResults["app-geheimen"].Status);
         Assert.Equal(CheckStatus.Problem, State.SecurityCheckResults["ad-beveiliging"].Status);

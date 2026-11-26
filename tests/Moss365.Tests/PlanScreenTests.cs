@@ -811,10 +811,13 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
                 "externalUserAndGuestSharing", null));
 
         public Task<Core.Security.AppsReading?> ReadAppsAsync(CancellationToken cancel)
-            => Task.FromResult<Core.Security.AppsReading?>(new Core.Security.AppsReading(
+        {
+            f.Read("apps");
+            return Task.FromResult<Core.Security.AppsReading?>(new Core.Security.AppsReading(
                 new[] { new Core.Security.AppCredential("Koppeling HR", "app-1", "geheim", DateTimeOffset.Now.AddDays(-2)), new Core.Security.AppCredential("Scanner", "app-2", "certificaat", DateTimeOffset.Now.AddDays(300)) },
                 new[] { new Core.Security.AppPermission("Koppeling HR", "app-1", "Mail.ReadWrite", "Application", "AllPrincipals", null),
                         new Core.Security.AppPermission("Gratis PDF", "app-3", "Mail.Send", "Delegated", "Principal", "e-bo") }));
+        }
 
         public Task<Core.Security.SecureScoreReading?> ReadSecureScoreAsync(CancellationToken cancel)
             => Task.FromResult<Core.Security.SecureScoreReading?>(new Core.Security.SecureScoreReading(
