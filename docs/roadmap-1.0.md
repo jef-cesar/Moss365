@@ -646,7 +646,8 @@ U14 to U24 interactively on 26 November 2026.
 Order: R0 and R1 first. R2 and R3 belong together (one database per tenant). R4 builds on them, and R11 and R14 build
 on R4. The other steps can be done in a different order if that works better; every step is a release of its own
 (0.10, 0.11, ...). First the move to .NET 10 (U22); then R16 to R20 (U15), in that order; R19 builds on R16 to R18; the
-tests in a test tenant (issue 19) run alongside R16. The review of the
+tests in a test tenant (issue 19) run alongside R16. 0.39.0 brings the first version of R16 to R20; decided on
+26 November 2026: next the rest of R16, R17, R19 and R20, and only then the tests in a test tenant. The review of the
 translations by native speakers (the rest of R15) comes after R20, so that it covers every new text. Then the web
 version: [roadmap-web.md](roadmap-web.md), and Google Workspace (chapter 15).
 

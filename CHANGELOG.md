@@ -4,8 +4,13 @@ Every version becomes a release on GitHub; the section under the version is the 
 
 ## 0.39.0
 
-.NET 10 and the first fixes from the security review of 26 November 2026 (decisions U22 and U23 of the
+.NET 10, the first version of R16 to R20 (security advice, devices and Intune, own data, the overview and access
+reviews) and the fixes from the security review of 26 November 2026 (decisions U14 to U24 of the
 [roadmap](docs/roadmap-1.0.md)).
+
+**After updating**: open *Tenant inrichten* once per tenant: the actions on Intune devices need two new permissions
+(reading works without them). The tenant database gets a table for the logs kept locally; as with every migration, a
+copy of the database is made first.
 
 - **.NET 10** instead of .NET 8: .NET 8 gets no security updates since 10 November 2026, and Moss365 ships the runtime
   itself, so this update also brings a supported runtime (until November 2028). The packages moved along (SQLite,
