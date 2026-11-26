@@ -2,6 +2,7 @@ using System.Globalization;
 using Moss365.Core.Analysis;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -17,7 +18,7 @@ public enum CleanupKind
 /// <summary>An account that qualifies for the cleanup round.</summary>
 public sealed record CleanupCandidate(Person Person, DateTime? LastSignIn, DateTime? Created, bool Privileged)
 {
-    public string Reason => LastSignIn is { } l ? $"laatst aangemeld {l:dd/MM/yyyy}" : "nooit aangemeld (of onbekend)";
+    public string Reason => LastSignIn is { } l ? Texts.T.Format("code.cleanup.last-signed-in", l) : Texts.T["kpi.aanmelding:*"];
 }
 
 /// <summary>
@@ -57,15 +58,15 @@ public static class CleanupPlans
         {
             if (p.Ad is { } ad)
             {
-                var description = $"Uitgeschakeld bij opkuisronde {date:yyyy-MM-dd}" + (string.IsNullOrWhiteSpace(ad.Description) ? string.Empty : " - " + ad.Description.Trim());
+                var description = Texts.T.Format("code.cleanup.disabled-in-clean-up-round", date) + (string.IsNullOrWhiteSpace(ad.Description) ? string.Empty : " - " + ad.Description.Trim());
                 plan.Add(new Change
                 {
                     TargetSystem = TargetSystem.ActiveDirectory,
                     ChangeAction = ChangeAction.AdDisableAccount,
                     Target = ad.DistinguishedName,
                     TargetName = p.Name,
-                    Description = "AD-account uitschakelen (opkuisronde)",
-                    CurrentValue = ad.Enabled ? "ingeschakeld" : "al uitgeschakeld",
+                    Description = Texts.T["code.cleanup.disable-ad-account-clean-up"],
+                    CurrentValue = ad.Enabled ? "ingeschakeld" : Texts.T["code.plan-builder.already-disabled"],
                     NewValue = "uitgeschakeld",
                 });
                 plan.Add(new Change
@@ -76,7 +77,7 @@ public static class CleanupPlans
                     TargetName = p.Name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["description"] = description },
                     Previous = new(StringComparer.OrdinalIgnoreCase) { ["description"] = ad.Description },
-                    Description = "Reden in de omschrijving zetten",
+                    Description = Texts.T["code.cleanup.put-the-reason-in-the"],
                     CurrentValue = ad.Description,
                     NewValue = description,
                 });
@@ -91,14 +92,14 @@ public static class CleanupPlans
                     TargetName = p.Name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["accountEnabled"] = "false" },
                     Previous = new(StringComparer.OrdinalIgnoreCase) { ["accountEnabled"] = e.AccountEnabled ? "true" : "false" },
-                    Description = "Cloudaccount uitschakelen (aanmelden blokkeren, opkuisronde)",
-                    CurrentValue = e.AccountEnabled ? "ingeschakeld" : "al uitgeschakeld",
+                    Description = Texts.T["code.cleanup.disable-cloud-account-block-sign"],
+                    CurrentValue = e.AccountEnabled ? "ingeschakeld" : Texts.T["code.plan-builder.already-disabled"],
                     NewValue = "uitgeschakeld",
                 });
             }
             else
             {
-                errors.Add($"{p.Name}: gesynchroniseerd account zonder AD-gegevens; laad AD en probeer opnieuw.");
+                errors.Add(Texts.T.Format("code.cleanup.synchronised-account-without-ad-data", p.Name));
             }
         }
 
@@ -120,25 +121,25 @@ public static class CleanupPlans
                 .ToList();
             if (own.Count == 0)
             {
-                return selected.Contains(p.Key) ? "niet in het plan" : string.Empty;
+                return selected.Contains(p.Key) ? Texts.T["cleanup.not-in-plan"] : string.Empty;
             }
 
-            return own.All(r => r?.Status == ResultStatus.Succeeded) ? "gelukt"
-                : own.All(r => r is null) ? "niet uitgevoerd"
-                : "mislukt: " + string.Join("; ", own.Where(r => r is not null && r.Status != ResultStatus.Succeeded).Select(r => r!.Message));
+            return own.All(r => r?.Status == ResultStatus.Succeeded) ? Texts.T["cleanup.succeeded"]
+                : own.All(r => r is null) ? Texts.T["cleanup.not-run"]
+                : Texts.T.Format("cleanup.failed", string.Join("; ", own.Where(r => r is not null && r.Status != ResultStatus.Succeeded).Select(r => r!.Message)));
         }
 
-        var decision = kind == CleanupKind.Guests ? "verwijderen" : "uitschakelen";
+        var decision = kind == CleanupKind.Guests ? Texts.T["cleanup.remove"] : Texts.T["cleanup.disable"];
         var path = Path.Combine(folder, $"Opkuisronde-{kind}-{time:yyyyMMdd-HHmm}.csv");
         CsvWriter.Write(path,
-            new[] { "Naam", "UPN", "Bron", "Laatste aanmelding", "Aangemaakt", "Bevoorrecht", "Beslissing", "Resultaat", "Drempel (dagen)", "Nagekeken door", "Datum" },
+            new[] { "cleanup.name", "UPN", "cleanup.source", "cleanup.last-sign-in", "cleanup.created", "cleanup.privileged", "cleanup.decision", "cleanup.result", "cleanup.threshold", "cleanup.checked-by", "cleanup.date" }.Select(h => h.Contains('.') ? Texts.T[h] : h).ToArray(),
             candidates.Select(k => new[]
             {
                 k.Person.Name, k.Person.Upn, k.Person.Source,
-                k.LastSignIn?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "nooit",
+                k.LastSignIn?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? Texts.T["cleanup.never"],
                 k.Created?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
-                k.Privileged ? "ja" : string.Empty,
-                selected.Contains(k.Person.Key) ? decision : "behouden",
+                k.Privileged ? Texts.T["cleanup.yes"] : string.Empty,
+                selected.Contains(k.Person.Key) ? decision : Texts.T["cleanup.keep"],
                 Result(k.Person),
                 days.ToString(CultureInfo.InvariantCulture), byValue, time.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
             }),

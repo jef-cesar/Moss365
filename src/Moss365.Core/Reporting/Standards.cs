@@ -1,4 +1,5 @@
 using Moss365.Core.Security;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Reporting;
 
@@ -18,19 +19,19 @@ public static class Standards
     public const string Nis2 = "NIS2 (art. 21)";
     public const string Cis = "CIS Controls v8";
 
-    public static IReadOnlyList<StandardControl> All { get; } = new[]
+    public static IReadOnlyList<StandardControl> All => new[]
     {
-        new StandardControl(Nis2, "21.2.a", "Risicoanalyse en beleid voor de beveiliging van informatiesystemen", new[] { "secure-score", "gpo", "ad-beveiliging" }, "Secure Score en de AD- en GPO-controle, bewaard in de momentopnames."),
-        new StandardControl(Nis2, "21.2.b", "Incidenten behandelen", new[] { "meldingen", "risico", "doorsturen" }, "Meldingen uit de momentopnames, risicovolle gebruikers en doorsturen naar buiten."),
-        new StandardControl(Nis2, "21.2.d", "Beveiliging van de toeleveringsketen", new[] { "app-rechten", "app-geheimen" }, "Apps met brede rechten en hun geheimen."),
-        new StandardControl(Nis2, "21.2.f", "De doeltreffendheid van de maatregelen beoordelen", new[] { "secure-score" }, "De trend van Secure Score en van de KPI's (rapport per periode)."),
-        new StandardControl(Nis2, "21.2.i", "Toegangsbeheer en beheer van bedrijfsmiddelen", new[] { "rollen", "ad-beveiliging", "meldingen" }, "Beheerrollen, bevoorrechte groepen, het logboek van elke wijziging."),
-        new StandardControl(Nis2, "21.2.j", "Multifactorauthenticatie", new[] { "zwakke-mfa" }, "MFA-methoden per gebruiker en de Conditional Access-controle."),
-        new StandardControl(Cis, "5", "Accountbeheer", new[] { "meldingen", "ad-beveiliging" }, "Inactieve en uitgeschakelde accounts (KPI's), het logboek van in- en uitstroom."),
-        new StandardControl(Cis, "6", "Beheer van toegangsrechten", new[] { "rollen", "zwakke-mfa" }, "Beheerrollen, PIM en MFA."),
-        new StandardControl(Cis, "4", "Veilige configuratie", new[] { "gpo", "secure-score" }, "Groepsbeleid en Secure Score."),
-        new StandardControl(Cis, "8", "Beheer van auditlogs", new[] { "meldingen" }, "Het logboek in Moss365 en de momentopnames van elke lezing."),
-        new StandardControl(Cis, "15", "Beheer van dienstverleners", new[] { "app-rechten", "app-geheimen" }, "Apps van derden met hun rechten."),
+        new StandardControl(Nis2, "21.2.a", Texts.T["standard.nis2.21.2.a"], new[] { "secure-score", "gpo", "ad-beveiliging" }, Texts.T["standard.nis2.21.2.a.evidence"]),
+        new StandardControl(Nis2, "21.2.b", Texts.T["standard.nis2.21.2.b"], new[] { "meldingen", "risico", "doorsturen" }, Texts.T["standard.nis2.21.2.b.evidence"]),
+        new StandardControl(Nis2, "21.2.d", Texts.T["standard.nis2.21.2.d"], new[] { "app-rechten", "app-geheimen" }, Texts.T["standard.nis2.21.2.d.evidence"]),
+        new StandardControl(Nis2, "21.2.f", Texts.T["standard.nis2.21.2.f"], new[] { "secure-score" }, Texts.T["standard.nis2.21.2.f.evidence"]),
+        new StandardControl(Nis2, "21.2.i", Texts.T["standard.nis2.21.2.i"], new[] { "rollen", "ad-beveiliging", "meldingen" }, Texts.T["standard.nis2.21.2.i.evidence"]),
+        new StandardControl(Nis2, "21.2.j", Texts.T["standard.nis2.21.2.j"], new[] { "zwakke-mfa" }, Texts.T["standard.nis2.21.2.j.evidence"]),
+        new StandardControl(Cis, "5", Texts.T["standard.cis.5"], new[] { "meldingen", "ad-beveiliging" }, Texts.T["standard.cis.5.evidence"]),
+        new StandardControl(Cis, "6", Texts.T["standard.cis.6"], new[] { "rollen", "zwakke-mfa" }, Texts.T["standard.cis.6.evidence"]),
+        new StandardControl(Cis, "4", Texts.T["standard.cis.4"], new[] { "gpo", "secure-score" }, Texts.T["standard.cis.4.evidence"]),
+        new StandardControl(Cis, "8", Texts.T["standard.cis.8"], new[] { "meldingen" }, Texts.T["standard.cis.8.evidence"]),
+        new StandardControl(Cis, "15", Texts.T["standard.cis.15"], new[] { "app-rechten", "app-geheimen" }, Texts.T["standard.cis.15.evidence"]),
     };
 
     /// <summary>Every measure with the worst result of its checks; a check that did not run is unknown.</summary>
@@ -40,7 +41,7 @@ public static class Standards
         return All.Select(c =>
         {
             var checks = c.Checks.Where(k => known is null || known.Contains(k)).ToList();
-            var list = checks.Select(k => results.TryGetValue(k, out var r) ? (k, r.Status, r.Summary) : (k, CheckStatus.Unknown, "niet uitgevoerd")).ToList();
+            var list = checks.Select(k => results.TryGetValue(k, out var r) ? (k, r.Status, r.Summary) : (k, CheckStatus.Unknown, Texts.T["cleanup.not-run"])).ToList();
             var status = list.Count == 0 ? CheckStatus.Unknown
                 : list.Any(x => x.Item2 == CheckStatus.Problem) ? CheckStatus.Problem
                 : list.Any(x => x.Item2 == CheckStatus.Attention) ? CheckStatus.Attention

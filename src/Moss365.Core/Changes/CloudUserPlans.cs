@@ -1,6 +1,7 @@
 using Moss365.Core.Analysis;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -29,18 +30,18 @@ public static class CloudUserPlans
         var population = string.IsNullOrWhiteSpace(request.Population) ? null : config.SearchPopulation(request.Population);
         if (!string.IsNullOrWhiteSpace(request.Population) && population is null)
         {
-            errors.Add($"De soort \"{request.Population}\" staat niet in de organisatie.");
+            errors.Add(Texts.T.Format("code.cloud-user-plans.the-kind-is-not-in", request.Population));
         }
 
         if (string.IsNullOrWhiteSpace(request.GivenName) || string.IsNullOrWhiteSpace(request.Surname))
         {
-            errors.Add("Voornaam en achternaam zijn verplicht.");
+            errors.Add(Texts.T["code.plan-builder.first-name-and-last-name"]);
         }
 
         var profile = JobProfiles.Find(config, request.JobProfile);
         if (request.JobProfile is { Length: > 0 } && profile is null)
         {
-            errors.Add("Het gekozen functieprofiel bestaat niet meer.");
+            errors.Add(Texts.T["code.plan-builder.the-chosen-job-profile-no"]);
         }
 
         var departmentValue = string.IsNullOrWhiteSpace(request.Department) ? profile?.Department ?? string.Empty : request.Department;
@@ -49,22 +50,22 @@ public static class CloudUserPlans
         var department = config.SearchDepartment(departmentValue);
         if (population is { City: null } && config.Departments.Count > 0 && department is null)
         {
-            errors.Add("Kies een dienst uit de lijst.");
+            errors.Add(Texts.T["code.plan-builder.choose-a-department-from-the"]);
         }
 
         var domain = (population?.UpnDomain is { Length: > 0 } fromPopulation ? fromPopulation : request.Domain ?? Domains(data).FirstOrDefault() ?? string.Empty).Trim().ToLowerInvariant();
         if (domain.Length == 0)
         {
-            errors.Add("Kies het domein van het nieuwe account.");
+            errors.Add(Texts.T["code.cloud-user-plans.choose-the-domain-of-the"]);
         }
         else if (data.EntraUsers.Count > 0 && !Domains(data).Contains(domain))
         {
-            warnings.Add($"Geen enkel account gebruikt nu het domein {domain}; kijk na of het in Entra geverifieerd is.");
+            warnings.Add(Texts.T.Format("code.cloud-user-plans.no-account-uses-the-domain", domain));
         }
 
         if (!data.HasEntra)
         {
-            warnings.Add("Er zijn geen Entra-gegevens geladen: de app kan niet controleren of de naam al bestaat.");
+            warnings.Add(Texts.T["code.cloud-user-plans.no-entra-data-is-loaded"]);
         }
 
         var local = NamingSettings.Local(request.GivenName, request.Surname, config.Naming.LocalPart);
@@ -76,14 +77,14 @@ public static class CloudUserPlans
             {
                 if (!Exists(data, $"{local}{n}@{domain}"))
                 {
-                    warnings.Add($"{local} bestaat al; voorgesteld: {local}{n}. Controleer of het niet om dezelfde persoon gaat.");
+                    warnings.Add(Texts.T.Format("code.plan-builder.already-exists-suggested-check-that", local, local, n));
                     (upn, local, found) = ($"{local}{n}@{domain}", $"{local}{n}", true);
                 }
             }
 
             if (!found)
             {
-                errors.Add($"Geen vrije naam gevonden voor {local}.");
+                errors.Add(Texts.T.Format("code.plan-builder.no-free-name-found-for", local));
             }
         }
 
@@ -127,7 +128,7 @@ public static class CloudUserPlans
             Target = upn,
             TargetName = view,
             Parameters = parameters,
-            Description = $"Cloudaccount {upn} aanmaken in Entra (ingeschakeld, wachtwoord wijzigen bij eerste aanmelding)",
+            Description = Texts.T.Format("code.cloud-user-plans.create-cloud-account-in-entra", upn),
             NewValue = upn,
             Secret = password,
         };
@@ -138,7 +139,7 @@ public static class CloudUserPlans
             .Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (population is { NoLicence: true } && licences.Count > 0)
         {
-            warnings.Add($"{population.Name} krijgt normaal geen licentie.");
+            warnings.Add(Texts.T.Format("code.plan-builder.normally-gets-no-licence", population.Name));
         }
 
         foreach (var sku in licences)
@@ -146,7 +147,7 @@ public static class CloudUserPlans
             var licence = data.Licences.FirstOrDefault(l => string.Equals(l.SkuPartNumber, sku, StringComparison.OrdinalIgnoreCase));
             if (licence is { Free: 0 })
             {
-                warnings.Add($"Er zijn geen vrije {sku}-licenties ({licence.Assigned}/{licence.Total}). De toekenning zal mislukken tot er een vrijkomt.");
+                warnings.Add(Texts.T.Format("code.plan-builder.there-are-no-free-licences", sku, licence.Assigned, licence.Total));
             }
 
             now.Add(new Change
@@ -156,7 +157,7 @@ public static class CloudUserPlans
                 Target = upn,
                 TargetName = view,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["sku"] = sku, ["skuId"] = licence?.SkuId ?? string.Empty },
-                Description = $"Licentie {sku} toekennen",
+                Description = Texts.T.Format("code.plan-builder.assign-licence", sku),
                 NewValue = sku,
                 DependentOf = create.Id,
             });
@@ -168,15 +169,15 @@ public static class CloudUserPlans
         {
             if (g is null)
             {
-                warnings.Add($"Groep {name} niet gevonden; overgeslagen.");
+                warnings.Add(Texts.T.Format("code.cloud-user-plans.group-not-found-skipped", name));
             }
             else if (g.Dynamic || config.IsDynamicGroup(g.Name) || (g.Ad is { } privileged && MirrorUser.IsPrivileged(privileged)))
             {
-                warnings.Add($"{g.Name} is dynamisch of bevoorrecht; niet gegeven.");
+                warnings.Add(Texts.T.Format("code.cloud-user-plans.is-dynamic-or-privileged-not", g.Name));
             }
             else if (g.Ad is not null)
             {
-                warnings.Add($"{g.Name} is een AD-groep; een cloudaccount kan daar geen lid van zijn. Overgeslagen.");
+                warnings.Add(Texts.T.Format("code.cloud-user-plans.is-an-ad-group-a", g.Name));
             }
             else
             {
@@ -195,7 +196,7 @@ public static class CloudUserPlans
             {
                 if (data.Index.Mailbox(smtp.Trim()) is not { } mailbox)
                 {
-                    warnings.Add($"Postvak {smtp} niet gevonden; overgeslagen.");
+                    warnings.Add(Texts.T.Format("code.cloud-user-plans.mailbox-not-found-skipped", smtp));
                 }
                 else if (data.Index.AccessGroupOf(mailbox) is { } access)
                 {
@@ -203,7 +204,7 @@ public static class CloudUserPlans
                 }
                 else
                 {
-                    warnings.Add($"{mailbox.DisplayName} heeft nog geen toegangsgroep; toegang overgeslagen.");
+                    warnings.Add(Texts.T.Format("code.cloud-user-plans.has-no-access-group-yet", mailbox.DisplayName));
                 }
             }
         }
@@ -233,7 +234,7 @@ public static class CloudUserPlans
                     Target = upn,
                     TargetName = view,
                     Parameters = GroupPlans.P(("groep", GroupPlans.ExoIdentity(g)), ("groepId", g.Cloud?.Id ?? string.Empty), ("groepNaam", g.Name)),
-                    Description = $"Lid maken van {g.Name} (Exchange)" + (g.Name.StartsWith("SG-SM-", StringComparison.OrdinalIgnoreCase) ? ": toegang tot een gedeeld postvak" : string.Empty),
+                    Description = Texts.T.Format(g.Name.StartsWith("SG-SM-", StringComparison.OrdinalIgnoreCase) ? "plan.member-exchange.shared" : "plan.member-exchange", g.Name),
                 });
             }
             else
@@ -245,7 +246,7 @@ public static class CloudUserPlans
                     Target = upn,
                     TargetName = view,
                     Parameters = GroupPlans.P(("groepId", g.Cloud!.Id), ("groep", g.Name)),
-                    Description = $"Lid maken van cloudgroep {g.Name}",
+                    Description = Texts.T.Format("code.plan-builder.make-member-of-cloud-group", g.Name),
                     DependentOf = create.Id,
                 });
             }
