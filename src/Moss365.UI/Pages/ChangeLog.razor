@@ -59,7 +59,7 @@ else
 
         @if (reverse.Plan.Count > 0)
         {
-            <PlanView Plan="reverse.Plan" Context="@reverseContext" Title="Ongedaan maken" Executed="AfterReverse" />
+            <PlanView Plan="reverse.Plan" Context="@reverseContext" Title="@T["change-log.undo"]" Executed="AfterReverse" />
         }
     }
 

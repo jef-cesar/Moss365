@@ -167,7 +167,7 @@ else
     @foreach (var e in outcome.Errors) { <div class="kb-melding">@e</div> }
     @if (outcome.Plan.Count > 0)
     {
-        <PlanView Plan="outcome.Plan" Context="@($"Logonscripts: {selected}")" Title="Logonscripts" Executed="AfterExecute" />
+        <PlanView Plan="outcome.Plan" Context="@($"Logonscripts: {selected}")" Title="@T["menu.logonscripts"]" Executed="AfterExecute" />
     }
 }
 

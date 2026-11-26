@@ -82,7 +82,7 @@ else
         }
         else if (State.Can(Permission.GroupMembers))
         {
-            <ObjectPicker Label="Lid toevoegen" Kinds="MemberKinds" WithGuests="@(groupValue.Ad is null)" Selected="r => Plan(GroupPlans.AddMember(State.Data, groupValue, r))" />
+            <ObjectPicker Label="@T["group-detail.add-member"]" Kinds="MemberKinds" WithGuests="@(groupValue.Ad is null)" Selected="r => Plan(GroupPlans.AddMember(State.Data, groupValue, r))" />
         }
         @if (members.Count > 0)
         {

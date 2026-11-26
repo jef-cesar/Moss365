@@ -193,7 +193,7 @@ else
         }
         @if (restorePlan is not null)
         {
-            <PlanView Plan="restorePlan" Context="@($"Terugzetten {person.Name}")" Title="Terugzetten zoals toen" />
+            <PlanView Plan="restorePlan" Context="@($"Terugzetten {person.Name}")" Title="@T["user-detail.put-back-as-it-was"]" />
         }
     </section>
 }

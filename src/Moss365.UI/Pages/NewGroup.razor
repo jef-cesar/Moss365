@@ -49,7 +49,7 @@
     <PersonPicker Label="@(request.Kind is NewGroupKind.CloudSecurity or NewGroupKind.Microsoft365 ? "Eigenaar" : "Beheerder")"
                    Selected="@(request.Administrator.Length == 0 ? null : State.Data.SearchPerson(request.Administrator))" SelectedChanged="ChooseAdministrator" />
 
-    <ObjectPicker Label="Eerste leden" Kinds="Persons" Selected="AddMember" />
+    <ObjectPicker Label="@T["new-group.first-members"]" Kinds="Persons" Selected="AddMember" />
     @if (request.Members.Count > 0)
     {
         <ul class="kb-lijst">
@@ -72,7 +72,7 @@
 
 @if (plan is not null)
 {
-    <PlanView Plan="plan" Context="@($"Nieuwe groep {request.Name.Trim()}")" Title="Nieuwe groep" Executed="AfterExecute" />
+    <PlanView Plan="plan" Context="@($"Nieuwe groep {request.Name.Trim()}")" Title="@T["new-group.new-group"]" Executed="AfterExecute" />
 }
 
 @code {

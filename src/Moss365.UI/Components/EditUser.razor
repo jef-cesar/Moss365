@@ -57,7 +57,7 @@
                 </label>
             }
         </div>
-        <PersonPicker Label="Manager" Selected="@(string.IsNullOrEmpty(desired.Manager) ? null : State.Data.SearchPerson(desired.Manager))" SelectedChanged="ChooseManager" />
+        <PersonPicker Label="@T["reports.manager"]" Selected="@(string.IsNullOrEmpty(desired.Manager) ? null : State.Data.SearchPerson(desired.Manager))" SelectedChanged="ChooseManager" />
         @if (!string.IsNullOrEmpty(desired.Manager))
         {
             <button class="kb-knop kb-klein" @onclick="() => desired.Manager = string.Empty">@T["edit-user.no-manager"]</button>
@@ -76,7 +76,7 @@
 
 @if (plan is not null)
 {
-    <PlanView Plan="plan" Context="@($"Gegevens {Person.Name}")" Title="Gegevens bewerken" Executed="AfterExecute" />
+    <PlanView Plan="plan" Context="@($"Gegevens {Person.Name}")" Title="@T["edit-user.edit-details"]" Executed="AfterExecute" />
 }
 
 @code {

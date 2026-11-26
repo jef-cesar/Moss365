@@ -53,7 +53,7 @@
     {
         @if (!s.Done)
         {
-            <ScriptOutputList Events="s.Events" Progress="s.Voortgang" Percent="s.Percent" Follow="true" EmptyText="Starten..." />
+            <ScriptOutputList Events="s.Events" Progress="s.Voortgang" Percent="s.Percent" Follow="true" EmptyText="@T["script-run-detail.starting"]" />
         }
         else
         {

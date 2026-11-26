@@ -25,7 +25,7 @@
         <label>@T["variables-editor.name"] <input class="kb-invoer" placeholder="@T["guests.first-name-last-name-company"]" @bind="input.Name" /></label>
     </div>
     <label><input type="checkbox" @bind="input.Message" /> @T["guests.send-invitation-by-e-mail"]</label>
-    <ObjectPicker Label="Meteen in groepen plaatsen (optioneel)" Kinds="GroupKinds" Selected="r => { if (!input.Groups.Contains(r.Key)) input.Groups.Add(r.Key); }" />
+    <ObjectPicker Label="@T["guests.put-in-groups-right-away"]" Kinds="GroupKinds" Selected="r => { if (!input.Groups.Contains(r.Key)) input.Groups.Add(r.Key); }" />
     @if (input.Groups.Count > 0)
     {
         <p>
@@ -63,7 +63,7 @@
 }
 @if (plan is not null)
 {
-    <PlanView Plan="plan" Context="Gastgebruikers" Title="Gastgebruikers" Executed="AfterExecute" />
+    <PlanView Plan="plan" Context="@T["menu.gasten"]" Title="@T["menu.gasten"]" Executed="AfterExecute" />
 }
 
 @code {

@@ -8,7 +8,7 @@ public static class TextScanner
     private static readonly Regex Code = new(@"@code\s*\{.*", RegexOptions.Singleline);
     private static readonly Regex Comment = new(@"@\*.*?\*@", RegexOptions.Singleline);
     private static readonly Regex Node = new(@">([^<>@{}]*[A-Za-zÀ-ÿ][^<>@{}]*)<");
-    private static readonly Regex Attribute = new(@"\b(?:title|aria-label|placeholder|alt)=""([^""@]*[A-Za-zÀ-ÿ][^""@]*)""");
+    private static readonly Regex Attribute = new(@"\b(?:title|aria-label|placeholder|alt|Label|Title|Context|Text|EmptyText|CountText|Description)=""([^""@]*[A-Za-zÀ-ÿ][^""@]*)""");
 
     /// <summary>Code, file names and keys in the text are not translated.</summary>
     private static readonly Regex Literal = new(@"<(code|kbd)>.*?</\1>", RegexOptions.Singleline);
@@ -20,7 +20,7 @@ public static class TextScanner
     private static readonly HashSet<string> Allowed = new(StringComparer.Ordinal)
     {
         "Moss", "365", "The Moss Directory", "GitHub", "Ctrl+K", "AD", "Entra", "Moss365", "Have you tried turning the user off and on again?",
-        "Moss365 - Have you tried turning the user off and on again?", "Tenant",
+        "Moss365 - Have you tried turning the user off and on again?", "Tenant", "routeData",
     };
 
     private static readonly Regex Mixed = new(@">([^<>]*@[^<>]*)<");

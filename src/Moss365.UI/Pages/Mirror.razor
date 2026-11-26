@@ -9,8 +9,8 @@
 </p>
 
 <div class="kb-kolommen">
-    <PersonPicker Label="Referentie (spiegel)" Selected="reference" SelectedChanged="ChooseReference" />
-    <PersonPicker Label="Doel" Selected="target" SelectedChanged="ChooseTarget" />
+    <PersonPicker Label="@T["mirror.reference-mirror"]" Selected="reference" SelectedChanged="ChooseReference" />
+    <PersonPicker Label="@T["mirror.target"]" Selected="target" SelectedChanged="ChooseTarget" />
 </div>
 
 @if (reference is not null && target is not null)
@@ -60,7 +60,7 @@
 
         @if (plan is not null)
         {
-            <PlanView Plan="plan" Context="@($"Spiegel {reference.Name} naar {target.Name}")" Title="Groepen toevoegen" />
+            <PlanView Plan="plan" Context="@($"Spiegel {reference.Name} naar {target.Name}")" Title="@T["mirror.add-groups"]" />
         }
     }
 }

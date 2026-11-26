@@ -32,7 +32,7 @@
             <div class="kb-raster kb-helpdesk-velden">
                 <div class="kb-veld">
                     <span>@T["helpdesk.suggested-password"]</span>
-                    <CopyField Value="@password" Label="Voorgesteld wachtwoord" Secret="true" />
+                    <CopyField Value="@password" Label="@T["helpdesk.suggested-password"]" Secret="true" />
                 </div>
                 <label class="kb-veld">
                     <span>@T.Format("helpdesk.or-choose-yourself-at-least", HelpdeskPlans.MinimumLength)</span>
@@ -82,7 +82,7 @@
 
     @if (plan is not null)
     {
-        <PlanView Plan="plan" Context="@($"Helpdesk {Person.Name}")" Title="Helpdesk" Executed="AfterExecute" />
+        <PlanView Plan="plan" Context="@($"Helpdesk {Person.Name}")" Title="@T["helpdesk.helpdesk"]" Executed="AfterExecute" />
     }
 
     @if (pass is not null)

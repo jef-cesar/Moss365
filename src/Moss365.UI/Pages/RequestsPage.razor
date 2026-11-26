@@ -40,7 +40,7 @@
         }
         else
         {
-            <ObjectPicker Label="Wie vertrekt" Kinds="UserKinds" Selected="o => leaver = o" />
+            <ObjectPicker Label="@T["requests.who-leaves"]" Kinds="UserKinds" Selected="o => leaver = o" />
             @if (leaver is not null) { <p>@Html("requests.leaves", leaver.Name)</p> }
             <label>@T["requests.last-working-day"] <input class="kb-invoer kb-smal" type="date" @bind="date" aria-label="@T["schedule.date"]" /></label>
         }

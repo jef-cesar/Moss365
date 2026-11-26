@@ -73,7 +73,7 @@
         {
         <div>
             <h3>@T["security-card.mfa"]</h3>
-            <Distribution Share="BiStatistics.Mfa(State.KpiSource, Division)" EmptyText="Geen actieve medewerkers." />
+            <Distribution Share="BiStatistics.Mfa(State.KpiSource, Division)" EmptyText="@T["statistics.no-active-employees"]" />
             @if (State.Data.Security is null) { <p class="kb-zacht">@T["statistics.mfa-registrations-not-loaded-yet"]</p> }
         </div>
         }
@@ -83,7 +83,7 @@
         {
         <div>
             <h3>@T["statistics.age-of-the-password-ad"]</h3>
-            <Distribution Share="BiStatistics.PasswordAge(State.KpiSource, Division)" EmptyText="Geen actieve AD-accounts." />
+            <Distribution Share="BiStatistics.PasswordAge(State.KpiSource, Division)" EmptyText="@T["statistics.no-active-ad-accounts"]" />
         </div>
         }
         <div>
@@ -204,7 +204,7 @@
     <section class="kb-kaart">
         <h2>@T["nav.part.Rooms"]</h2>
         <div class="kb-tegels">
-            <Tile Count="s.Rooms" Label="vergaderruimtes" Link="rooms" Attention="false" />
+            <Tile Count="s.Rooms" Label="@T["statistics.meeting-rooms"]" Link="rooms" Attention="false" />
             <Tile Kpi="Kpis.RoomsWithDeviation" />
         </div>
     </section>
@@ -221,7 +221,7 @@
     <div class="kb-tegels">
         <Tile Kpi="Kpis.Succeeded7" />
         <Tile Kpi="Kpis.Failed7" />
-        <Tile Count="State.CountFollowUpTasks" Label="opvolgtaken open" Link="opvolging" />
+        <Tile Count="State.CountFollowUpTasks" Label="@T["statistics.follow-up-tasks-open"]" Link="opvolging" />
     </div>
     <h3>@T["statistics.changes-per-week"]</h3>
     <ColumnChart Columns="perWeek" Title="@T["code.statistics.changes-run-per-week-the"]" ColumnTitle="Week" EmptyText="@T["code.statistics.no-changes-run-in-the"]"

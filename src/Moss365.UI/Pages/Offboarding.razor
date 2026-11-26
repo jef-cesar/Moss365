@@ -17,7 +17,7 @@
     kan je elke stap nog aan- of uitvinken.
 </p>
 
-<PersonPicker Label="Gebruiker" Selected="person" SelectedChanged="Choose" />
+<PersonPicker Label="@T["word.user"]" Selected="person" SelectedChanged="Choose" />
 
 @if (person is not null)
 {
@@ -59,7 +59,7 @@
 
     @if (plan is not null)
     {
-        <PlanView Plan="plan" Context="@($"Uitstroom {person.Name}")" Title="Uitstroom" Executed="AfterExecute" />
+        <PlanView Plan="plan" Context="@($"Uitstroom {person.Name}")" Title="@T["menu.uitstroom"]" Executed="AfterExecute" />
     }
 }
 

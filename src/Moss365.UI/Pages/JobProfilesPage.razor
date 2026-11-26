@@ -100,7 +100,7 @@ else
                 }
                 @if (outcome.Plan.Count > 0)
                 {
-                    <PlanView Plan="outcome.Plan" Context="@($"Functieprofiel {profile.Name} (versie {profile.Version}) voor {person.Name}")" Title="Profiel toepassen" Executed="AfterExecute" />
+                    <PlanView Plan="outcome.Plan" Context="@($"Functieprofiel {profile.Name} (versie {profile.Version}) voor {person.Name}")" Title="@T["job-profiles.apply-profile"]" Executed="AfterExecute" />
                 }
             }
         }

@@ -44,7 +44,7 @@
 
 @if (plan is not null)
 {
-    <PlanView Plan="plan" Context="@($"Opkuisronde {choice.Kind.ToString().ToLowerInvariant()} ({choice.Days} dagen)")" Title="Opkuisronde" Executed="AfterExecute" />
+    <PlanView Plan="plan" Context="@($"Opkuisronde {choice.Kind.ToString().ToLowerInvariant()} ({choice.Days} dagen)")" Title="@T["menu.opkuis"]" Executed="AfterExecute" />
 }
 
 @if (report is not null)

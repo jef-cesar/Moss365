@@ -71,7 +71,7 @@
                         @foreach (var b in Ca.Policies) { <option value="@b.Id">@b.Name</option> }
                     </select>
                 </label>
-                <PersonPicker Label="Wie" @bind-Selected="exclusionPerson" />
+                <PersonPicker Label="@T["script-result.who"]" @bind-Selected="exclusionPerson" />
                 <label>@T["manage-ca.up-to-and-including"] <input type="date" class="kb-invoer" @bind="exclusionUntil" /></label>
                 <div class="kb-filters">
                     <button class="kb-knop kb-primair" disabled="@(ExclusionPolicy is null || exclusionPerson is null)" @onclick="Exclude">@T["bulk-tasks.make-plan"]</button>

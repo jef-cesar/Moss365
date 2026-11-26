@@ -99,7 +99,7 @@ else
 @if (outcome is not null)
 {
     @foreach (var e in outcome.Errors) { <div class="kb-melding">@e</div> }
-    @if (outcome.Plan.Count > 0) { <PlanView Plan="outcome.Plan" Context="Licenties opkuisen" Title="Licenties weghalen" /> }
+    @if (outcome.Plan.Count > 0) { <PlanView Plan="outcome.Plan" Context="@T["licences.clean-up-licences"]" Title="@T["licences.remove-licences"]" /> }
 }
 
 @code {

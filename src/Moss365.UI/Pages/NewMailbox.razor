@@ -26,7 +26,7 @@
         <p class="kb-zacht">@Html("new-mailbox.preview", $"{request.LocalPart.Trim().ToLowerInvariant()}@{request.Domain}", $"SG-SM-{request.LocalPart.Trim().ToLowerInvariant()}-Full")</p>
     }
 
-    <ObjectPicker Label="Wie krijgt toegang?" Kinds="Persons" Selected="Add" />
+    <ObjectPicker Label="@T["new-mailbox.who-gets-access"]" Kinds="Persons" Selected="Add" />
     @if (request.Members.Count > 0)
     {
         <ul class="kb-lijst">
@@ -48,7 +48,7 @@
 }
 @if (plan is not null)
 {
-    <PlanView Plan="plan" Context="@($"Nieuw gedeeld postvak {request.LocalPart}")" Title="Nieuw gedeeld postvak" />
+    <PlanView Plan="plan" Context="@($"Nieuw gedeeld postvak {request.LocalPart}")" Title="@T["new-mailbox.new-shared-mailbox"]" />
 }
 
 @code {

@@ -59,7 +59,7 @@
         {
             <div class="kb-rij">
                 <span class="kb-zacht">ID @k.Id[..Math.Min(8, k.Id.Length)] &middot; @k.VolumeType &middot; @k.Created?.LocalDateTime.ToString("dd/MM/yyyy")</span>
-                <CopyField Value="@(k.Key ?? "(niet leesbaar)")" Label="Herstelsleutel" Secret="false" />
+                <CopyField Value="@(k.Key ?? "(niet leesbaar)")" Label="@T["tenants.recovery-key"]" Secret="false" />
             </div>
         }
         @if (note is not null) { <p class="kb-zacht">@note</p> }
@@ -73,7 +73,7 @@
         @if (laps is { } l)
         {
             <p class="kb-zacht">Account @l.Account &middot; @l.Source @(l.Backup is { } b ? "· bewaard " + b.LocalDateTime.ToString("dd/MM/yyyy HH:mm") : null)</p>
-            <CopyField Value="@(l.Password ?? "(niet leesbaar)")" Label="LAPS-wachtwoord" Secret="true" />
+            <CopyField Value="@(l.Password ?? "(niet leesbaar)")" Label="@T["keys.laps-password"]" Secret="true" />
         }
         else { <p>@T["keys.no-laps-password-found"]</p> }
         @if (note is not null) { <p class="kb-zacht">@note</p> }

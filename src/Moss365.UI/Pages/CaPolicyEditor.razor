@@ -66,8 +66,8 @@ else
             @(Chips(edit.RolesIn, RoleName, T["word.role"]))
             <label><input type="checkbox" checked="@edit.GuestsIn" @onchange="e => Set(() => edit.GuestsIn = e.Value is true)" /> @T["ca-policy-editor.guests-and-external-users"]</label>
             <div class="kb-kolommen">
-                <ObjectPicker Label="Gebruiker opnemen" Kinds="UserKinds" Selected="r => AddUser(edit.UsersIn, r)" />
-                <ObjectPicker Label="Groep opnemen" Kinds="GroupKinds" Selected="r => AddGroup(edit.GroupsIn, r)" />
+                <ObjectPicker Label="@T["ca-policy-editor.include-user"]" Kinds="UserKinds" Selected="r => AddUser(edit.UsersIn, r)" />
+                <ObjectPicker Label="@T["ca-policy-editor.include-group"]" Kinds="GroupKinds" Selected="r => AddGroup(edit.GroupsIn, r)" />
             </div>
             @(RolePicker(edit.RolesIn, "Rol opnemen"))
         }
@@ -84,8 +84,8 @@ else
         @(Chips(edit.RolesOff, RoleName, T["word.role"]))
         <label><input type="checkbox" checked="@edit.GuestsOff" @onchange="e => Set(() => edit.GuestsOff = e.Value is true)" /> @T["ca-policy-editor.exclude-guests-and-external-users"]</label>
         <div class="kb-kolommen">
-            <ObjectPicker Label="Gebruiker uitzonderen" Kinds="UserKinds" Selected="r => AddUser(edit.UsersOff, r)" />
-            <ObjectPicker Label="Groep uitzonderen" Kinds="GroupKinds" Selected="r => AddGroup(edit.GroupsOff, r)" />
+            <ObjectPicker Label="@T["ca-policy-editor.exclude-user"]" Kinds="UserKinds" Selected="r => AddUser(edit.UsersOff, r)" />
+            <ObjectPicker Label="@T["ca-policy-editor.exclude-group"]" Kinds="GroupKinds" Selected="r => AddGroup(edit.GroupsOff, r)" />
         </div>
         @(RolePicker(edit.RolesOff, "Rol uitzonderen"))
     </section>

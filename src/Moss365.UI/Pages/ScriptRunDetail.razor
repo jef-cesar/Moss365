@@ -20,7 +20,7 @@ else
 
     @if (Live is { } s)
     {
-        <ScriptOutputList Events="s.Events" Progress="s.Voortgang" Percent="s.Percent" Follow="true" EmptyText="Starten..." />
+        <ScriptOutputList Events="s.Events" Progress="s.Voortgang" Percent="s.Percent" Follow="true" EmptyText="@T["script-run-detail.starting"]" />
         <div class="kb-filters"><button class="kb-knop" @onclick="State.CancelScript">@T["action.cancel"]</button></div>
     }
     else
