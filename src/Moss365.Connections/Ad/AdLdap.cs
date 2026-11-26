@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Moss365.Core.Inventory;
 using Moss365.Core.Changes;
+using Moss365.Core.Localization;
 
 namespace Moss365.Connections.Ad;
 
@@ -40,7 +41,7 @@ public sealed class AdLdap : IAdConnection, IExecutor
     {
         using var root = Item("RootDSE");
         return root.Properties["defaultNamingContext"].Value?.ToString()
-               ?? throw new InvalidOperationException("De domeincontroller gaf geen domein terug.");
+               ?? throw new InvalidOperationException(Texts.T["code.ad-ldap.the-domain-controller-returned-no"]);
     }
 
     public Task<AdData> ReadAsync(IProgress<string>? progress, CancellationToken cancel) => ReadAsync(null, progress, cancel);
@@ -50,7 +51,7 @@ public sealed class AdLdap : IAdConnection, IExecutor
 
     public Task<AdData> ReadAsync(AdBase? previous, IProgress<string>? progress, CancellationToken cancel) => Task.Run(() =>
     {
-        progress?.Report("AD: verbinden met " + _server + "...");
+        progress?.Report(Texts.T.Format("code.ad-ldap.ad-connecting-to", _server));
         var domainDn = ReadDomainDn();
 
         // The state before reading: what changes during the read comes along again the next time
@@ -60,7 +61,7 @@ public sealed class AdLdap : IAdConnection, IExecutor
         if (previous is not null && snapshot is not null && AdLdapMapper.CanContinueFrom(previous.Snapshot, snapshot))
         {
             var since = $"(uSNChanged>={previous.Snapshot.HighestUsn + 1})";
-            progress?.Report("AD: enkel de wijzigingen sinds de vorige lezing...");
+            progress?.Report(Texts.T["code.ad-ldap.ad-only-the-changes-since"]);
             var changedUsers = Find(baseline, $"(&{UserFilter}{since})", AdLdapMapper.UserAttributes, cancel)
                 .Select(AdLdapMapper.ToUser).ToList();
             var changedGroups = Find(baseline, $"(&{GroupFilter}{since})", AdLdapMapper.GroupAttributes, cancel)
@@ -70,19 +71,19 @@ public sealed class AdLdap : IAdConnection, IExecutor
             var allUsers = Names(baseline, UserFilter, cancel);
             var allGroups = Names(baseline, GroupFilter, cancel);
             var (g, gr) = AdDelta.Apply(previous, changedUsers, changedGroups, allUsers, allGroups);
-            progress?.Report($"AD: {changedUsers.Count} gewijzigde gebruikers en {changedGroups.Count} gewijzigde groepen bijgewerkt ({g.Count} en {gr.Count} in totaal).");
+            progress?.Report(Texts.T.Format("code.ad-ldap.ad-changed-users-and-changed", changedUsers.Count, changedGroups.Count, g.Count, gr.Count));
             return new AdData(g, gr, domainDn, snapshot, Quick: true);
         }
 
-        progress?.Report("AD: gebruikers lezen...");
+        progress?.Report(Texts.T["code.ad-ldap.ad-reading-users"]);
         var users = Find(baseline, UserFilter, AdLdapMapper.UserAttributes, cancel)
             .Select(AdLdapMapper.ToUser).ToList();
 
-        progress?.Report("AD: groepen lezen...");
+        progress?.Report(Texts.T["code.ad-ldap.ad-reading-groups"]);
         var groups = Find(baseline, GroupFilter, AdLdapMapper.GroupAttributes, cancel)
             .Select(AdLdapMapper.ToGroup).ToList();
 
-        progress?.Report($"AD: {users.Count} gebruikers en {groups.Count} groepen gelezen.");
+        progress?.Report(Texts.T.Format("code.ad-ldap.ad-users-and-groups-read", users.Count, groups.Count));
         return new AdData(users, groups, domainDn, snapshot);
     }, cancel);
 
@@ -149,11 +150,11 @@ public sealed class AdLdap : IAdConnection, IExecutor
         }
         else if (First("ms-Mcs-AdmPwd") is { } legacy)
         {
-            laps = new Core.Helpdesk.LapsPassword("Administrator", legacy, null, "LAPS (oud) in AD");
+            laps = new Core.Helpdesk.LapsPassword("Administrator", legacy, null, Texts.T["code.ad-ldap.laps-legacy-in-ad"]);
         }
         else if (computer.ContainsKey("msLAPS-EncryptedPassword"))
         {
-            note = "Het LAPS-wachtwoord staat versleuteld in AD: bekijk het met de LAPS-tools van Windows.";
+            note = Texts.T["code.ad-ldap.the-laps-password-is-encrypted"];
         }
 
         var dn = First("distinguishedName") ?? string.Empty;
@@ -292,7 +293,7 @@ public sealed class AdLdap : IAdConnection, IExecutor
     {
         if (cancel.IsCancellationRequested)
         {
-            return ChangeResult.Skip(w, "Geannuleerd.");
+            return ChangeResult.Skip(w, Texts.T["code.script-running.cancelled"]);
         }
 
         try
@@ -352,7 +353,7 @@ public sealed class AdLdap : IAdConnection, IExecutor
                     }
 
                     groupValue.CommitChanges();
-                    return ChangeResult.Ok(w, "Aangemaakt.");
+                    return ChangeResult.Ok(w, Texts.T["code.ad-ldap.created"]);
                 }
 
                 case ChangeAction.AdDisableAccount:
@@ -388,11 +389,11 @@ public sealed class AdLdap : IAdConnection, IExecutor
                 {
                     if (_netlogon is null)
                     {
-                        return ChangeResult.Error(w, "NETLOGON is niet bereikbaar.");
+                        return ChangeResult.Error(w, Texts.T["code.ad-ldap.netlogon-is-not-reachable"]);
                     }
 
                     _netlogon.Write(w.Target, w.P("inhoud"));
-                    return ChangeResult.Ok(w, $"Bewaard in {_netlogon.Location}");
+                    return ChangeResult.Ok(w, Texts.T.Format("code.ad-ldap.saved-in", _netlogon.Location));
                 }
 
                 case ChangeAction.AdMove:
@@ -404,12 +405,12 @@ public sealed class AdLdap : IAdConnection, IExecutor
                 }
 
                 default:
-                    return ChangeResult.Error(w, $"Actie {w.ChangeAction} hoort niet bij AD.");
+                    return ChangeResult.Error(w, Texts.T.Format("code.ad-ldap.action-does-not-belong-to", w.ChangeAction));
             }
         }
         catch (COMException ex) when (ex.HResult == AlreadyPresent && w.ChangeAction == ChangeAction.AdAddGroupMember)
         {
-            return ChangeResult.Ok(w, "Was al lid.");
+            return ChangeResult.Ok(w, Texts.T["result.already-member"]);
         }
         catch (Exception ex)
         {
@@ -422,7 +423,7 @@ public sealed class AdLdap : IAdConnection, IExecutor
     {
         if (string.IsNullOrEmpty(w.Secret))
         {
-            return ChangeResult.Error(w, "Geen wachtwoord meegegeven (het leeft enkel in het geheugen; maak het plan opnieuw).");
+            return ChangeResult.Error(w, Texts.T["code.ad-ldap.no-password-given-it-lives"]);
         }
 
         using var item = Item(w.Target);
@@ -439,14 +440,14 @@ public sealed class AdLdap : IAdConnection, IExecutor
         var change = string.Equals(w.P("wijzigenBijAanmelding"), "True", StringComparison.OrdinalIgnoreCase);
         item.Properties["pwdLastSet"].Value = change ? 0 : -1;
         item.CommitChanges();
-        return ChangeResult.Ok(w, change ? "Ingesteld; wijzigen bij de volgende aanmelding." : "Ingesteld.");
+        return ChangeResult.Ok(w, change ? Texts.T["code.ad-ldap.set-change-at-the-next"] : Texts.T["code.ad-ldap.set"]);
     }
 
     private ChangeResult Create(Change w)
     {
         if (string.IsNullOrEmpty(w.Secret))
         {
-            return ChangeResult.Error(w, "Geen startwachtwoord: het account is niet aangemaakt.");
+            return ChangeResult.Error(w, Texts.T["code.ad-ldap.no-initial-password-the-account"]);
         }
 
         using var ou = Item(w.P("ou"));
@@ -473,9 +474,9 @@ public sealed class AdLdap : IAdConnection, IExecutor
         catch (Exception ex)
         {
             var reason = ex.InnerException?.Message ?? ex.Message;
-            return ChangeResult.Error(w, $"Account aangemaakt maar nog uitgeschakeld: wachtwoord instellen mislukt ({reason.Trim()}).");
+            return ChangeResult.Error(w, Texts.T.Format("code.ad-ldap.account-created-but-still-disabled", reason.Trim()));
         }
 
-        return ChangeResult.Ok(w, "Aangemaakt en ingeschakeld.");
+        return ChangeResult.Ok(w, Texts.T["code.ad-ldap.created-and-enabled"]);
     }
 }

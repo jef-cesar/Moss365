@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Moss365.Core.Changes;
 using Moss365.Core.Setup;
+using Moss365.Core.Localization;
 
 namespace Moss365.Connections.Graph;
 
@@ -235,7 +236,7 @@ public sealed class TenantSetupConnection : ITenantSetupConnection
                 }
                 catch (GraphError ex) when (ex.Status == HttpStatusCode.BadRequest && ex.Message.Contains("already exist", StringComparison.OrdinalIgnoreCase))
                 {
-                    return ChangeResult.Ok(w, "Was al toegewezen.");
+                    return ChangeResult.Ok(w, Texts.T["result.already-assigned"]);
                 }
 
                 return ChangeResult.Ok(w);

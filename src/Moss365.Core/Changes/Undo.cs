@@ -209,7 +209,12 @@ public static class Undo
     private static bool WasAlreadySo(LogEntry r)
         => r.Message.StartsWith("Was al", StringComparison.OrdinalIgnoreCase)
            || r.Message.StartsWith("Had geen", StringComparison.OrdinalIgnoreCase)
-           || r.Message.Contains("al niet meer", StringComparison.OrdinalIgnoreCase);
+           || r.Message.Contains("al niet meer", StringComparison.OrdinalIgnoreCase)
+           || AlreadyKeys.Any(k => Translator.Dictionaries.Values.Any(d => d.TryGetValue(k, out var t) && string.Equals(t, r.Message.Trim(), StringComparison.OrdinalIgnoreCase)));
+
+    /// <summary>The results that mean "it was already so", in every language (R15: the message is written in the
+    /// language of whoever ran the plan).</summary>
+    private static readonly string[] AlreadyKeys = { "result.already-member", "result.already-owner", "result.no-licences", "result.already-assigned" };
 
     /// <summary>The AD group with this DN from the data, or (not loaded) a group with only a name and DN.</summary>
     private static AdGroup? AdGroup(string dn, InventoryData? data)

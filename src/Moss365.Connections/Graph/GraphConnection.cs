@@ -4,6 +4,7 @@ using System.Text.Json;
 using Moss365.Core.Analysis;
 using Moss365.Core.Inventory;
 using Moss365.Core.Changes;
+using Moss365.Core.Localization;
 
 namespace Moss365.Connections.Graph;
 
@@ -67,16 +68,16 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         {
             try
             {
-                progress?.Report("Entra: enkel de gewijzigde groepen...");
+                progress?.Report(Texts.T["code.graph-connection.entra-only-the-changed-groups"]);
                 var (items, link) = await ReadGroupDeltaAsync(baseline.DeltaLink, cancel);
                 var (groups, member) = GraphDelta.Apply(baseline, items);
-                progress?.Report($"Entra: {users.Count} gebruikers gelezen, {items.Count} groepswijzigingen toegepast ({groups.Count} groepen).");
+                progress?.Report(Texts.T.Format("code.graph-connection.entra-users-read-group-changes", users.Count, items.Count, groups.Count));
                 return new GraphData(users, groups, member, licences, link, Quick: true);
             }
             catch (GraphError ex)
             {
                 // E.g. 410 Gone (the starting point is too old): then read everything
-                progress?.Report($"Entra: wijzigingen niet beschikbaar ({ex.Message}); alle groepen lezen.");
+                progress?.Report(Texts.T.Format("code.graph-connection.entra-changes-not-available-reading", ex.Message));
             }
         }
 
@@ -93,7 +94,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
 
         var (allGroups, membership) = await ReadGroupsFullAsync(progress, cancel);
-        progress?.Report($"Entra: {users.Count} gebruikers en {allGroups.Count} groepen gelezen.");
+        progress?.Report(Texts.T.Format("code.graph-connection.entra-users-and-groups-read", users.Count, allGroups.Count));
         return new GraphData(users, allGroups, membership, licences, deltaLink);
     }
 
@@ -167,7 +168,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
     private async Task<(List<EntraUser> Users, List<Licence> Licences)> ReadUsersAndLicencesAsync(IProgress<string>? progress, CancellationToken cancel)
     {
-        progress?.Report("Entra: licenties...");
+        progress?.Report(Texts.T["code.graph-connection.entra-licences"]);
         var skus = await _client.GetAllAsync("/subscribedSkus?$select=skuId,skuPartNumber,consumedUnits,prepaidUnits", cancel);
         var licences = skus.Select(s => new Licence(
             S(s, "skuId"), S(s, "skuPartNumber"), s.TryGetProperty("consumedUnits", out var c) ? c.GetInt32() : 0,
@@ -183,7 +184,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.BadRequest)
         {
             // The last sign-in needs AuditLog.Read.All and Entra ID P1; continue without that data
-            progress?.Report("Entra: laatste aanmelding niet beschikbaar, verder zonder.");
+            progress?.Report(Texts.T["code.graph-connection.entra-last-sign-in-not"]);
             rawUsers = await _client.GetAllAsync($"/users?$select={UserFields}&$top=999", cancel);
         }
 
@@ -199,7 +200,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
         catch (GraphError)
         {
-            progress?.Report("Entra: managers niet beschikbaar, verder zonder.");
+            progress?.Report(Texts.T["code.graph-connection.entra-managers-not-available-continuing"]);
         }
 
         return (users, licences);
@@ -207,7 +208,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
     private async Task<(List<CloudGroup> Groups, Dictionary<string, HashSet<string>> Membership)> ReadGroupsFullAsync(IProgress<string>? progress, CancellationToken cancel)
     {
-        progress?.Report("Entra: groepen...");
+        progress?.Report(Texts.T["code.graph-connection.entra-groups"]);
         var rawGroups = await _client.GetAllAsync($"/groups?$select={GroupFields}&$top=999", cancel);
 
         var membership = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
@@ -424,7 +425,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
         catch (GraphError)
         {
-            note = "Het berichtencentrum is niet leesbaar (recht ServiceMessage.Read.All; voer Tenant inrichten opnieuw uit).";
+            note = Texts.T["code.graph-connection.the-message-center-cannot-be"];
         }
 
         return new Core.Reporting.ServiceHealthReading(services, issues, messages, note);
@@ -462,7 +463,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
         catch (GraphError)
         {
-            notes.Add("Het gebruiksrapport van de groepen is niet leesbaar (recht Reports.Read.All).");
+            notes.Add(Texts.T["code.graph-connection.the-usage-report-of-the"]);
         }
 
         foreach (var g in await _client.GetAllAsync("/groups?$filter=groupTypes/any(c:c eq 'Unified')&$select=id,displayName,resourceProvisioningOptions&$expand=owners($select=id)&$top=100", cancel))
@@ -489,7 +490,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
         catch (GraphError)
         {
-            notes.Add("Het gebruiksrapport van SharePoint is niet leesbaar (recht Reports.Read.All).");
+            notes.Add(Texts.T["code.graph-connection.the-usage-report-of-sharepoint"]);
         }
 
         string? sharing = null;
@@ -499,12 +500,12 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
         catch (GraphError)
         {
-            notes.Add("De deelinstelling van SharePoint is niet leesbaar (recht SharePointTenantSettings.Read.All).");
+            notes.Add(Texts.T["code.graph-connection.the-sharing-setting-of-sharepoint"]);
         }
 
         if (sites.Count > 0 && sites.All(s => s.Url.Length == 0))
         {
-            notes.Add("De rapporten tonen geen namen: zet in het Microsoft 365-beheercentrum 'Namen verbergen in rapporten' uit om sites te zien.");
+            notes.Add(Texts.T["code.graph-connection.the-reports-show-no-names"]);
         }
 
         return new Core.Devices.CollaborationReading(groups, sites, string.IsNullOrEmpty(sharing) ? null : sharing, notes.Count == 0 ? null : string.Join(" ", notes));
@@ -662,7 +663,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
     public async Task<SecurityData?> ReadSecurityAsync(IProgress<string>? progress, CancellationToken cancel)
     {
-        progress?.Report("Entra: MFA-registraties...");
+        progress?.Report(Texts.T["code.graph-connection.entra-mfa-registrations"]);
         IReadOnlyList<MfaRegistration> mfa = Array.Empty<MfaRegistration>();
         string? mfaMessage = null;
         try
@@ -672,10 +673,10 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
         catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized or HttpStatusCode.BadRequest)
         {
-            mfaMessage = "Niet leesbaar: je account heeft de rol Reports Reader, Security Reader of Global Reader nodig, en de tenant Entra ID P1 (" + ex.Message + ")";
+            mfaMessage = Texts.T.Format("code.graph-connection.cannot-be-read-your-account", ex.Message);
         }
 
-        progress?.Report("Entra: beheerrollen...");
+        progress?.Report(Texts.T["code.graph-connection.entra-admin-roles"]);
         var roles = new List<RoleMember>();
         string? rolesMessage = null;
         try
@@ -689,10 +690,10 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
         catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
         {
-            rolesMessage = "Niet leesbaar: " + ex.Message;
+            rolesMessage = Texts.T.Format("code.graph-connection.cannot-be-read", ex.Message);
         }
 
-        progress?.Report($"Entra: {mfa.Count} MFA-registraties en {roles.Count} rollidmaatschappen gelezen.");
+        progress?.Report(Texts.T.Format("code.graph-connection.entra-mfa-registrations-and-role", mfa.Count, roles.Count));
         return new SecurityData(mfa, roles, mfaMessage, rolesMessage);
     }
 
@@ -783,7 +784,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
     public async Task<CaData?> ReadConditionalAccessAsync(IProgress<string>? progress, CancellationToken cancel)
     {
-        progress?.Report("Entra: Conditional Access-beleiden...");
+        progress?.Report(Texts.T["code.graph-connection.entra-conditional-access-policies"]);
         List<CaPolicy> policies;
         try
         {
@@ -792,9 +793,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized or HttpStatusCode.BadRequest)
         {
             return new CaData(Array.Empty<CaPolicy>(), Array.Empty<NamedLocation>(), Array.Empty<AuthenticationStrength>(),
-                new Dictionary<string, string>(), null,
-                "Niet leesbaar: de app-registratie heeft het recht Policy.Read.All nodig (Tenant inrichten opnieuw nakijken) en je account "
-                + "de rol Security Reader, Global Reader of Conditional Access Administrator (" + ex.Message + ")");
+                new Dictionary<string, string>(), null,Texts.T.Format("code.graph-connection.cannot-be-read-the-app", ex.Message));
         }
 
         var locations = new List<NamedLocation>();
@@ -853,7 +852,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             groupMembers = null;
         }
 
-        progress?.Report($"Entra: {policies.Count} Conditional Access-beleiden en {locations.Count} benoemde locaties gelezen.");
+        progress?.Report(Texts.T.Format("code.graph-connection.entra-conditional-access-policies-and", policies.Count, locations.Count));
         return new CaData(policies.OrderBy(b => b.Name, StringComparer.CurrentCultureIgnoreCase).ToList(), locations, strengths, roles, defaults,
             null, groupMembers);
     }
@@ -1013,7 +1012,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         var memberId = member.Contains('@') ? await FindUserIdAsync(member, cancel) : member;
         if (string.IsNullOrEmpty(memberId))
         {
-            return ChangeResult.Error(w, $"{member} bestaat niet in Entra.");
+            return ChangeResult.Error(w, Texts.T.Format("code.group-plans.does-not-exist-in-entra", member));
         }
 
         if (w.ChangeAction == ChangeAction.GraphAddOwner)
@@ -1025,7 +1024,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             }
             catch (GraphError ex) when (ex.Status == HttpStatusCode.BadRequest && ex.Message.Contains("already exist", StringComparison.OrdinalIgnoreCase))
             {
-                return ChangeResult.Ok(w, "Was al eigenaar.");
+                return ChangeResult.Ok(w, Texts.T["result.already-owner"]);
             }
 
             return ChangeResult.Ok(w);
@@ -1039,13 +1038,13 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
     /// log).</summary>
     private async Task<ChangeResult> RunCaAsync(Change w, CancellationToken cancel)
     {
-        var content = System.Text.Json.Nodes.JsonNode.Parse(w.P("json")) ?? throw new InvalidOperationException("Geen JSON in de wijziging.");
+        var content = System.Text.Json.Nodes.JsonNode.Parse(w.P("json")) ?? throw new InvalidOperationException(Texts.T["code.graph-connection.no-json-in-the-change"]);
         switch (w.ChangeAction)
         {
             case ChangeAction.GraphCreateCaPolicy:
             {
                 var newValue = await _client.PostWithResponseAsync("/identity/conditionalAccess/policies", content, cancel);
-                return ChangeResult.Ok(w, $"Gemaakt; id {S(newValue, "id")}");
+                return ChangeResult.Ok(w, Texts.T.Format("result.created-id", S(newValue, "id")));
             }
 
             case ChangeAction.GraphUpdateCaPolicy:
@@ -1055,7 +1054,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             case ChangeAction.GraphCreateCaLocation:
             {
                 var newValue = await _client.PostWithResponseAsync("/identity/conditionalAccess/namedLocations", content, cancel);
-                return ChangeResult.Ok(w, $"Gemaakt; id {S(newValue, "id")}");
+                return ChangeResult.Ok(w, Texts.T.Format("result.created-id", S(newValue, "id")));
             }
 
             default:
@@ -1130,7 +1129,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         }
 
         var groupValue = await _client.PostWithResponseAsync("/groups", content, cancel);
-        return ChangeResult.Ok(w, $"Aangemaakt; id {S(groupValue, "id")}");
+        return ChangeResult.Ok(w, Texts.T.Format("result.created-id", S(groupValue, "id")));
     }
 
     /// <summary>A new cloud user (0.31): enabled, with the first password from the plan (never logged), to change at
@@ -1139,7 +1138,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
     {
         if (string.IsNullOrEmpty(w.Secret))
         {
-            return ChangeResult.Error(w, "Geen beginwachtwoord in het plan.");
+            return ChangeResult.Error(w, Texts.T["code.graph-connection.no-initial-password-in-the"]);
         }
 
         var content = new Dictionary<string, object>
@@ -1165,7 +1164,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             _created[w.Target] = id;
         }
 
-        return ChangeResult.Ok(w, $"Aangemaakt; id {id}");
+        return ChangeResult.Ok(w, Texts.T.Format("code.graph-connection.created-id", id));
     }
 
     private async Task<ChangeResult> RunAsync(Change w, CancellationToken cancel)
@@ -1192,7 +1191,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                     _created[w.Target] = id;
                 }
 
-                return ChangeResult.Ok(w, $"Uitgenodigd; id {id}");
+                return ChangeResult.Ok(w, Texts.T.Format("code.graph-connection.invited-id", id));
             }
 
             if (w.ChangeAction == ChangeAction.GraphCreateUser)
@@ -1210,7 +1209,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                         ["isUsableOnce"] = string.Equals(w.P("eenmalig"), "True", StringComparison.OrdinalIgnoreCase),
                     }, cancel);
                 w.Secret = S(tap, "temporaryAccessPass");
-                return ChangeResult.Ok(w, $"Gemaakt; geldig vanaf {S(tap, "startDateTime")}");
+                return ChangeResult.Ok(w, Texts.T.Format("result.tap-created", S(tap, "startDateTime")));
             }
 
             if (w.ChangeAction == ChangeAction.GraphSendMail)
@@ -1246,17 +1245,17 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                 var guest = await _client.GetAsync($"/users/{Uri.EscapeDataString(w.Target)}?$select=id,userType,userPrincipalName", cancel);
                 if (!string.Equals(S(guest, "userType"), "Guest", StringComparison.OrdinalIgnoreCase))
                 {
-                    return ChangeResult.Error(w, "Dit is geen gastaccount; de app verwijdert enkel gasten.");
+                    return ChangeResult.Error(w, Texts.T["code.graph-connection.this-is-not-a-guest"]);
                 }
 
                 await _client.DeleteAsync($"/users/{S(guest, "id")}", cancel);
-                return ChangeResult.Ok(w, "Verwijderd; 30 dagen terug te zetten via Entra > Verwijderde gebruikers.");
+                return ChangeResult.Ok(w, Texts.T["code.graph-connection.removed-can-be-restored-for"]);
             }
 
             var userId = w.Target.Contains('@') ? await FindUserIdAsync(w.Target, cancel) : w.Target;
             if (userId is null)
             {
-                return ChangeResult.Error(w, $"{w.Target} bestaat (nog) niet in Entra.");
+                return ChangeResult.Error(w, Texts.T.Format("code.graph-connection.does-not-exist-in-entra", w.Target));
             }
 
             switch (w.ChangeAction)
@@ -1269,7 +1268,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                     }
                     catch (GraphError ex) when (ex.Status == HttpStatusCode.BadRequest && ex.Message.Contains("already exist", StringComparison.OrdinalIgnoreCase))
                     {
-                        return ChangeResult.Ok(w, "Was al lid.");
+                        return ChangeResult.Ok(w, Texts.T["result.already-member"]);
                     }
 
                     return ChangeResult.Ok(w);
@@ -1291,7 +1290,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                         }
                         catch (GraphError ex) when (ex.Status == HttpStatusCode.NotFound)
                         {
-                            return ChangeResult.Ok(w, "Had al geen manager.");
+                            return ChangeResult.Ok(w, Texts.T["code.graph-connection.already-had-no-manager"]);
                         }
                     }
                     else
@@ -1312,7 +1311,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                             .Select(s => S(s, "skuId")).FirstOrDefault() ?? string.Empty;
                         if (skuId.Length == 0)
                         {
-                            return ChangeResult.Error(w, $"Licentie {w.P("sku")} bestaat niet in deze tenant.");
+                            return ChangeResult.Error(w, Texts.T.Format("result.licence-unknown", w.P("sku")));
                         }
                     }
 
@@ -1337,12 +1336,12 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
                     if (ids.Length == 0)
                     {
-                        return ChangeResult.Ok(w, "Had geen licenties.");
+                        return ChangeResult.Ok(w, Texts.T["result.no-licences"]);
                     }
 
                     await _client.PostAsync($"/users/{userId}/assignLicense",
                         new { addLicenses = Array.Empty<object>(), removeLicenses = ids }, cancel);
-                    return ChangeResult.Ok(w, $"{ids.Length} licentie(s) verwijderd.");
+                    return ChangeResult.Ok(w, Texts.T.Format("code.graph-connection.licence-s-removed", ids.Length));
                 }
 
                 case ChangeAction.GraphRevokeSessions:
@@ -1350,7 +1349,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                     return ChangeResult.Ok(w);
 
                 default:
-                    return ChangeResult.Error(w, $"Actie {w.ChangeAction} hoort niet bij Graph.");
+                    return ChangeResult.Error(w, Texts.T.Format("code.graph-connection.action-does-not-belong-to", w.ChangeAction));
             }
         }
         catch (Exception ex)
