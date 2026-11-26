@@ -2,7 +2,7 @@
 @using Moss365.Core.Analysis
 @inherits RefreshingPage
 
-<h1>Statistieken</h1>
+<h1>@T["menu.statistieken"]</h1>
 
 <p class="kb-zacht">
     Indicatoren uit de geladen gegevens (@State.OriginOf(new ObjectRef(ObjectKind.User, "", ""))). Klik op een tegel, een staaf of
@@ -10,7 +10,7 @@
 </p>
 
 <section class="kb-kaart">
-    <h2>Accounts</h2>
+    <h2>@T["start.accounts"]</h2>
     <div class="kb-tegels">
         <Tile Kpi="Kpis.Active" />
         <Tile Kpi="Kpis.Disabled" />
@@ -28,14 +28,13 @@
         }
     </div>
     <p class="kb-zacht">
-        Gedeelde postvakken, rooms en planningspostvakken hebben ook een account, maar niemand meldt zich ermee aan. Ze tellen
-        niet mee bij de medewerkers, de aanmeldingen en MFA.
+        @T["statistics.shared-mailboxes-rooms-and-scheduling"]
     </p>
 </section>
 
 <section class="kb-kaart">
-    <h2>Aandachtspunten</h2>
-    <p class="kb-zacht">Signalen om na te kijken, geen conclusies. Actieve accounts.</p>
+    <h2>@T["statistics.points-of-attention"]</h2>
+    <p class="kb-zacht">@T["statistics.signals-to-check-not-conclusions"]</p>
     <div class="kb-tegels">
         <Tile Kpi="Kpis.Inactive90" />
         <Tile Kpi="Kpis.Inactive180" />
@@ -54,11 +53,11 @@
 
 <section class="kb-kaart">
     <div class="kb-titelbalk">
-        <h2>Medewerkers in beeld</h2>
+        <h2>@T["statistics.employees-in-view"]</h2>
         <label class="kb-schuif">
-            Afdeling
-            <select class="kb-invoer" @bind="f.Division" aria-label="Filter op afdeling">
-                <option value="">Alle afdelingen</option>
+            @T["statistics.division"]
+            <select class="kb-invoer" @bind="f.Division" aria-label="@T["statistics.filter-on-division"]">
+                <option value="">@T["statistics.all-divisions"]</option>
                 @foreach (var a in Divisions) { <option value="@a">@a</option> }
             </select>
         </label>
@@ -68,15 +67,15 @@
     </p>
     <div class="kb-kolommen">
         <div>
-            <h3>Laatste aanmelding</h3>
+            <h3>@T["statistics.last-sign-in"]</h3>
             <Distribution Share="BiStatistics.SignInRecency(State.KpiSource, Division)" />
         </div>
         @if (State.HasMicrosoft365)
         {
         <div>
-            <h3>MFA</h3>
+            <h3>@T["security-card.mfa"]</h3>
             <Distribution Share="BiStatistics.Mfa(State.KpiSource, Division)" EmptyText="Geen actieve medewerkers." />
-            @if (State.Data.Security is null) { <p class="kb-zacht">MFA-registraties nog niet geladen: alles staat op onbekend.</p> }
+            @if (State.Data.Security is null) { <p class="kb-zacht">@T["statistics.mfa-registrations-not-loaded-yet"]</p> }
         </div>
         }
     </div>
@@ -84,27 +83,26 @@
         @if (State.HasAd)
         {
         <div>
-            <h3>Leeftijd van het wachtwoord (AD)</h3>
+            <h3>@T["statistics.age-of-the-password-ad"]</h3>
             <Distribution Share="BiStatistics.PasswordAge(State.KpiSource, Division)" EmptyText="Geen actieve AD-accounts." />
         </div>
         }
         <div>
-            <h3>Per kantoor</h3>
+            <h3>@T["statistics.per-office"]</h3>
             <BarList Bars="PerOffice" />
         </div>
     </div>
-    <h3>Nieuwe accounts per maand</h3>
+    <h3>@T["statistics.new-accounts-per-month"]</h3>
     <ColumnChart Columns="BiStatistics.CreatedPerMonth(State.KpiSource, Division)" Title="Nieuwe accounts per maand, de laatste 12 maanden" ColumnTitle="Maand"
                   Series="@(new[] { new ColumnChart.SeriesItem("Nieuwe accounts") })" />
 </section>
 
 <section class="kb-kaart">
-    <h2>Verloop</h2>
+    <h2>@T["statistics.trend"]</h2>
     <p class="kb-zacht">
-        Na elk live laden bewaart de app de stand van de dag (enkel aantallen, geen namen); ontbreekt een dag, dan rekent
-        <a href="geschiedenis">Geschiedenis</a> hem opnieuw uit de momentopnamen. Elke KPI heeft zijn eigen schaal.
+        @Html("statistics.history")
     </p>
-    <span class="kb-segment" role="group" aria-label="Verloop per">
+    <span class="kb-segment" role="group" aria-label="@T["statistics.trend-per"]">
         @foreach (var (p, text) in new[] { (TrendPeriod.Day, "Dag"), (TrendPeriod.Week, "Week"), (TrendPeriod.Month, "Maand"), (TrendPeriod.Year, "Jaar") })
         {
             <button class="kb-knop @(period == p ? "kb-primair" : null)" aria-pressed="@(period == p)" @onclick="() => ChoosePeriod(p)">@text</button>
@@ -121,10 +119,10 @@
 @if (State.HasMicrosoft365)
 {
 <section class="kb-kaart">
-    <h2>Beveiliging</h2>
+    <h2>@T["group.beveiliging"]</h2>
     @if (s.Security is not { } bv)
     {
-        <p class="kb-zacht">MFA en beheerrollen zijn nog niet geladen (Verbindingen, Alles live laden). <a href="beveiliging">Naar Beveiliging</a></p>
+        <p class="kb-zacht">@T["statistics.mfa-and-admin-roles-are"] <a href="beveiliging">@T["statistics.to-security"]</a></p>
     }
     else
     {
@@ -136,17 +134,17 @@
         </div>
         @if (bv.Methods.Count > 0)
         {
-            <h3>Geregistreerde methodes</h3>
+            <h3>@T["statistics.registered-methods"]</h3>
             <BarList Bars="bv.Methods" />
         }
     }
 </section>
 
 <section class="kb-kaart">
-    <h2>Conditional Access</h2>
+    <h2>@T["menu.conditional-access"]</h2>
     @if (State.Data.ConditionalAccess is not { Message: null } ca)
     {
-        <p class="kb-zacht">Nog niet geladen of niet leesbaar. <a href="conditional-access">Naar Conditional Access</a></p>
+        <p class="kb-zacht">@T["statistics.not-loaded-yet-or-not"] <a href="conditional-access">@T["ca-user-card.to-conditional-access"]</a></p>
     }
     else
     {
@@ -165,16 +163,16 @@
     @if (State.HasMicrosoft365)
     {
     <section class="kb-kaart">
-        <h2>Licenties</h2>
+        <h2>@T["job-profile-editor.licences"]</h2>
         @if (s.Licences.Count == 0)
         {
-            <p class="kb-zacht">Geen licentiegegevens geladen.</p>
+            <p class="kb-zacht">@T["statistics.no-licence-data-loaded"]</p>
         }
         <BarList Bars="s.Licences" Warning="Statistic.AlmostFull" WarningText="bijna vol" />
     </section>
     }
     <section class="kb-kaart">
-        <h2>Actieve medewerkers per afdeling</h2>
+        <h2>@T["statistics.active-employees-per-division"]</h2>
         <BarList Bars="s.PerDivision" />
     </section>
 </div>
@@ -205,28 +203,28 @@
 {
 <div class="kb-kolommen">
     <section class="kb-kaart">
-        <h2>Rooms</h2>
+        <h2>@T["nav.part.Rooms"]</h2>
         <div class="kb-tegels">
             <Tile Count="s.Rooms" Label="vergaderruimtes" Link="rooms" Attention="false" />
             <Tile Kpi="Kpis.RoomsWithDeviation" />
         </div>
     </section>
     <section class="kb-kaart">
-        <h2>Gastgebruikers per organisatie</h2>
+        <h2>@T["statistics.guest-users-per-organisation"]</h2>
         <BarList Bars="GuestsPerDomain" />
-        @if (GuestsPerDomain.Count == 0) { <p class="kb-zacht">Geen gastgebruikers geladen.</p> }
+        @if (GuestsPerDomain.Count == 0) { <p class="kb-zacht">@T["statistics.no-guest-users-loaded"]</p> }
     </section>
 </div>
 }
 
 <section class="kb-kaart">
-    <h2>Activiteit in de app</h2>
+    <h2>@T["statistics.activity-in-the-app"]</h2>
     <div class="kb-tegels">
         <Tile Kpi="Kpis.Succeeded7" />
         <Tile Kpi="Kpis.Failed7" />
         <Tile Count="State.CountFollowUpTasks" Label="opvolgtaken open" Link="opvolging" />
     </div>
-    <h3>Wijzigingen per week</h3>
+    <h3>@T["statistics.changes-per-week"]</h3>
     <ColumnChart Columns="perWeek" Title="Uitgevoerde wijzigingen per week, de laatste 12 weken" ColumnTitle="Week" EmptyText="Nog geen wijzigingen uitgevoerd in de laatste 12 weken."
                   Series="@(new[] { new ColumnChart.SeriesItem("Gelukt", "goed"), new ColumnChart.SeriesItem("Mislukt", "kritiek") })" />
 </section>

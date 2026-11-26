@@ -5,57 +5,56 @@
 @* Requests (R14, 0.37): HR or a department head asks for a new colleague or announces a departure; the administrator
    approves (the plan follows on Nieuwe gebruiker or Uitstroom) or rejects. Every decision goes to the change log. *@
 
-<h1>Aanvragen</h1>
+<h1>@T["menu.aanvragen"]</h1>
 
 <p class="kb-zacht">
-    Een nieuwe collega of een vertrek aanvragen, zonder mails. De beheerder keurt goed of weigert; na goedkeuring volgt het plan uit het functieprofiel,
-    op de gekende schermen. Elke beslissing komt in het logboek.
+    @T["requests.request-a-new-colleague-or"]
 </p>
 
 @if (!State.IsHistoric)
 {
     <section class="kb-kaart">
-        <h2>Nieuwe aanvraag</h2>
+        <h2>@T["requests.new-request"]</h2>
         <div class="kb-filters">
-            <button class="kb-knop kb-klein @(kind == RequestKind.Onboarding ? "kb-primair" : null)" @onclick="() => kind = RequestKind.Onboarding">Nieuwe collega</button>
-            <button class="kb-knop kb-klein @(kind == RequestKind.Offboarding ? "kb-primair" : null)" @onclick="() => kind = RequestKind.Offboarding">Vertrek</button>
+            <button class="kb-knop kb-klein @(kind == RequestKind.Onboarding ? "kb-primair" : null)" @onclick="() => kind = RequestKind.Onboarding">@T["requests.new-colleague"]</button>
+            <button class="kb-knop kb-klein @(kind == RequestKind.Offboarding ? "kb-primair" : null)" @onclick="() => kind = RequestKind.Offboarding">@T["requests.departure"]</button>
         </div>
         @if (kind == RequestKind.Onboarding)
         {
-            <label>Voornaam <input class="kb-invoer" @bind="givenName" /></label>
-            <label>Familienaam <input class="kb-invoer" @bind="surname" /></label>
-            <label>Dienst
+            <label>@T["edit-user.first-name"] <input class="kb-invoer" @bind="givenName" /></label>
+            <label>@T["requests.last-name"] <input class="kb-invoer" @bind="surname" /></label>
+            <label>@T["service-health-card.service"]
                 <select class="kb-invoer" @bind="department">
                     <option value=""></option>
                     @foreach (var d in State.Config.Departments.Select(x => x.Department).Distinct().OrderBy(x => x)) { <option value="@d">@d</option> }
                 </select>
             </label>
-            <label>Functieprofiel
+            <label>@T["requests.job-profile"]
                 <select class="kb-invoer" @bind="profile">
                     <option value=""></option>
                     @foreach (var p in State.Config.JobProfiles.OrderBy(p => p.Name)) { <option value="@p.Id">@p.Name</option> }
                 </select>
             </label>
-            <label>Functie <input class="kb-invoer" @bind="jobTitle" /></label>
-            <label>Startdatum <input class="kb-invoer kb-smal" type="date" @bind="date" aria-label="Datum" /></label>
+            <label>@T["bulk-tasks.job-title"] <input class="kb-invoer" @bind="jobTitle" /></label>
+            <label>@T["requests.start-date"] <input class="kb-invoer kb-smal" type="date" @bind="date" aria-label="@T["schedule.date"]" /></label>
         }
         else
         {
             <ObjectPicker Label="Wie vertrekt" Kinds="UserKinds" Selected="o => leaver = o" />
-            @if (leaver is not null) { <p>Vertrekt: <strong>@leaver.Name</strong></p> }
-            <label>Laatste werkdag <input class="kb-invoer kb-smal" type="date" @bind="date" aria-label="Datum" /></label>
+            @if (leaver is not null) { <p>@Html("requests.leaves", leaver.Name)</p> }
+            <label>@T["requests.last-working-day"] <input class="kb-invoer kb-smal" type="date" @bind="date" aria-label="@T["schedule.date"]" /></label>
         }
-        <label>Opmerking <input class="kb-invoer" @bind="note" /></label>
-        <button class="kb-knop kb-primair" @onclick="Submit">Aanvraag indienen</button>
+        <label>@T["mirror.note"] <input class="kb-invoer" @bind="note" /></label>
+        <button class="kb-knop kb-primair" @onclick="Submit">@T["requests.submit-request"]</button>
         @foreach (var e in errors) { <div class="kb-melding">@e</div> }
-        @if (sent) { <p class="kb-zacht">De aanvraag is ingediend.</p> }
+        @if (sent) { <p class="kb-zacht">@T["requests.the-request-has-been-submitted"]</p> }
     </section>
 }
 
 <section class="kb-kaart">
     <h2>Open (@Open.Count)</h2>
     <table class="kb-tabel">
-        <thead><tr><th>Aanvraag</th><th>Datum</th><th>Aangevraagd door</th><th>Opmerking</th><th></th></tr></thead>
+        <thead><tr><th>@T["requests.request"]</th><th>@T["schedule.date"]</th><th>@T["requests.requested-by"]</th><th>@T["mirror.note"]</th><th></th></tr></thead>
         <tbody>
             @foreach (var r in Open)
             {
@@ -66,8 +65,8 @@
                     <td>
                         @if (State.Can(Permission.Actions))
                         {
-                            <button class="kb-knop kb-klein kb-primair" @onclick="() => Approve(r)">Goedkeuren</button>
-                            <button class="kb-knop kb-klein" @onclick="() => State.DecideRequest(r.Id, false, reason)">Weigeren</button>
+                            <button class="kb-knop kb-klein kb-primair" @onclick="() => Approve(r)">@T["requests.approve"]</button>
+                            <button class="kb-knop kb-klein" @onclick="() => State.DecideRequest(r.Id, false, reason)">@T["requests.reject"]</button>
                         }
                     </td>
                 </tr>
@@ -76,21 +75,21 @@
     </table>
     @if (State.Can(Permission.Actions) && Open.Count > 0)
     {
-        <label>Reden bij weigeren <input class="kb-invoer" @bind="reason" /></label>
+        <label>@T["requests.reason-when-rejecting"] <input class="kb-invoer" @bind="reason" /></label>
     }
 </section>
 
 <section class="kb-kaart">
-    <h2>Beslist</h2>
+    <h2>@T["requests.decided"]</h2>
     <table class="kb-tabel">
-        <thead><tr><th>Aanvraag</th><th>Beslissing</th><th>Door</th><th></th></tr></thead>
+        <thead><tr><th>@T["requests.request"]</th><th>@T["requests.decision"]</th><th>@T["logon-scripts.by"]</th><th></th></tr></thead>
         <tbody>
             @foreach (var r in State.Requests().Where(r => r.Status != RequestStatus.Open).OrderByDescending(r => r.Decided).Take(50))
             {
                 <tr>
                     <td>@r.Title</td><td>@(r.Status == RequestStatus.Approved ? "goedgekeurd" : "geweigerd") @r.Reason</td>
                     <td>@r.DecidedBy <span class="kb-zacht">@r.Decided?.LocalDateTime.ToString("dd/MM/yyyy")</span></td>
-                    <td>@if (r.Status == RequestStatus.Approved && State.Can(Permission.Actions)) { <button class="kb-knop kb-klein" @onclick="() => Open_(r)">Plan maken</button> }</td>
+                    <td>@if (r.Status == RequestStatus.Approved && State.Can(Permission.Actions)) { <button class="kb-knop kb-klein" @onclick="() => Open_(r)">@T["bulk-tasks.make-plan"]</button> }</td>
                 </tr>
             }
         </tbody>
