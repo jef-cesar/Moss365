@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Net.Sockets;
 using System.Text.Json;
 using Moss365.Core.Changes;
@@ -47,61 +48,61 @@ public sealed class SystemCheck : ISystemCheck
         var shells = _powerShells();
         if (shells.Count == 0)
         {
-            rules.Add(new("PowerShell", "PowerShell", CheckStatus.Error, "niet gevonden", "Zonder PowerShell werkt Exchange niet."));
+            rules.Add(new("PowerShell", "PowerShell", CheckStatus.Error, Texts.T["index.not-found"], Texts.T["code.system-check.without-powershell-exchange-does-not"]));
         }
 
         // The app uses the first one (PowerShell 7 if present) for Exchange
         for (var i = 0; i < shells.Count; i++)
         {
             var (name, path) = shells[i];
-            progress?.Report($"{name}: modules nakijken...");
+            progress?.Report(Texts.T.Format("code.system-check.checking-modules", name));
             try
             {
                 var (version, modules, _) = await RunScriptAsync(path, null, cancel);
-                rules.Add(new(name, "Versie", CheckStatus.Good, version, i == 0 ? "De app gebruikt deze PowerShell voor Exchange." : "Voor de scripts als je ze hier draait."));
+                rules.Add(new(name, Texts.T["update-panel.version"], CheckStatus.Good, version, i == 0 ? Texts.T["code.system-check.the-app-uses-this-powershell"] : Texts.T["code.system-check.for-the-scripts-if-you"]));
                 rules.AddRange(Assess(name, path, appUsedThis: i == 0, modules));
             }
             catch (Exception ex)
             {
-                rules.Add(new(name, "Starten", CheckStatus.Error, "mislukt", ex.Message));
+                rules.Add(new(name, Texts.T["word.start"], CheckStatus.Error, "mislukt", ex.Message));
             }
         }
 
         if (shells.Count > 0 && !shells.Any(s => s.Name == "PowerShell 7"))
         {
-            rules.Add(new("Deze pc", "PowerShell 7", CheckStatus.Warning, "niet geïnstalleerd",
-                "Aanbevolen voor Exchange en de scripts (Windows PowerShell 5.1 volstaat voor de meeste scripts). Installeren via winget; Windows vraagt om bevestiging.",
+            rules.Add(new(Texts.T["code.system-check.this-pc"], "PowerShell 7", CheckStatus.Warning, Texts.T["code.system-check.not-installed"],
+                Texts.T["code.system-check.recommended-for-exchange-and-the"],
                 "winget install --id Microsoft.PowerShell --source winget", PowerShell7, "winget"));
         }
 
-        progress?.Report("Klok nakijken...");
+        progress?.Report(Texts.T["code.system-check.checking-the-clock"]);
         rules.Add(Clock(DateTimeOffset.UtcNow, await _serverTime(cancel)));
 
-        progress?.Report("Netwerk nakijken...");
+        progress?.Report(Texts.T["code.system-check.checking-the-network"]);
         if (settings.AdFilled)
         {
             var server = settings.AdServer.Trim();
             var ldaps = await _reachable(server, 636, cancel);
             var ldap = ldaps || await _reachable(server, 389, cancel);
-            rules.Add(new("Netwerk", $"Domeincontroller {server}", ldap ? CheckStatus.Good : CheckStatus.Error,
-                ldaps ? "bereikbaar (poort 636)" : ldap ? "bereikbaar (poort 389)" : "niet bereikbaar",
-                ldap ? "AD via LDAP, ondertekend en versleuteld." : "Op het bedrijfsnetwerk of via VPN? Klopt de naam of het IP-adres?"));
+            rules.Add(new(Texts.T["code.system-check.network"], Texts.T.Format("code.system-check.domain-controller", server), ldap ? CheckStatus.Good : CheckStatus.Error,
+                ldaps ? Texts.T["code.system-check.reachable-port-636"] : ldap ? Texts.T["code.system-check.reachable-port-389"] : Texts.T["code.system-check.not-reachable"],
+                ldap ? Texts.T["code.system-check.ad-through-ldap-signed-and"] : Texts.T["code.system-check.on-the-company-network-or"]));
         }
         else
         {
-            rules.Add(new("Instellingen", "Domeincontroller", CheckStatus.Warning, "niet ingevuld", "Vul hem in op het scherm Verbindingen."));
+            rules.Add(new(Texts.T["compare.settings"], Texts.T["connections.domain-controller"], CheckStatus.Warning, Texts.T["code.system-check.not-filled-in"], Texts.T["code.system-check.fill-it-in-on-the"]));
         }
 
         foreach (var (host, what) in new[] { ("login.microsoftonline.com", "aanmelden"), ("graph.microsoft.com", "Entra"), ("outlook.office365.com", "Exchange Online") })
         {
             var ok = await _reachable(host, 443, cancel);
-            rules.Add(new("Netwerk", host, ok ? CheckStatus.Good : CheckStatus.Error, ok ? "bereikbaar" : "niet bereikbaar",
-                ok ? $"Nodig voor {what}." : $"Nodig voor {what}; controleer de internetverbinding of de proxy."));
+            rules.Add(new(Texts.T["code.system-check.network"], host, ok ? CheckStatus.Good : CheckStatus.Error, ok ? "bereikbaar" : Texts.T["code.system-check.not-reachable"],
+                ok ? Texts.T.Format("code.system-check.needed-for", what) : Texts.T.Format("code.system-check.needed-for-check-the-internet", what)));
         }
 
         rules.Add(settings.GraphFilled
-            ? new("Instellingen", "App-registratie", CheckStatus.Good, "Tenant ID en Client ID ingevuld", "Kijk na een nieuwe versie de app-registratie na bij Tenant inrichten.")
-            : new("Instellingen", "App-registratie", CheckStatus.Warning, "niet ingevuld", "Richt de tenant in (Instellingen > Tenant inrichten): de app vult Tenant ID en Client ID zelf in op het scherm Verbindingen."));
+            ? new(Texts.T["compare.settings"], Texts.T["setup.step.app"], CheckStatus.Good, Texts.T["code.system-check.tenant-id-and-client-id"], Texts.T["code.system-check.after-a-new-version-check"])
+            : new(Texts.T["compare.settings"], Texts.T["setup.step.app"], CheckStatus.Warning, Texts.T["code.system-check.not-filled-in"], Texts.T["code.system-check.set-up-the-tenant-settings"]));
         return rules;
     }
 
@@ -114,11 +115,11 @@ public sealed class SystemCheck : ISystemCheck
 
         if (!_powerShells().Any(s => string.Equals(s.FilePath, powerShell, StringComparison.OrdinalIgnoreCase)))
         {
-            return "Mislukt: onbekende PowerShell.";
+            return Texts.T["code.system-check.failed-unknown-powershell"];
         }
 
         var (_, _, installation) = await RunScriptAsync(powerShell, module, cancel);
-        return installation ?? "Mislukt: geen antwoord.";
+        return installation ?? Texts.T["code.system-check.failed-no-answer"];
     }
 
     /// <summary>Which modules are fine, too old or missing; with a solution and (where possible)
@@ -131,14 +132,14 @@ public sealed class SystemCheck : ISystemCheck
         const string Exo = "ExchangeOnlineManagement";
         if (exo is null)
         {
-            yield return new(name, Exo, appUsedThis ? CheckStatus.Error : CheckStatus.Warning, "niet geïnstalleerd",
-                appUsedThis ? "Nodig voor rooms, gedeelde postvakken en mailgroepen." : "Nodig als je Export-Inventaris.ps1 in deze PowerShell draait.",
+            yield return new(name, Exo, appUsedThis ? CheckStatus.Error : CheckStatus.Warning, Texts.T["code.system-check.not-installed"],
+                appUsedThis ? Texts.T["code.system-check.needed-for-rooms-shared-mailboxes"] : Texts.T["code.system-check.needed-if-you-run-export"],
                 $"Install-Module {Exo} -Scope CurrentUser", Exo, path);
         }
         else if (exo < MinimumExchange)
         {
             yield return new(name, Exo, appUsedThis ? CheckStatus.Error : CheckStatus.Warning, exo.ToString(),
-                $"Te oud: vanaf {MinimumExchange} gebruikt Exchange dezelfde aanmelding als de app.", $"Install-Module {Exo} -Scope CurrentUser -Force", Exo, path);
+                Texts.T.Format("code.system-check.too-old-from-on-exchange", MinimumExchange), $"Install-Module {Exo} -Scope CurrentUser -Force", Exo, path);
         }
         else
         {
@@ -149,17 +150,17 @@ public sealed class SystemCheck : ISystemCheck
         {
             var v = V(g);
             yield return v is null
-                ? new(name, g, CheckStatus.Warning, "niet geïnstalleerd", "Nodig voor Register-App.ps1 en Export-Inventaris.ps1 (niet voor de app zelf).",
+                ? new(name, g, CheckStatus.Warning, Texts.T["code.system-check.not-installed"], Texts.T["code.system-check.needed-for-register-app-ps1"],
                     $"Install-Module {g} -Scope CurrentUser", g, path)
-                : new(name, g, CheckStatus.Good, v.ToString(), "Voor de scripts.");
+                : new(name, g, CheckStatus.Good, v.ToString(), Texts.T["code.system-check.for-the-scripts"]);
         }
 
         var ad = V("ActiveDirectory");
         yield return ad is null
-            ? new(name, "ActiveDirectory (RSAT)", CheckStatus.Warning, "niet geïnstalleerd",
-                "Nodig voor het AD-deel van Export-Inventaris.ps1; de app zelf gebruikt LDAP. Installeren vraagt beheerdersrechten.",
+            ? new(name, "ActiveDirectory (RSAT)", CheckStatus.Warning, Texts.T["code.system-check.not-installed"],
+                Texts.T["code.system-check.needed-for-the-ad-part"],
                 "Add-WindowsCapability -Online -Name 'Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0'  (als administrator)", Rsat, path)
-            : new(name, "ActiveDirectory (RSAT)", CheckStatus.Good, ad.ToString(), "Voor het AD-deel van Export-Inventaris.ps1.");
+            : new(name, "ActiveDirectory (RSAT)", CheckStatus.Good, ad.ToString(), Texts.T["code.system-check.for-the-ad-part-of"]);
     }
 
     private async Task<(string Version, IReadOnlyList<ModuleVersion> Modules, string? Installation)> RunScriptAsync(string path, string? install, CancellationToken cancel)
@@ -167,7 +168,7 @@ public sealed class SystemCheck : ISystemCheck
         Directory.CreateDirectory(_workFolder);
         var script = Path.Combine(_workFolder, "Check.ps1");
         await using (var source = typeof(SystemCheck).Assembly.GetManifestResourceStream("Check.ps1")
-                                ?? throw new InvalidOperationException("Check.ps1 ontbreekt in de app."))
+                                ?? throw new InvalidOperationException(Texts.T["code.system-check.check-ps1-is-missing-in"]))
         await using (var target = File.Create(script))
         {
             await source.CopyToAsync(target, cancel);
@@ -185,16 +186,16 @@ public sealed class SystemCheck : ISystemCheck
             var (code, errors) = await _starter(path).StartAsync(script, arguments, null, cancel);
             if (!File.Exists(output))
             {
-                throw new InvalidOperationException(string.IsNullOrWhiteSpace(errors) ? $"PowerShell stopte met code {code}." : errors.Trim());
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(errors) ? Texts.T.Format("code.system-check.powershell-stopped-with-code", code) : errors.Trim());
             }
 
             using var doc = JsonDocument.Parse((await File.ReadAllTextAsync(output, cancel)).TrimStart('﻿'));
             var root = doc.RootElement;
             string S(JsonElement e, string n) => e.TryGetProperty(n, out var w) && w.ValueKind == JsonValueKind.String ? w.GetString() ?? string.Empty : string.Empty;
             var modules = root.TryGetProperty("Modules", out var m) && m.ValueKind == JsonValueKind.Array
-                ? m.EnumerateArray().Select(x => new ModuleVersion(S(x, "Naam"), S(x, "Versie"))).ToList()
+                ? m.EnumerateArray().Select(x => new ModuleVersion(S(x, "Naam"), S(x, Texts.T["update-panel.version"]))).ToList()
                 : new List<ModuleVersion>();
-            var installation = S(root, "Installatie");
+            var installation = S(root, Texts.T["code.system-check.installation"]);
             return ($"{S(root, "PowerShell")} ({S(root, "Editie")})", modules, installation.Length > 0 ? installation : null);
         }
         finally
@@ -211,16 +212,16 @@ public sealed class SystemCheck : ISystemCheck
     {
         if (server is not { } s)
         {
-            return new("Deze pc", "Klok", CheckStatus.Warning, "niet te vergelijken", "Microsoft niet bereikbaar om de klok na te kijken.");
+            return new(Texts.T["code.system-check.this-pc"], "Klok", CheckStatus.Warning, Texts.T["code.system-check.cannot-be-compared"], Texts.T["code.system-check.microsoft-not-reachable-to-check"]);
         }
 
         var off = Math.Abs((now - s).TotalSeconds);
-        var text = off < 60 ? "juist" : $"{Math.Round(off / 60)} min verschil";
+        var text = off < 60 ? "juist" : Texts.T.Format("code.system-check.min-difference", Math.Round(off / 60));
         return off switch
         {
-            > 300 => new("Deze pc", "Klok", CheckStatus.Error, text, "Meer dan 5 minuten verschil met Microsoft: aanmelden bij AD (Kerberos) en Microsoft 365 mislukt. Zet de tijd juist (Instellingen > Tijd > Nu synchroniseren)."),
-            > 60 => new("Deze pc", "Klok", CheckStatus.Warning, text, "De klok loopt wat af; vanaf 5 minuten mislukt het aanmelden."),
-            _ => new("Deze pc", "Klok", CheckStatus.Good, text, "Gelijk met Microsoft."),
+            > 300 => new(Texts.T["code.system-check.this-pc"], "Klok", CheckStatus.Error, text, Texts.T["code.system-check.more-than-5-minutes-difference"]),
+            > 60 => new(Texts.T["code.system-check.this-pc"], "Klok", CheckStatus.Warning, text, Texts.T["code.system-check.the-clock-is-a-bit"]),
+            _ => new(Texts.T["code.system-check.this-pc"], "Klok", CheckStatus.Good, text, Texts.T["code.system-check.in-sync-with-microsoft"]),
         };
     }
 
