@@ -119,7 +119,7 @@
                 @foreach (var r in list.Where(r => finding is null || r.Findings.Contains(finding)).Take(200))
                 {
                     <tr>
-                        <td>@r.Name</td>
+                        <td><button class="kb-knop kb-klein" aria-label="@T.Format("device.open", r.Name)" @onclick="() => Select(r)">@r.Name</button></td>
                         <td>@(r.Ad is null ? string.Empty : r.Ad.Enabled ? "✓" : T["device.disabled"])</td>
                         <td>@(r.Entra is null ? string.Empty : TrustText(r.Entra.TrustType))</td>
                         <td>@(r.Intune?.Compliance ?? string.Empty)</td>
@@ -129,6 +129,81 @@
                 }
             </tbody>
         </table>
+    </section>
+}
+
+@if (selected is { } sel)
+{
+    <section class="kb-kaart" id="toestel">
+        <h2>@sel.Name</h2>
+        <table class="kb-tabel kb-naast">
+            <tbody>
+                @if (sel.Intune is { } i)
+                {
+                    <tr><th>@T["sign-in-list.user"]</th><td>@i.Owner</td></tr>
+                    <tr><th>@T["plan.system"]</th><td>@i.OperatingSystem @i.Version @SupportLabel(i.OperatingSystem, i.Version)</td></tr>
+                    <tr><th>@T["device.info.compliance"]</th><td>@i.Compliance</td></tr>
+                    <tr><th>@T["device.info.ownership"]</th><td>@(i.Personal ? T["device.info.personal"] : T["device.info.company"])</td></tr>
+                    <tr><th>@T["device.info.model"]</th><td>@i.Manufacturer @i.Model</td></tr>
+                    <tr><th>@T["device.info.serial"]</th><td>@i.Serial</td></tr>
+                    <tr><th>@T["device.info.encrypted"]</th><td>@(i.Encrypted is null ? T["word.unknown"] : i.Encrypted.Value ? T["device.info.yes"] : T["device.info.no"])</td></tr>
+                    <tr><th>@T["device.info.enrolled"]</th><td>@i.Enrolled?.LocalDateTime.ToString("dd/MM/yyyy")</td></tr>
+                    <tr><th>@T["keys.last-seen"]</th><td>@i.LastSync?.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</td></tr>
+                }
+                @if (sel.Ad is { } c)
+                {
+                    <tr><th>@T["devices.col.ad"]</th><td>@c.OuPath · @(c.LastLogon?.LocalDateTime.ToString("dd/MM/yyyy") ?? T["word.never"])</td></tr>
+                }
+                @if (sel.Entra is { } e)
+                {
+                    <tr><th>@T["devices.col.entra"]</th><td>@TrustText(e.TrustType) · @(e.LastSignIn?.LocalDateTime.ToString("dd/MM/yyyy") ?? T["word.never"])</td></tr>
+                }
+            </tbody>
+        </table>
+        @if (sel.Intune is { } device && !State.IsHistoric)
+        {
+            <h3>@T["device.actions"]</h3>
+            @if (State.Can(Permission.Helpdesk))
+            {
+                <div class="kb-filters">
+                    @foreach (var a in DevicePlans.Actions.Where(a => a.Level == DeviceActionLevel.Safe))
+                    {
+                        <button class="kb-knop kb-klein" disabled="@(!DevicePlans.Fits(device, a))" @onclick="() => DeviceAction(device, a.Key)">@T[$"device.button.{a.Key}"]</button>
+                    }
+                </div>
+            }
+            @if (State.Can(Permission.Manage))
+            {
+                <div class="kb-filters">
+                    <label>@T["device.new-name"] <input class="kb-invoer kb-smal" @bind="newName" @bind:event="oninput" aria-label="@T["device.new-name"]" /></label>
+                    <button class="kb-knop kb-klein" @onclick='() => DeviceAction(device, "rename")'>@T["device.button.rename"]</button>
+                    <button class="kb-knop kb-klein" @onclick='() => DeviceAction(device, "retire")'>@T["device.button.retire"]</button>
+                </div>
+                @if (device.Personal)
+                {
+                    <p class="kb-zacht">@T["device.personal-only-retire"]</p>
+                }
+                else
+                {
+                    <div class="kb-melding">
+                        <p>@T["device.destructive.help"]</p>
+                        <label>@T["device.type-name"] <input class="kb-invoer kb-smal" @bind="typedName" @bind:event="oninput" aria-label="@T["device.type-name"]" /></label>
+                        @foreach (var a in DevicePlans.Actions.Where(a => a.Level == DeviceActionLevel.Destructive && DevicePlans.Fits(device, a)))
+                        {
+                            <button class="kb-knop kb-klein kb-gevaar" disabled="@(!string.Equals(typedName.Trim(), device.Name, StringComparison.OrdinalIgnoreCase))" @onclick="() => DeviceAction(device, a.Key)">@T[$"device.button.{a.Key}"]</button>
+                        }
+                    </div>
+                }
+            }
+            @if (deviceOutcome is not null)
+            {
+                @foreach (var err in deviceOutcome.Errors) { <div class="kb-melding kb-fout">@err</div> }
+                @if (deviceOutcome.Plan.Count > 0)
+                {
+                    <PlanView Plan="deviceOutcome.Plan" Context="@T.Format("device.context", device.Name)" Title="@T["device.actions"]" />
+                }
+            }
+        }
     </section>
 }
 
@@ -151,6 +226,16 @@
     }
 
     private string? finding;
+
+    // The panel of one device (R17): its details and the actions, as plans
+    private DeviceRecord? selected;
+    private string newName = string.Empty;
+    private string typedName = string.Empty;
+    private Moss365.Core.Changes.PlanOutcome? deviceOutcome;
+
+    private void Select(DeviceRecord r) => (selected, newName, typedName, deviceOutcome) = (r, string.Empty, string.Empty, null);
+
+    private void DeviceAction(IntuneDevice device, string action) => deviceOutcome = DevicePlans.Action(device, action, newName, typedName);
 
     private static string FindingText(string f) => T[$"devices.finding.{f}"];
 

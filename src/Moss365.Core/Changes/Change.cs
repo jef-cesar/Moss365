@@ -90,6 +90,7 @@ public enum ChangeAction
 
     // New in 0.39: security advice (R16)
     AdSetAccountFlag,             // Target = DN; vlag (a name in SecurityAdvice.AccountFlags), aan (True/False); Previous aan
+    IntuneDeviceAction,           // Target = managed device id; actie (DevicePlans.Actions), toestel, eigendom (company/personal), naam (rename); Previous naam
 }
 
 /// <summary>

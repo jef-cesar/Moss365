@@ -193,7 +193,9 @@ public static class PermissionTable
         // The groups of the profiles (GG-Moss365-...) belong to the set-up of the app, like its app registration
         var permission = w.ChangeAction == ChangeAction.GraphCreateGroup && AppRoles.Any(a => string.Equals(a.Group, w.P("displayName"), StringComparison.OrdinalIgnoreCase))
             ? Permission.Settings
-            : ForAction(w.ChangeAction);
+            : w.ChangeAction == ChangeAction.IntuneDeviceAction
+                ? (Devices.DevicePlans.LevelOf(w) == Devices.DeviceActionLevel.Safe ? Permission.Helpdesk : Permission.Manage)
+                : ForAction(w.ChangeAction);
         if (!Can(roles, permission))
         {
             return Texts.T.Format("permission.refused", Text(roles, and: true), Text(RolesFor(permission)));

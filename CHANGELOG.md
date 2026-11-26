@@ -25,6 +25,21 @@ Every version becomes a release on GitHub; the section under the version is the 
   in AD (and a cloud account in Entra), sets a new random password (kept and shown nowhere), revokes every sign-in
   session and removes the account from privileged AD groups; next to it what to check afterwards (MFA methods, admin
   roles, forwarding, sign-ins, devices). Nothing is deleted; the plan is shown first, as always.
+- **Devices and Intune** (R17), on *Toestellen*:
+  - the **life cycle of systems** is data that comes with the updates: Windows 10 (support ended on 14 October 2025)
+    and the builds of Windows 11 whose support ended are marked, and "support ends <date>" half a year ahead;
+  - **one list over AD, Entra and Intune**: which device is where, hybrid joins that fail, devices in Intune without a
+    record in Entra, duplicate records and records not seen for 90 days;
+  - **a panel per device** (click its name): user, system, compliance, company or personal, model, serial number,
+    encryption, enrolment and last sync, and the records in AD and Entra;
+  - **actions as a plan** (U17): sync, restart, a new LAPS password or BitLocker key and a Defender quick scan (also for
+    the Helpdesk); rename (with undo) and retire (Administrator); wipe and fresh start (Administrator, only for a
+    company device, after typing the device name, one device per plan). The engine checks the same, and asks Intune
+    again whether the device is personal right before wiping it;
+  - the page of a user shows the **devices in Intune** of that person.
+  - The app registration needs two new permissions for these actions: `DeviceManagementManagedDevices.PrivilegedOperations.All`
+    and, only because Microsoft asks it for a new BitLocker key, `DeviceManagementManagedDevices.ReadWrite.All`. The
+    wizard (*Tenant instellen*) adds them; until then the actions fail with a message, reading works as before.
 - **Links** that come from Microsoft data (the actions of Secure Score) are only shown when they are an http or https
   address; anything else (such as a script link or a file share) is no longer clickable.
 - **Exports for Excel**: a value that starts with a tab or a line break is now protected against formulas too.

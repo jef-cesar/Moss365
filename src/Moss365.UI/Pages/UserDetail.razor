@@ -29,6 +29,7 @@ else
     @if (State.Can(Permission.Manage) && State.HasMicrosoft365 && person.Entra is not null && !person.IsGuest && !State.IsHistoric) { <AbsenceCard Person="person" /> }
     @if (State.Can(Permission.Helpdesk) && State.HasMicrosoft365 && person.Entra is not null && !State.IsHistoric) { <MessageTraceCard Person="person" /> }
     @if (State.Can(Permission.Manage) && !State.IsHistoric && (person.Ad is not null || person.Entra is not null) && !person.IsGuest) { <CompromisedCard Person="person" /> }
+    @if (State.Can(Permission.Helpdesk) && State.HasMicrosoft365 && person.Entra is not null && !person.IsGuest) { <UserDevicesCard Person="person" /> }
     @if (State.Can(Permission.Security) && State.HasMicrosoft365)
     {
         <SecurityCard Person="person" />

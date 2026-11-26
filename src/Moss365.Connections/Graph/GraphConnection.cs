@@ -1200,6 +1200,41 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         return ChangeResult.Ok(w, Texts.T.Format("code.graph-connection.created-id", id));
     }
 
+    /// <summary>
+    /// An action on an Intune device (R17). Wipe and fresh start ask Intune again whether the device is personal and
+    /// refuse it then, also when the plan said otherwise; some actions only exist in the beta of Graph.
+    /// </summary>
+    private async Task<ChangeResult> RunDeviceAsync(Change w, CancellationToken cancel)
+    {
+        const string beta = "https://graph.microsoft.com/beta";
+        var path = $"/deviceManagement/managedDevices/{Uri.EscapeDataString(w.Target)}";
+        var action = w.P("actie");
+        if (action is "wipe" or "freshStart")
+        {
+            var device = await _client.GetAsync($"{path}?$select=managedDeviceOwnerType", cancel);
+            if (!string.Equals(S(device, "managedDeviceOwnerType"), "company", StringComparison.OrdinalIgnoreCase))
+            {
+                return ChangeResult.Error(w, Texts.T["device.safety.personal"]);
+            }
+        }
+
+        switch (action)
+        {
+            case "sync": await _client.PostAsync($"{path}/syncDevice", null, cancel); break;
+            case "reboot": await _client.PostAsync($"{path}/rebootNow", null, cancel); break;
+            case "rotateLaps": await _client.PostAsync($"{beta}{path}/rotateLocalAdminPassword", null, cancel); break;
+            case "rotateBitLocker": await _client.PostAsync($"{beta}{path}/rotateBitLockerKeys", null, cancel); break;
+            case "defenderScan": await _client.PostAsync($"{path}/windowsDefenderScan", new Dictionary<string, object> { ["quickScan"] = true }, cancel); break;
+            case "rename": await _client.PostAsync($"{beta}{path}/setDeviceName", new Dictionary<string, object> { ["deviceName"] = w.P("naam") }, cancel); break;
+            case "retire": await _client.PostAsync($"{path}/retire", null, cancel); break;
+            case "wipe": await _client.PostAsync($"{path}/wipe", new Dictionary<string, object> { ["keepEnrollmentData"] = false, ["keepUserData"] = false }, cancel); break;
+            case "freshStart": await _client.PostAsync($"{path}/cleanWindowsDevice", new Dictionary<string, object> { ["keepUserData"] = false }, cancel); break;
+            default: return ChangeResult.Error(w, Texts.T["device.action.unknown"]);
+        }
+
+        return ChangeResult.Ok(w, Texts.T["device.action.sent"]);
+    }
+
     private async Task<ChangeResult> RunAsync(Change w, CancellationToken cancel)
     {
         try
@@ -1265,6 +1300,11 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             if (w.ChangeAction == ChangeAction.GraphCreateGroup)
             {
                 return await CreateGroupAsync(w, cancel);
+            }
+
+            if (w.ChangeAction == ChangeAction.IntuneDeviceAction)
+            {
+                return await RunDeviceAsync(w, cancel);
             }
 
             if (w.ChangeAction is ChangeAction.GraphCreateCaPolicy or ChangeAction.GraphUpdateCaPolicy or ChangeAction.GraphCreateCaLocation or ChangeAction.GraphUpdateCaLocation)

@@ -69,7 +69,8 @@ $Rechten = @(
     'UserAuthenticationMethod.ReadWrite.All', 'BitLockerKey.Read.All', 'DeviceLocalCredential.Read.All', 'Device.Read.All', 'Mail.Send', # 0.33: helpdesk
     'SecurityEvents.Read.All', 'RoleManagement.Read.Directory', 'IdentityRiskyUser.Read.All', # 0.34: security checks
     'DeviceManagementManagedDevices.Read.All', 'Reports.Read.All', 'SharePointTenantSettings.Read.All', # 0.36: devices, Teams, SharePoint
-    'ServiceHealth.Read.All', 'ServiceMessage.Read.All'  # 0.37: service health and the message center
+    'ServiceHealth.Read.All', 'ServiceMessage.Read.All', # 0.37: service health and the message center
+    'DeviceManagementManagedDevices.PrivilegedOperations.All', 'DeviceManagementManagedDevices.ReadWrite.All' # 0.39: actions on Intune devices
 )
 $ExchangeRechten = @('Exchange.Manage')
 

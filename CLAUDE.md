@@ -85,6 +85,12 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   Devices, Teams and SharePoint (0.36): `Devices/DeviceAnalysis.cs` (stale computers, systems, Intune, groups without
   owner/with guests/unused, sites); reads `IAdConnection.ReadComputersAsync`, `IGraphConnection.ReadIntuneDevicesAsync`/
   `ReadCollaborationAsync` (usage reports from the beta endpoint, JSON); disabling computers is `AdDisableAccount`.
+  Devices and Intune (R17): the end of support per system and build is data (`Devices/lifecycle.json`, `Lifecycle.Of`);
+  `DeviceAnalysis.Combine` makes one list over AD, Entra (`ReadEntraDevicesAsync`) and Intune with findings. Actions on
+  Intune devices are `IntuneDeviceAction` changes from `Devices/DevicePlans.cs` (safe: Helpdesk; rename and retire:
+  Manage; wipe and fresh start: Manage, the device name typed, never a personal device); `DeviceSafety` checks every
+  plan in the planner and in the engine (never a personal device, one device to wipe per plan), like `CaSafety`, and
+  `GraphConnection` asks Intune again before wiping. Only a rename can be undone.
   Reporting (0.37, `Reporting/`): `PeriodReport` (from `ReadKpiSnapshot` and the change log; `ToHtml`/`ToCsv`, CSV never
   starts a cell with a formula), `DataQuality`, `Standards` (checks mapped to NIS2/CIS), `GuestRenewal` (document
   `gastenverlenging`), `StaffRequests` (document `aanvragen`; decisions are change log lines with action `Request`),

@@ -506,6 +506,11 @@ the tenant does not have (Entra ID P2, Defender for Office) says so instead of "
 
 Offboarding still never deletes: deleting a device record is only ever the separate clean-up plan.
 
+Started in 0.39.0: the life cycle as data, one device list over AD, Entra and Intune (with what does not match), a
+panel per device with its details and the actions on three levels with their safeguards (in the planner and in the
+engine), and the Intune devices of a person on the user page. Still to come in R17: changing the primary user,
+compliance per policy, the devices in offboarding, the clean-up (U18) and the devices in the snapshots.
+
 ### Own data: logs and reading without a window (R18)
 
 | Proposal | Why |

@@ -685,14 +685,21 @@ public sealed partial class ManagementState
             }
         }
 
+        // A destructive action on a device is only for one device per plan (R17); refused as a whole otherwise
+        if (Core.Devices.DeviceSafety.PlanRefusal(plan) is { } tooMany)
+        {
+            throw new InvalidOperationException(tooMany);
+        }
+
         var roles = Roles;
         var data = Data;
         var config = Config;
         var user = User;
-        // The engine refuses what the profile does not allow, and every change to Conditional Access that does not
-        // exclude the emergency accounts or locks yourself out (also on undo or a scheduled plan)
+        // The engine refuses what the profile does not allow, every change to Conditional Access that does not
+        // exclude the emergency accounts or locks yourself out (also on undo or a scheduled plan), and wiping a
+        // personal device
         var results = await new PlanExecutor(executors, ChangeLog, () => User,
-                w => PermissionTable.Refusal(roles, w, data) ?? CaSafety.Refusal(w, data, config, user))
+                w => PermissionTable.Refusal(roles, w, data) ?? CaSafety.Refusal(w, data, config, user) ?? Core.Devices.DeviceSafety.Refusal(w))
             .ExecuteAsync(plan, context, progress, cancel);
         // No context: it often contains a name ("Uitstroom ..."); only counts and kinds of actions
         Log.Information("Plan uitgevoerd: {Gelukt} gelukt, {Mislukt} mislukt, {Overgeslagen} overgeslagen; acties {Acties}",
