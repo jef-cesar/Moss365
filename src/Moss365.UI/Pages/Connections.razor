@@ -3,70 +3,66 @@
 @implements IDisposable
 @inject ManagementState State
 
-<h1>Verbindingen</h1>
+<h1>@T["menu.verbindingen"]</h1>
 
 <LeaveConfirm Active="State.SettingsChanged" Saving="Save" Discard="State.DiscardSettings"
                    Text="Je hebt de verbindingsinstellingen aangepast maar nog niet bewaard. Het AD-wachtwoord wordt nooit bewaard." />
 
 <p class="kb-zacht">
-    Met deze gegevens leest de app live uit AD, Entra en Exchange, en voert hij goedgekeurde wijzigingen uit.
-    Wachtwoorden worden nooit bewaard. De instellingen staan in de databank <code>@State.Database.FilePath</code>.
+    @Html("connections.intro", State.Database.FilePath)
 </p>
 
 @if (!State.CanConnect)
 {
-    <div class="kb-melding">Live verbinden is enkel beschikbaar in de Windows-app.</div>
+    <div class="kb-melding">@T["connections.connecting-live-is-only-available"]</div>
 }
 
 <section class="kb-kaart">
-    <h2>Wat heeft deze tenant?</h2>
+    <h2>@T["connections.what-does-this-tenant-have"]</h2>
     @if (Hub is { } hub && State.Can(Permission.Settings) && !State.IsHistoric)
     {
         <SystemsChoice @bind-Value="systems" Legend="@($"Systemen van {State.Tenant.Name}")" />
         <div class="kb-rij">
-            <button class="kb-knop kb-primair" disabled="@(systems == Current)" @onclick="() => SaveSystems(hub)">Bewaren</button>
-            @if (systems != Current) { <span class="kb-label">niet bewaard</span> }
+            <button class="kb-knop kb-primair" disabled="@(systems == Current)" @onclick="() => SaveSystems(hub)">@T["action.save"]</button>
+            @if (systems != Current) { <span class="kb-label">@T["connections.not-saved"]</span> }
         </div>
     }
     else
     {
-        <p>Deze tenant heeft <strong>@SystemsChoice.Text(State.Tenant.Systems)</strong>.</p>
+        <p>@Html("connections.systems", SystemsChoice.Text(State.Tenant.Systems))</p>
     }
     <p class="kb-zacht">
-        Wat de tenant niet heeft, laat de app weg: uit het menu, de schermen, de verbindingen en de gegevens. Gegevens die al
-        ingelezen zijn, blijven bewaard en komen terug als je het systeem weer aanzet.
+        @T["connections.what-the-tenant-does-not"]
     </p>
     <p class="kb-zacht">
-        Rollen: <strong>@(State.Config.RolesModeEffective switch { RolesMode.Off => "zonder rollen (iedereen mag alles)", RolesMode.Required => "verplicht (zonder rol enkel lezen)", _ => "als ze er zijn" })</strong>.
-        Aanpassen bij <a href="organisatie/rollen">Organisatie &gt; Rollen in Moss365</a>.
+        @Html("connections.roles", State.Config.RolesModeEffective switch { RolesMode.Off => T["connections.roles.off"], RolesMode.Required => T["connections.roles.required"], _ => T["connections.roles.transition"] })
     </p>
 </section>
 
 @if (State.HasAd)
 {
 <section class="kb-kaart">
-    <h2>On-prem AD</h2>
+    <h2>@T["user-detail.on-premises-ad"]</h2>
     <div class="kb-rij">
-        <label>Domeincontroller</label>
-        <input class="kb-invoer kb-breed" placeholder="naam of IP-adres, bv. 10.103.17.3" @bind="State.Settings.AdServer" />
+        <label>@T["connections.domain-controller"]</label>
+        <input class="kb-invoer kb-breed" placeholder="@T["connections.name-or-ip-address-e"]" @bind="State.Settings.AdServer" />
     </div>
     <div class="kb-rij">
-        <label>AD-account</label>
-        <input class="kb-invoer kb-breed" placeholder="bv. CONTOSO\naam (leeg = Windows-aanmelding, enkel op een domein-pc)" @bind="State.Settings.AdUser" />
+        <label>@T["connections.ad-account"]</label>
+        <input class="kb-invoer kb-breed" placeholder="@T["connections.e-g-contoso-name-empty"]" @bind="State.Settings.AdUser" />
     </div>
     <div class="kb-rij">
-        <label>Wachtwoord</label>
+        <label>@T["encryption-panel.password"]</label>
         <input class="kb-invoer" type="password" autocomplete="off" @bind="State.AdPassword" />
-        <span class="kb-zacht">alleen voor deze sessie</span>
+        <span class="kb-zacht">@T["connections.only-for-this-session"]</span>
     </div>
     <div class="kb-rij">
-        <label>NETLOGON</label>
-        <input class="kb-invoer kb-breed" placeholder="leeg = \\domeincontroller\NETLOGON" @bind="State.Settings.NetlogonPath" aria-label="NETLOGON" />
-        <span class="kb-zacht">voor de logonscripts; met je Windows-account</span>
+        <label>@T["connections.netlogon"]</label>
+        <input class="kb-invoer kb-breed" placeholder="@T["connections.empty-domaincontroller-netlogon"]" @bind="State.Settings.NetlogonPath" aria-label="@T["connections.netlogon"]" />
+        <span class="kb-zacht">@T["connections.for-the-logon-scripts-with"]</span>
     </div>
     <p class="kb-zacht">
-        De app praat via LDAP (ondertekend en versleuteld) met de domeincontroller. Voor wijzigingen heeft het account rechten nodig
-        op de OU's en groepen; om te lezen volstaan gewone leesrechten.
+        @T["connections.the-app-talks-to-the"]
     </p>
 </section>
 }
@@ -74,57 +70,52 @@
 @if (State.HasMicrosoft365)
 {
 <section class="kb-kaart">
-    <h2>Entra ID en Exchange Online</h2>
+    <h2>@T["connections.entra-id-and-exchange-online"]</h2>
     <div class="kb-rij">
-        <label>Tenant ID</label>
+        <label>@T["set-up-tenant.tenant-id"]</label>
         <input class="kb-invoer kb-breed" @bind="State.Settings.TenantId" />
     </div>
     <div class="kb-rij">
-        <label>Client ID</label>
-        <input class="kb-invoer kb-breed" placeholder="Application (client) ID van de app-registratie" @bind="State.Settings.ClientId" />
+        <label>@T["set-up-tenant.client-id"]</label>
+        <input class="kb-invoer kb-breed" placeholder="@T["connections.application-client-id-of-the"]" @bind="State.Settings.ClientId" />
     </div>
     <div class="kb-rij">
-        <label>Beheeraccount</label>
+        <label>@T["connections.admin-account"]</label>
         <input class="kb-invoer kb-breed" placeholder="bv. naam@contoso.com" @bind="State.Settings.ManagementUpn" />
     </div>
     <label>
-        <input type="checkbox" checked="@State.Settings.RememberSignIn" @onchange="e => State.RememberSignIn(e.Value is true)" aria-label="Aangemeld blijven" />
-        Aangemeld blijven op deze pc
+        <input type="checkbox" checked="@State.Settings.RememberSignIn" @onchange="e => State.RememberSignIn(e.Value is true)" aria-label="@T["connections.stay-signed-in"]" />
+        @T["connections.stay-signed-in-on-this"]
     </label>
     <p class="kb-zacht">
-        Dan hoef je niet bij elke start opnieuw aan te melden. De aanmelding blijft in de databank van deze tenant, versleuteld met je
-        Windows-account: een ander account of een andere pc kan ze niet gebruiken. Uitzetten wist ze meteen.
+        @T["connections.then-you-do-not-have"]
     </p>
     <p class="kb-zacht">
-        Tenant ID en Client ID vult <a href="inrichten">Tenant inrichten</a> zelf in (eenmalig, met een Application of Global
-        Administrator). Dat maakt de app-registratie "Moss365" aan met enkel gedelegeerde rechten en alleen toegewezen
-        beheerders; <code>Register-App.ps1</code> doet hetzelfde, voor wie dat liever in PowerShell doet.
-        Bij de eerste actie verschijnt bovenaan een aanmeldlink: kopieer hem naar de browser van je keuze. Exchange gebruikt
-        dezelfde aanmelding (module ExchangeOnlineManagement nodig).
+        @Html("connections.entra.help")
     </p>
 </section>
 }
 
 <div class="kb-filters">
-    <button class="kb-knop" @onclick="Save">Instellingen bewaren</button>
-    <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Everything)">Alles live laden</button>
+    <button class="kb-knop" @onclick="Save">@T["connections.save-settings"]</button>
+    <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Everything)">@T["set-up-tenant.load-everything-live"]</button>
     <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">Live laden (@(State.HasAd && State.HasMicrosoft365 ? "AD en Entra" : State.HasAd ? "AD" : "Entra"))</button>
     @if (State.HasMicrosoft365)
     {
-        <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Rooms)">Rooms laden uit Exchange</button>
-        <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Mailboxes)">Postvakken en groepen laden uit Exchange</button>
+        <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Rooms)">@T["connections.load-rooms-from-exchange"]</button>
+        <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Mailboxes)">@T["connections.load-mailboxes-and-groups-from"]</button>
     }
     @if (message is not null) { <span class="kb-ok">@message</span> }
 </div>
-<p class="kb-zacht">Het laden loopt op de achtergrond: je kan intussen andere schermen gebruiken. Onderaan het menu zie je de status. Na het laden bewaart de app de gegevens als inventaris, zodat hij de volgende keer al met recente gegevens start.</p>
+<p class="kb-zacht">@T["connections.loading-runs-in-the-background"]</p>
 <label>
     <input type="checkbox" @bind="State.Settings.RefreshAuto" @bind:after="State.SaveSettings" />
-    Elke 15 minuten vernieuwen (AD en Entra) zolang de app open is
-    <span class="kb-zacht">(enkel als je aangemeld bent; er verschijnt nooit vanzelf een aanmeldlink)</span>
+    @T["connections.refresh-every-15-minutes-ad"]
+    <span class="kb-zacht">@T["connections.only-when-you-are-signed"]</span>
 </label>
 <label>
     <input type="checkbox" @bind="State.Settings.QuickLoad" @bind:after="State.SaveSettings" />
-    Snel laden: enkel wat veranderde sinds de vorige keer
+    @T["connections.quick-load-only-what-changed"]
     <span class="kb-zacht">
         (AD: @(State.AdCanQuick ? "kan" : "volgende keer alles"); Entra-groepen: @(State.EntraCanQuick ? "kan" : "volgende keer alles").
         Gebruikers in Entra en Exchange lezen altijd alles; minstens één keer per week leest de app alles.)
@@ -136,7 +127,7 @@
 <TaskProgress />
 
 <section class="kb-kaart">
-    <h2>Huidige gegevens</h2>
+    <h2>@T["connections.current-data"]</h2>
     <p>Aangemeld als: @State.User</p>
     <ul class="kb-lijst-plat">
         @foreach (var part in new[] { "AD", "Entra", "Rooms", "Postvakken" })
@@ -146,7 +137,7 @@
         @if (State.SavedInventory is { } folder) { <li class="kb-zacht">Laatst bewaard als inventaris: @System.IO.Path.GetFileName(folder)</li> }
     </ul>
     <table class="kb-tabel">
-        <thead><tr><th>Bron</th><th>Uit</th><th class="kb-getal">Rijen</th></tr></thead>
+        <thead><tr><th>@T["organisation-history.source"]</th><th>@T["connections.from"]</th><th class="kb-getal">@T["start.rows"]</th></tr></thead>
         <tbody>
             @foreach (var b in State.Data.Sources)
             {

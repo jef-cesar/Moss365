@@ -1,8 +1,5 @@
 # Screens with text that is not yet in the dictionaries (R15): number of texts, file. The numbers may only go down.
 50 Pages/CaOverview.razor
 79 Pages/CaPolicyEditor.razor
-47 Pages/Connections.razor
 53 Pages/NewUser.razor
 72 Pages/Organisation.razor
-43 Pages/Tenants.razor
-2 Routes.razor
