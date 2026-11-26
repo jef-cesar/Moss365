@@ -1,6 +1,7 @@
 using Moss365.Core.Storage;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -22,7 +23,7 @@ public static class BulkPlans
             var member = data.Index.UniqueMembersOf(groupValue).Any(l => l.Object.Kind == r.Kind && string.Equals(l.Object.Key, r.Key, StringComparison.OrdinalIgnoreCase));
             if (add == member)
             {
-                return PlanOutcome.Error(member ? $"{p.Name} is al lid van {groupValue.Name}." : $"{p.Name} is geen lid van {groupValue.Name}.");
+                return PlanOutcome.Error(member ? Texts.T.Format("code.bulk-plans.is-already-a-member-of", p.Name, groupValue.Name) : Texts.T.Format("code.bulk-plans.is-not-a-member-of", p.Name, groupValue.Name));
             }
 
             return add ? GroupPlans.AddMember(data, groupValue, r) : GroupPlans.RemoveMember(data, groupValue, r);
@@ -31,7 +32,7 @@ public static class BulkPlans
     /// <summary>Sets one attribute (e.g. office or department) to the same value for the selected users.</summary>
     public static PlanOutcome Attribute(InventoryData data, OrganisationConfig config, IEnumerable<Person> persons, string field, string value)
     {
-        var property = typeof(UserDesired).GetProperty(LegacyNames.CurrentProperty(field)) ?? throw new ArgumentException($"Onbekend veld {field}.", nameof(field));
+        var property = typeof(UserDesired).GetProperty(LegacyNames.CurrentProperty(field)) ?? throw new ArgumentException(Texts.T.Format("code.bulk-plans.unknown-field", field), nameof(field));
         return Together(persons.Select(p =>
         {
             var g = new UserDesired();
@@ -49,19 +50,19 @@ public static class BulkPlans
     public static PlanOutcome AccessToMailboxes(InventoryData data, IEnumerable<Mailbox> mailboxes, Person person)
         => Together(mailboxes.Select(p => data.Index.AccessGroupOf(p) is { } g
             ? UsersInGroup(data, new[] { person }, g, add: true)
-            : PlanOutcome.Error($"{p.DisplayName} heeft nog geen toegangsgroep; maak die eerst aan op de pagina van het postvak.")));
+            : PlanOutcome.Error(Texts.T.Format("code.bulk-plans.has-no-access-group-yet", p.DisplayName))));
 
     /// <summary>Hides the selected mailboxes in the address list (or shows them again).</summary>
     public static PlanOutcome Hide(IEnumerable<Mailbox> mailboxes, bool hide)
         => Together(mailboxes.Select(p => p.Hidden == hide
-            ? PlanOutcome.Error($"{p.DisplayName} is al {(hide ? "verborgen" : "zichtbaar")}.")
+            ? PlanOutcome.Error(Texts.T.Format(hide ? "bulk.already-hidden" : "bulk.already-visible", p.DisplayName))
             : MailboxPlans.Settings(p, new MailboxDesired { Hidden = hide })));
 
     /// <summary>Blocks signing in with the account of the selected mailboxes (a mailbox needs no sign-in).</summary>
     public static PlanOutcome BlockSignIn(InventoryData data, IEnumerable<Mailbox> mailboxes)
         => Together(mailboxes.Select(p => data.Index.AccountOf(p.Smtp, p.Alias) is { Enabled: true }
             ? MailboxPlans.SignIn(data, p, allow: false)
-            : PlanOutcome.Error($"{p.DisplayName}: aanmelden is al geblokkeerd of het account is niet gekend.")));
+            : PlanOutcome.Error(Texts.T.Format("code.bulk-plans.sign-in-is-already-blocked", p.DisplayName))));
 
     /// <summary>Makes one person the manager (AD, Exchange) or owner (cloud) of all selected groups.</summary>
     public static PlanOutcome AdministratorForGroups(InventoryData data, IEnumerable<Group> groups, Person person)

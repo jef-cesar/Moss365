@@ -1,4 +1,5 @@
 using Moss365.Core.Analysis;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Inventory;
 
@@ -73,12 +74,12 @@ public sealed class Group
             if (Ad is not null)
             {
                 var kind = $"AD-{(string.Equals(Ad.Category, "Distribution", StringComparison.OrdinalIgnoreCase) ? "distributiegroep" : "beveiligingsgroep")}";
-                return Cloud is not null ? kind + " (gesynchroniseerd naar Entra)" : kind;
+                return Cloud is not null ? kind + (" " + Texts.T["code.object-index.synchronised-to-entra"]) : kind;
             }
 
             if (Cloud is not null)
             {
-                return Cloud.TypeText + (Dynamic ? " (dynamisch)" : string.Empty);
+                return Cloud.TypeText + (Dynamic ? (" " + Texts.T["code.object-index.dynamic"]) : string.Empty);
             }
 
             return Exo?.TypeText ?? "Groep";
@@ -240,9 +241,9 @@ public sealed class ObjectIndex
     /// <summary>Like <see cref="Find"/>, but always a reference: unknown values stay readable.</summary>
     public ObjectRef Ref(string identity, string detail = "")
         => Find(identity) ?? ObjectRef.Unknown(identity,
-            detail.Length > 0 ? detail : identity.StartsWith("S-1-5-", StringComparison.OrdinalIgnoreCase) ? "verwijderd account (SID)" : "niet gevonden");
+            detail.Length > 0 ? detail : identity.StartsWith("S-1-5-", StringComparison.OrdinalIgnoreCase) ? Texts.T["index.deleted-sid"] : Texts.T["index.not-found"]);
 
-    public ObjectRef Ref(Person p) => new(ObjectKind.User, p.Key, p.Name, p.IsGuest ? $"gast, {p.Entra?.Mail}" : p.Upn);
+    public ObjectRef Ref(Person p) => new(ObjectKind.User, p.Key, p.Name, p.IsGuest ? Texts.T.Format("index.guest", p.Entra?.Mail) : p.Upn);
 
     // ------------------------------------------------------------------ relations of a group
 
@@ -589,7 +590,7 @@ public sealed class ObjectIndex
         }
     }
 
-    private ObjectRef CloudMember(string id) => Find(id) ?? ObjectRef.Unknown(id, "onbekend lid");
+    private ObjectRef CloudMember(string id) => Find(id) ?? ObjectRef.Unknown(id, Texts.T["code.object-index.unknown-member"]);
 
     private static void Add(Dictionary<string, List<Group>> d, string key, Group g)
     {

@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Moss365.Core.Changes;
@@ -44,7 +45,7 @@ public sealed record StaffRequest
     public string Reason { get; init; } = string.Empty;
 
     [JsonIgnore]
-    public string Title => Kind == RequestKind.Onboarding ? $"Nieuw: {GivenName} {Surname}".Trim() : $"Vertrek: {PersonName}";
+    public string Title => Kind == RequestKind.Onboarding ? $"Nieuw: {GivenName} {Surname}".Trim() : Texts.T.Format("code.staff-requests.leaving", PersonName);
 }
 
 /// <summary>
@@ -86,16 +87,16 @@ public static class StaffRequests
         var errors = new List<string>();
         if (r.Kind == RequestKind.Onboarding)
         {
-            if (string.IsNullOrWhiteSpace(r.GivenName) || string.IsNullOrWhiteSpace(r.Surname)) errors.Add("Vul voornaam en familienaam in.");
-            if (string.IsNullOrWhiteSpace(r.Department) && string.IsNullOrWhiteSpace(r.JobProfile)) errors.Add("Kies een dienst of een functieprofiel.");
-            if (r.JobProfile.Length > 0 && JobProfiles.Find(config, r.JobProfile) is null) errors.Add($"Functieprofiel {r.JobProfile} bestaat niet.");
+            if (string.IsNullOrWhiteSpace(r.GivenName) || string.IsNullOrWhiteSpace(r.Surname)) errors.Add(Texts.T["code.staff-requests.fill-in-first-name-and"]);
+            if (string.IsNullOrWhiteSpace(r.Department) && string.IsNullOrWhiteSpace(r.JobProfile)) errors.Add(Texts.T["code.staff-requests.choose-a-department-or-a"]);
+            if (r.JobProfile.Length > 0 && JobProfiles.Find(config, r.JobProfile) is null) errors.Add(Texts.T.Format("code.staff-requests.job-profile-does-not-exist", r.JobProfile));
         }
         else if (string.IsNullOrWhiteSpace(r.PersonKey))
         {
-            errors.Add("Kies wie vertrekt.");
+            errors.Add(Texts.T["code.staff-requests.choose-who-is-leaving"]);
         }
 
-        if (r.Date is null) errors.Add(r.Kind == RequestKind.Onboarding ? "Vul de startdatum in." : "Vul de laatste werkdag in.");
+        if (r.Date is null) errors.Add(r.Kind == RequestKind.Onboarding ? Texts.T["code.staff-requests.fill-in-the-start-date"] : Texts.T["code.staff-requests.fill-in-the-last-working"]);
         return errors;
     }
 

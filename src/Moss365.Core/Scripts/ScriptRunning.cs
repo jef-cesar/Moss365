@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Globalization;
 using System.Text.Json;
 
@@ -250,14 +251,14 @@ public static class ScriptOutput
 
     /// <summary>The result of a run from the exit code and the events.</summary>
     public static (RunResult Result, string Message) Result(int code, int errors, int warnings, bool cancelled) => cancelled
-        ? (RunResult.Cancelled, "Geannuleerd.")
+        ? (RunResult.Cancelled, Texts.T["code.script-running.cancelled"])
         : code switch
         {
-            0 when warnings > 0 => (RunResult.Warnings, $"Klaar, met {warnings} waarschuwing(en)."),
-            0 => (RunResult.Succeeded, "Klaar."),
-            2 => (RunResult.Error, $"Klaar, maar met {errors} fout(en)."),
-            3 => (RunResult.Error, "Geen voorbeeld mogelijk: het script ondersteunt -WhatIf niet. Er werd niets uitgevoerd."),
-            4 => (RunResult.Error, "Verbinden mislukt; het script is niet gestart."),
-            _ => (RunResult.Error, "Gestopt met een fout."),
+            0 when warnings > 0 => (RunResult.Warnings, Texts.T.Format("code.script-running.done-with-warning-s", warnings)),
+            0 => (RunResult.Succeeded, Texts.T["code.script-running.done"]),
+            2 => (RunResult.Error, Texts.T.Format("code.script-running.done-but-with-error-s", errors)),
+            3 => (RunResult.Error, Texts.T["code.script-running.no-preview-possible-the-script"]),
+            4 => (RunResult.Error, Texts.T["code.script-running.connecting-failed-the-script-did"]),
+            _ => (RunResult.Error, Texts.T["code.script-running.stopped-with-an-error"]),
         };
 }

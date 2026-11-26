@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Globalization;
 using Moss365.Core.Inventory;
 using Moss365.Core.Changes;
@@ -145,7 +146,7 @@ public static class BiStatistics
             var kpi = WithDivision(Kpis.Created(month.ToString("yyyy-MM", CultureInfo.InvariantCulture)), division);
             var count = Kpis.Count(kpi, b);
             var name = month.ToString("MMM yyyy", CultureInfo.GetCultureInfo("nl-BE"));
-            return new ChartColumn(month.ToString("MMM", CultureInfo.GetCultureInfo("nl-BE")).TrimEnd('.'), $"{name}: {count} nieuwe accounts", new[] { count }, kpi);
+            return new ChartColumn(month.ToString("MMM", CultureInfo.GetCultureInfo("nl-BE")).TrimEnd('.'), Texts.T.Format("code.bi-statistics.new-accounts", name, count), new[] { count }, kpi);
         }).ToList();
     }
 
@@ -163,7 +164,7 @@ public static class BiStatistics
             var succeeded = inWeek.Count(r => r.Succeeded);
             var failed = inWeek.Count(r => r.Failed);
             var week = ISOWeek.GetWeekOfYear(start);
-            return new ChartColumn($"w{week}", $"Week {week} (vanaf {start:dd/MM}): {succeeded} gelukt, {failed} mislukt", new[] { succeeded, failed });
+            return new ChartColumn($"w{week}", Texts.T.Format("code.bi-statistics.week-from-succeeded-failed", week, start, succeeded, failed), new[] { succeeded, failed });
         }).ToList();
     }
 

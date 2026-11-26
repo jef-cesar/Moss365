@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Analysis;
 using Moss365.Core.Inventory;
 
@@ -48,7 +49,7 @@ public static class DataQuality
             .Select(g => Row(g.Key, g.ToList()))
             .OrderBy(r => r.Score).ThenBy(r => r.Department, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
-        rows.Add(Row("Totaal", source.Active));
+        rows.Add(Row(Texts.T["report.total"], source.Active));
         return rows;
     }
 

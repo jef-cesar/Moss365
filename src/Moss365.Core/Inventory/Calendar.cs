@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 namespace Moss365.Core.Inventory;
 
 /// <summary>
@@ -61,18 +62,18 @@ public static class CalendarPeriod
 
         if (start is null || until is null)
         {
-            return (default, default, "Kies een begin- en een einddatum.");
+            return (default, default, Texts.T["code.calendar.choose-a-start-and-an"]);
         }
 
         var begin = start.Value.ToDateTime(TimeOnly.MinValue);
         var end = until.Value.ToDateTime(TimeOnly.MinValue).AddDays(1); // the end date counts
         if (end <= begin)
         {
-            return (begin, end, "De einddatum ligt voor de begindatum.");
+            return (begin, end, Texts.T["code.calendar.the-end-date-is-before"]);
         }
 
         return (end - begin).TotalDays > MaxDays
-            ? (begin, end, $"Kies hoogstens {MaxDays} dagen.")
+            ? (begin, end, Texts.T.Format("code.calendar.choose-at-most-days", MaxDays))
             : (begin, end, null);
     }
 }

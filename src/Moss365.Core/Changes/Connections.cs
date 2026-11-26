@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Inventory;
 
 namespace Moss365.Core.Changes;
@@ -261,11 +262,11 @@ public interface IExchangeConnection
 
     /// <summary>Forwarding on mailboxes and (with includeRules) inbox rules that forward (0.34).</summary>
     Task<IReadOnlyList<Security.ForwardingRule>> ReadForwardingAsync(bool includeRules, IProgress<string>? progress, CancellationToken cancel)
-        => throw new NotSupportedException("Doorsturen nakijken kan niet in deze omgeving.");
+        => throw new NotSupportedException(Texts.T["code.connections.checking-forwarding-is-not-possible"]);
 
     /// <summary>Message trace (0.33): what was received by and/or sent from an address in the last days (at most 10).</summary>
     Task<IReadOnlyList<Helpdesk.MessageTraceRow>> MessageTraceAsync(string? sender, string? recipient, int days, CancellationToken cancel)
-        => throw new NotSupportedException("Een berichtspoor kan niet in deze omgeving.");
+        => throw new NotSupportedException(Texts.T["code.connections.a-message-trace-is-not"]);
 
     /// <summary>Read a few rooms, mailboxes or groups again (by address), in one Exchange session.</summary>
     Task<ExchangeObjects> ReadObjectsAsync(IReadOnlyList<string> addresses, CancellationToken cancel);
@@ -334,7 +335,7 @@ public interface IConnectionFactory
 
     /// <summary>The tenant ID of a domain (Microsoft's OpenID metadata).</summary>
     Task<Setup.TenantLookupResult> FindTenantAsync(string domainOrId, CancellationToken cancel)
-        => Task.FromResult(new Setup.TenantLookupResult(null, "Opzoeken is niet beschikbaar in deze omgeving."));
+        => Task.FromResult(new Setup.TenantLookupResult(null, Texts.T["code.connections.looking-up-is-not-available"]));
 
     /// <summary>The domain of this PC and its domain controller, or null (not joined to a domain, or not Windows).</summary>
     Setup.LocalDomain? FindLocalDomain() => null;

@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Storage;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -128,7 +129,7 @@ public static class ScheduledPlans
     {
         Kind = ScheduledKind.Onboarding,
         When = whenValue,
-        Title = $"Nieuwe gebruiker {proposal.ViewName}",
+        Title = Texts.T.Format("code.scheduled.new-user", proposal.ViewName),
         CreatedBy = byValue,
         Upn = proposal.Upn,
         Changes = proposal.Now.Select(Copy).ToList(),
@@ -162,7 +163,7 @@ public static class ScheduledPlans
     {
         Kind = ScheduledKind.CaExclusionEnd,
         When = whenValue,
-        Title = $"Einde uitzondering op \"{policy.Name}\" voor {person.Name}",
+        Title = Texts.T.Format("code.scheduled.end-of-the-exception-on", policy.Name, person.Name),
         CreatedBy = byValue,
         PersonKey = person.Key,
         CaPolicyId = policy.Id,
@@ -179,7 +180,7 @@ public static class ScheduledPlans
             if (policy is null || who is null)
             {
                 return new ScheduledPlan(Array.Empty<Change>(), null,
-                    new[] { "Het beleid of de persoon staat niet (meer) in de geladen gegevens. Laad Conditional Access live." });
+                    new[] { Texts.T["code.scheduled.the-policy-or-the-person"] });
             }
 
             var u = Analysis.CaPlans.Exclusion(policy, who, add: false, data, config);
@@ -191,7 +192,7 @@ public static class ScheduledPlans
             var person = a.PersonKey is null ? null : data.SearchPerson(a.PersonKey);
             if (person is null)
             {
-                return new ScheduledPlan(Array.Empty<Change>(), null, new[] { "De gebruiker staat niet (meer) in de geladen gegevens. Laad live of kies opnieuw." });
+                return new ScheduledPlan(Array.Empty<Change>(), null, new[] { Texts.T["code.scheduled.the-user-is-not-or"] });
             }
 
             return new ScheduledPlan(PlanBuilder.Offboarding(data, config, person, a.Options ?? new OffboardingOptions()), null, Array.Empty<string>());
@@ -201,7 +202,7 @@ public static class ScheduledPlans
         if (a.Upn is { } upn && (data.AdUsers.Any(u => string.Equals(u.UserPrincipalName, upn, StringComparison.OrdinalIgnoreCase))
                                  || data.EntraUsers.Any(u => string.Equals(u.UserPrincipalName, upn, StringComparison.OrdinalIgnoreCase))))
         {
-            errors.Add($"{upn} bestaat al. Is deze instroom al uitgevoerd?");
+            errors.Add(Texts.T.Format("code.scheduled.already-exists-has-this-joiner", upn));
         }
 
         var plan = a.Changes.Select(Copy).ToList();

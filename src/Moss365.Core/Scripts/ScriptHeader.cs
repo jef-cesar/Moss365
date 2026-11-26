@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Storage;
 using System.Globalization;
 using System.Text;
@@ -267,17 +268,17 @@ public static class ScriptText
         var code = WithoutComment(text);
         if (Regex.IsMatch(code, @"\bRead-Host\b", RegexOptions.IgnoreCase) && !code.Contains("function Get-ScriptWaarde", StringComparison.OrdinalIgnoreCase))
         {
-            output.Add("Read-Host werkt niet in de app: gebruik een variabele.");
+            output.Add(Texts.T["code.script-header.read-host-does-not-work"]);
         }
 
         if (Regex.IsMatch(code, @"\bConnect-(ExchangeOnline|MgGraph)\b", RegexOptions.IgnoreCase))
         {
-            output.Add("Connect-ExchangeOnline of Connect-MgGraph is niet nodig: de app verbindt zelf (de opdracht wordt in de app overgeslagen).");
+            output.Add(Texts.T["code.script-header.connect-exchangeonline-or-connect-mggraph"]);
         }
 
         if (header.Writes && !Regex.IsMatch(code, @"SupportsShouldProcess\s*=\s*\$true", RegexOptions.IgnoreCase))
         {
-            output.Add("Dit script wijzigt iets, maar ondersteunt -WhatIf niet: het voorbeeld toont dan niet wat er zou gebeuren.");
+            output.Add(Texts.T["code.script-header.this-script-changes-something-but"]);
         }
 
         var addresses = Regex.Matches(code, @"[A-Za-z0-9._%+-]+\.[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}").Select(m => m.Value)
@@ -290,12 +291,12 @@ public static class ScriptText
         var names = ReadParameters(text).Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var v in header.Variables.Where(v => !Regex.IsMatch(v.Name, @"^[A-Za-z][A-Za-z0-9_]*$")))
         {
-            output.Add($"De naam '{v.Name}' kan geen PowerShell-parameter zijn (enkel letters, cijfers en _).");
+            output.Add(Texts.T.Format("code.script-header.the-name-cannot-be-a", v.Name));
         }
 
         foreach (var doubleValue in header.Variables.GroupBy(v => v.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
         {
-            output.Add($"De variabele '{doubleValue.Key}' staat er meer dan eens (PowerShell kent geen verschil tussen hoofdletters en kleine letters).");
+            output.Add(Texts.T.Format("code.script-header.the-variable-is-there-more", doubleValue.Key));
         }
 
         return output;

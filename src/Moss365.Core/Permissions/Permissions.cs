@@ -1,6 +1,7 @@
 using Moss365.Core.Analysis;
 using Moss365.Core.Inventory;
 using Moss365.Core.Changes;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Permissions;
 
@@ -195,12 +196,12 @@ public static class PermissionTable
             : ForAction(w.ChangeAction);
         if (!Can(roles, permission))
         {
-            return $"Je profiel ({Text(roles, "en")}) laat dit niet toe; het vraagt {Text(RolesFor(permission))}.";
+            return Texts.T.Format("permission.refused", Text(roles, and: true), Text(RolesFor(permission)));
         }
 
         if (data is not null && permission != Permission.Manage && !Can(roles, Permission.Privileged) && TouchesPrivileged(w, data) is { } what)
         {
-            return $"{what} is bevoorrecht; dat vraagt het profiel Beheerder.";
+            return Texts.T.Format("permission.privileged", what);
         }
 
         return null;
@@ -211,7 +212,7 @@ public static class PermissionTable
         if (w.Parameters.TryGetValue("groepDn", out var groupDn) && data.AdGroupsByDn.TryGetValue(groupDn, out var groupValue)
             && MirrorUser.IsPrivileged(groupValue))
         {
-            return $"De groep {groupValue.Name}";
+            return Texts.T.Format("permission.the-group", groupValue.Name);
         }
 
         if (w.TargetSystem == TargetSystem.ActiveDirectory
@@ -220,19 +221,21 @@ public static class PermissionTable
                 || data.AdGroupsByDn.Values.Any(g => MirrorUser.IsPrivileged(g)
                                                       && g.Members.Contains(user.DistinguishedName, StringComparer.OrdinalIgnoreCase))))
         {
-            return $"Het account {user.SamAccountName}";
+            return Texts.T.Format("permission.the-account", user.SamAccountName);
         }
 
         return null;
     }
 
-    /// <summary>Readable names, e.g. "Helpdesk of Administrator" (or with "en" for the own roles).</summary>
-    public static string Text(Role roles, string conjunction = "of")
+    /// <summary>Readable names, e.g. "Helpdesk or Administrator" (or with "and" for the own roles).</summary>
+    public static string Text(Role roles, bool and = false)
     {
         if (roles == Role.No)
         {
-            return "geen profiel";
+            return Texts.T["permission.no-profile"];
         }
+
+        var conjunction = Texts.T[and ? "word.and" : "word.or"];
 
         var names = Enum.GetValues<Role>().Where(r => r is not Role.No and not Role.Everything && roles.HasFlag(r)).Select(r => r.ToString()).ToList();
         return names.Count == 1 ? names[0] : string.Join(", ", names.Take(names.Count - 1)) + $" {conjunction} " + names[^1];

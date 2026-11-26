@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -88,7 +89,7 @@ public static class CaBackup
 
     public static CaBackupContent Read(IFileStore store, string path)
     {
-        using var doc = JsonDocument.Parse(store.ReadText(path) ?? throw new FileNotFoundException("Back-up niet gevonden.", path));
+        using var doc = JsonDocument.Parse(store.ReadText(path) ?? throw new FileNotFoundException(Texts.T["code.tenant-hub.backup-not-found"], path));
         var r = doc.RootElement;
         var time = r.TryGetProperty("tijd", out var t) ? DateTime.Parse(t.GetString()!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : DateTime.MinValue;
         var policies = r.TryGetProperty("beleiden", out var b) ? b.EnumerateArray().Select(CaJson.Read).ToList() : new List<CaPolicy>();

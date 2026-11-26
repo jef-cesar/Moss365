@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -26,7 +27,7 @@ public sealed record ScriptIndex(int Format, IReadOnlyList<IndexEntry> Scripts)
     };
 
     public static ScriptIndex Parse(string json)
-        => JsonSerializer.Deserialize<ScriptIndex>(json, Json) is { Format: 1 } index ? index : throw new JsonException("Onbekend formaat van de index.");
+        => JsonSerializer.Deserialize<ScriptIndex>(json, Json) is { Format: 1 } index ? index : throw new JsonException(Texts.T["code.script-index.unknown-format-of-the-index"]);
 
     public string ToJson() => JsonSerializer.Serialize(this, Json).Replace("\r\n", "\n") + "\n";
 
@@ -150,12 +151,12 @@ public static class LibraryUpdate
     {
         if (!ScriptIndex.SafePath(entry.Path))
         {
-            return $"{entry.Path}: geen geldig pad.";
+            return Texts.T.Format("code.script-index.not-a-valid-path", entry.Path);
         }
 
         if (!ScriptIndex.Matches(entry, bytes))
         {
-            return $"{entry.Path}: de vingerafdruk klopt niet met de index; niet bewaard.";
+            return Texts.T.Format("code.script-index.the-fingerprint-does-not-match", entry.Path);
         }
 
         folders.Store.Write($"{Folder}/{entry.Path}", bytes);

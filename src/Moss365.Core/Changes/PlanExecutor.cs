@@ -1,6 +1,7 @@
 using Moss365.Core.Storage;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -165,7 +166,7 @@ public sealed class PlanExecutor
                 if (w.DependentOf is { } start && (notDone.Contains(start)
                                                    || (results.TryGetValue(start, out var r) && r.Status != ResultStatus.Succeeded)))
                 {
-                    results[w.Id] = ChangeResult.Skip(w, "Overgeslagen: een eerdere stap waar deze van afhangt, is niet gelukt.");
+                    results[w.Id] = ChangeResult.Skip(w, Texts.T["code.plan-executor.skipped-an-earlier-step-this"]);
                     notDone.Add(w.Id);
                     continue;
                 }
@@ -174,7 +175,7 @@ public sealed class PlanExecutor
                 // allowed
                 if (_refuse?.Invoke(w) is { } reason)
                 {
-                    results[w.Id] = ChangeResult.Error(w, "Geweigerd: " + reason);
+                    results[w.Id] = ChangeResult.Error(w, Texts.T.Format("executor.refused", reason));
                     notDone.Add(w.Id);
                     continue;
                 }
@@ -187,11 +188,11 @@ public sealed class PlanExecutor
                 continue;
             }
 
-            progress?.Report($"{series.Count} wijziging(en) in {series[0].SystemText}...");
+            progress?.Report(Texts.T.Format("code.plan-executor.change-s-in", series.Count, series[0].SystemText));
             IReadOnlyList<ChangeResult> outcome;
             if (!_executors.TryGetValue(system, out var executor))
             {
-                outcome = series.Select(w => ChangeResult.Error(w, "Geen verbinding met dit systeem.")).ToList();
+                outcome = series.Select(w => ChangeResult.Error(w, Texts.T["code.plan-executor.no-connection-with-this-system"])).ToList();
             }
             else
             {
@@ -208,7 +209,7 @@ public sealed class PlanExecutor
             foreach (var w in series)
             {
                 results[w.Id] = outcome.FirstOrDefault(u => u.ChangeId == w.Id)
-                                   ?? ChangeResult.Error(w, "Geen resultaat ontvangen.");
+                                   ?? ChangeResult.Error(w, Texts.T["code.plan-executor.no-result-received"]);
                 if (results[w.Id].Status != ResultStatus.Succeeded)
                 {
                     notDone.Add(w.Id);

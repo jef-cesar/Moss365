@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using Moss365.Core.Storage;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -284,7 +285,7 @@ public static class ConfigStorage
                 if (own.Populations.Count == 0 && defaultValue is { Populations.Count: > 0 })
                 {
                     return (defaultValue, defaultPath,
-                        $"Je eigen organisatie ({usersPath}) heeft geen soorten accounts; de app gebruikt de meegeleverde. Herstel of pas ze aan in het scherm Organisatie.");
+                        Texts.T.Format("code.organisation-config.your-own-organisation-has-no", usersPath));
                 }
 
                 return (own, usersPath, null);
@@ -293,10 +294,10 @@ public static class ConfigStorage
             {
                 if (defaultValue is not null)
                 {
-                    return (defaultValue, defaultPath, $"Je eigen organisatie ({usersPath}) is niet leesbaar ({ex.Message}); de app gebruikt de meegeleverde.");
+                    return (defaultValue, defaultPath, Texts.T.Format("code.organisation-config.your-own-organisation-cannot-be", usersPath, ex.Message));
                 }
 
-                return (new OrganisationConfig(), null, $"Organisatie niet leesbaar: {usersPath} ({ex.Message}).");
+                return (new OrganisationConfig(), null, Texts.T.Format("code.organisation-config.organisation-cannot-be-read", usersPath, ex.Message));
             }
         }
 
@@ -306,7 +307,7 @@ public static class ConfigStorage
         }
 
         return (new OrganisationConfig(), null, defaultError is not null
-            ? $"De meegeleverde organisatie ({defaultPath}) is niet leesbaar: {defaultError}"
+            ? Texts.T.Format("code.organisation-config.the-supplied-organisation-cannot-be", defaultPath, defaultError)
             : $"Geen organisatie gevonden (verwacht: {defaultPath}). Pak de volledige zip uit en start Moss365.exe uit die map (niet rechtstreeks vanuit de zip).");
     }
 
@@ -354,5 +355,5 @@ public static class ConfigStorage
 
     /// <summary>The settings in an exported file (R9: from one tenant to another). Throws when it is not one.</summary>
     public static OrganisationConfig Parse(string json)
-        => JsonSerializer.Deserialize<OrganisationConfig>(json.TrimStart('\uFEFF'), Options) ?? throw new JsonException("Geen organisatie in dit bestand.");
+        => JsonSerializer.Deserialize<OrganisationConfig>(json.TrimStart('\uFEFF'), Options) ?? throw new JsonException(Texts.T["code.organisation-config.no-organisation-in-this-file"]);
 }

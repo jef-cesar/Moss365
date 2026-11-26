@@ -261,7 +261,7 @@
         }
     </div>
     @if (rolesError is not null) { <div class="kb-melding kb-fout">@rolesError</div> }
-    <p class="kb-zacht">@T.Format("organisation.now-0-do-not-forget", State.ProfileMessage ?? (State.Config.RolesModeEffective == RolesMode.Off ? T["code.organisation.without-roles-everyone-may-do"] : (T["code.organisation.according-to-your-role"] + " ") + PermissionTable.Text(State.Roles, "en") + "."))</p>
+    <p class="kb-zacht">@T.Format("organisation.now-0-do-not-forget", State.ProfileMessage ?? (State.Config.RolesModeEffective == RolesMode.Off ? T["code.organisation.without-roles-everyone-may-do"] : (T["code.organisation.according-to-your-role"] + " ") + PermissionTable.Text(State.Roles, and: true) + "."))</p>
 </section>
 }
 

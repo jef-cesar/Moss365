@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Data.Sqlite;
@@ -44,7 +45,7 @@ public sealed record EncryptionInfo(EncryptionMethod Method, string Protected, s
 
 /// <summary>A tenant whose database cannot be opened without a password or the recovery key.</summary>
 public sealed class TenantLockedException(string tenantId, EncryptionMethod method)
-    : InvalidOperationException("Deze tenant is versleuteld: geef het wachtwoord of de herstelsleutel.")
+    : InvalidOperationException(Texts.T["code.encryption.this-tenant-is-encrypted-enter"])
 {
     public string TenantId { get; } = tenantId;
     public EncryptionMethod Method { get; } = method;
@@ -79,7 +80,7 @@ public static class TenantKeys
     {
         if (key.Length != KeySize)
         {
-            throw new ArgumentException("Verkeerde sleutel.", nameof(key));
+            throw new ArgumentException(Texts.T["code.encryption.wrong-key"], nameof(key));
         }
 
         var text = Base32(key.Concat(SHA256.HashData(key).Take(2)).ToArray());
@@ -105,10 +106,10 @@ public static class TenantKeys
     {
         if ((password ?? string.Empty).Length < MinimumPasswordLength)
         {
-            return $"Kies een wachtwoord van minstens {MinimumPasswordLength} tekens.";
+            return Texts.T.Format("code.encryption.choose-a-password-of-at", MinimumPasswordLength);
         }
 
-        return password == again ? null : "De twee wachtwoorden verschillen.";
+        return password == again ? null : Texts.T["code.encryption.the-two-passwords-differ"];
     }
 
     /// <summary>Wraps the key with a password (PBKDF2-SHA256, AES-256-GCM).</summary>
@@ -133,7 +134,7 @@ public static class TenantKeys
     {
         if (info.Method != EncryptionMethod.Password || info.Salt is null)
         {
-            throw new CryptographicException("Deze tenant gebruikt geen wachtwoord.");
+            throw new CryptographicException(Texts.T["code.encryption.this-tenant-uses-no-password"]);
         }
 
         var blob = Convert.FromBase64String(info.Protected);
@@ -272,7 +273,7 @@ public sealed partial class Database
             cmd.CommandText = "PRAGMA integrity_check;";
             if (cmd.ExecuteScalar() as string != "ok")
             {
-                throw new InvalidDataException("De versleutelde kopie is niet in orde; er werd niets gewijzigd.");
+                throw new InvalidDataException(Texts.T["code.encryption.the-encrypted-copy-is-not"]);
             }
         }
 
@@ -280,7 +281,7 @@ public sealed partial class Database
         {
             if (RowCount(check, table) != Count(table))
             {
-                throw new InvalidDataException($"De kopie mist rijen ({table}); er werd niets gewijzigd.");
+                throw new InvalidDataException(Texts.T.Format("code.encryption.the-copy-is-missing-rows", table));
             }
         }
     }

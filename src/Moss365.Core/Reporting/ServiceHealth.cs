@@ -1,3 +1,5 @@
+using Moss365.Core.Localization;
+
 namespace Moss365.Core.Reporting;
 
 /// <summary>The state of one Microsoft 365 service.</summary>
@@ -18,15 +20,15 @@ public static class ServiceHealth
 
     public static string StatusText(string status) => status switch
     {
-        "serviceOperational" => "in orde",
-        "investigating" => "wordt onderzocht",
-        "restoringService" => "wordt hersteld",
-        "verifyingService" => "herstel wordt nagekeken",
+        "serviceOperational" => Texts.T["code.service-health.healthy"],
+        "investigating" => Texts.T["code.service-health.being-investigated"],
+        "restoringService" => Texts.T["code.service-health.being-restored"],
+        "verifyingService" => Texts.T["code.service-health.restoration-being-checked"],
         "serviceRestored" => "hersteld",
         "postIncidentReviewPublished" => "hersteld (verslag gepubliceerd)",
         "serviceDegradation" => "verminderd",
         "serviceInterruption" => "onderbroken",
-        "extendedRecovery" => "langer herstel",
+        "extendedRecovery" => Texts.T["code.service-health.extended-recovery"],
         "falsePositive" => "vals alarm",
         "investigationSuspended" => "onderzoek gestopt",
         "resolved" => "opgelost",
@@ -50,13 +52,13 @@ public static class ServiceHealth
         var incidents = reading.Issues.Count(i => i.Classification == "incident");
         if (bad.Count == 0 && reading.Issues.Count == 0)
         {
-            return "Alle diensten van Microsoft 365 zijn in orde.";
+            return Texts.T["health.all-ok"];
         }
 
         var parts = new List<string>();
-        if (bad.Count > 0) parts.Add($"{bad.Count} dienst(en) met een probleem: {string.Join(", ", bad.Select(b => b.Service))}");
-        if (incidents > 0) parts.Add($"{incidents} incident(en)");
-        if (reading.Issues.Count - incidents > 0) parts.Add($"{reading.Issues.Count - incidents} melding(en)");
+        if (bad.Count > 0) parts.Add(Texts.T.Format("health.services", bad.Count, string.Join(", ", bad.Select(b => b.Service))));
+        if (incidents > 0) parts.Add(Texts.T.Format("health.incidents", incidents));
+        if (reading.Issues.Count - incidents > 0) parts.Add(Texts.T.Format("health.advisories", reading.Issues.Count - incidents));
         return string.Join("; ", parts) + ".";
     }
 

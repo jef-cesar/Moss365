@@ -40,7 +40,7 @@ public static class CaCheck
         var output = new List<CaFinding>();
         if (d.ConditionalAccess is not { } ca)
         {
-            output.Add(new CaFinding("Conditional Access", CaVerdict.Info, "Niet geladen.", Texts.T["code.ca-check.load-live-connections-load-everything"]));
+            output.Add(new CaFinding("Conditional Access", CaVerdict.Info, Texts.T["code.ca-check.not-loaded"], Texts.T["code.ca-check.load-live-connections-load-everything"]));
             return output;
         }
 
@@ -154,7 +154,7 @@ public static class CaCheck
         else
         {
             output.Add(phishing.Count > 0
-                ? new CaFinding(Texts.T["code.ca-check.administrators"], CaVerdict.InOrder, "Beheerrollen moeten phishingbestendige MFA gebruiken.") { Policies = phishing }
+                ? new CaFinding(Texts.T["code.ca-check.administrators"], CaVerdict.InOrder, Texts.T["code.ca-check.admin-roles-should-use-phishing"]) { Policies = phishing }
                 : new CaFinding(Texts.T["code.ca-check.administrators"], CaVerdict.Attention, Texts.T["code.ca-check.administrators-come-under-mfa-but"],
                     Texts.T["code.ca-check.for-admin-roles-microsoft-recommends"]) { Policies = management });
         }
@@ -168,7 +168,7 @@ public static class CaCheck
         {
             var guestPolicy = enabled.Where(b => Mfa(b) && (b.GuestsIn || (Everyone(b) && !b.GuestsOff))).ToList();
             output.Add(guestPolicy.Count > 0
-                ? new CaFinding(Texts.T["collaboration.guests"], CaVerdict.InOrder, $"Gasten ({guests.Count}) moeten MFA gebruiken.") { Policies = guestPolicy }
+                ? new CaFinding(Texts.T["collaboration.guests"], CaVerdict.InOrder, Texts.T.Format("code.ca-check.guests-should-use-mfa", guests.Count)) { Policies = guestPolicy }
                 : new CaFinding(Texts.T["collaboration.guests"], CaVerdict.Attention, Texts.T.Format("code.ca-check.there-are-guests-but-no", guests.Count), Texts.T["code.ca-check.include-guests-in-the-mfa"]));
         }
 
@@ -210,14 +210,14 @@ public static class CaCheck
             var exclusions = b.UsersOff.Count + b.GroupsOff.Count + b.RolesOff.Count;
             if (b.Status != CaStatus.Off && exclusions > 5)
             {
-                output.Add(new CaFinding(Texts.T["code.ca-check.many-exceptions"], CaVerdict.Attention, $"\"{b.Name}\" heeft {exclusions} uitzonderingen.",
+                output.Add(new CaFinding(Texts.T["code.ca-check.many-exceptions"], CaVerdict.Attention, Texts.T.Format("ca-check.exclusions", b.Name, exclusions),
                     Texts.T["code.ca-check.every-exception-is-a-hole"]) { Policies = new[] { b } });
             }
 
             if (b.Status == CaStatus.On && b.Blocks && Everyone(b) && AllApps(b) && WithoutConditions(b) && b.LocationsOff.Count == 0 && b.PlatformsOff.Count == 0)
             {
                 output.Add(new CaFinding(Texts.T["code.ca-check.everyone-locked-out"], CaVerdict.Problem, Texts.T.Format("code.ca-check.blocks-all-users-for-all", b.Name)
-                    + (exclusions == 0 ? ", zonder uitzonderingen." : Texts.T.Format("code.ca-check.with-only-exception-s", exclusions)),
+                    + (exclusions == 0 ? Texts.T["ca-check.no-exclusions"] : Texts.T.Format("code.ca-check.with-only-exception-s", exclusions)),
                     Texts.T["code.ca-check.check-this-at-once-nobody"]) { Policies = new[] { b } });
             }
 

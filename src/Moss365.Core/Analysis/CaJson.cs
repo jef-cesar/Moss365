@@ -1,3 +1,4 @@
+using Moss365.Core.Localization;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -47,7 +48,7 @@ public static class CaJson
         if (session is { } s1 && O(s1, "signInFrequency") is { } f && f.TryGetProperty("isEnabled", out var fa) && fa.ValueKind == JsonValueKind.True)
         {
             frequency = S(f, "frequencyInterval") == "everyTime"
-                ? "elke keer"
+                ? Texts.T["ca-policy-editor.every-time"]
                 : f.TryGetProperty("value", out var fv) && fv.ValueKind == JsonValueKind.Number
                     ? $"{fv.GetInt32()} {(S(f, "type") == "days" ? "dagen" : "uur")}"
                     : null;
@@ -56,7 +57,7 @@ public static class CaJson
         string? browser = null;
         if (session is { } s2 && O(s2, "persistentBrowser") is { } pb && pb.TryGetProperty("isEnabled", out var pa) && pa.ValueKind == JsonValueKind.True)
         {
-            browser = S(pb, "mode") == "never" ? "nooit aangemeld blijven" : "altijd aangemeld blijven";
+            browser = S(pb, "mode") == "never" ? Texts.T["code.ca-json.never-stay-signed-in"] : Texts.T["code.ca-json.always-stay-signed-in"];
         }
 
         var usersIn = L(who, "includeUsers");

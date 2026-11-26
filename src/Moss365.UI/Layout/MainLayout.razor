@@ -110,7 +110,7 @@
             }
 
             <div class="kb-nav-profiel" title="@T["nav.profile.title"]">
-                @T["nav.profile"]: @PermissionTable.Text(State.Roles, "en")
+                @T["nav.profile"]: @PermissionTable.Text(State.Roles, and: true)
                 @if (State.ProfileMessage is { } pm) { <div class="kb-zacht">@pm</div> }
             </div>
 
@@ -161,7 +161,7 @@
         {
             <section class="kb-kaart kb-geen-toegang" role="alert">
                 <h1>@T["access.none"]</h1>
-                <p>@T.Format("access.none.text", PermissionTable.Text(State.Roles, "en"), PermissionTable.Text(PermissionTable.RolesFor(permission)))</p>
+                <p>@T.Format("access.none.text", PermissionTable.Text(State.Roles, and: true), PermissionTable.Text(PermissionTable.RolesFor(permission)))</p>
                 <p class="kb-zacht">@T["access.none.how"]</p>
             </section>
         }
