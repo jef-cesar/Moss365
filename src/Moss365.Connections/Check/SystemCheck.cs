@@ -85,7 +85,7 @@ public sealed class SystemCheck : ISystemCheck
             var ldap = ldaps || await _reachable(server, 389, cancel);
             rules.Add(new("Netwerk", $"Domeincontroller {server}", ldap ? CheckStatus.Good : CheckStatus.Error,
                 ldaps ? "bereikbaar (poort 636)" : ldap ? "bereikbaar (poort 389)" : "niet bereikbaar",
-                ldap ? "AD via LDAP, ondertekend en versleuteld." : "Op het gemeentenetwerk of via VPN? Klopt de naam of het IP-adres?"));
+                ldap ? "AD via LDAP, ondertekend en versleuteld." : "Op het bedrijfsnetwerk of via VPN? Klopt de naam of het IP-adres?"));
         }
         else
         {

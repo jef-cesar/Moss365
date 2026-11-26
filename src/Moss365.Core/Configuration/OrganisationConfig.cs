@@ -284,7 +284,7 @@ public static class ConfigStorage
                 if (own.Populations.Count == 0 && defaultValue is { Populations.Count: > 0 })
                 {
                     return (defaultValue, defaultPath,
-                        $"Je eigen organisatie ({usersPath}) heeft geen soorten (gemeente, OCMW, ...); de app gebruikt de meegeleverde. Herstel of pas ze aan in het scherm Organisatie.");
+                        $"Je eigen organisatie ({usersPath}) heeft geen soorten accounts; de app gebruikt de meegeleverde. Herstel of pas ze aan in het scherm Organisatie.");
                 }
 
                 return (own, usersPath, null);

@@ -1,6 +1,7 @@
 using Moss365.Core.Analysis;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
+using Moss365.Core.Localization;
 
 namespace Moss365.Core.Changes;
 
@@ -168,7 +169,7 @@ public static class PlanBuilder
                 Target = room.Smtp,
                 TargetName = room.DisplayName,
                 Parameters = processing,
-                Description = $"Agendaverwerking van {room.DisplayName} aanpassen",
+                Description = Texts.T.Format("code.plan-builder.change-the-calendar-processing-of", room.DisplayName),
                 CurrentValue = string.Join(", ", old),
                 NewValue = string.Join(", ", newValue),
             });
@@ -200,7 +201,7 @@ public static class PlanBuilder
                 Target = room.Smtp,
                 TargetName = room.DisplayName,
                 Parameters = place,
-                Description = $"Gebouw, verdieping of capaciteit van {room.DisplayName} aanpassen",
+                Description = Texts.T.Format("code.plan-builder.change-the-building-floor-or", room.DisplayName),
                 CurrentValue = string.Join(", ", old),
                 NewValue = string.Join(", ", newValue),
             });
@@ -215,8 +216,8 @@ public static class PlanBuilder
                 Target = room.Smtp,
                 TargetName = room.DisplayName,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["User"] = "Default", ["AccessRights"] = permission },
-                Description = $"Standaardrecht op de agenda van {room.DisplayName} instellen",
-                CurrentValue = room.DefaultCalendarPermission.Length > 0 ? room.DefaultCalendarPermission : "(onbekend)",
+                Description = Texts.T.Format("code.plan-builder.set-the-default-permission-on", room.DisplayName),
+                CurrentValue = room.DefaultCalendarPermission.Length > 0 ? room.DefaultCalendarPermission : Texts.T["kpi.value.unknown"],
                 NewValue = permission,
             });
         }
@@ -237,21 +238,21 @@ public static class PlanBuilder
         }
 
         Check("AutomateProcessing", room.AutomateProcessing, defaultValue.AutomateProcessing);
-        Check("Boekingsvenster", room.BookingWindowInDays?.ToString() ?? string.Empty, defaultValue.BookingWindowInDays.ToString());
-        Check("Maximale duur", room.MaximumDurationInMinutes?.ToString() ?? string.Empty, defaultValue.MaximumDurationInMinutes.ToString());
-        Check("Conflicten toestaan", Bool(room.AllowConflicts), Bool(defaultValue.AllowConflicts));
-        Check("Terugkerende vergaderingen", Bool(room.AllowRecurringMeetings), Bool(defaultValue.AllowRecurringMeetings));
-        Check("Organisator in onderwerp", Bool(room.AddOrganizerToSubject), Bool(defaultValue.AddOrganizerToSubject));
-        Check("Onderwerp wissen", Bool(room.DeleteSubject), Bool(defaultValue.DeleteSubject));
-        Check("Standaardrecht agenda", room.DefaultCalendarPermission, defaultValue.CalendarPermissionDefault);
+        Check(Texts.T["room-detail.booking-window"], room.BookingWindowInDays?.ToString() ?? string.Empty, defaultValue.BookingWindowInDays.ToString());
+        Check(Texts.T["room-detail.maximum-duration"], room.MaximumDurationInMinutes?.ToString() ?? string.Empty, defaultValue.MaximumDurationInMinutes.ToString());
+        Check(Texts.T["room-form.allow-conflicts"], Bool(room.AllowConflicts), Bool(defaultValue.AllowConflicts));
+        Check(Texts.T["room-form.recurring-meetings"], Bool(room.AllowRecurringMeetings), Bool(defaultValue.AllowRecurringMeetings));
+        Check(Texts.T["room-form.organiser-in-subject"], Bool(room.AddOrganizerToSubject), Bool(defaultValue.AddOrganizerToSubject));
+        Check(Texts.T["room-form.clear-subject"], Bool(room.DeleteSubject), Bool(defaultValue.DeleteSubject));
+        Check(Texts.T["room-form.default-calendar-permission"], room.DefaultCalendarPermission, defaultValue.CalendarPermissionDefault);
         if (string.IsNullOrWhiteSpace(room.Building))
         {
-            list.Add("Gebouw: (leeg)");
+            list.Add(Texts.T["code.plan-builder.building-empty"]);
         }
 
         if (room.Capacity is null or 0)
         {
-            list.Add("Capaciteit: (leeg)");
+            list.Add(Texts.T["code.plan-builder.capacity-empty"]);
         }
 
         return list;
@@ -267,19 +268,19 @@ public static class PlanBuilder
         var population = config.SearchPopulation(request.Population);
         if (population is null)
         {
-            errors.Add("Kies of het om de gemeente, het OCMW of een vrijwilliger gaat.");
+            errors.Add(Texts.T["code.plan-builder.choose-the-kind-of-account"]);
         }
 
         if (string.IsNullOrWhiteSpace(request.GivenName) || string.IsNullOrWhiteSpace(request.Surname))
         {
-            errors.Add("Voornaam en achternaam zijn verplicht.");
+            errors.Add(Texts.T["code.plan-builder.first-name-and-last-name"]);
         }
 
         // A job profile fills in what the form leaves empty (0.22)
         var profile = JobProfiles.Find(config, request.JobProfile);
         if (request.JobProfile is { Length: > 0 } && profile is null)
         {
-            errors.Add("Het gekozen functieprofiel bestaat niet meer.");
+            errors.Add(Texts.T["code.plan-builder.the-chosen-job-profile-no"]);
         }
 
         var departmentValue = string.IsNullOrWhiteSpace(request.Department) ? profile?.Department ?? string.Empty : request.Department;
@@ -290,23 +291,23 @@ public static class PlanBuilder
         var department = config.SearchDepartment(departmentValue);
         if (population is not null && population.City is null && department is null)
         {
-            errors.Add("Kies een dienst uit de lijst.");
+            errors.Add(Texts.T["code.plan-builder.choose-a-department-from-the"]);
         }
 
         if (population is not null && population.City is null && string.IsNullOrWhiteSpace(officeValue))
         {
-            errors.Add("Kies een kantoor uit de lijst.");
+            errors.Add(Texts.T["code.plan-builder.choose-an-office-from-the"]);
         }
 
         var domainDn = data.DomainDn.Length > 0 ? data.DomainDn : config.DomainDn;
         if (domainDn.Length == 0)
         {
-            errors.Add("Het AD-domein is onbekend: vul adDomein in de organisatie in of laad live gegevens uit AD.");
+            errors.Add(Texts.T["code.plan-builder.the-ad-domain-is-unknown"]);
         }
 
         if (!data.HasAd)
         {
-            warnings.Add("Er zijn geen AD-gegevens geladen: de app kan niet controleren of de naam al bestaat.");
+            warnings.Add(Texts.T["code.plan-builder.no-ad-data-is-loaded"]);
         }
 
         // Derive the names and make them unique
@@ -323,20 +324,20 @@ public static class PlanBuilder
                 var u = $"{local}{n}@{domain}";
                 if (!Exists(data, s, u))
                 {
-                    warnings.Add($"{local} bestaat al; voorgesteld: {local}{n}. Controleer of het niet om dezelfde persoon gaat.");
+                    warnings.Add(Texts.T.Format("code.plan-builder.already-exists-suggested-check-that", local, local, n));
                     (sam, upn, found) = (s, u, true);
                 }
             }
 
             if (!found)
             {
-                errors.Add($"Geen vrije naam gevonden voor {local}.");
+                errors.Add(Texts.T.Format("code.plan-builder.no-free-name-found-for", local));
             }
         }
 
         if (sam != upn.Split('@')[0])
         {
-            warnings.Add($"sAMAccountName is beperkt tot {NameRules.MaxSam} tekens: {sam} (UPN blijft {upn}).");
+            warnings.Add(Texts.T.Format("code.plan-builder.samaccountname-is-limited-to-characters", NameRules.MaxSam, sam, upn));
         }
 
         var view = NamingSettings.Display(request.GivenName, request.Surname, config.Naming.DisplayName);
@@ -399,7 +400,7 @@ public static class PlanBuilder
                 Target = dn,
                 TargetName = view,
                 Parameters = attributes,
-                Description = $"Account {sam} aanmaken in {population.Ou} (ingeschakeld, wachtwoord wijzigen bij eerste aanmelding)",
+                Description = Texts.T.Format("code.plan-builder.create-account-in-enabled-change", sam, population.Ou),
                 NewValue = upn,
                 Secret = password,
             };
@@ -414,7 +415,7 @@ public static class PlanBuilder
                     var g = data.FindAdGroupByName(name);
                     if (g is null)
                     {
-                        warnings.Add($"Standaardgroep {name} niet gevonden in AD; overgeslagen.");
+                        warnings.Add(Texts.T.Format("code.plan-builder.default-group-not-found-in", name));
                     }
                     else
                     {
@@ -453,7 +454,7 @@ public static class PlanBuilder
                     .Select(m => (Mailbox: m, Group: data.Index.AccessGroupOf(m))).ToList();
                 foreach (var (m, g) in accessGroups.Where(x => x.Group is null))
                 {
-                    warnings.Add($"{m.DisplayName} heeft nog geen toegangsgroep; toegang uit het functieprofiel overgeslagen.");
+                    warnings.Add(Texts.T.Format("code.plan-builder.has-no-access-group-yet", m.DisplayName));
                 }
 
                 var names = profile.Groups.Concat(accessGroups.Where(x => x.Group is not null).Select(x => x.Group!.Name));
@@ -462,11 +463,11 @@ public static class PlanBuilder
                     var g = JobProfilePlans.FindGroup(data, name);
                     if (g is null)
                     {
-                        warnings.Add($"Groep {name} uit het functieprofiel niet gevonden; overgeslagen.");
+                        warnings.Add(Texts.T.Format("code.plan-builder.group-from-the-job-profile", name));
                     }
                     else if (g.Dynamic || config.IsDynamicGroup(g.Name) || (g.Ad is { } privileged && MirrorUser.IsPrivileged(privileged)))
                     {
-                        warnings.Add($"{g.Name} is dynamisch of bevoorrecht; niet uit het functieprofiel gegeven.");
+                        warnings.Add(Texts.T.Format("code.plan-builder.is-dynamic-or-privileged-not", g.Name));
                     }
                     else if (g.Ad is { } a)
                     {
@@ -488,17 +489,18 @@ public static class PlanBuilder
             var licences = new[] { request.LicenceSku }.Concat(profile?.Licences ?? new List<string>())
                 .Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             Change? location = null;
+            var country = JobProfilePlans.UsageLocation(data);
             foreach (var sku in licences)
             {
                 if (population.NoLicence && sku == licences[0])
                 {
-                    warnings.Add($"{population.Name} krijgt normaal geen licentie.");
+                    warnings.Add(Texts.T.Format("code.plan-builder.normally-gets-no-licence", population.Name));
                 }
 
                 var licence = data.Licences.FirstOrDefault(l => string.Equals(l.SkuPartNumber, sku, StringComparison.OrdinalIgnoreCase));
                 if (licence is { Free: 0 })
                 {
-                    warnings.Add($"Er zijn geen vrije {sku}-licenties ({licence.Assigned}/{licence.Total}). De toekenning zal mislukken tot er een vrijkomt.");
+                    warnings.Add(Texts.T.Format("code.plan-builder.there-are-no-free-licences", sku, licence.Assigned, licence.Total));
                 }
 
                 if (location is null)
@@ -509,9 +511,9 @@ public static class PlanBuilder
                         ChangeAction = ChangeAction.GraphSetAttributes,
                         Target = upn,
                         TargetName = view,
-                        Parameters = new(StringComparer.OrdinalIgnoreCase) { ["usageLocation"] = "BE" },
-                        Description = "Gebruikslocatie op BE zetten (nodig voor een licentie)",
-                        NewValue = "BE",
+                        Parameters = new(StringComparer.OrdinalIgnoreCase) { ["usageLocation"] = country },
+                        Description = Texts.T.Format("plan.usage-location", country),
+                        NewValue = country,
                     };
                     afterSync.Add(location);
                 }
@@ -523,7 +525,7 @@ public static class PlanBuilder
                     Target = upn,
                     TargetName = view,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["sku"] = sku, ["skuId"] = licence?.SkuId ?? string.Empty },
-                    Description = $"Licentie {sku} toekennen",
+                    Description = Texts.T.Format("code.plan-builder.assign-licence", sku),
                     NewValue = sku,
                     DependentOf = location.Id,
                 });
@@ -537,7 +539,7 @@ public static class PlanBuilder
                 }
                 else
                 {
-                    warnings.Add($"Afdelingsgroep {divisionGroup} niet gevonden in Entra; overgeslagen.");
+                    warnings.Add(Texts.T.Format("code.plan-builder.division-group-not-found-in", divisionGroup));
                 }
             }
 
@@ -569,13 +571,13 @@ public static class PlanBuilder
                 ChangeAction = ChangeAction.AdDisableAccount,
                 Target = ad.DistinguishedName,
                 TargetName = name,
-                Description = "AD-account uitschakelen",
-                CurrentValue = ad.Enabled ? "ingeschakeld" : "al uitgeschakeld",
+                Description = Texts.T["code.plan-builder.disable-ad-account"],
+                CurrentValue = ad.Enabled ? "ingeschakeld" : Texts.T["code.plan-builder.already-disabled"],
                 NewValue = "uitgeschakeld",
                 Selected = options.Disable && ad.Enabled,
             });
 
-            var description = $"Uit dienst {options.Date:yyyy-MM-dd}" + (string.IsNullOrWhiteSpace(ad.Description) ? string.Empty : " - " + ad.Description.Trim());
+            var description = Texts.T.Format("code.plan-builder.left", options.Date) + (string.IsNullOrWhiteSpace(ad.Description) ? string.Empty : " - " + ad.Description.Trim());
             plan.Add(new Change
             {
                 TargetSystem = TargetSystem.ActiveDirectory,
@@ -584,7 +586,7 @@ public static class PlanBuilder
                 TargetName = name,
                 Parameters = new(StringComparer.OrdinalIgnoreCase) { ["description"] = description },
                 Previous = new(StringComparer.OrdinalIgnoreCase) { ["description"] = ad.Description },
-                Description = "Datum van uitstroom in de omschrijving zetten",
+                Description = Texts.T["code.plan-builder.put-the-leaving-date-in"],
                 CurrentValue = ad.Description,
                 NewValue = description,
                 Selected = options.CompleteDescription,
@@ -599,7 +601,7 @@ public static class PlanBuilder
                     Target = ad.DistinguishedName,
                     TargetName = name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["groepDn"] = g.DistinguishedName, ["groep"] = g.Name },
-                    Description = $"Uit AD-groep {g.Name} halen" + (MirrorUser.IsPrivileged(g) ? " (bevoorrecht)" : string.Empty),
+                    Description = Texts.T.Format("code.plan-builder.remove-from-ad-group", g.Name) + (MirrorUser.IsPrivileged(g) ? (" " + Texts.T["code.plan-builder.privileged"]) : string.Empty),
                     Selected = options.AdRemoveGroups || MirrorUser.IsPrivileged(g),
                 });
             }
@@ -615,7 +617,7 @@ public static class PlanBuilder
                     Target = ad.DistinguishedName,
                     TargetName = name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["doelOu"] = config.OuDn(targetOu, data.DomainDn) },
-                    Description = $"Verplaatsen naar {targetOu}",
+                    Description = Texts.T.Format("code.plan-builder.move-to", targetOu),
                     CurrentValue = ad.OuPath,
                     NewValue = targetOu,
                     Selected = options.Move && !string.Equals(ad.OuPath, targetOu, StringComparison.OrdinalIgnoreCase),
@@ -635,8 +637,8 @@ public static class PlanBuilder
                     TargetName = name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["accountEnabled"] = "false" },
                     Previous = new(StringComparer.OrdinalIgnoreCase) { ["accountEnabled"] = entra.AccountEnabled ? "true" : "false" },
-                    Description = "Cloudaccount uitschakelen (aanmelden blokkeren)",
-                    CurrentValue = entra.AccountEnabled ? "ingeschakeld" : "al uitgeschakeld",
+                    Description = Texts.T["code.plan-builder.disable-cloud-account-block-sign"],
+                    CurrentValue = entra.AccountEnabled ? "ingeschakeld" : Texts.T["code.plan-builder.already-disabled"],
                     NewValue = "uitgeschakeld",
                     Selected = options.Disable && entra.AccountEnabled,
                 });
@@ -648,7 +650,7 @@ public static class PlanBuilder
                 ChangeAction = ChangeAction.GraphRevokeSessions,
                 Target = entra.Id,
                 TargetName = name,
-                Description = "Alle aanmeldsessies intrekken (meteen afgemeld op alle toestellen, niet pas na de synchronisatie)",
+                Description = Texts.T["code.plan-builder.revoke-all-sign-in-sessions"],
                 Selected = options.RevokeSessions,
             });
 
@@ -662,7 +664,7 @@ public static class PlanBuilder
                     Target = exchange ? entra.UserPrincipalName : entra.Id,
                     TargetName = name,
                     Parameters = new(StringComparer.OrdinalIgnoreCase) { ["groepId"] = g.Id, ["groep"] = exchange && g.Mail.Length > 0 ? g.Mail : g.DisplayName },
-                    Description = $"Uit cloudgroep {g.DisplayName} halen",
+                    Description = Texts.T.Format("code.plan-builder.remove-from-cloud-group", g.DisplayName),
                     Selected = options.RemoveCloudGroups,
                 });
             }
@@ -673,7 +675,7 @@ public static class PlanBuilder
                 ChangeAction = ChangeAction.ExchangeConvertToSharedMailbox,
                 Target = entra.UserPrincipalName,
                 TargetName = name,
-                Description = "Postvak omzetten naar een gedeeld postvak (blijft bewaard zonder licentie)",
+                Description = Texts.T["code.plan-builder.convert-the-mailbox-to-a"],
                 Selected = options.ToSharedMailbox,
             };
             plan.Add(convert);
@@ -686,9 +688,9 @@ public static class PlanBuilder
                     ChangeAction = ChangeAction.GraphRemoveLicences,
                     Target = entra.Id,
                     TargetName = name,
-                    Description = "Alle licenties verwijderen: " + string.Join(", ", entra.Licences),
+                    Description = Texts.T.Format("code.plan-builder.remove-all-licences", string.Join(", ", entra.Licences)),
                     CurrentValue = string.Join(", ", entra.Licences),
-                    Warning = "Zonder licentie verdwijnt het postvak na 30 dagen, tenzij het eerst naar een gedeeld postvak wordt omgezet.",
+                    Warning = Texts.T["code.plan-builder.without-a-licence-the-mailbox"],
                     Selected = options.RemoveLicences,
                 });
             }
@@ -706,7 +708,7 @@ public static class PlanBuilder
         Target = userDn,
         TargetName = name,
         Parameters = new(StringComparer.OrdinalIgnoreCase) { ["groepDn"] = groupDn, ["groep"] = groupValue },
-        Description = $"Lid maken van AD-groep {groupValue}",
+        Description = Texts.T.Format("code.plan-builder.make-member-of-ad-group", groupValue),
         DependentOf = dependentOf,
     };
 
@@ -717,7 +719,7 @@ public static class PlanBuilder
         Target = user,
         TargetName = name,
         Parameters = new(StringComparer.OrdinalIgnoreCase) { ["groepId"] = groupId, ["groep"] = groupValue },
-        Description = $"Lid maken van cloudgroep {groupValue}",
+        Description = Texts.T.Format("code.plan-builder.make-member-of-cloud-group", groupValue),
     };
 
     private static Change ExchangeAddMember(string upn, string name, CloudGroup? groupValue, string groupName, string groupId) => new()
@@ -732,7 +734,7 @@ public static class PlanBuilder
             ["groepId"] = groupId,
             ["groepNaam"] = groupName,
         },
-        Description = $"Lid maken van {groupName} (Exchange)" + (groupName.StartsWith("SG-SM-", StringComparison.OrdinalIgnoreCase) ? ": toegang tot een gedeeld postvak" : string.Empty),
+        Description = groupName.StartsWith("SG-SM-", StringComparison.OrdinalIgnoreCase) ? Texts.T.Format("plan.member-exchange.shared", groupName) : Texts.T.Format("plan.member-exchange", groupName),
     };
 
     private static bool Exists(InventoryData data, string sam, string upn)
