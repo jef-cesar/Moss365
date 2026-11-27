@@ -1,0 +1,153 @@
+@page "/koppelingen"
+@layout SettingsLayout
+@inherits RefreshingPage
+@using Moss365.Core.Linking
+@using Moss365.Core.Permissions
+@* Linking persons over AD, Entra ID and Google Workspace (G0, U32): the fixed rules, the links by hand that win, and
+   the doubtful cases. AD and Entra stay linked by the synchronisation: the source decides. *@
+
+<h1>@T["menu.koppelingen"]</h1>
+<p class="kb-zacht">@T["links.intro"]</p>
+
+<section class="kb-kaart">
+    <h2>@T["links.rules"]</h2>
+    <ol>
+        <li>@T["links.rules.anchor"] <PlatformLabel Platform="Platform.ActiveDirectory" /> <PlatformLabel Platform="Platform.EntraId" /></li>
+        <li>@T["links.rules.address"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></li>
+        <li>@T["links.rules.employee"]</li>
+        <li>@T["links.rules.alias"]</li>
+    </ol>
+    <p class="kb-zacht">@T["links.rules.hand"]</p>
+</section>
+
+<section class="kb-kaart">
+    <h2>@T["links.counts"]</h2>
+    @{ var persons = State.Data.Persons.Where(p => !p.IsGuest).ToList(); }
+    <table class="kb-tabel kb-smal-tabel">
+        <tbody>
+            @if (State.HasAd && State.HasMicrosoft365)
+            {
+                <tr><th>@T["links.counts.both"]</th><td class="kb-getal">@persons.Count(p => p.Ad is not null && p.Entra is not null)</td></tr>
+            }
+            @if (State.HasAd)
+            {
+                <tr><th>@T["links.counts.ad-only"]</th><td class="kb-getal">@persons.Count(p => p.Ad is not null && p.Entra is null && p.Google is null)</td></tr>
+            }
+            @if (State.HasMicrosoft365)
+            {
+                <tr><th>@T["links.counts.entra-only"]</th><td class="kb-getal">@persons.Count(p => p.Ad is null && p.Entra is not null && p.Google is null)</td></tr>
+            }
+            @if (State.HasGoogle)
+            {
+                <tr><th>@T["links.counts.google-linked"]</th><td class="kb-getal">@persons.Count(p => p.Google is not null && (p.Ad is not null || p.Entra is not null))</td></tr>
+                <tr><th>@T["links.counts.google-only"]</th><td class="kb-getal">@persons.Count(p => p.Google is not null && p.Ad is null && p.Entra is null)</td></tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<section class="kb-kaart" id="twijfel">
+    <h2>@T.Format("links.doubts", doubts.Count)</h2>
+    @if (doubts.Count == 0)
+    {
+        <p class="kb-ok">✓ @T["links.doubts.none"]</p>
+    }
+    else
+    {
+        <table class="kb-tabel">
+            <thead><tr><th>@T["links.doubts.what"]</th><th>@T["plan.object"]</th><th>@T["links.doubts.accounts"]</th><th>@T["links.doubts.detail"]</th></tr></thead>
+            <tbody>
+                @foreach (var d in doubts)
+                {
+                    <tr>
+                        <td>@T["links.kind." + d.Kind.ToString().ToLowerInvariant()]</td>
+                        <td>@d.Subject</td>
+                        <td>
+                            @foreach (var key in d.Keys)
+                            {
+                                var p = State.Data.SearchPerson(key);
+                                <div>
+                                    @if (p is not null) { <a href="gebruiker/@Uri.EscapeDataString(key)">@p.Name</a> <span class="kb-zacht">@p.Source</span> }
+                                    else { <span>@key</span> }
+                                </div>
+                            }
+                        </td>
+                        <td class="kb-zacht">@d.Detail</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@if (State.HasGoogle)
+{
+    <section class="kb-kaart" id="google">
+        <h2>@T["links.google"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></h2>
+        @if (State.Data.GoogleUsers.Count == 0)
+        {
+            <p class="kb-zacht">@T["links.google.later"]</p>
+        }
+        else
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>@T["links.google.account"]</th><th>@T["links.google.person"]</th><th>@T["links.google.how"]</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var g in State.Data.GoogleUsers.OrderBy(g => g.PrimaryEmail, StringComparer.OrdinalIgnoreCase).Take(Max))
+                    {
+                        var p = State.Data.Persons.FirstOrDefault(x => x.Google?.Id == g.Id && (x.Ad is not null || x.Entra is not null));
+                        <tr>
+                            <td>@g.PrimaryEmail @if (g.Suspended) { <span class="kb-label">@T["links.google.suspended"]</span> }</td>
+                            <td>@if (p is not null) { <a href="gebruiker/@Uri.EscapeDataString(p.Key)">@p.Name</a> } else { <span class="kb-zacht">@T["links.google.none"]</span> }</td>
+                            <td class="kb-zacht">@(p?.GoogleLink is { } rule ? PersonLinks.Rule(rule) : null)</td>
+                            <td>
+                                @if (CanChange && p is not null)
+                                {
+                                    <button class="kb-knop" @onclick="() => State.LinkByHand(g, p, linked: false)">@T["links.google.unlink"]</button>
+                                }
+                                else if (CanChange)
+                                {
+                                    <button class="kb-knop" @onclick="() => linking = g">@T["links.google.link"]</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (linking is { } chosen && CanChange)
+            {
+                <div class="kb-rij">
+                    <span>@T.Format("links.google.link-to", chosen.PrimaryEmail)</span>
+                    <PersonPicker Label="@T["links.google.person"]" @bind-Selected="target" />
+                    <button class="kb-knop kb-primair" disabled="@(target is null)" @onclick="Link">@T["links.google.link"]</button>
+                    <button class="kb-knop" @onclick="() => linking = null">@T["action.cancel"]</button>
+                </div>
+            }
+        }
+    </section>
+}
+
+@code {
+    private const int Max = 500;
+    private GoogleUser? linking;
+    private Person? target;
+    private IReadOnlyList<LinkDoubt> doubts = Array.Empty<LinkDoubt>();
+
+    private bool CanChange => State.Can(Permission.Settings) && !State.IsHistoric;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        doubts = State.LinkDoubts();
+    }
+
+    private void Link()
+    {
+        if (linking is { } g && target is { } p)
+        {
+            State.LinkByHand(g, p, linked: true);
+            (linking, target) = (null, null);
+            doubts = State.LinkDoubts();
+        }
+    }
+}
