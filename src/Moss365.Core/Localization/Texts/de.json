@@ -3995,5 +3995,12 @@
   "edit-user.now": "jetzt: {0}",
   "edit-user.changed": "{0} geändert",
   "edit-user.duplicate-employee": "{0} hat dieselbe Personalnummer.",
-  "edit-user.entra-follows": "Entra ID folgt nach der Synchronisierung"
+  "edit-user.entra-follows": "Entra ID folgt nach der Synchronisierung",
+  "computer.details": "Angaben in AD",
+  "computer.description": "Beschreibung",
+  "computer.location": "Standort",
+  "computer.managed-by": "Verwaltet von",
+  "computer.nobody": "Niemand",
+  "computer.plan.details": "{0} Angabe(n) des Computers in AD ändern",
+  "computer.no-domain": "Die Domäne ist noch nicht bekannt: laden Sie zuerst AD."
 }

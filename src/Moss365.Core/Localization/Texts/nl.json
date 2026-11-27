@@ -3995,5 +3995,12 @@
   "edit-user.now": "nu: {0}",
   "edit-user.changed": "{0} gewijzigd",
   "edit-user.duplicate-employee": "{0} heeft hetzelfde personeelsnummer.",
-  "edit-user.entra-follows": "Entra ID volgt na de synchronisatie"
+  "edit-user.entra-follows": "Entra ID volgt na de synchronisatie",
+  "computer.details": "Gegevens in AD",
+  "computer.description": "Omschrijving",
+  "computer.location": "Locatie",
+  "computer.managed-by": "Beheerd door",
+  "computer.nobody": "Niemand",
+  "computer.plan.details": "{0} gegeven(s) van de computer wijzigen in AD",
+  "computer.no-domain": "Het domein is nog niet bekend: laad eerst AD."
 }

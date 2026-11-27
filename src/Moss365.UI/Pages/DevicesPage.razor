@@ -165,6 +165,10 @@
                 }
             </tbody>
         </table>
+        @if (sel.Ad is { } adComputer)
+        {
+            <ComputerEditor Computer="adComputer" />
+        }
         @if (sel.Intune is { } compliance)
         {
             <h3>@T["device.compliance"]</h3>

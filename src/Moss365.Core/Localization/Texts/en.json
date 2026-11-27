@@ -3995,5 +3995,12 @@
   "edit-user.now": "now: {0}",
   "edit-user.changed": "{0} changed",
   "edit-user.duplicate-employee": "{0} has the same employee id.",
-  "edit-user.entra-follows": "Entra ID follows after the synchronisation"
+  "edit-user.entra-follows": "Entra ID follows after the synchronisation",
+  "computer.details": "Details in AD",
+  "computer.description": "Description",
+  "computer.location": "Location",
+  "computer.managed-by": "Managed by",
+  "computer.nobody": "Nobody",
+  "computer.plan.details": "Change {0} detail(s) of the computer in AD",
+  "computer.no-domain": "The domain is not known yet: load AD first."
 }

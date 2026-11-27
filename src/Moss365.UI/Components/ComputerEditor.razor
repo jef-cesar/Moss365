@@ -1,0 +1,102 @@
+@using Moss365.Core.Devices
+@using Moss365.Core.Permissions
+@* The details of a computer in AD (R21): description, location, managed by and OU, shown and edited in place, as one
+   plan with undo. *@
+@inject ManagementState State
+
+<div class="kb-sectie" id="computer-ad">
+    <div class="kb-sectie-kop">
+        <h3>@T["computer.details"] <PlatformLabel Platform="Platform.ActiveDirectory" /></h3>
+        @if (!editing && CanEdit) { <button class="kb-knop kb-klein" @onclick="Open">@T["edit-user.edit"]</button> }
+    </div>
+    <dl class="kb-velden">
+        <dt>@T["computer.description"]</dt>
+        <dd>
+            @if (editing) { <input class="kb-invoer" value="@description" @oninput="e => description = e.Value?.ToString()" aria-label="@T["computer.description"]" /> }
+            else { @Shown(Computer.Description) }
+        </dd>
+        <dt>@T["computer.location"]</dt>
+        <dd>
+            @if (editing) { <input class="kb-invoer" value="@location" @oninput="e => location = e.Value?.ToString()" aria-label="@T["computer.location"]" /> }
+            else { @Shown(Computer.Location) }
+        </dd>
+        <dt>@T["computer.managed-by"]</dt>
+        <dd>
+            @if (editing)
+            {
+                <PersonPicker Label="@T["computer.managed-by"]" Selected="@manager" SelectedChanged="p => manager = p" />
+                @if (manager is not null || Computer.ManagedBy.Length > 0) { <button class="kb-knop kb-klein" @onclick="() => { manager = null; clearManager = true; }">@T["computer.nobody"]</button> }
+            }
+            else { @Shown(ComputerPlans.NameOf(State.Data, Computer.ManagedBy)) }
+        </dd>
+        <dt>OU</dt>
+        <dd>
+            @if (editing)
+            {
+                <select class="kb-invoer" value="@ou" @onchange="e => ou = e.Value?.ToString()" aria-label="OU">
+                    @foreach (var o in Ous) { <option value="@o">@o</option> }
+                </select>
+            }
+            else { @Shown(Computer.OuPath) }
+        </dd>
+    </dl>
+    @if (editing)
+    {
+        <div class="kb-filters">
+            <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+            <button class="kb-knop" @onclick="() => editing = false">@T["edit-user.close"]</button>
+        </div>
+        @foreach (var e in errors) { <div class="kb-melding">@e</div> }
+    }
+</div>
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@($"Computer {Computer.Name}")" Title="@T["computer.details"]" Executed="_ => editing = false" />
+}
+
+@code {
+    [Parameter, EditorRequired] public AdComputer Computer { get; set; } = default!;
+
+    private bool editing;
+    private string? description;
+    private string? location;
+    private string? ou;
+    private Person? manager;
+    private bool clearManager;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private string? loaded;
+
+    private bool CanEdit => !State.IsHistoric && State.Can(Permission.Manage);
+
+    private IReadOnlyList<string> Ous => ComputerPlans.Ous((State.AdComputers ?? Array.Empty<AdComputer>()).Append(Computer));
+
+    private string Shown(string value) => value.Length > 0 ? value : T["edit-user.empty"];
+
+    protected override void OnParametersSet()
+    {
+        if (loaded != Computer.DistinguishedName)
+        {
+            loaded = Computer.DistinguishedName;
+            editing = false;
+            plan = null;
+        }
+    }
+
+    private void Open()
+    {
+        (description, location, ou, clearManager) = (Computer.Description, Computer.Location, Computer.OuPath, false);
+        manager = State.Data.Persons.FirstOrDefault(p => string.Equals(p.Ad?.DistinguishedName, Computer.ManagedBy, StringComparison.OrdinalIgnoreCase));
+        errors = Array.Empty<string>();
+        editing = true;
+    }
+
+    private void MakePlan()
+    {
+        var managedBy = manager?.Ad?.DistinguishedName ?? (clearManager ? string.Empty : null);
+        var outcome = ComputerPlans.Edit(State.Data, State.Config, Computer, new ComputerDesired(description, location, managedBy, ou));
+        errors = outcome.Errors;
+        plan = outcome.Plan.Count > 0 ? outcome.Plan : null;
+    }
+}

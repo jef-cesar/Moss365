@@ -3995,5 +3995,12 @@
   "edit-user.now": "maintenant : {0}",
   "edit-user.changed": "{0} modifié(s)",
   "edit-user.duplicate-employee": "{0} a le même matricule.",
-  "edit-user.entra-follows": "Entra ID suit après la synchronisation"
+  "edit-user.entra-follows": "Entra ID suit après la synchronisation",
+  "computer.details": "Données dans AD",
+  "computer.description": "Description",
+  "computer.location": "Emplacement",
+  "computer.managed-by": "Géré par",
+  "computer.nobody": "Personne",
+  "computer.plan.details": "Modifier {0} donnée(s) de l'ordinateur dans AD",
+  "computer.no-domain": "Le domaine n'est pas encore connu : chargez d'abord AD."
 }

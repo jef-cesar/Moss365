@@ -3995,5 +3995,12 @@
   "edit-user.now": "agora: {0}",
   "edit-user.changed": "{0} alterado(s)",
   "edit-user.duplicate-employee": "{0} tem a mesma matrícula.",
-  "edit-user.entra-follows": "O Entra ID segue após a sincronização"
+  "edit-user.entra-follows": "O Entra ID segue após a sincronização",
+  "computer.details": "Dados no AD",
+  "computer.description": "Descrição",
+  "computer.location": "Local",
+  "computer.managed-by": "Gerenciado por",
+  "computer.nobody": "Ninguém",
+  "computer.plan.details": "Alterar {0} dado(s) do computador no AD",
+  "computer.no-domain": "O domínio ainda não é conhecido: carregue primeiro o AD."
 }

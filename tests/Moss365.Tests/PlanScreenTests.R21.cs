@@ -66,3 +66,37 @@ public sealed partial class PlanScreenTests
         Assert.False(cut.FindAll("button").First(b => b.TextContent == "Plan maken").HasAttribute("disabled"));
     }
 }
+
+/// <summary>R21: a computer in AD, edited on the panel of the device.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void TheDetailsOfAComputerInAdAreAPlanWithUndo()
+    {
+        var pc = new Moss365.Core.Devices.AdComputer("PC-001", "CN=PC-001,OU=Werkplekken,OU=GEMEENTEBESTUUR,DC=contoso,DC=local", "Windows 11 Pro", "10.0 (26100)", DateTimeOffset.Now, true, null)
+        {
+            Description = "Oud toestel", Location = "",
+        };
+        var cut = RenderComponent<Moss365.UI.Components.ComputerEditor>(p => p.Add(x => x.Computer, pc));
+        Assert.Contains("Oud toestel", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("GEMEENTEBESTUUR/Werkplekken", cut.Markup, StringComparison.Ordinal);
+
+        cut.FindAll("button").First(b => b.TextContent == "Bewerken").Click();
+        cut.Find("input[aria-label='Omschrijving']").Input("Werkplek onthaal");
+        cut.Find("input[aria-label='Locatie']").Input("Gelijkvloers");
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetAttributes && w.Target == pc.DistinguishedName));
+        var set = _factory.Executed.Single(w => w.Target == pc.DistinguishedName);
+        Assert.Equal("Werkplek onthaal", set.P("description"));
+        Assert.Equal("Gelijkvloers", set.P("location"));
+        Assert.Equal("Oud toestel", set.Previous!["description"]);
+
+        // A move to another OU is the last step
+        var move = Moss365.Core.Devices.ComputerPlans.Edit(State.Data, State.Config, pc, new Moss365.Core.Devices.ComputerDesired(Ou: "GEMEENTEBESTUUR/Uit dienst"));
+        var step = Assert.Single(move.Plan);
+        Assert.Equal(ChangeAction.AdMove, step.ChangeAction);
+        Assert.StartsWith("OU=Uit dienst,OU=GEMEENTEBESTUUR", step.P("doelOu"), StringComparison.Ordinal);
+        Assert.Contains("niets gewijzigd", Assert.Single(Moss365.Core.Devices.ComputerPlans.Edit(State.Data, State.Config, pc, new Moss365.Core.Devices.ComputerDesired(Description: "Oud toestel")).Errors), StringComparison.OrdinalIgnoreCase);
+    }
+}

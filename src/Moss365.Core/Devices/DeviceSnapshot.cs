@@ -36,6 +36,7 @@ public static class DeviceSnapshot
                 ["Name"] = c.Name, ["DistinguishedName"] = c.DistinguishedName, ["OperatingSystem"] = c.OperatingSystem, ["Version"] = c.Version,
                 ["Enabled"] = B(c.Enabled), ["Stale"] = B(Stale(c.LastLogon, now)),
                 ["Created"] = c.Created?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+                ["Description"] = c.Description, ["Location"] = c.Location, ["ManagedBy"] = c.ManagedBy,
             }).ToList();
         }
 
@@ -73,7 +74,8 @@ public static class DeviceSnapshot
         static DateTimeOffset? Date(string text) => DateTimeOffset.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var d) ? d : null;
 
         var ad = tables.TryGetValue(AdTable, out var a)
-            ? a.Select(r => new AdComputer(V(r, "Name"), V(r, "DistinguishedName"), V(r, "OperatingSystem"), V(r, "Version"), Seen(r), V(r, "Enabled") == "True", Date(V(r, "Created")))).ToList()
+            ? a.Select(r => new AdComputer(V(r, "Name"), V(r, "DistinguishedName"), V(r, "OperatingSystem"), V(r, "Version"), Seen(r), V(r, "Enabled") == "True", Date(V(r, "Created")))
+                { Description = V(r, "Description"), Location = V(r, "Location"), ManagedBy = V(r, "ManagedBy") }).ToList()
             : null;
         var entra = tables.TryGetValue(EntraTable, out var e)
             ? e.Select(r => new EntraDevice(V(r, "Id"), V(r, "DeviceId"), V(r, "Name"), V(r, "OperatingSystem"), V(r, "Version"), V(r, "Enabled") == "True", Seen(r), V(r, "TrustType"))).ToList()
