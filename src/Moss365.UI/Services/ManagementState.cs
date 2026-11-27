@@ -174,30 +174,39 @@ public sealed partial class ManagementState
 
     public IAppEnvironment AppEnvironment => _environment;
     private InventoryData _data = new();
-    private (InventoryData Of, TenantSystems Systems, InventoryData Shown)? _shown;
+    private (InventoryData Of, TenantSystems Systems, Core.Linking.LinkSettings? Links, InventoryData Shown)? _shown;
 
     /// <summary>The data shown: everything of a system the tenant does not have is left out (AD since 0.21.1, Microsoft
-    /// 365 since G0), whatever was read or imported, also right after the systems of the tenant change. What was read
-    /// stays in <see cref="_data"/>.</summary>
+    /// 365 and Google Workspace since G0), whatever was read or imported, also right after the systems of the tenant
+    /// change; Google accounts are linked to the persons (G0, U32). What was read stays in <see cref="_data"/>.</summary>
     public InventoryData Data
     {
         get
         {
             var systems = Tenant.Systems.Effective();
-            if (systems.HasFlag(TenantSystems.Both))
-            {
-                return _data;
-            }
-
             var data = _data;
-            if (_shown is not { } w || !ReferenceEquals(w.Of, data) || w.Systems != systems)
+            var links = systems.HasGoogle() && data.GoogleUsers.Count > 0 ? LinkSettings : null;
+            if (_shown is { } w && ReferenceEquals(w.Of, data) && w.Systems == systems && ReferenceEquals(w.Links, links))
             {
-                var shown = systems.HasAd() ? data : data.WithoutAd();
-                w = (data, systems, systems.HasMicrosoft365() ? shown : shown.WithoutMicrosoft365());
-                _shown = w;
+                return w.Shown;
             }
 
-            return w.Shown;
+            var shown = systems.HasAd() ? data : data.WithoutAd();
+            shown = systems.HasMicrosoft365() ? shown : shown.WithoutMicrosoft365();
+            if (!systems.HasGoogle())
+            {
+                shown = shown.WithoutGoogle();
+                _googleDoubts = Array.Empty<Core.Linking.LinkDoubt>();
+            }
+            else if (links is not null)
+            {
+                var (persons, doubts) = Core.Linking.PersonLinks.Attach(shown.Persons, shown.GoogleUsers, links);
+                shown = shown with { Persons = persons };
+                _googleDoubts = doubts;
+            }
+
+            _shown = (data, systems, links, shown);
+            return shown;
         }
         private set => _data = value;
     }

@@ -287,3 +287,45 @@ public sealed partial class PlanScreenTests
         Assert.Equal(2, State.ChangeLog.Recent(10).Count(r => r.ChangeAction == "MailLocation" && r.Target == cas.Key));
     }
 }
+
+/// <summary>G0, U32: the page Personen koppelen.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void ThePageOfLinksShowsTheRulesTheCountsAndTheDoubtfulCases()
+    {
+        var cut = RenderComponent<PersonLinksPage>();
+        Assert.Contains("Personen koppelen", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Entra Connect", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("In AD en Entra ID (gesynchroniseerd)", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Twijfelgevallen", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Google-accounts", cut.Markup, StringComparison.Ordinal); // this tenant has no Google Workspace
+        Assert.True(Access.FitsTenant("koppelingen", TenantSystems.Both));
+        Assert.False(Access.FitsTenant("koppelingen", TenantSystems.GoogleWorkspace));
+    }
+}
+
+/// <summary>G0, U33: the page Bron van waarheid.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void ThePageOfTheSourceShowsTheChainAndAsksWhatMossCannotSee()
+    {
+        var cut = RenderComponent<SourcePage>();
+        Assert.Contains("Bron van waarheid", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains(">AD</span>", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Entra Connect synchroniseert", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Waar Google Workspace", cut.Markup, StringComparison.Ordinal); // no Google in this tenant
+
+        var (hub, _, _) = Hub("g0-bron");
+        using var _ = hub;
+        hub.Update(hub.CurrentTenant with { Systems = TenantSystems.Both | TenantSystems.GoogleWorkspace });
+        var s = hub.Current;
+        Assert.Contains(s.SourceChains(Moss365.Core.Linking.TruthKind.Users), c => c.Count == 1 && c[0] == Moss365.Core.Changes.Platform.GoogleWorkspace);
+        s.SaveSource(new Moss365.Core.Linking.SourceSettings { GoogleUsers = Moss365.Core.Linking.GoogleFeed.FromAd, GoogleGroups = Moss365.Core.Linking.GoogleFeed.Itself, GooglePasswordSync = true });
+        Assert.Contains(s.SourceChains(Moss365.Core.Linking.TruthKind.Users), c => c[0] == Moss365.Core.Changes.Platform.ActiveDirectory && c[^1] == Moss365.Core.Changes.Platform.GoogleWorkspace);
+        var line = s.ChangeLog.Recent(3).First(r => r.ChangeAction == "SourceOfTruth");
+        Assert.Equal("FromAd", line.Parameters["gebruikers"]);
+        Assert.Equal("Unknown", line.Previous!["gebruikers"]);
+    }
+}

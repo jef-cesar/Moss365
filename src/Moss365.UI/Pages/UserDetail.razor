@@ -45,7 +45,7 @@ else
     <section class="kb-kaart">
         <h2>@T["user-detail.attributes"]</h2>
         <table class="kb-tabel kb-naast">
-            <thead><tr><th>@T["bulk-tasks.attribute"]</th>@if (State.HasAd) { <th>@T["user-detail.on-premises-ad"] <PlatformLabel Platform="Platform.ActiveDirectory" /></th> }@if (State.HasMicrosoft365) { <th>@T["user-detail.entra-id"] <PlatformLabel Platform="Platform.EntraId" /></th> }</tr></thead>
+            <thead><tr><th>@T["bulk-tasks.attribute"]</th>@if (State.HasAd) { <th>@T["user-detail.on-premises-ad"] <PlatformLabel Platform="Platform.ActiveDirectory" /></th> }@if (State.HasMicrosoft365) { <th>@T["user-detail.entra-id"] <PlatformLabel Platform="Platform.EntraId" />@if (person.Entra?.OnPremisesSyncEnabled == true && person.Ad is not null) { <span class="kb-zacht"> @T.Format("source.follows-from", "AD")</span> }</th> }</tr></thead>
             <tbody>
                 @foreach (var r in Rows().Where(r => (State.HasAd && r.Ad.Length > 0) || (State.HasMicrosoft365 && r.Entra.Length > 0) || (State.HasAd && State.HasMicrosoft365)))
                 {

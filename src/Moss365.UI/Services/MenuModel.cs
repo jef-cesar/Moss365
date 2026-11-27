@@ -47,7 +47,7 @@ public static class MenuModel
     {
         new MenuGroup("Deze tenant", new MenuItem[]
         {
-            new("organisatie", "Organisatie"), new("verbindingen", "Verbindingen"), new("postlocatie", "Waar de mail zit"), new("inrichten", "Tenant inrichten"), new("databank", "Databank en versleuteling"),
+            new("organisatie", "Organisatie"), new("verbindingen", "Verbindingen"), new("postlocatie", "Waar de mail zit"), new("koppelingen", "Personen koppelen"), new("bron", "Bron van waarheid"), new("inrichten", "Tenant inrichten"), new("databank", "Databank en versleuteling"),
             new("lezen-zonder-venster", "Lezen zonder venster"), new("inventaris", "Inventaris"),
         }),
         new MenuGroup("Alle tenants", new MenuItem[] { new("tenants", "Tenants"), new("alle-tenants", "Alle tenants samen"), new("tenantvergelijking", "Tenants vergelijken") }),

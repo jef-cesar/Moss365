@@ -1,0 +1,101 @@
+@page "/bron"
+@layout SettingsLayout
+@inherits RefreshingPage
+@using Moss365.Core.Linking
+@using Moss365.Core.Permissions
+@* The source of truth (G0, U33): per kind of object the chain from the source to what follows it. Moss365 proposes it
+   from what it sees and asks what it cannot see. A change goes to the source; the others show "follows from". *@
+
+<h1>@T["menu.bron"]</h1>
+<p class="kb-zacht">@T["source.intro"]</p>
+
+@foreach (var kind in new[] { TruthKind.Users, TruthKind.Groups })
+{
+    <section class="kb-kaart">
+        <h2>@T["source.kind." + kind.ToString().ToLowerInvariant()]</h2>
+        <ul class="kb-lijst-plat">
+            @foreach (var chain in State.SourceChains(kind))
+            {
+                <li class="kb-bron-keten">
+                    @for (var i = 0; i < chain.Count; i++)
+                    {
+                        var platform = chain[i];
+                        if (i > 0) { <span class="kb-zacht" aria-hidden="true"> → </span> }
+                        <PlatformLabel Platform="@platform" />
+                    }
+                    <span class="kb-zacht">
+                        @(chain.Count == 1 ? T["source.alone"] : T.Format("source.follows", Platforms.Name(chain[0]), string.Join(", ", chain.Skip(1).Select(Platforms.Name))))
+                    </span>
+                </li>
+            }
+        </ul>
+        @if (kind == TruthKind.Users && State.HasAd && State.HasMicrosoft365)
+        {
+            <p class="kb-zacht">@(SourceOfTruth.Synchronised(kind, State.Data) ? T["source.seen.sync"] : T["source.seen.no-sync"])</p>
+        }
+    </section>
+}
+
+@if (State.HasGoogle && (State.HasAd || State.HasMicrosoft365))
+{
+    <section class="kb-kaart" id="google">
+        <h2>@T["source.google"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></h2>
+        <p class="kb-zacht">@T["source.google.why"]</p>
+        <div class="kb-rij">
+            <label>
+                @T["source.google.users"]
+                <select value="@users" @onchange="e => users = Enum.Parse<GoogleFeed>(e.Value?.ToString() ?? nameof(GoogleFeed.Unknown))" disabled="@(!CanChange)">
+                    <option value="@GoogleFeed.Unknown">@T["source.feed.unknown"]</option>
+                    @foreach (var f in SourceOfTruth.Feeds(State.Systems)) { <option value="@f">@SourceOfTruth.Name(f)</option> }
+                </select>
+            </label>
+            <label>
+                @T["source.google.groups"]
+                <select value="@groups" @onchange="e => groups = Enum.Parse<GoogleFeed>(e.Value?.ToString() ?? nameof(GoogleFeed.Unknown))" disabled="@(!CanChange)">
+                    <option value="@GoogleFeed.Unknown">@T["source.feed.unknown"]</option>
+                    @foreach (var f in SourceOfTruth.Feeds(State.Systems)) { <option value="@f">@SourceOfTruth.Name(f)</option> }
+                </select>
+            </label>
+            @if (users == GoogleFeed.FromAd)
+            {
+                <label><input type="checkbox" checked="@(passwords == true)" disabled="@(!CanChange)" @onchange="e => passwords = e.Value is true" /> @T["source.google.passwords"]</label>
+            }
+            @if (CanChange)
+            {
+                <button class="kb-knop kb-primair" disabled="@(!Changed)" @onclick="Save">@T["action.save"]</button>
+            }
+        </div>
+        @if (SourceOfTruth.OpenQuestions(State.Systems, State.SourceSettings).Count > 0)
+        {
+            <p class="kb-melding">@T["source.google.open"]</p>
+        }
+    </section>
+}
+
+<section class="kb-kaart">
+    <h2>@T["source.what"]</h2>
+    <ul>
+        <li>@T["source.what.to-source"]</li>
+        <li>@T["source.what.follows"]</li>
+        <li>@T["source.what.fields"]</li>
+    </ul>
+</section>
+
+@code {
+    private GoogleFeed users;
+    private GoogleFeed groups;
+    private bool? passwords;
+
+    private bool CanChange => State.Can(Permission.Settings) && !State.IsHistoric;
+
+    private bool Changed => users != State.SourceSettings.GoogleUsers || groups != State.SourceSettings.GoogleGroups
+                            || (users == GoogleFeed.FromAd && passwords != State.SourceSettings.GooglePasswordSync);
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        (users, groups, passwords) = (State.SourceSettings.GoogleUsers, State.SourceSettings.GoogleGroups, State.SourceSettings.GooglePasswordSync);
+    }
+
+    private void Save() => State.SaveSource(new SourceSettings { GoogleUsers = users, GoogleGroups = groups, GooglePasswordSync = users == GoogleFeed.FromAd ? passwords ?? false : null });
+}
