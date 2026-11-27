@@ -38,7 +38,7 @@ public static class Undo
         ChangeAction.AdSetAttributes, ChangeAction.GraphSetAttributes, ChangeAction.GraphSetGroupAttributes,
         ChangeAction.ExchangeUpdateGroup, ChangeAction.ExchangeUpdateMailbox, ChangeAction.ExchangeAutoReply, ChangeAction.GraphSetManager,
         ChangeAction.GraphUpdateCaPolicy, ChangeAction.GraphUpdateCaLocation, ChangeAction.AdSetAccountFlag, ChangeAction.IntuneDeviceAction,
-        ChangeAction.GraphSetDeviceEnabled, ChangeAction.IntuneSetComplianceSettings,
+        ChangeAction.GraphSetDeviceEnabled, ChangeAction.IntuneSetComplianceSettings, ChangeAction.AdHardening,
     };
 
     /// <summary>Can this entry be undone? If not, why not.</summary>
@@ -67,6 +67,11 @@ public static class Undo
         if (action == ChangeAction.AdWriteLogonScript)
         {
             return r.Previous?.ContainsKey("inhoud") == true ? null : Texts.T["code.undo.the-app-does-not-delete"];
+        }
+
+        if (action == ChangeAction.AdHardening && r.Parameters.GetValueOrDefault("wat") == "recycleBin")
+        {
+            return Texts.T["advice.recyclebin.no-undo"];
         }
 
         if (action == ChangeAction.IntuneDeviceAction && r.Previous is not { Count: > 0 })

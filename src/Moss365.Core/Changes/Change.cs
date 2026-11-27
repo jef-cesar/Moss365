@@ -98,6 +98,7 @@ public enum ChangeAction
     GraphDeleteDevice,            // Target = object id of the device in Entra; deviceId, sleutels (BitLocker keys that go with it)
     IntuneDeleteDevice,           // Target = managed device id; toestel, eigendom
     IntuneSetComplianceSettings,  // Target = deviceManagement; json = the compliance settings (all of them, as read, one changed); Previous json
+    AdHardening,                  // Target = DN; wat (AdHardening.Kinds), waarde (encryptionTypes, machineAccountQuota), beschermd (adminCount); Previous
 }
 
 /// <summary>

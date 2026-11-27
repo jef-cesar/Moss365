@@ -202,15 +202,231 @@ public sealed class AdLdap : IAdConnection, IExecutor
             .Where(n => n.Length > 0 && !n.Equals("krbtgt", StringComparison.OrdinalIgnoreCase)).ToList();
 
         // Every enabled computer with its system and version; the life cycle data in Core says which are no longer
-        // supported (R17), so that a new end date needs no change here
-        var old = Find(baseline, "(&(objectCategory=computer)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(operatingSystem=*))",
-                new[] { "cn", "operatingSystem", "operatingSystemVersion" }, cancel)
+        // supported (R17), so that a new end date needs no change here. The same read says which have no LAPS password
+        // in AD (R16; an attribute the schema does not have is simply not returned)
+        var computers = Find(baseline, "(&(objectCategory=computer)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(operatingSystem=*))",
+                new[] { "cn", "operatingSystem", "operatingSystemVersion", "primaryGroupID", "msLAPS-PasswordExpirationTime", "ms-Mcs-AdmPwdExpirationTime" }, cancel)
+            .ToList();
+        var old = computers
             .Select(r => (Name: r.TryGetValue("cn", out var c) && c.Length > 0 ? c[0]?.ToString() ?? string.Empty : string.Empty,
                           Os: ((r.TryGetValue("operatingSystem", out var o) && o.Length > 0 ? o[0]?.ToString() ?? string.Empty : string.Empty) + " "
                               + (r.TryGetValue("operatingSystemVersion", out var v) && v.Length > 0 ? v[0]?.ToString() ?? string.Empty : string.Empty)).Trim()))
             .ToList();
-        return new Core.Security.AdSecurityReading(spn, delegation, notRequired, reversible, krbtgt, orphans, old);
+        var withoutLaps = computers
+            .Where(r => Int(r, "primaryGroupID") is not (516 or 521) && !r.ContainsKey("msLAPS-PasswordExpirationTime") && !r.ContainsKey("ms-Mcs-AdmPwdExpirationTime"))
+            .Select(r => First(r, "cn")).Where(n => n.Length > 0).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+
+        // R16: what the advice needs to be carried out as a plan
+        var spnAccounts = Find(baseline, "(&(objectCategory=person)(objectClass=user)(servicePrincipalName=*)(!(sAMAccountName=krbtgt)))",
+                new[] { "sAMAccountName", "distinguishedName", "msDS-SupportedEncryptionTypes", "servicePrincipalName" }, cancel)
+            .Select(r => new Core.Security.SpnAccount(First(r, "sAMAccountName"), First(r, "distinguishedName"), Int(r, "msDS-SupportedEncryptionTypes"), All(r, "servicePrincipalName")))
+            .Where(a => a.Name.Length > 0).OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        var delegationAccounts = Find(baseline, $"(&(|(objectCategory=person)(objectCategory=computer))({bit}=524288)(!(primaryGroupID=516)))",
+                new[] { "sAMAccountName", "cn", "distinguishedName", "objectClass", "servicePrincipalName" }, cancel)
+            .Select(r => new Core.Security.DelegationAccount(First(r, "sAMAccountName") is { Length: > 0 } n ? n : First(r, "cn"), First(r, "distinguishedName"),
+                All(r, "objectClass").Contains("computer", StringComparer.OrdinalIgnoreCase), All(r, "servicePrincipalName")))
+            .Where(a => a.Name.Length > 0).OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        var noPreauth = Find(baseline, $"(&(objectCategory=person)(objectClass=user)({bit}=4194304)(!({bit}=2)))", new[] { "sAMAccountName", "distinguishedName" }, cancel)
+            .Select(r => new Core.Security.AdObject(First(r, "sAMAccountName"), First(r, "distinguishedName")))
+            .Where(a => a.Name.Length > 0).OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        var orphanObjects = Find(baseline, "(&(objectCategory=person)(objectClass=user)(adminCount=1))", new[] { "sAMAccountName", "distinguishedName", "memberOf" }, cancel)
+            .Where(r => !(r.TryGetValue("memberOf", out var m) && m.OfType<object>().Select(x => x.ToString()).Any(x => x is not null && privileged.Contains(x))))
+            .Select(r => new Core.Security.AdObject(First(r, "sAMAccountName"), First(r, "distinguishedName")))
+            .Where(a => a.Name.Length > 0 && !a.Name.Equals("krbtgt", StringComparison.OrdinalIgnoreCase)).ToList();
+        var (groups, admins, protectedUsers) = ReadPrivileged(baseline, cancel);
+
+        return new Core.Security.AdSecurityReading(spn, delegation, notRequired, reversible, krbtgt, orphans, old)
+        {
+            DomainDn = domainDn,
+            NoPreauth = noPreauth,
+            SpnAccounts = spnAccounts,
+            Delegation = delegationAccounts,
+            Orphans = orphanObjects,
+            MachineAccountQuota = baseline.Properties["ms-DS-MachineAccountQuota"].Value is int quota ? quota : null,
+            RecycleBin = RecycleBinOn(),
+            WithoutLaps = withoutLaps,
+            Admins = admins,
+            Groups = groups,
+            ProtectedUsersDn = protectedUsers,
+        };
     }, cancel);
+
+    private static string First(IReadOnlyDictionary<string, object?[]> r, string a) => r.TryGetValue(a, out var v) && v.Length > 0 ? v[0]?.ToString() ?? string.Empty : string.Empty;
+
+    private static IReadOnlyList<string> All(IReadOnlyDictionary<string, object?[]> r, string a)
+        => r.TryGetValue(a, out var v) ? v.Select(x => x?.ToString()).OfType<string>().ToList() : Array.Empty<string>();
+
+    private static int? Int(IReadOnlyDictionary<string, object?[]> r, string a) => r.TryGetValue(a, out var v) && v.Length > 0 && v[0] is int i ? i : null;
+
+    private static DateTimeOffset? FileTime(IReadOnlyDictionary<string, object?[]> r, string a)
+        => r.TryGetValue(a, out var v) && v.Length > 0 && v[0] is long ft && ft > 0 && ft < DateTime.MaxValue.ToFileTimeUtc() ? DateTimeOffset.FromFileTime(ft) : null;
+
+    /// <summary>A value in an LDAP filter, escaped (RFC 4515): a DN can hold a backslash or brackets.</summary>
+    private static string FilterValue(string value)
+        => value.Replace("\\", "\\5c", StringComparison.Ordinal).Replace("*", "\\2a", StringComparison.Ordinal)
+            .Replace("(", "\\28", StringComparison.Ordinal).Replace(")", "\\29", StringComparison.Ordinal).Replace("\0", "\\00", StringComparison.Ordinal);
+
+    /// <summary>
+    /// The privileged groups by their well-known SID (R16; their names differ per language), with their direct members,
+    /// the administrators (nested members of Domain Admins, Schema Admins, Enterprise Admins and Administrators) and the
+    /// group Protected Users.
+    /// </summary>
+    private (IReadOnlyList<Core.Security.PrivilegedGroup> Groups, IReadOnlyList<Core.Security.AdminAccount> Admins, string? ProtectedUsers) ReadPrivileged(DirectoryEntry baseline, CancellationToken cancel)
+    {
+        if (baseline.Properties["objectSid"].Value is not byte[] sidBytes)
+        {
+            return (Array.Empty<Core.Security.PrivilegedGroup>(), Array.Empty<Core.Security.AdminAccount>(), null);
+        }
+
+        var domainSid = new System.Security.Principal.SecurityIdentifier(sidBytes, 0).Value;
+        (string Dn, string Name)? Group(string sid)
+        {
+            var id = new System.Security.Principal.SecurityIdentifier(sid);
+            var bytes = new byte[id.BinaryLength];
+            id.GetBinaryForm(bytes, 0);
+            var found = Find(baseline, $"(&(objectClass=group)(objectSid={string.Concat(bytes.Select(b => "\\" + b.ToString("x2", System.Globalization.CultureInfo.InvariantCulture)))}))",
+                new[] { "distinguishedName", "cn" }, cancel).FirstOrDefault();
+            return found is null || First(found, "distinguishedName").Length == 0 ? null : (First(found, "distinguishedName"), First(found, "cn"));
+        }
+
+        var groups = new List<Core.Security.PrivilegedGroup>();
+        foreach (var (rid, sid) in new[]
+                 {
+                     ("512", $"{domainSid}-512"), ("518", $"{domainSid}-518"), ("519", $"{domainSid}-519"), ("544", "S-1-5-32-544"),
+                     ("548", "S-1-5-32-548"), ("549", "S-1-5-32-549"), ("550", "S-1-5-32-550"), ("551", "S-1-5-32-551"),
+                 })
+        {
+            if (Group(sid) is not { } g)
+            {
+                continue;
+            }
+
+            var members = Find(baseline, $"(memberOf={FilterValue(g.Dn)})", new[] { "sAMAccountName", "cn", "distinguishedName", "objectClass", "userAccountControl" }, cancel)
+                .Select(r =>
+                {
+                    var classes = All(r, "objectClass");
+                    var kind = classes.Contains("computer", StringComparer.OrdinalIgnoreCase) ? "computer" : classes.Contains("group", StringComparer.OrdinalIgnoreCase) ? "group" : "user";
+                    return new Core.Security.GroupMember(First(r, "sAMAccountName") is { Length: > 0 } n ? n : First(r, "cn"), First(r, "distinguishedName"), kind, ((Int(r, "userAccountControl") ?? 0) & 2) == 0);
+                })
+                .Where(m => m.Dn.Length > 0).OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            groups.Add(new Core.Security.PrivilegedGroup(rid, g.Name, g.Dn, members));
+        }
+
+        var protectedUsers = Group($"{domainSid}-525")?.Dn;
+        var inProtected = protectedUsers is null
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : Find(baseline, $"(&(objectCategory=person)(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:={FilterValue(protectedUsers)}))", new[] { "distinguishedName" }, cancel)
+                .Select(r => First(r, "distinguishedName")).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var admins = new Dictionary<string, Core.Security.AdminAccount>(StringComparer.OrdinalIgnoreCase);
+        foreach (var g in groups.Where(g => g.Rid is "512" or "518" or "519" or "544"))
+        {
+            foreach (var r in Find(baseline, $"(&(objectCategory=person)(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:={FilterValue(g.Dn)}))",
+                         new[] { "sAMAccountName", "distinguishedName", "userAccountControl", "servicePrincipalName", "pwdLastSet", "lastLogonTimestamp" }, cancel))
+            {
+                var dn = First(r, "distinguishedName");
+                if (dn.Length == 0 || admins.ContainsKey(dn))
+                {
+                    continue;
+                }
+
+                var uac = Int(r, "userAccountControl") ?? 0;
+                admins[dn] = new Core.Security.AdminAccount(First(r, "sAMAccountName"), dn, (uac & 2) == 0, inProtected.Contains(dn), (uac & 0x100000) != 0,
+                    All(r, "servicePrincipalName"), FileTime(r, "pwdLastSet"), FileTime(r, "lastLogonTimestamp"));
+            }
+        }
+
+        return (groups, admins.Values.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList(), protectedUsers);
+    }
+
+    /// <summary>Whether the AD Recycle Bin is on (an optional feature of the forest); null when that cannot be read.</summary>
+    private bool? RecycleBinOn()
+    {
+        try
+        {
+            using var root = Item("RootDSE");
+            if (root.Properties["configurationNamingContext"].Value?.ToString() is not { Length: > 0 } configuration)
+            {
+                return null;
+            }
+
+            using var partitions = Item("CN=Partitions," + configuration);
+            return partitions.Properties["msDS-EnabledFeature"].Cast<object>().Any(f => f?.ToString()?.StartsWith("CN=Recycle Bin Feature,", StringComparison.OrdinalIgnoreCase) == true);
+        }
+        catch (COMException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The GUID of the AD Recycle Bin feature (the same in every forest).</summary>
+    private const string RecycleBinFeature = "766ddcd8-acd0-445e-f3b9-a7f9b6744f2a";
+
+    /// <summary>The hardening of the security advice (R16): only the kinds of <see cref="Core.Security.AdHardening.Kinds"/>.</summary>
+    private ChangeResult Harden(Change w)
+    {
+        switch (w.P("wat"))
+        {
+            case "encryptionTypes":
+            {
+                using var item = Item(w.Target);
+                if (int.TryParse(w.P("waarde"), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var types))
+                {
+                    item.Properties["msDS-SupportedEncryptionTypes"].Value = types;
+                }
+                else
+                {
+                    item.Properties["msDS-SupportedEncryptionTypes"].Clear();
+                }
+
+                item.CommitChanges();
+                return ChangeResult.Ok(w);
+            }
+
+            case "machineAccountQuota":
+            {
+                using var item = Item(w.Target);
+                item.Properties["ms-DS-MachineAccountQuota"].Value = int.Parse(w.P("waarde"), System.Globalization.CultureInfo.InvariantCulture);
+                item.CommitChanges();
+                return ChangeResult.Ok(w);
+            }
+
+            case "adminCount":
+            {
+                // Clearing adminCount alone leaves the rights of AdminSDHolder: inheritance on again lets the OU decide
+                using var item = Item(w.Target);
+                item.Options.SecurityMasks = SecurityMasks.Dacl;
+                var protect = string.Equals(w.P("beschermd"), "True", StringComparison.OrdinalIgnoreCase);
+                if (protect)
+                {
+                    item.Properties["adminCount"].Value = 1;
+                }
+                else
+                {
+                    item.Properties["adminCount"].Clear();
+                }
+
+                var security = item.ObjectSecurity;
+                security.SetAccessRuleProtection(protect, preserveInheritance: true);
+                item.ObjectSecurity = security;
+                item.CommitChanges();
+                return ChangeResult.Ok(w);
+            }
+
+            case "recycleBin":
+            {
+                // As Enable-ADOptionalFeature: an operation on RootDSE, for the whole forest; it cannot be turned off
+                using var root = Item("RootDSE");
+                var configuration = root.Properties["configurationNamingContext"].Value?.ToString()
+                                    ?? throw new InvalidOperationException(Texts.T["code.ad-ldap.the-domain-controller-returned-no"]);
+                root.Properties["enableOptionalFeature"].Add($"CN=Partitions,{configuration}:{RecycleBinFeature}");
+                root.CommitChanges();
+                return ChangeResult.Ok(w);
+            }
+
+            default:
+                return ChangeResult.Error(w, Texts.T["advice.solve.unknown-flag"]);
+        }
+    }
 
     /// <summary>The computers with their system and last sign-in (lastLogonTimestamp, replicated) (0.36).</summary>
     public Task<IReadOnlyList<Core.Devices.AdComputer>?> ReadComputersAsync(CancellationToken cancel) => Task.Run<IReadOnlyList<Core.Devices.AdComputer>?>(() =>
@@ -383,6 +599,9 @@ public sealed class AdLdap : IAdConnection, IExecutor
                     item.CommitChanges();
                     return ChangeResult.Ok(w);
                 }
+
+                case ChangeAction.AdHardening:
+                    return Harden(w);
 
                 case ChangeAction.AdEnableAccount:
                 {

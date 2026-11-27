@@ -123,7 +123,7 @@ public sealed partial class ManagementState
 
         if (HasAd)
         {
-            list.AddRange(new[] { ("ad-beveiliging", Texts.T["security.check.ad-security"]), ("gpo", Texts.T["security.check.group-policy-gpo"]) });
+            list.AddRange(new[] { ("ad-beveiliging", Texts.T["security.check.ad-security"]), ("ad-groepen", Texts.T["security.check.ad-groups"]), ("gpo", Texts.T["security.check.group-policy-gpo"]) });
         }
 
         return list;
@@ -149,7 +149,8 @@ public sealed partial class ManagementState
                 "rollen" => SecurityChecks.Roles(Graph() is { } g4 ? await g4.ReadRoleAssignmentsAsync(cancel) : null),
                 "zwakke-mfa" => SecurityChecks.WeakMfa(Data),
                 "risico" => SecurityChecks.Risky(Graph() is { } g5 ? await g5.ReadRiskyUsersAsync(cancel) : null),
-                "ad-beveiliging" => SecurityChecks.AdSecurity(_factory?.Ad(EffectiveSettings, AdPassword) is { } a1 ? await a1.ReadSecurityAsync(cancel) : null, now),
+                "ad-beveiliging" => SecurityChecks.AdSecurity(await AdSecurityAsync(round, cancel), now),
+                "ad-groepen" => AdHardening.Groups(await AdSecurityAsync(round, cancel)),
                 "gpo" => SecurityChecks.Gpo(_factory?.Ad(EffectiveSettings, AdPassword) is { } a2 ? await a2.ReadGpoAsync(cancel) : null),
                 _ => SecurityCheck.Unknown(key, key, Texts.T["code.management-state-security-checks.unknown-check"]),
             };
@@ -177,6 +178,17 @@ public sealed partial class ManagementState
         return round is null ? graph.ReadAppsAsync(cancel) : (round.Apps ??= graph.ReadAppsAsync(cancel));
     }
 
+    /// <summary>The security reading of AD: read once per round (two checks use it), or fresh for a check on its own.</summary>
+    private Task<AdSecurityReading?> AdSecurityAsync(SecurityCheckRound? round, CancellationToken cancel)
+    {
+        if (!HasAd || _factory?.Ad(EffectiveSettings, AdPassword) is not { } ad)
+        {
+            return Task.FromResult<AdSecurityReading?>(null);
+        }
+
+        return round is null ? ad.ReadSecurityAsync(cancel) : (round.AdSecurity ??= ad.ReadSecurityAsync(cancel));
+    }
+
     private async Task<IReadOnlyList<ForwardingRule>?> ForwardingAsync(bool withRules, CancellationToken cancel)
         => HasMicrosoft365 && _factory?.Exchange(EffectiveSettings) is { } exchange ? await exchange.ReadForwardingAsync(withRules, null, cancel) : null;
 
@@ -193,4 +205,6 @@ public sealed partial class ManagementState
 public sealed class SecurityCheckRound
 {
     internal Task<AppsReading?>? Apps { get; set; }
+
+    internal Task<AdSecurityReading?>? AdSecurity { get; set; }
 }

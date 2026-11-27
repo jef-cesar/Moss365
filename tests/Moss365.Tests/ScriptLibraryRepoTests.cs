@@ -20,7 +20,7 @@ public sealed class ScriptLibraryRepoTests
         return dir?.FullName ?? throw new InvalidOperationException("Repository not found.");
     }
 
-    private static string Scripts => Path.Combine(Root(), "scripts");
+    internal static string Scripts => Path.Combine(Root(), "scripts");
 
     [Fact]
     public void TheIndexMatchesTheScripts()

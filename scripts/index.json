@@ -47,6 +47,24 @@
       "connection": "Exchange"
     },
     {
+      "path": "Security/Reset-KrbtgtPassword.ps1",
+      "name": "krbtgt-wachtwoord vernieuwen",
+      "version": "1.0",
+      "sha256": "f62efe2951342f2e5d7dd0fa4d7cf04db1efd6c5b4576b2f371cc6bc12ae9709",
+      "minimumApp": "",
+      "writes": true,
+      "connection": "AD"
+    },
+    {
+      "path": "Security/Test-DomainControllerHardening.ps1",
+      "name": "Domeincontrollers controleren",
+      "version": "1.0",
+      "sha256": "349b2b292b329c9b94f6fd706307920bda3afdcfd4d7864499881ca7b133ba02",
+      "minimumApp": "",
+      "writes": false,
+      "connection": "AD"
+    },
+    {
       "path": "SharedMailboxes/Compare-Mailboxes.ps1",
       "name": "Postvakken vergelijken",
       "version": "1.0",

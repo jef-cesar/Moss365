@@ -89,6 +89,11 @@ public static class SecurityAdvice
             "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/forest-recovery-guide/ad-forest-recovery-reset-the-krbtgt-password",
         }),
         new("gpo", 1, "T1484.001", Array.Empty<string>()),
+        new("ad-groepen", 3, "T1078.002", new[]
+        {
+            "https://learn.microsoft.com/windows-server/security/credentials-protection-and-management/protected-users-security-group",
+            "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/implementing-least-privilege-administrative-models",
+        }),
     };
 
     public static AdviceInfo? Info(string key) => All.FirstOrDefault(a => string.Equals(a.Key, key, StringComparison.OrdinalIgnoreCase));
@@ -98,17 +103,32 @@ public static class SecurityAdvice
     {
         ["PasswordNotRequired"] = 0x20,
         ["ReversibleEncryption"] = 0x80,
+        ["TrustedForDelegation"] = 0x80000,
+        ["NotDelegated"] = 0x100000,
+        ["DontRequirePreauth"] = 0x400000,
     };
 
-    /// <summary>The lines of a check that can be solved as a plan: with a fix, not OK and not accepted.</summary>
+    /// <summary>The flags the advice turns on ("sensitive and cannot be delegated"); the others it turns off.</summary>
+    public static bool TurnsOn(string flag) => flag == "NotDelegated";
+
+    /// <summary>A line can be solved as a plan: it has a fix this version knows, and is not OK or accepted.</summary>
+    private static bool CanSolve(CheckRow r)
+        => r.Fix is { } f && (AccountFlags.ContainsKey(f) || f is AdHardening.Protect or AdHardening.RemoveMember or AdHardening.AesOnly
+                                  or AdHardening.AdminCount or AdHardening.Quota or AdHardening.RecycleBin)
+           && r.AcceptedUntil is null && r.Status != CheckStatus.Ok;
+
+    /// <summary>The lines of a check that are solved together in one plan: with a fix that is not guided.</summary>
     public static IReadOnlyList<CheckRow> Solvable(SecurityCheck check)
         => check.AcceptedUntil is not null
             ? Array.Empty<CheckRow>()
-            : check.Rows.Where(r => r.Fix is { } f && AccountFlags.ContainsKey(f) && r.AcceptedUntil is null && r.Status != CheckStatus.Ok).ToList();
+            : check.Rows.Where(r => CanSolve(r) && !AdHardening.Guided(r.Fix)).ToList();
+
+    /// <summary>A line that is solved on its own (U16, guided: one account per plan, with what it affects first).</summary>
+    public static bool SolvableAlone(SecurityCheck check, CheckRow row) => check.AcceptedUntil is null && CanSolve(row) && AdHardening.Guided(row.Fix);
 
     /// <summary>
-    /// The plan that solves the lines of a check (U16: low risk with undo, so a plan right away): the flag is turned off
-    /// on the AD account, with its previous value for undo. A line whose account is not in the data read gives a message.
+    /// The plan that solves the lines of a check that are not guided (U16: low risk with undo, so a plan right away),
+    /// each with its previous value for undo. A line whose account is not in the data read gives a message.
     /// </summary>
     public static PlanOutcome Solve(InventoryData data, SecurityCheck check)
     {
@@ -116,36 +136,68 @@ public static class SecurityAdvice
         var errors = new List<string>();
         foreach (var r in Solvable(check))
         {
-            var fix = r.Fix!;
-            var user = data.AdUsers.FirstOrDefault(u => string.Equals(u.SamAccountName, r.Object, StringComparison.OrdinalIgnoreCase));
-            if (user is null)
-            {
-                errors.Add(Texts.T.Format("advice.solve.not-found", r.Object));
-                continue;
-            }
-
-            plan.Add(new Change
-            {
-                TargetSystem = TargetSystem.ActiveDirectory,
-                ChangeAction = ChangeAction.AdSetAccountFlag,
-                Target = user.DistinguishedName,
-                TargetName = user.SamAccountName,
-                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["vlag"] = fix, ["aan"] = "False" },
-                Previous = new(StringComparer.OrdinalIgnoreCase) { ["aan"] = "True" },
-                Description = Texts.T.Format("advice.solve.flag-off", FlagText(fix), user.SamAccountName),
-                CurrentValue = Texts.T["device.enabled"],
-                NewValue = Texts.T["device.disabled"],
-                Warning = fix == "ReversibleEncryption" ? Texts.T["advice.solve.reversible-warning"] : null,
-            });
+            var outcome = SolveRow(data, r);
+            plan.AddRange(outcome.Plan);
+            errors.AddRange(outcome.Errors);
         }
 
         return PlanOutcome.Of(plan, errors);
+    }
+
+    /// <summary>The plan for one line: an account flag, or a fix of <see cref="AdHardening"/>.</summary>
+    public static PlanOutcome SolveRow(InventoryData data, CheckRow r)
+    {
+        if (AdHardening.Plan(r, data) is { } hardening)
+        {
+            return hardening;
+        }
+
+        var fix = r.Fix ?? string.Empty;
+        if (!AccountFlags.ContainsKey(fix))
+        {
+            return PlanOutcome.Of(Array.Empty<Change>(), new[] { Texts.T["advice.solve.unknown-flag"] });
+        }
+
+        // The DN from the reading; lines of older results give the account name only
+        var dn = r.FixData?.GetValueOrDefault("dn") is { Length: > 0 } known ? known
+            : data.AdUsers.FirstOrDefault(u => string.Equals(u.SamAccountName, r.Object, StringComparison.OrdinalIgnoreCase))?.DistinguishedName;
+        if (dn is null)
+        {
+            return PlanOutcome.Of(Array.Empty<Change>(), new[] { Texts.T.Format("advice.solve.not-found", r.Object) });
+        }
+
+        var on = TurnsOn(fix);
+        return PlanOutcome.Of(new[]
+        {
+            new Change
+            {
+                TargetSystem = TargetSystem.ActiveDirectory,
+                ChangeAction = ChangeAction.AdSetAccountFlag,
+                Target = dn,
+                TargetName = r.Object,
+                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["vlag"] = fix, ["aan"] = on ? "True" : "False" },
+                Previous = new(StringComparer.OrdinalIgnoreCase) { ["aan"] = on ? "False" : "True" },
+                Description = Texts.T.Format(on ? "advice.solve.flag-on" : "advice.solve.flag-off", FlagText(fix), r.Object),
+                CurrentValue = on ? Texts.T["device.disabled"] : Texts.T["device.enabled"],
+                NewValue = on ? Texts.T["device.enabled"] : Texts.T["device.disabled"],
+                Warning = fix switch
+                {
+                    "ReversibleEncryption" => Texts.T["advice.solve.reversible-warning"],
+                    "TrustedForDelegation" => Texts.T["advice.delegation.warning"],
+                    "DontRequirePreauth" => Texts.T["advice.preauth.warning"],
+                    _ => null,
+                },
+            },
+        });
     }
 
     public static string FlagText(string flag) => flag switch
     {
         "PasswordNotRequired" => Texts.T["advice.flag.password-not-required"],
         "ReversibleEncryption" => Texts.T["advice.flag.reversible-encryption"],
+        "TrustedForDelegation" => Texts.T["advice.flag.delegation"],
+        "NotDelegated" => Texts.T["advice.flag.sensitive"],
+        "DontRequirePreauth" => Texts.T["advice.flag.preauth"],
         _ => flag,
     };
 

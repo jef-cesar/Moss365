@@ -679,6 +679,9 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public SecurityData? Security { get; set; }
 
+        /// <summary>The security reading of AD with what the advice of R16 needs (null: the small one of 0.34).</summary>
+        public Core.Security.AdSecurityReading? AdSecurity { get; set; }
+
         /// <summary>Devices next to the fixed ones (R17: old devices to clean up), and compliance per policy.</summary>
         public List<Core.Devices.EntraDevice> ExtraEntraDevices { get; } = new();
         public List<Core.Devices.IntuneDevice> ExtraIntuneDevices { get; } = new();
@@ -766,9 +769,12 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
             });
 
         public Task<Core.Security.AdSecurityReading?> ReadSecurityAsync(CancellationToken cancel)
-            => Task.FromResult<Core.Security.AdSecurityReading?>(new Core.Security.AdSecurityReading(
+        {
+            f.Read("ad-security");
+            return Task.FromResult<Core.Security.AdSecurityReading?>(f.AdSecurity ?? new Core.Security.AdSecurityReading(
                 new[] { "svc.sql" }, Array.Empty<string>(), new[] { "oud.account" }, Array.Empty<string>(), DateTimeOffset.Now.AddDays(-400),
                 Array.Empty<string>(), new[] { ("SRV-OUD", "Windows Server 2008 R2") }));
+        }
 
         public Task<IReadOnlyList<Core.Security.GpoInfo>?> ReadGpoAsync(CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Security.GpoInfo>?>(new[]
