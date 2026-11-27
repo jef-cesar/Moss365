@@ -96,7 +96,14 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   `GraphConnection` asks Intune again before wiping. Only a rename or a new primary user can be undone. Offboarding
   takes the person's devices along (`LeaverDevices`: retire a personal device, never a wipe). Every read on Toestellen
   is a snapshot of the device tables (`Devices/DeviceSnapshot.cs`, `toestellen-*.csv`, no moment of last seen); on a
-  date in the past `AdComputers`/`IntuneDevices`/`EntraDevices` come from that snapshot.
+  date in the past `AdComputers`/`IntuneDevices`/`EntraDevices` come from that snapshot. Compliance (U26):
+  `Devices/Compliance.cs` (`ComplianceAnalysis`, `ComplianceTemplates`; `IGraphConnection.ReadComplianceAsync`, per device
+  `ReadDeviceComplianceAsync` from the beta), read with the devices and never in a snapshot; the baselines and the setting
+  for devices without a policy (`IntuneSetComplianceSettings`, all settings as read with one changed) are plans of the part
+  `compliance-policies`. Clean-up (U18, U25): `Devices/DeviceCleanup.cs` (disable after 90 days not seen, delete after 90
+  days disabled with the Intune record first and a BitLocker warning; never hybrid joined or Autopilot, and
+  `GraphConnection` asks Entra again); Entra only with the part `entra-device-cleanup`. `PermissionParts.Refusal` is in the
+  refuse chain of `ManagementState.ExecuteAsync`: the engine refuses a write of a part that is off.
   Own data (R18): `Security/LocalLogs.cs` decides which sign-ins are kept (failed, risky, administrators, emergency
   accounts) next to the whole directory audit log; table `LocalLog` (migration 5, `Storage/LocalLogStore.cs`, never a
   line twice) is filled after every read of Entra (`ManagementState.LocalLogs.cs`) while `Retention.KeepLocalLogs` is

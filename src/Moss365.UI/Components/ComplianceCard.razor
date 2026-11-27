@@ -1,0 +1,141 @@
+@using Moss365.Core.Devices
+@* Compliance per policy (R17, U26): which devices fail which policy and on which setting, the platforms without a
+   policy, and whether a device without a policy counts as compliant. The baseline policies are plans, only with the
+   part "baseline compliance policies" on; Moss365 makes them without assignment. *@
+@inject ManagementState State
+
+<section class="kb-kaart" id="naleving">
+    <h2>@T["compliance.title"]</h2>
+    <p class="kb-zacht">@T["compliance.help"]</p>
+    @if (State.Compliance is not { } reading)
+    {
+        <p class="kb-zacht">@(State.IsHistoric ? T["compliance.only-latest"] : T["compliance.read-first"])</p>
+    }
+    else
+    {
+        @if (reading.Note is { } note)
+        {
+            <div class="kb-melding">@note</div>
+        }
+        @if (SecureText(reading.NoPolicyIsNotCompliant) is { } secure)
+        {
+            <p class="@(reading.NoPolicyIsNotCompliant == true ? "kb-ok" : "kb-zacht")">@secure</p>
+        }
+        @foreach (var advice in ComplianceAnalysis.Advice(reading, State.IntuneDevices))
+        {
+            <div class="kb-melding">@advice</div>
+        }
+        @if (reading.NoPolicyIsNotCompliant == false && State.CompliancePoliciesOn && State.Can(Permission.Manage) && !State.IsHistoric)
+        {
+            <button class="kb-knop kb-klein" id="standaard-niet-conform" @onclick="() => outcome = ComplianceAnalysis.SecureByDefault(reading, State.IntuneDevices, State.Config.PermissionParts)">@T["compliance.secure.make"]</button>
+        }
+
+        @if (reading.Policies.Count == 0)
+        {
+            <p class="kb-zacht">@T["compliance.no-policies"]</p>
+        }
+        else
+        {
+            <table class="kb-tabel" id="nalevingsbeleid">
+                <thead><tr><th>@T["compliance.policy"]</th><th>@T["plan.system"]</th><th class="kb-getal">@T["compliance.devices"]</th><th class="kb-getal">@T["compliance.failing"]</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var p in reading.Policies.OrderByDescending(p => p.Failing.Count).ThenBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
+                    {
+                        var policy = p;
+                        <tr>
+                            <td>@policy.Name</td>
+                            <td>@policy.Platform</td>
+                            <td class="kb-getal">@policy.Devices.Count</td>
+                            <td class="kb-getal">@policy.Failing.Count</td>
+                            <td>
+                                @if (policy.Failing.Count > 0)
+                                {
+                                    <button class="kb-knop kb-klein" aria-expanded="@(open == policy.Id ? "true" : "false")" aria-label="@T.Format("compliance.show-failing-of", policy.Name)" @onclick="() => open = open == policy.Id ? null : policy.Id">@T["compliance.show-failing"]</button>
+                                }
+                            </td>
+                        </tr>
+                        @if (open == policy.Id)
+                        {
+                            <tr>
+                                <td colspan="5">
+                                    <table class="kb-tabel" id="niet-conform">
+                                        <thead><tr><th>@T["keys.device"]</th><th>@T["sign-in-list.user"]</th><th>@T["compliance.status"]</th><th>@T["compliance.reported"]</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var d in policy.Failing.Take(200))
+                                            {
+                                                <tr><td>@d.Device</td><td>@d.User</td><td>@StatusText(d.Status)</td><td>@(d.LastReported?.LocalDateTime.ToString("dd/MM/yyyy") ?? T["word.never"])</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (reading.Settings.Any(s => s.NonCompliant + s.Error > 0))
+        {
+            <h3>@T["compliance.settings"]</h3>
+            <table class="kb-tabel" id="nalevingsinstellingen">
+                <thead><tr><th>@T["compliance.setting"]</th><th>@T["plan.system"]</th><th class="kb-getal">@T["compliance.failing"]</th><th class="kb-getal">@T["compliance.compliant"]</th></tr></thead>
+                <tbody>
+                    @foreach (var s in reading.Settings.Where(s => s.NonCompliant + s.Error > 0).Take(15))
+                    {
+                        <tr><td>@s.Setting</td><td>@ComplianceAnalysis.PlatformOf(s.Platform)</td><td class="kb-getal">@(s.NonCompliant + s.Error)</td><td class="kb-getal">@s.Compliant</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <h3>@T["compliance.templates"]</h3>
+        <p class="kb-zacht">@T["compliance.templates.help"]</p>
+        @if (!State.CompliancePoliciesOn)
+        {
+            <p class="kb-zacht">@T["compliance.template.part-off"] <a href="inrichten">@T["menu.inrichten"]</a></p>
+        }
+        else if (State.Can(Permission.Manage) && !State.IsHistoric)
+        {
+            <div class="kb-filters" id="basisbeleid">
+                @foreach (var t in ComplianceTemplates.All)
+                {
+                    var template = t;
+                    <button class="kb-knop kb-klein" @onclick="() => outcome = ComplianceTemplates.Create(template, reading.Policies, State.Config.PermissionParts)">@T.Format("compliance.template.make", template.Platform)</button>
+                }
+            </div>
+        }
+        @if (outcome is not null)
+        {
+            @foreach (var e in outcome.Errors)
+            {
+                <div class="kb-melding kb-fout">@e</div>
+            }
+            @if (outcome.Plan.Count > 0)
+            {
+                <PlanView Plan="outcome.Plan" Context="@T["compliance.context"]" Title="@T["compliance.templates"]" />
+            }
+        }
+    }
+</section>
+
+@code {
+    private string? open;
+    private Moss365.Core.Changes.PlanOutcome? outcome;
+
+    private static string? SecureText(bool? on) => on switch
+    {
+        true => T["compliance.secure.on"],
+        null => T["compliance.secure.unknown"],
+        // Off: the advice says what to do
+        false => null,
+    };
+
+    private static string StatusText(string status) => status switch
+    {
+        "nonCompliant" => T["compliance.failing"],
+        "error" => T["compliance.status.error"],
+        "conflict" => T["compliance.status.conflict"],
+        _ => status,
+    };
+}

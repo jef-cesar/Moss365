@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Moss365.Core.Analysis;
 using Moss365.Core.Inventory;
 using Moss365.Core.Changes;
@@ -11,6 +12,9 @@ namespace Moss365.Connections.Graph;
 /// <summary>Reads Entra ID via Microsoft Graph and runs Graph changes, with the sign-in of the administrator.</summary>
 public sealed class GraphConnection : IGraphConnection, IExecutor
 {
+    /// <summary>The beta of Graph, for what Intune only has there (absolute URLs go through the same client).</summary>
+    private const string BetaBase = "https://graph.microsoft.com/beta";
+
     private const string UserFields = "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,department,"
                                            + "jobTitle,officeLocation,companyName,city,usageLocation,createdDateTime,onPremisesSyncEnabled,"
                                            + "onPremisesSamAccountName,onPremisesDistinguishedName,assignedLicenses,businessPhones,mobilePhone";
@@ -340,6 +344,124 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
+    /// <summary>Why a device in Entra may not be disabled or deleted, asked again just before (R17, U18): hybrid joined
+    /// (cleaned up in AD), Autopilot (can no longer be provisioned), or still enabled (delete only after disabling).</summary>
+    private async Task<string?> DeviceCleanupRefusalAsync(string objectId, bool deleting, CancellationToken cancel)
+    {
+        var device = await _client.GetAsync($"/devices/{Uri.EscapeDataString(objectId)}?$select=accountEnabled,trustType,physicalIds", cancel);
+        if (string.Equals(S(device, "trustType"), "ServerAd", StringComparison.OrdinalIgnoreCase))
+        {
+            return Texts.T["device.cleanup.hybrid"];
+        }
+
+        if (IsAutopilot(device))
+        {
+            return Texts.T["device.cleanup.autopilot"];
+        }
+
+        return deleting && device.TryGetProperty("accountEnabled", out var on) && on.ValueKind == JsonValueKind.True ? Texts.T["device.cleanup.disable-first"] : null;
+    }
+
+    private static bool IsAutopilot(JsonElement device) => device.TryGetProperty("physicalIds", out var ids) && ids.ValueKind == JsonValueKind.Array
+        && ids.EnumerateArray().Any(i => i.ValueKind == JsonValueKind.String && i.GetString()!.StartsWith("[ZTDID]", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>How many BitLocker recovery keys a device has (only the list: no key is read).</summary>
+    public async Task<int?> CountBitLockerKeysAsync(string deviceId, CancellationToken cancel)
+    {
+        try
+        {
+            return (await _client.GetAllAsync($"/informationProtection/bitlocker/recoveryKeys?$filter=deviceId eq '{Uri.EscapeDataString(deviceId)}'", cancel)).Count;
+        }
+        catch (GraphError)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Compliance per policy (R17, U26): the policies with the status of their devices, the settings that fail,
+    /// and whether a device without a policy counts as not compliant.</summary>
+    public async Task<Core.Devices.ComplianceReading?> ReadComplianceAsync(CancellationToken cancel)
+    {
+        List<JsonElement> policies;
+        try
+        {
+            policies = await _client.GetAllAsync("/deviceManagement/deviceCompliancePolicies", cancel);
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized or HttpStatusCode.NotFound)
+        {
+            return new Core.Devices.ComplianceReading(Array.Empty<Core.Devices.CompliancePolicy>(), Array.Empty<Core.Devices.ComplianceSetting>(), null,
+                Texts.T.Format("compliance.not-read", ex.Message));
+        }
+
+        // The status of the devices per policy, in $batch calls of 20 (a request of its own for what a batch did not answer)
+        var output = new List<Core.Devices.CompliancePolicy>();
+        foreach (var chunk in policies.Chunk(GraphClient.BatchSize))
+        {
+            var paths = chunk.Select(p => $"/deviceManagement/deviceCompliancePolicies/{Uri.EscapeDataString(S(p, "id"))}/deviceStatuses").ToList();
+            var answers = await _client.BatchGetAsync(paths, cancel);
+            for (var i = 0; i < chunk.Length; i++)
+            {
+                var p = chunk[i];
+                var statuses = answers[i] is { } first ? await _client.AllPagesAsync(first, cancel) : await _client.GetAllAsync(paths[i], cancel);
+                output.Add(new Core.Devices.CompliancePolicy(S(p, "id"), S(p, "displayName"), Core.Devices.ComplianceAnalysis.PlatformOf(S(p, "@odata.type")),
+                    statuses.Select(d => new Core.Devices.ComplianceDeviceStatus(S(d, "deviceDisplayName"), S(d, "userPrincipalName"), S(d, "status"), Date(d, "lastReportedDateTime"))).ToList()));
+            }
+        }
+
+        var settings = new List<Core.Devices.ComplianceSetting>();
+        try
+        {
+            settings.AddRange((await _client.GetAllAsync("/deviceManagement/deviceCompliancePolicySettingStateSummaries", cancel))
+                .Select(x => new Core.Devices.ComplianceSetting(S(x, "settingName"), S(x, "platformType"), I(x, "compliantDeviceCount"), I(x, "nonCompliantDeviceCount"), I(x, "errorDeviceCount"))));
+        }
+        catch (GraphError)
+        {
+            // The settings are an extra; the policies are what matters
+        }
+
+        bool? secure = null;
+        string? settingsJson = null;
+        try
+        {
+            var management = await _client.GetAsync("/deviceManagement?$select=settings", cancel);
+            if (management.TryGetProperty("settings", out var st) && st.ValueKind == JsonValueKind.Object)
+            {
+                settingsJson = st.GetRawText();
+                if (st.TryGetProperty("secureByDefault", out var sb) && sb.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                {
+                    secure = sb.GetBoolean();
+                }
+            }
+        }
+        catch (GraphError)
+        {
+            // Unknown: said as such on the screen
+        }
+
+        return new Core.Devices.ComplianceReading(output, settings.OrderByDescending(x => x.NonCompliant + x.Error).ToList(), secure, null) { SettingsJson = settingsJson };
+    }
+
+    private static int I(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
+
+    /// <summary>The compliance policies of one device with the state of each setting (the beta of Intune: v1.0 leaves the
+    /// settings out).</summary>
+    public async Task<IReadOnlyList<Core.Devices.DeviceComplianceState>?> ReadDeviceComplianceAsync(string managedDeviceId, CancellationToken cancel)
+    {
+        try
+        {
+            return (await _client.GetAllAsync($"{BetaBase}/deviceManagement/managedDevices/{Uri.EscapeDataString(managedDeviceId)}/deviceCompliancePolicyStates", cancel))
+                .Select(p => new Core.Devices.DeviceComplianceState(S(p, "displayName"), S(p, "state"),
+                    p.TryGetProperty("settingStates", out var st) && st.ValueKind == JsonValueKind.Array
+                        ? st.EnumerateArray().Select(x => new Core.Devices.ComplianceSettingState(S(x, "settingName").Length > 0 ? S(x, "settingName") : S(x, "setting"), S(x, "state"))).ToList()
+                        : new List<Core.Devices.ComplianceSettingState>()))
+                .ToList();
+        }
+        catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized or HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
+        {
+            return null;
+        }
+    }
+
     public async Task<IReadOnlyList<Core.Helpdesk.BitLockerKey>> BitLockerKeysAsync(string? deviceId, string? keyId, CancellationToken cancel)
     {
         List<JsonElement> keys;
@@ -445,10 +567,11 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
     {
         try
         {
-            const string select = "id,deviceId,displayName,operatingSystem,operatingSystemVersion,accountEnabled,approximateLastSignInDateTime,trustType";
+            const string select = "id,deviceId,displayName,operatingSystem,operatingSystemVersion,accountEnabled,approximateLastSignInDateTime,trustType,physicalIds";
             return (await _client.GetAllAsync($"/devices?$select={select}&$top=999", cancel))
                 .Select(d => new Core.Devices.EntraDevice(S(d, "id"), S(d, "deviceId"), S(d, "displayName"), S(d, "operatingSystem"), S(d, "operatingSystemVersion"),
-                    !d.TryGetProperty("accountEnabled", out var on) || on.ValueKind != JsonValueKind.False, Date(d, "approximateLastSignInDateTime"), S(d, "trustType")))
+                    !d.TryGetProperty("accountEnabled", out var on) || on.ValueKind != JsonValueKind.False, Date(d, "approximateLastSignInDateTime"), S(d, "trustType"))
+                    { Autopilot = IsAutopilot(d) })
                 .ToList();
         }
         catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
@@ -1393,6 +1516,48 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             if (w.ChangeAction == ChangeAction.IntuneDeviceAction)
             {
                 return await RunDeviceAsync(w, cancel);
+            }
+
+            // Compliance and the clean-up of devices (R17, U18, U25, U26)
+            switch (w.ChangeAction)
+            {
+                case ChangeAction.IntuneCreateCompliancePolicy:
+                {
+                    var made = await _client.PostWithResponseAsync("/deviceManagement/deviceCompliancePolicies", JsonNode.Parse(w.P("json"))!, cancel);
+                    return ChangeResult.Ok(w, Texts.T.Format("result.created-id", S(made, "id")));
+                }
+
+                case ChangeAction.GraphSetDeviceEnabled:
+                {
+                    // Asks Entra again: a hybrid joined device is managed in AD, an Autopilot device is never touched
+                    var on = string.Equals(w.P("aan"), "True", StringComparison.OrdinalIgnoreCase);
+                    if (!on && await DeviceCleanupRefusalAsync(w.Target, false, cancel) is { } why)
+                    {
+                        return ChangeResult.Error(w, why);
+                    }
+
+                    await _client.PatchAsync($"/devices/{Uri.EscapeDataString(w.Target)}", new Dictionary<string, object> { ["accountEnabled"] = on }, cancel);
+                    return ChangeResult.Ok(w);
+                }
+
+                case ChangeAction.GraphDeleteDevice:
+                {
+                    if (await DeviceCleanupRefusalAsync(w.Target, true, cancel) is { } why)
+                    {
+                        return ChangeResult.Error(w, why);
+                    }
+
+                    await _client.DeleteAsync($"/devices/{Uri.EscapeDataString(w.Target)}", cancel);
+                    return ChangeResult.Ok(w);
+                }
+
+                case ChangeAction.IntuneDeleteDevice:
+                    await _client.DeleteAsync($"/deviceManagement/managedDevices/{Uri.EscapeDataString(w.Target)}", cancel);
+                    return ChangeResult.Ok(w);
+                case ChangeAction.IntuneSetComplianceSettings:
+                    // All the settings as read, with one changed: a complex property is sent whole
+                    await _client.PatchAsync("/deviceManagement", new JsonObject { ["settings"] = JsonNode.Parse(w.P("json")) }, cancel);
+                    return ChangeResult.Ok(w);
             }
 
             if (w.ChangeAction is ChangeAction.GraphCreateCaPolicy or ChangeAction.GraphUpdateCaPolicy or ChangeAction.GraphCreateCaLocation or ChangeAction.GraphUpdateCaLocation)

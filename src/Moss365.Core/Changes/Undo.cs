@@ -38,6 +38,7 @@ public static class Undo
         ChangeAction.AdSetAttributes, ChangeAction.GraphSetAttributes, ChangeAction.GraphSetGroupAttributes,
         ChangeAction.ExchangeUpdateGroup, ChangeAction.ExchangeUpdateMailbox, ChangeAction.ExchangeAutoReply, ChangeAction.GraphSetManager,
         ChangeAction.GraphUpdateCaPolicy, ChangeAction.GraphUpdateCaLocation, ChangeAction.AdSetAccountFlag, ChangeAction.IntuneDeviceAction,
+        ChangeAction.GraphSetDeviceEnabled, ChangeAction.IntuneSetComplianceSettings,
     };
 
     /// <summary>Can this entry be undone? If not, why not.</summary>
@@ -90,6 +91,8 @@ public static class Undo
             ChangeAction.GraphCreateTemporaryAccessPass => Texts.T["code.undo.a-temporary-access-pass-expires"],
             ChangeAction.GraphSendMail => Texts.T["code.undo.a-sent-e-mail-cannot"],
             ChangeAction.GraphRemoveGuest => Texts.T["code.undo.restore-through-entra-deleted-users"],
+            ChangeAction.GraphDeleteDevice or ChangeAction.IntuneDeleteDevice => Texts.T["device.cleanup.no-undo"],
+            ChangeAction.IntuneCreateCompliancePolicy => Texts.T["compliance.template.no-undo"],
             ChangeAction.AdSetPassword => Texts.T["code.undo.a-previous-password-cannot-come"],
             ChangeAction.GraphRevokeSessions => Texts.T["code.undo.revoked-sessions-cannot-come-back"],
             ChangeAction.ExchangeConvertToSharedMailbox => Texts.T["code.undo.convert-the-mailbox-back-yourself"],

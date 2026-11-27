@@ -726,7 +726,8 @@ public sealed partial class ManagementState
         // exclude the emergency accounts or locks yourself out (also on undo or a scheduled plan), and wiping a
         // personal device
         var results = await new PlanExecutor(executors, ChangeLog, () => User,
-                w => PermissionTable.Refusal(roles, w, data) ?? CaSafety.Refusal(w, data, config, user) ?? Core.Devices.DeviceSafety.Refusal(w))
+                w => PermissionTable.Refusal(roles, w, data) ?? CaSafety.Refusal(w, data, config, user) ?? Core.Devices.DeviceSafety.Refusal(w)
+                     ?? Core.Setup.PermissionParts.Refusal(w, config.PermissionParts))
             .ExecuteAsync(plan, context, progress, cancel);
         // No context: it often contains a name ("Uitstroom ..."); only counts and kinds of actions
         Log.Information("Plan uitgevoerd: {Gelukt} gelukt, {Mislukt} mislukt, {Overgeslagen} overgeslagen; acties {Acties}",

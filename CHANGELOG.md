@@ -26,6 +26,19 @@ The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
   Intune as a snapshot, like the users (only what changed is stored; of "last seen" only whether it was within 90
   days). On a date in the past, *Toestellen* shows the devices of then, and the overview keeps the device counts per day
   for their trend.
+- **Compliance per policy** (R17, U26): *Toestellen* shows per compliance policy which devices fail it, the settings
+  that fail most, the platforms without any policy, and whether a device without a policy counts as compliant (with
+  where to change that in Intune). The panel of a device shows the policies it fails and, on request, the settings it
+  fails. With the part *baseline compliance policies* on, the baselines for Windows, iOS and Android (work profile) are
+  plans (made without assignment), and so is marking devices without a policy as not compliant (the devices that would
+  then fail are named; undo puts the settings back).
+- **Cleaning up old devices** (R17, U18, U25): a device in Entra not seen for 90 days is first disabled (undo possible);
+  only after 90 days disabled does a separate plan delete its record in Intune and in Entra, with a warning when
+  BitLocker keys would go with it. Hybrid joined devices are cleaned up in AD and Autopilot devices never; Entra is
+  asked again just before. Entra only with the part *clean up old devices in Entra* on; records in Intune not seen for
+  180 days can always be deleted. The engine refuses the changes of a part that is off, also in a plan made by hand.
+- The panel of a device leads to *BitLocker en LAPS* with its name filled in (every lookup still goes to the access
+  log).
 
 ## 0.39.0
 

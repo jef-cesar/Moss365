@@ -679,6 +679,11 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public SecurityData? Security { get; set; }
 
+        /// <summary>Devices next to the fixed ones (R17: old devices to clean up), and compliance per policy.</summary>
+        public List<Core.Devices.EntraDevice> ExtraEntraDevices { get; } = new();
+        public List<Core.Devices.IntuneDevice> ExtraIntuneDevices { get; } = new();
+        public Core.Devices.ComplianceReading? Compliance { get; set; }
+
         /// <summary>The calendar of a room (#20); with CalendarNoPermission reading fails as with a 403.</summary>
         public List<Appointment> Calendar { get; } = new();
         public bool CalendarNoPermission { get; set; }
@@ -805,7 +810,7 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
                 new Core.Devices.IntuneDevice("d1", "LAPTOP-1", "an.peeters@test.be", "Windows", "10.0.22631", "compliant", DateTimeOffset.Now.AddDays(-1), "company") { EntraDeviceId = "e-dev-1", Serial = "SN-0001", Model = "Latitude 5440", Encrypted = true },
                 new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo.janssens@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal") { EntraDeviceId = "e-dev-2" },
                 new Core.Devices.IntuneDevice("d3", "LAPTOP-OUD", "cas@test.be", "Windows", "10.0.19045", "compliant", DateTimeOffset.Now.AddDays(-60), "company"),
-            });
+            }.Concat(f.ExtraIntuneDevices).ToList());
 
         public Task<IReadOnlyList<Core.Devices.EntraDevice>?> ReadEntraDevicesAsync(CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Devices.EntraDevice>?>(new[]
@@ -814,7 +819,24 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
                 new Core.Devices.EntraDevice("o2", "e-dev-2", "GSM-BO", "iOS", "16.1", true, DateTimeOffset.Now.AddDays(-3), "Workplace"),
                 new Core.Devices.EntraDevice("o3", "e-dev-3", "PC-NIEUW", "Windows", "10.0.22631", true, DateTimeOffset.Now.AddDays(-2), "ServerAd"),
                 new Core.Devices.EntraDevice("o4", "e-dev-4", "TABLET-X", "Windows", "10.0.26100", true, DateTimeOffset.Now.AddDays(-5), "AzureAd"),
+            }.Concat(f.ExtraEntraDevices).ToList());
+
+        public Task<Core.Devices.ComplianceReading?> ReadComplianceAsync(CancellationToken cancel) => Task.FromResult(f.Compliance);
+
+        public Task<IReadOnlyList<Core.Devices.DeviceComplianceState>?> ReadDeviceComplianceAsync(string managedDeviceId, CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Devices.DeviceComplianceState>?>(new[]
+            {
+                new Core.Devices.DeviceComplianceState("Basis Windows", "nonCompliant", new[]
+                {
+                    new Core.Devices.ComplianceSettingState("BitLocker vereist", "nonCompliant"), new Core.Devices.ComplianceSettingState("Firewall", "compliant"),
+                }),
             });
+
+        public Task<int?> CountBitLockerKeysAsync(string deviceId, CancellationToken cancel)
+        {
+            f.Read("bitlocker-count:" + deviceId);
+            return Task.FromResult<int?>(2);
+        }
 
         public Task<Core.Devices.CollaborationReading?> ReadCollaborationAsync(CancellationToken cancel)
             => Task.FromResult<Core.Devices.CollaborationReading?>(new Core.Devices.CollaborationReading(

@@ -39,6 +39,60 @@ public sealed partial class ManagementState
     /// <summary>One list over AD, Entra and Intune (R17), from what was read (on the date shown, in the past).</summary>
     public IReadOnlyList<DeviceRecord> DeviceList => DeviceAnalysis.Combine(AdComputers, EntraDevices, IntuneDevices, AsOf?.Time ?? DateTimeOffset.Now);
 
+    private ComplianceReading? _compliance;
+
+    /// <summary>Compliance per policy (R17, U26), as last read in this session. Not kept in the snapshots: on a date in the
+    /// past there is none.</summary>
+    public ComplianceReading? Compliance => IsHistoric ? null : _compliance;
+
+    /// <summary>The part "clean up old devices in Entra" is on for this tenant (U25).</summary>
+    public bool EntraCleanupOn => Core.Setup.PermissionParts.IsOn(Config.PermissionParts, Core.Setup.PermissionParts.EntraDeviceCleanup);
+
+    /// <summary>The part "baseline compliance policies" is on for this tenant (U26).</summary>
+    public bool CompliancePoliciesOn => Core.Setup.PermissionParts.IsOn(Config.PermissionParts, Core.Setup.PermissionParts.CompliancePolicies);
+
+    /// <summary>The devices in Entra that may be deleted: disabled by Moss365 at least 90 days ago (the change log), or
+    /// disabled elsewhere and not seen for 180 days.</summary>
+    public IReadOnlyList<EntraDevice> EntraDevicesToDelete => DeviceCleanup.ToDelete(EntraDevices ?? Array.Empty<EntraDevice>(), ChangeLog.Recent(20_000), DateTimeOffset.Now);
+
+    /// <summary>How many BitLocker keys each device has (the list of keys, never a key), for the warning in the plan that
+    /// deletes them; a device whose keys cannot be counted counts as one, so the warning stays.</summary>
+    public async Task<IReadOnlyDictionary<string, int>> CountBitLockerKeysAsync(IEnumerable<EntraDevice> devices, CancellationToken cancel = default)
+    {
+        var output = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        if (Graph() is not { } graph)
+        {
+            return output;
+        }
+
+        foreach (var d in devices.Where(d => d.DeviceId.Length > 0))
+        {
+            output[d.DeviceId] = await graph.CountBitLockerKeysAsync(d.DeviceId, cancel) ?? 1;
+        }
+
+        return output;
+    }
+
+    /// <summary>The compliance policies of one Intune device with the settings it fails (R17, the panel of a device), read
+    /// live; null with a note when that cannot be read.</summary>
+    public async Task<(IReadOnlyList<DeviceComplianceState>? States, string? Note)> ReadDeviceComplianceAsync(IntuneDevice device, CancellationToken cancel = default)
+    {
+        if (IsHistoric || !HasMicrosoft365 || Graph() is not { } graph)
+        {
+            return (null, Texts.T["device.compliance.not-now"]);
+        }
+
+        try
+        {
+            var states = await graph.ReadDeviceComplianceAsync(device.Id, cancel);
+            return (states, states is null ? Texts.T["device.compliance.no-permission"] : null);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return (null, Texts.T.Format("compliance.not-read", ex.Message));
+        }
+    }
+
     public CollaborationReading? Collaboration { get; private set; }
 
     /// <summary>What did not work in the last read of devices or collaboration (shown on the screen).</summary>
@@ -79,6 +133,15 @@ public sealed partial class ManagementState
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 notes.Add((Texts.T["code.management-state-devices.intune-not-read"] + " ") + ex.Message);
+            }
+
+            try
+            {
+                _compliance = await graph.ReadComplianceAsync(cancel);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                notes.Add(Texts.T.Format("compliance.not-read", ex.Message));
             }
         }
 

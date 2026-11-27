@@ -36,6 +36,14 @@ public static class PermissionParts
     public static IReadOnlyList<string> GraphScopes(IEnumerable<string>? on)
         => AppManifest.GraphScopes.Concat(All.Where(p => IsOn(on, p.Key)).SelectMany(p => p.GraphScopes)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
+    /// <summary>The engine refuses a change of a part that is off (U25, U26), also when a plan was made by hand.</summary>
+    public static string? Refusal(Changes.Change w, IEnumerable<string>? on) => w.ChangeAction switch
+    {
+        Changes.ChangeAction.IntuneCreateCompliancePolicy or Changes.ChangeAction.IntuneSetComplianceSettings when !IsOn(on, CompliancePolicies) => Texts.T["compliance.template.part-off"],
+        Changes.ChangeAction.GraphSetDeviceEnabled or Changes.ChangeAction.GraphDeleteDevice when !IsOn(on, EntraDeviceCleanup) => Texts.T["device.cleanup.part-off"],
+        _ => null,
+    };
+
     /// <summary>The permissions of the parts that are off: the wizard takes them away when they are still given.</summary>
     public static IReadOnlyList<string> NotWanted(IEnumerable<string>? on)
         => All.Where(p => !IsOn(on, p.Key)).SelectMany(p => p.GraphScopes).Except(AppManifest.GraphScopes, StringComparer.OrdinalIgnoreCase).ToList();

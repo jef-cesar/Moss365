@@ -508,8 +508,11 @@ Offboarding still never deletes: deleting a device record is only ever the separ
 
 Started in 0.39.0: the life cycle as data, one device list over AD, Entra and Intune (with what does not match), a
 panel per device with its details and the actions on three levels with their safeguards (in the planner and in the
-engine), and the Intune devices of a person on the user page. Still to come in R17: changing the primary user,
-compliance per policy, the devices in offboarding, the clean-up (U18) and the devices in the snapshots.
+engine), and the Intune devices of a person on the user page. The rest in 0.40.0: changing the primary user, compliance
+per policy (on the panel of a device too, with the settings it fails; the baselines and the setting for devices without
+a policy as plans of a part, U26), the devices in offboarding, the clean-up (U18, U25: Entra only with its part, never a
+hybrid joined or Autopilot device) and the devices in the snapshots. With that, R17 is complete; what remains is the
+test in a test tenant (issue 19).
 
 ### Own data: logs and reading without a window (R18)
 

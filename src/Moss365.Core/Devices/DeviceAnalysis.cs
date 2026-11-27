@@ -31,7 +31,15 @@ public sealed record IntuneDevice(string Id, string Name, string Owner, string O
 }
 
 /// <summary>A device in Entra ID: joined (AzureAd), hybrid joined (ServerAd) or registered (Workplace) (R17).</summary>
-public sealed record EntraDevice(string Id, string DeviceId, string Name, string OperatingSystem, string Version, bool Enabled, DateTimeOffset? LastSignIn, string TrustType);
+public sealed record EntraDevice(string Id, string DeviceId, string Name, string OperatingSystem, string Version, bool Enabled, DateTimeOffset? LastSignIn, string TrustType)
+{
+    /// <summary>Registered with Windows Autopilot (a physical id [ZTDID]): never disabled or deleted, it could no longer be
+    /// provisioned (R17, U18). Not kept in the snapshots: on a date in the past nothing is written anyway.</summary>
+    public bool Autopilot { get; init; }
+
+    /// <summary>Hybrid joined: managed in AD, cleaned up there (Entra Connect follows).</summary>
+    public bool Hybrid => string.Equals(TrustType, "ServerAd", StringComparison.OrdinalIgnoreCase);
+}
 
 /// <summary>One device over AD, Entra and Intune (R17), with what deserves a look (keys of <see cref="DeviceAnalysis.Findings"/>).</summary>
 public sealed record DeviceRecord(string Name, AdComputer? Ad, EntraDevice? Entra, IntuneDevice? Intune, IReadOnlyList<string> Findings)
