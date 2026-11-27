@@ -49,6 +49,30 @@ jobs:
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true -p:DebugType=none -o publish
 
+      # 0.39.0 stopped at the start (the screens of BlazorWebView 10 need the Windows SDK projection), which no test of
+      # the code can see: start the real exe, from a copy, so that its WebView2 folder does not end up in the download
+      - name: Start test (Windows)
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $wv2 = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          if (-not (Get-ItemProperty $wv2 -ErrorAction SilentlyContinue).pv) {
+            Write-Host 'Installing the WebView2 runtime'
+            $setup = Join-Path $env:RUNNER_TEMP 'MicrosoftEdgeWebview2Setup.exe'
+            Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $setup
+            (Start-Process $setup -ArgumentList '/silent', '/install' -PassThru).WaitForExit()
+          }
+          $copy = Join-Path $env:RUNNER_TEMP 'start-test'
+          Copy-Item publish $copy -Recurse
+          ./tools/Test-AppStart.ps1 -Exe (Join-Path $copy 'Moss365.exe') -Seconds 60 -Screenshot (Join-Path $env:RUNNER_TEMP 'start-test.png')
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: start-test
+          path: ${{ runner.temp }}/start-test.png
+          retention-days: 14
+
       - name: Add tools and the script library
         shell: pwsh
         run: |
@@ -98,13 +122,12 @@ jobs:
           "release=$new" >> $env:GITHUB_OUTPUT
           exit 0
 
-  # U23: a new version waits here for the maintainer's approval (the environment "release" with a required reviewer,
-  # set in Settings > Environments) before the release is made and offered as an update
+  # A new version on main is released right away (U23, waiting for the maintainer's approval, was reverted on
+  # 27 November 2026): raising Version in Directory.Build.props is the decision to release
   release:
     needs: build
     if: needs.build.outputs.release == 'true'
     runs-on: windows-latest
-    environment: release
     steps:
       - uses: actions/checkout@v7
 

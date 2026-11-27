@@ -4,6 +4,8 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
+using Moss365.Core.Localization;
+using Moss365.UI.Services;
 
 namespace Moss365.Desktop;
 
@@ -71,9 +73,25 @@ public partial class App : Application
         return false;
     }
 
+    /// <summary>Writes an error that nobody caught in the technical log of the open tenant (set by the window).</summary>
+    internal static Action<Exception>? LogError { get; set; }
+
+    /// <summary>
+    /// An error that nobody caught: the window names it, its kind and where it happened (never empty, also for an error
+    /// without a message), and the technical log keeps the kind and the place.
+    /// </summary>
     private static void OnUnexpectedError(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show(e.Exception.Message, "Moss365 - onverwachte fout", MessageBoxButton.OK, MessageBoxImage.Error);
+        try
+        {
+            LogError?.Invoke(e.Exception);
+        }
+        catch (Exception)
+        {
+            // The window below still tells what happened
+        }
+
+        MessageBox.Show(UnexpectedError.Describe(e.Exception), Texts.T["desktop.error.title"], MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }
 }

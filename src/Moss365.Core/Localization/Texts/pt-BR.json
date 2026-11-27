@@ -3848,5 +3848,10 @@
   "advice.maildomeinen.why": "Sem eles, qualquer um pode enviar e-mail como seu domínio (uma fatura do 'diretor'), e os grandes provedores entregam seu próprio e-mail com menos frequência.",
   "advice.maildomeinen.fix": "SPF com include:spf.protection.outlook.com e -all; DKIM ativado no Exchange (aqui um plano, depois dos dois CNAME); DMARC primeiro com p=none e relatórios, depois quarantine ou reject. Os registros DNS são criados no seu provedor de DNS.",
   "advice.maildomeinen.risk": "Um SPF ou DMARC rígido bloqueia e-mails de um serviço que envia em seu nome e não está no SPF (um boletim, um sistema de chamados): adicione-os primeiro e comece o DMARC com p=none.",
-  "advice.history.shown": "Os resultados como eram em {0}: por verificação, o status e o resumo daquele dia. Verificar e resolver acontecem no dia de hoje."
+  "advice.history.shown": "Os resultados como eram em {0}: por verificação, o status e o resumo daquele dia. Verificar e resolver acontecem no dia de hoje.",
+  "desktop.error.title": "Moss365 - erro inesperado",
+  "desktop.error.no-message": "O erro não tem descrição.",
+  "desktop.error.kind": "Tipo: {0}",
+  "desktop.error.place": "Onde:",
+  "desktop.error.copy": "Ctrl+C copia este texto, por exemplo para uma issue no GitHub."
 }

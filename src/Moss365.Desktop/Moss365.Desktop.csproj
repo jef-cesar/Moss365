@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- With a Windows version (0.40): BlazorWebView 10 shows the screens with WebView2CompositionControl, which needs the
+         Windows SDK projection (Windows.UI.Composition). Without it 0.39.0 stopped at the start with an empty error. -->
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <!-- Laat bouwen op Linux toe (tests en controle); uitvoeren kan alleen op Windows -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
