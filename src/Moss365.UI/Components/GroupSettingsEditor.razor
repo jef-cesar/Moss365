@@ -1,0 +1,96 @@
+@using Moss365.Core.Permissions
+@* The settings of a group (R21): Public or Private for a Microsoft 365 group, and for a mail group of Exchange Online
+   hidden from the address book, only senders inside the organisation and how to become a member. Shown and edited in
+   place, as one plan with undo. *@
+@inject ManagementState State
+
+@{ var (privacy, mail) = GroupPlans.SettingsOf(Group); }
+@if (privacy || mail)
+{
+    <div class="kb-sectie" id="groep-instellingen">
+        <div class="kb-sectie-kop">
+            <h3>@T["group.settings"] <PlatformLabel Platform="@(mail ? Platform.ExchangeOnline : Platform.EntraId)" /></h3>
+            @if (!editing && CanEdit) { <button class="kb-knop kb-klein" @onclick="Open">@T["edit-user.edit"]</button> }
+        </div>
+        <dl class="kb-velden">
+            @if (privacy)
+            {
+                <dt>@T["group.settings.privacy"]</dt>
+                <dd>
+                    @if (editing)
+                    {
+                        <select class="kb-invoer" value="@visibility" @onchange="e => visibility = e.Value?.ToString()" aria-label="@T["group.settings.privacy"]">
+                            <option value="Private">@T["group.settings.private"]</option>
+                            <option value="Public">@T["group.settings.public"]</option>
+                        </select>
+                        @if (visibility == "Public") { <div class="kb-waarschuwing">@T["group.settings.public-warning"]</div> }
+                    }
+                    else { @(Group.Cloud?.Visibility switch { "Public" => T["group.settings.public"], "Private" => T["group.settings.private"], _ => T["word.unknown"] }) }
+                </dd>
+            }
+            @if (mail && Group.Exo is { } exo)
+            {
+                <dt>@T["group.settings.hidden"]</dt>
+                <dd>@if (editing) { <input type="checkbox" checked="@hidden" @onchange="e => hidden = e.Value is true" aria-label="@T["group.settings.hidden"]" /> } else { @YesNo(exo.Hidden) }</dd>
+                <dt>@T["group.settings.internal"]</dt>
+                <dd>@if (editing) { <input type="checkbox" checked="@internalOnly" @onchange="e => internalOnly = e.Value is true" aria-label="@T["group.settings.internal"]" /> } else { @YesNo(exo.OnlyInternalSenders) }</dd>
+                <dt>@T["group.settings.join"]</dt>
+                <dd>
+                    @if (editing)
+                    {
+                        <select class="kb-invoer" value="@join" @onchange="e => join = e.Value?.ToString()" aria-label="@T["group.settings.join"]">
+                            @foreach (var j in GroupPlans.JoinRestrictions) { <option value="@j">@GroupPlans.JoinText(j)</option> }
+                        </select>
+                    }
+                    else { @GroupPlans.JoinText(exo.MemberJoinRestriction) }
+                </dd>
+            }
+        </dl>
+        @if (editing)
+        {
+            <div class="kb-filters">
+                <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+                <button class="kb-knop" @onclick="() => editing = false">@T["edit-user.close"]</button>
+            </div>
+            @foreach (var e in errors) { <div class="kb-melding">@e</div> }
+        }
+    </div>
+    @if (plan is not null)
+    {
+        <PlanView Plan="plan" Context="@($"Groep {Group.Name}")" Title="@T["group.settings"]" Executed="_ => editing = false" />
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public Group Group { get; set; } = default!;
+
+    private bool editing;
+    private string? visibility;
+    private bool hidden;
+    private bool internalOnly;
+    private string? join;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+
+    private bool CanEdit => !State.IsHistoric && State.Can(Permission.Manage);
+
+    private string YesNo(bool? value) => value is null ? T["word.unknown"] : value.Value ? T["word.yes"] : T["word.no"];
+
+    private void Open()
+    {
+        visibility = Group.Cloud?.Visibility is { Length: > 0 } v ? v : "Private";
+        hidden = Group.Exo?.Hidden ?? false;
+        internalOnly = Group.Exo?.OnlyInternalSenders ?? true;
+        join = Group.Exo?.MemberJoinRestriction is { Length: > 0 } j ? j : "Closed";
+        errors = Array.Empty<string>();
+        editing = true;
+    }
+
+    private void MakePlan()
+    {
+        var (privacy, mail) = GroupPlans.SettingsOf(Group);
+        var outcome = GroupPlans.Settings(Group, new GroupSettingsDesired(privacy ? visibility : null, mail ? hidden : null, mail ? internalOnly : null, mail ? join : null));
+        errors = outcome.Errors;
+        plan = outcome.Plan.Count > 0 ? outcome.Plan : null;
+    }
+}

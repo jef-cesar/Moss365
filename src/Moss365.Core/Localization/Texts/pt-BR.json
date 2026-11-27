@@ -4014,5 +4014,22 @@
   "guest.again": "Convidar novamente",
   "guest.again.help": "Para um convidado que não consegue mais entrar, ou usa outra conta do mesmo endereço: a conta e seus grupos permanecem.",
   "guest.again.plan": "Convidar o convidado novamente (a aceitação é redefinida; conta e grupos permanecem)",
-  "guest.again.no-address": "Só um convidado com endereço de e-mail pode ser convidado novamente."
+  "guest.again.no-address": "Só um convidado com endereço de e-mail pode ser convidado novamente.",
+  "word.yes": "sim",
+  "word.no": "não",
+  "group.settings": "Configurações",
+  "group.settings.privacy": "Privacidade",
+  "group.settings.private": "Privado: só os membros veem o conteúdo",
+  "group.settings.public": "Público: todos na organização veem o conteúdo e podem entrar",
+  "group.settings.public-warning": "Público abre os arquivos, conversas e calendário do grupo para todos na organização.",
+  "group.settings.privacy.plan": "Alterar a privacidade do grupo do Microsoft 365",
+  "group.settings.no-privacy": "Só um grupo do Microsoft 365 criado na nuvem é Público ou Privado.",
+  "group.settings.hidden": "Oculto no catálogo de endereços",
+  "group.settings.internal": "Somente remetentes da organização",
+  "group.settings.join": "Tornar-se membro",
+  "group.settings.join.closed": "só os gerentes adicionam membros",
+  "group.settings.join.approval": "a pedido, com aprovação de um gerente",
+  "group.settings.join.open": "todos podem entrar",
+  "group.settings.mail.plan": "Alterar {0} configuração(ões) do grupo de e-mail no Exchange Online",
+  "group.settings.no-mail": "Só um grupo de e-mail do Exchange Online que não é sincronizado do AD tem estas configurações aqui; um sincronizado as altera no AD."
 }

@@ -133,3 +133,49 @@ public sealed partial class PlanScreenTests
         Assert.Equal(guest.Entra!.Id, again.P("id"));
     }
 }
+
+/// <summary>R21: the settings of groups: privacy of a Microsoft 365 group, mail settings of a mail group.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void TheSettingsOfAGroupArePlansWithUndo()
+    {
+        var exoInfo = new Moss365.Core.Inventory.ExoGroup { Type = "MailUniversalDistributionGroup", DisplayName = "Info", Smtp = "info@contoso.com", Hidden = false, OnlyInternalSenders = true, MemberJoinRestriction = "Closed" };
+        var exoAd = exoInfo with { DisplayName = "Uit AD", Smtp = "ad@contoso.com", IsDirSynced = true };
+        var data = new Moss365.Core.Inventory.InventoryData
+        {
+            CloudGroups = new Dictionary<string, Moss365.Core.Inventory.CloudGroup> { ["t1"] = new() { Id = "t1", DisplayName = "Team Onthaal", Type = Moss365.Core.Inventory.CloudGroupType.Microsoft365, Visibility = "Private" } },
+            ExoGroups = new[] { exoInfo, exoAd },
+        };
+        var m365 = data.Index.Groups.Single(g => g.Name == "Team Onthaal");
+        Assert.Equal((true, false), GroupPlans.SettingsOf(m365));
+        var open = Assert.Single(GroupPlans.Settings(m365, new GroupSettingsDesired(Visibility: "Public")).Plan);
+        Assert.Equal(ChangeAction.GraphSetGroupAttributes, open.ChangeAction);
+        Assert.Equal("Public", open.P("visibility"));
+        Assert.Equal("Private", open.Previous!["visibility"]);
+        Assert.NotNull(open.Warning);
+        Assert.NotEmpty(GroupPlans.Settings(m365, new GroupSettingsDesired(Visibility: "Iedereen")).Errors);
+
+        var dl = data.Index.Groups.Single(g => g.Name == "Info");
+        Assert.Equal((false, true), GroupPlans.SettingsOf(dl));
+        var mail = Assert.Single(GroupPlans.Settings(dl, new GroupSettingsDesired(Hidden: true, OnlyInternalSenders: false, JoinRestriction: "ApprovalRequired")).Plan);
+        Assert.Equal(ChangeAction.ExchangeUpdateGroup, mail.ChangeAction);
+        Assert.Equal("info@contoso.com", mail.Target);
+        Assert.Equal("True", mail.P("HiddenFromAddressListsEnabled"));
+        Assert.Equal("False", mail.P("RequireSenderAuthenticationEnabled"));
+        Assert.Equal("ApprovalRequired", mail.P("MemberJoinRestriction"));
+        Assert.Equal("Closed", mail.Previous!["MemberJoinRestriction"]);
+        Assert.Contains("niets gewijzigd", Assert.Single(GroupPlans.Settings(dl, new GroupSettingsDesired(Hidden: false)).Errors), StringComparison.Ordinal);
+
+        // A mail group synchronised from AD changes in AD, not here
+        var synced = data.Index.Groups.Single(g => g.Name == "Uit AD");
+        Assert.Equal((false, false), GroupPlans.SettingsOf(synced));
+
+        var cut = RenderComponent<Moss365.UI.Components.GroupSettingsEditor>(p => p.Add(x => x.Group, dl));
+        Assert.Contains("Verborgen in het adresboek", cut.Markup, StringComparison.Ordinal);
+        cut.FindAll("button").First(b => b.TextContent == "Bewerken").Click();
+        cut.Find("input[aria-label='Verborgen in het adresboek']").Change(true);
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Assert.Contains("Verborgen in het adresboek: ja", cut.Find("section.kb-plan").TextContent, StringComparison.Ordinal);
+    }
+}

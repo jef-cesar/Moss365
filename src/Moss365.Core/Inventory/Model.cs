@@ -153,6 +153,9 @@ public sealed record CloudGroup
     public bool GroupLicence { get; init; }
     public int? CountMembers { get; init; }
 
+    /// <summary>R21: a Microsoft 365 group is Public or Private (empty for other kinds or data read before R21).</summary>
+    public string Visibility { get; init; } = string.Empty;
+
     public string TypeText => TypeTextOf(Type);
 
     /// <summary>The kind of a cloud group in the language of the interface.</summary>

@@ -51,7 +51,7 @@ $Toegestaan = @{
     'LeesRooms'        = @()
     'LeesPostvakken'   = @()
     'LeesObjecten'     = @('Adressen')
-    'GroepInstellen'   = @('Identity', 'DisplayName', 'PrimarySmtpAddress')
+    'GroepInstellen'   = @('Identity', 'DisplayName', 'PrimarySmtpAddress', 'HiddenFromAddressListsEnabled', 'RequireSenderAuthenticationEnabled', 'MemberJoinRestriction')
     'Beheerder'        = @('Identity', 'Toevoegen', 'Verwijderen')
     'PostvakInstellen' = @('Identity', 'DisplayName', 'HiddenFromAddressListsEnabled', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward')
     'AutoAntwoord'     = @('Identity', 'AutoReplyState', 'InternalMessage', 'ExternalMessage', 'StartTime', 'EndTime')
@@ -199,6 +199,7 @@ function Get-PostvakkenVoorApp {
         [pscustomobject]@{
             Type = "$($g.RecipientTypeDetails)"; DisplayName = "$($g.DisplayName)"; Name = "$($g.Name)"; Alias = "$($g.Alias)"; Smtp = "$($g.PrimarySmtpAddress)"
             IsDirSynced = "$($g.IsDirSynced)"; MemberJoinRestriction = "$($g.MemberJoinRestriction)"; ManagedBy = (Join-Tekst $g.ManagedBy)
+            Hidden = "$($g.HiddenFromAddressListsEnabled)"; RequireSenderAuthenticationEnabled = "$($g.RequireSenderAuthenticationEnabled)"
             Leden = @($leden)
         }
     }
@@ -291,6 +292,17 @@ function Invoke-Opdracht {
         'GroepInstellen' {
             $instellen = @{ Identity = $P.Identity }
             foreach ($k in 'DisplayName', 'PrimarySmtpAddress') { if ($P.ContainsKey($k) -and $P[$k]) { $instellen[$k] = $P[$k] } }
+            # R21: yes/no settings as booleans, and only the three known ways to join
+            foreach ($k in 'HiddenFromAddressListsEnabled', 'RequireSenderAuthenticationEnabled') {
+                if ($P.ContainsKey($k) -and $P[$k]) {
+                    if ($P[$k] -notin @('True', 'False')) { throw "Waarde voor $k moet True of False zijn" }
+                    $instellen[$k] = ($P[$k] -eq 'True')
+                }
+            }
+            if ($P.ContainsKey('MemberJoinRestriction') -and $P['MemberJoinRestriction']) {
+                if ($P['MemberJoinRestriction'] -notin @('Open', 'Closed', 'ApprovalRequired')) { throw 'Onbekende manier om lid te worden' }
+                $instellen['MemberJoinRestriction'] = $P['MemberJoinRestriction']
+            }
             Set-DistributionGroup @instellen -BypassSecurityGroupManagerCheck -ErrorAction Stop
             return $null
         }

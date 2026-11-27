@@ -111,7 +111,7 @@ public static class InventoryWriter
                     _ => string.Empty,
                 },
                 ["Bron"] = g.FromAd ? "AD" : "Cloud", ["Dynamisch"] = B(g.Dynamic), ["Lidmaatschapsregel"] = g.MembershipRule,
-                ["OnPremisesSamAccountName"] = g.OnPremisesSamAccountName, ["GroepLicentie"] = B(g.GroupLicence), ["AantalLeden"] = N(g.CountMembers),
+                ["OnPremisesSamAccountName"] = g.OnPremisesSamAccountName, ["GroepLicentie"] = B(g.GroupLicence), ["AantalLeden"] = N(g.CountMembers), ["Visibility"] = g.Visibility,
             }));
             var users = d.EntraUsers.Select(e => e.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
             Write(InventoryLoader.EntraGroupMembers, d.CloudMembership.SelectMany(kv => kv.Value.Select(g => new Dictionary<string, string?>
@@ -175,6 +175,7 @@ public static class InventoryWriter
                 ["Type"] = g.Type, ["DisplayName"] = g.DisplayName, ["Name"] = g.Name, ["Alias"] = g.Alias, ["PrimarySmtpAddress"] = g.Smtp,
                 ["IsDirSynced"] = B(g.IsDirSynced), ["MemberJoinRestriction"] = g.MemberJoinRestriction, ["AantalLeden"] = N(g.CountMembers),
                 ["ManagedBy"] = string.Join('|', g.ManagedBy),
+                ["Hidden"] = g.Hidden is { } h ? B(h) : string.Empty, ["OnlyInternalSenders"] = g.OnlyInternalSenders is { } o ? B(o) : string.Empty,
             }));
             Write(InventoryLoader.ExoGroupMembers, d.ExoGroups.SelectMany(g => g.Members.Select(l => new Dictionary<string, string?>
             {

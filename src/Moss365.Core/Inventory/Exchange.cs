@@ -13,6 +13,12 @@ public sealed record ExoGroup
     public string Smtp { get; init; } = string.Empty;
     public bool IsDirSynced { get; init; }
     public string MemberJoinRestriction { get; init; } = string.Empty;
+
+    /// <summary>R21: hidden from the address book (HiddenFromAddressListsEnabled); null when not read.</summary>
+    public bool? Hidden { get; init; }
+
+    /// <summary>R21: only senders inside the organisation (RequireSenderAuthenticationEnabled); null when not read.</summary>
+    public bool? OnlyInternalSenders { get; init; }
     public IReadOnlyList<string> ManagedBy { get; init; } = Array.Empty<string>();
     public int? CountMembers { get; init; }
     public IReadOnlyList<ExoMember> Members { get; init; } = Array.Empty<ExoMember>();

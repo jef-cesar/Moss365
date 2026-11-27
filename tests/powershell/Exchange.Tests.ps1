@@ -41,8 +41,11 @@ BeforeAll {
     function global:Get-DistributionGroup { param($Identity, $ResultSize)
         [pscustomobject]@{ Identity = 'sg'; RecipientTypeDetails = 'MailUniversalSecurityGroup'; DisplayName = 'SG'; Alias = 'sg'; PrimarySmtpAddress = 'sg@test.be'; IsDirSynced = $false; MemberJoinRestriction = 'Closed'; ManagedBy = @('an', 'bo') } }
     function global:Get-DistributionGroupMember { param($Identity, $ResultSize, $ErrorAction) [pscustomobject]@{ PrimarySmtpAddress = 'an@test.be'; DisplayName = 'An' } }
-    function global:Set-DistributionGroup { param($Identity, $DisplayName, $PrimarySmtpAddress, $ManagedBy, [switch]$BypassSecurityGroupManagerCheck, $ErrorAction)
+    function global:Set-DistributionGroup { param($Identity, $DisplayName, $PrimarySmtpAddress, $ManagedBy, $HiddenFromAddressListsEnabled, $RequireSenderAuthenticationEnabled, $MemberJoinRestriction, [switch]$BypassSecurityGroupManagerCheck, $ErrorAction)
         if ($ManagedBy) { $global:ExoAanroepen.Add("Beheer $Identity " + (($ManagedBy.Keys | Sort-Object | ForEach-Object { "$_=$($ManagedBy[$_])" }) -join ' ')); return }
+        if ($null -ne $HiddenFromAddressListsEnabled -or $null -ne $RequireSenderAuthenticationEnabled -or $MemberJoinRestriction) {
+            $global:ExoAanroepen.Add("SetDgOpt $Identity Hidden=$HiddenFromAddressListsEnabled/$($HiddenFromAddressListsEnabled.GetType().Name) Auth=$RequireSenderAuthenticationEnabled Join=$MemberJoinRestriction"); return
+        }
         $global:ExoAanroepen.Add("SetDg $Identity $DisplayName $PrimarySmtpAddress") }
     function global:Set-MailboxAutoReplyConfiguration { param($Identity, $AutoReplyState, $InternalMessage, $ExternalMessage, $ErrorAction)
         $global:ExoAanroepen.Add("Auto $Identity $AutoReplyState $InternalMessage") }
@@ -194,6 +197,18 @@ Describe 'Exchange.ps1' {
         $global:ExoAanroepen | Should -Contain 'Auto info@test.be Enabled Afwezig'
         $global:ExoAanroepen | Should -Contain 'SetDg sg@test.be SG nieuw '
         $global:ExoAanroepen | Should -Contain 'Beheer sg@test.be Add=an@test.be'
+    }
+
+    It 'sets the mail settings of a group with booleans and only the known ways to join (R21)' {
+        $r = Voer @(
+            @{ id = 'a'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; HiddenFromAddressListsEnabled = 'True'; RequireSenderAuthenticationEnabled = 'False'; MemberJoinRestriction = 'ApprovalRequired' } }
+            @{ id = 'b'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; MemberJoinRestriction = 'IedereenMag' } }
+            @{ id = 'c'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; HiddenFromAddressListsEnabled = 'Misschien' } }
+        )
+        ($r | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
+        ($r | Where-Object id -eq 'b').status | Should -Not -Be 'Gelukt'
+        ($r | Where-Object id -eq 'c').status | Should -Not -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'SetDgOpt sg@test.be Hidden=True/Boolean Auth=False Join=ApprovalRequired'
     }
 
     It 'reads shared mailboxes with permissions and groups' {

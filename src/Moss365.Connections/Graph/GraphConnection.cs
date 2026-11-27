@@ -21,7 +21,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                                            + "employeeId,employeeType,streetAddress,postalCode,state,country";
 
     private const string GroupFields = "id,displayName,description,mail,mailEnabled,securityEnabled,groupTypes,membershipRule,"
-                                       + "onPremisesSyncEnabled,onPremisesSamAccountName,assignedLicenses";
+                                       + "onPremisesSyncEnabled,onPremisesSamAccountName,assignedLicenses,visibility";
 
     private readonly GraphClient _client;
 
@@ -1279,6 +1279,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             MembershipRule = S(g, "membershipRule"),
             GroupLicence = g.TryGetProperty("assignedLicenses", out var al) && al.ValueKind == JsonValueKind.Array && al.GetArrayLength() > 0,
             CountMembers = countMembers,
+            Visibility = S(g, "visibility"),
         };
     }
 

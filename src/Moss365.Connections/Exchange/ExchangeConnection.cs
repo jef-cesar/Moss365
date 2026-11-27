@@ -157,7 +157,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             case ChangeAction.ExchangeUpdateGroup:
                 op = "GroepInstellen";
                 p["Identity"] = w.Target;
-                Take(w, p, "DisplayName", "PrimarySmtpAddress");
+                Take(w, p, "DisplayName", "PrimarySmtpAddress", "HiddenFromAddressListsEnabled", "RequireSenderAuthenticationEnabled", "MemberJoinRestriction");
                 break;
             case ChangeAction.ExchangeGroupManager:
                 op = "Beheerder";
@@ -437,6 +437,8 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
                 Smtp = S(e, "Smtp"),
                 IsDirSynced = B(e, "IsDirSynced"),
                 MemberJoinRestriction = S(e, "MemberJoinRestriction"),
+                Hidden = S(e, "Hidden") is { Length: > 0 } hidden ? string.Equals(hidden, "True", StringComparison.OrdinalIgnoreCase) : null,
+                OnlyInternalSenders = S(e, "RequireSenderAuthenticationEnabled") is { Length: > 0 } inside ? string.Equals(inside, "True", StringComparison.OrdinalIgnoreCase) : null,
                 ManagedBy = S(e, "ManagedBy").Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 Members = members,
                 CountMembers = members.Count,

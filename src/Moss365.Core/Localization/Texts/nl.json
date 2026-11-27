@@ -4014,5 +4014,22 @@
   "guest.again": "Opnieuw uitnodigen",
   "guest.again.help": "Voor een gast die er niet meer in raakt, of een ander account van hetzelfde adres gebruikt: het account en zijn groepen blijven.",
   "guest.again.plan": "Gast opnieuw uitnodigen (de aanvaarding wordt teruggezet; account en groepen blijven)",
-  "guest.again.no-address": "Enkel een gast met een e-mailadres kan opnieuw uitgenodigd worden."
+  "guest.again.no-address": "Enkel een gast met een e-mailadres kan opnieuw uitgenodigd worden.",
+  "word.yes": "ja",
+  "word.no": "nee",
+  "group.settings": "Instellingen",
+  "group.settings.privacy": "Privacy",
+  "group.settings.private": "Privé: enkel leden zien de inhoud",
+  "group.settings.public": "Openbaar: iedereen in de organisatie ziet de inhoud en kan lid worden",
+  "group.settings.public-warning": "Openbaar opent de bestanden, gesprekken en agenda van de groep voor iedereen in de organisatie.",
+  "group.settings.privacy.plan": "De privacy van de Microsoft 365-groep wijzigen",
+  "group.settings.no-privacy": "Enkel een Microsoft 365-groep die in de cloud gemaakt is, is Openbaar of Privé.",
+  "group.settings.hidden": "Verborgen in het adresboek",
+  "group.settings.internal": "Enkel afzenders binnen de organisatie",
+  "group.settings.join": "Lid worden",
+  "group.settings.join.closed": "enkel de beheerders voegen leden toe",
+  "group.settings.join.approval": "op aanvraag, met goedkeuring van een beheerder",
+  "group.settings.join.open": "iedereen kan lid worden",
+  "group.settings.mail.plan": "{0} instelling(en) van de mailgroep wijzigen in Exchange Online",
+  "group.settings.no-mail": "Enkel een mailgroep van Exchange Online die niet uit AD gesynchroniseerd wordt, heeft deze instellingen hier; een gesynchroniseerde wijzigt ze in AD."
 }

@@ -158,6 +158,7 @@ else
             <div class="kb-filters">
                 <button class="kb-knop kb-primair" @onclick="() => Plan(GroupPlans.Attributes(groupValue, desired))">@T["bulk-tasks.make-plan"]</button>
             </div>
+            <GroupSettingsEditor Group="groupValue" />
         </section>
     }
 

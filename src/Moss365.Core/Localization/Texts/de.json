@@ -4014,5 +4014,22 @@
   "guest.again": "Erneut einladen",
   "guest.again.help": "Für einen Gast, der nicht mehr hineinkommt oder ein anderes Konto derselben Adresse nutzt: das Konto und seine Gruppen bleiben.",
   "guest.again.plan": "Gast erneut einladen (die Annahme wird zurückgesetzt; Konto und Gruppen bleiben)",
-  "guest.again.no-address": "Nur ein Gast mit E-Mail-Adresse kann erneut eingeladen werden."
+  "guest.again.no-address": "Nur ein Gast mit E-Mail-Adresse kann erneut eingeladen werden.",
+  "word.yes": "ja",
+  "word.no": "nein",
+  "group.settings": "Einstellungen",
+  "group.settings.privacy": "Datenschutz",
+  "group.settings.private": "Privat: nur Mitglieder sehen den Inhalt",
+  "group.settings.public": "Öffentlich: alle in der Organisation sehen den Inhalt und können beitreten",
+  "group.settings.public-warning": "Öffentlich öffnet die Dateien, Unterhaltungen und den Kalender der Gruppe für alle in der Organisation.",
+  "group.settings.privacy.plan": "Den Datenschutz der Microsoft-365-Gruppe ändern",
+  "group.settings.no-privacy": "Nur eine in der Cloud erstellte Microsoft-365-Gruppe ist Öffentlich oder Privat.",
+  "group.settings.hidden": "Im Adressbuch ausgeblendet",
+  "group.settings.internal": "Nur Absender innerhalb der Organisation",
+  "group.settings.join": "Mitglied werden",
+  "group.settings.join.closed": "nur die Verwalter fügen Mitglieder hinzu",
+  "group.settings.join.approval": "auf Anfrage, mit Genehmigung eines Verwalters",
+  "group.settings.join.open": "alle können beitreten",
+  "group.settings.mail.plan": "{0} Einstellung(en) der Mailgruppe in Exchange Online ändern",
+  "group.settings.no-mail": "Nur eine nicht aus AD synchronisierte Mailgruppe von Exchange Online hat diese Einstellungen hier; eine synchronisierte ändert sie in AD."
 }

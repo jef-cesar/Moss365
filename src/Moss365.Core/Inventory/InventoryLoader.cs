@@ -369,6 +369,7 @@ public static class InventoryLoader
         MembershipRule = W(r, "Lidmaatschapsregel"),
         GroupLicence = B(r, "GroepLicentie"),
         CountMembers = int.TryParse(K(r, "AantalLeden"), out var n) ? n : null,
+        Visibility = K(r, "Visibility"),
     };
 
     /// <summary>Raw value, not trimmed: spelling variants such as a trailing space must stay visible.</summary>
@@ -405,6 +406,8 @@ public static class InventoryLoader
         Smtp = K(r, "PrimarySmtpAddress"),
         IsDirSynced = B(r, "IsDirSynced"),
         MemberJoinRestriction = K(r, "MemberJoinRestriction"),
+        Hidden = K(r, "Hidden") is { Length: > 0 } h ? string.Equals(h, "True", StringComparison.OrdinalIgnoreCase) : null,
+        OnlyInternalSenders = K(r, "OnlyInternalSenders") is { Length: > 0 } o ? string.Equals(o, "True", StringComparison.OrdinalIgnoreCase) : null,
         ManagedBy = K(r, "ManagedBy") is "ja" or "nee" ? Array.Empty<string>() : Items(r, "ManagedBy"),
         CountMembers = I(r, "AantalLeden"),
         Members = members.GetValueOrDefault(W(r, "DisplayName").Trim()) ?? Array.Empty<ExoMember>(),

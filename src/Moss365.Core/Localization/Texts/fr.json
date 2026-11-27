@@ -4014,5 +4014,22 @@
   "guest.again": "Inviter à nouveau",
   "guest.again.help": "Pour un invité qui n'arrive plus à entrer, ou qui utilise un autre compte de la même adresse : le compte et ses groupes restent.",
   "guest.again.plan": "Inviter l'invité à nouveau (l'acceptation est réinitialisée ; compte et groupes restent)",
-  "guest.again.no-address": "Seul un invité avec une adresse e-mail peut être invité à nouveau."
+  "guest.again.no-address": "Seul un invité avec une adresse e-mail peut être invité à nouveau.",
+  "word.yes": "oui",
+  "word.no": "non",
+  "group.settings": "Paramètres",
+  "group.settings.privacy": "Confidentialité",
+  "group.settings.private": "Privé : seuls les membres voient le contenu",
+  "group.settings.public": "Public : tout le monde dans l'organisation voit le contenu et peut rejoindre",
+  "group.settings.public-warning": "Public ouvre les fichiers, conversations et le calendrier du groupe à toute l'organisation.",
+  "group.settings.privacy.plan": "Modifier la confidentialité du groupe Microsoft 365",
+  "group.settings.no-privacy": "Seul un groupe Microsoft 365 créé dans le cloud est Public ou Privé.",
+  "group.settings.hidden": "Masqué dans le carnet d'adresses",
+  "group.settings.internal": "Uniquement les expéditeurs de l'organisation",
+  "group.settings.join": "Devenir membre",
+  "group.settings.join.closed": "seuls les gestionnaires ajoutent des membres",
+  "group.settings.join.approval": "sur demande, avec l'accord d'un gestionnaire",
+  "group.settings.join.open": "tout le monde peut rejoindre",
+  "group.settings.mail.plan": "Modifier {0} paramètre(s) du groupe de messagerie dans Exchange Online",
+  "group.settings.no-mail": "Seul un groupe de messagerie d'Exchange Online non synchronisé depuis AD a ces paramètres ici ; un groupe synchronisé les modifie dans AD."
 }
