@@ -164,7 +164,9 @@ else
             new() { Key = "tijd", Title = T["sign-in-list.time"], Cell = r => @<text>@r.Time.ToString("yyyy-MM-dd HH:mm:ss")</text>, SortBy = r => -r.Time.UtcTicks, Text = r => r.Time.ToString("yyyy-MM-dd HH:mm:ss") },
             new() { Key = "door", Title = T["logon-scripts.by"], Cell = r => @<text>@r.User</text>, SortBy = r => r.User },
             new() { Key = "context", Title = "Context", Cell = r => @<text>@r.Context</text>, SortBy = r => r.Context },
-            new() { Key = "systeem", Title = T["plan.system"], Cell = r => @<text>@r.TargetSystem</text>, SortBy = r => r.TargetSystem },
+            // The label of the platform (G0, U30); what Moss365 itself records keeps its own word
+            new() { Key = "systeem", Title = T["plan.system"], Cell = r => Platforms.OfLog(r.ChangeAction) is { } p ? @<PlatformLabel Platform="@p" /> : @<text>@r.TargetSystem</text>,
+                SortBy = r => Platforms.OfLog(r.ChangeAction) is { } p ? Platforms.Name(p) : r.TargetSystem, Text = r => Platforms.OfLog(r.ChangeAction) is { } p ? Platforms.Name(p) : r.TargetSystem },
             new() { Key = "wijziging", Title = T["plan.change"], Cell = r => @<text>@r.Description</text>, SortBy = r => r.Description },
             new() { Key = "object", Title = T["plan.object"], Cell = r => @<ObjectLink Id="@r.Target" Text="@(r.TargetName.Length > 0 ? r.TargetName : null)" />, SortBy = r => r.TargetName, Text = r => r.TargetName.Length > 0 ? r.TargetName : r.Target },
             new() { Key = "resultaat", Title = T["plan.result"], Cell = r => @<text>@r.Status <span class="kb-zacht">@r.Message</span></text>, SortBy = r => r.Status, Text = r => r.Message.Length > 0 ? $"{r.Status}: {r.Message}" : r.Status },

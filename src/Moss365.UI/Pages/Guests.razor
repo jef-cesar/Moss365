@@ -2,7 +2,7 @@
 @inherits RefreshingPage
 
 <div class="kb-titelbalk">
-    <h1>@T["menu.gasten"]</h1>
+    <h1>@T["menu.gasten"] <PlatformLabel Platform="Platform.EntraId" /></h1>
     @if (State.Can(Permission.InviteGuests)) { <a class="kb-knop kb-primair" href="gasten#uitnodigen">@T["guests.invite-guest"]</a> }
 </div>
 

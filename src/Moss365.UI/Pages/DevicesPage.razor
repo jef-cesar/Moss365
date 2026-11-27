@@ -19,7 +19,7 @@
 @if (State.AdComputers is { } computers)
 {
     <section class="kb-kaart">
-        <h2>@T.Format("devices.computers-in-ad", computers.Count(c => c.Enabled))</h2>
+        <h2>@T.Format("devices.computers-in-ad", computers.Count(c => c.Enabled)) <PlatformLabel Platform="Platform.ActiveDirectory" /></h2>
         <div class="kb-kolommen">
             <div>
                 <h3>@T["devices.systems"]</h3>
@@ -72,7 +72,7 @@
 @if (State.IntuneDevices is { } devices)
 {
     <section class="kb-kaart">
-        <h2>@T.Format("devices.devices-in-intune-0", devices.Count)</h2>
+        <h2>@T.Format("devices.devices-in-intune-0", devices.Count) <PlatformLabel Platform="Platform.Intune" /></h2>
         <div class="kb-kolommen">
             <div>
                 <h3>@T.Format("devices.not-compliant-0", DeviceAnalysis.NotCompliant(devices).Count)</h3>

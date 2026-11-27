@@ -3854,5 +3854,7 @@
   "systems.list": "{0} en {1}",
   "connections.systems-of": "Systemen van {0}",
   "start.systems.google": "Google Workspace (lezen komt met G1)",
-  "connections.google.later": "Aanmelden bij Google Workspace en het lezen komen met G1: met een eigen Google Cloud-project, gemaakt door een script en gecontroleerd door de wizard. Tot dan valt er bij Google niets te laden."
+  "connections.google.later": "Aanmelden bij Google Workspace en het lezen komen met G1: met een eigen Google Cloud-project, gemaakt door een script en gecontroleerd door de wizard. Tot dan valt er bij Google niets te laden.",
+  "platform.exchange-on-premises": "Exchange (eigen server)",
+  "platform.exchange-on-premises.short": "Exchange eigen server"
 }

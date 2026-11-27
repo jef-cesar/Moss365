@@ -8,7 +8,14 @@
 }
 else
 {
-    <h1>@groupValue.Name</h1>
+    <h1>
+        @groupValue.Name
+        <span class="kb-platformen">
+            @if (groupValue.Ad is not null) { <PlatformLabel Platform="Platform.ActiveDirectory" /> }
+            @if (groupValue.Cloud is not null) { <PlatformLabel Platform="Platform.EntraId" /> }
+            @if (groupValue.Route == Moss365.Core.Analysis.WriteRoute.Exchange) { <PlatformLabel Platform="Platform.ExchangeOnline" /> }
+        </span>
+    </h1>
     <ObjectStatus Object="groupValue.Ref" />
     <p class="kb-zacht">
         @groupValue.KindText &middot; @groupValue.Layers &middot; @T.Format("group-detail.change-through", RouteText(groupValue))

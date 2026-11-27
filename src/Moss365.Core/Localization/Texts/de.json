@@ -3854,5 +3854,7 @@
   "systems.list": "{0} und {1}",
   "connections.systems-of": "Systeme von {0}",
   "start.systems.google": "Google Workspace (Lesen kommt mit G1)",
-  "connections.google.later": "Die Anmeldung bei Google Workspace und das Lesen kommen mit G1: mit einem eigenen Google-Cloud-Projekt, angelegt von einem Skript und vom Assistenten geprüft. Bis dahin gibt es bei Google nichts zu laden."
+  "connections.google.later": "Die Anmeldung bei Google Workspace und das Lesen kommen mit G1: mit einem eigenen Google-Cloud-Projekt, angelegt von einem Skript und vom Assistenten geprüft. Bis dahin gibt es bei Google nichts zu laden.",
+  "platform.exchange-on-premises": "Exchange (lokal)",
+  "platform.exchange-on-premises.short": "Exchange lokal"
 }

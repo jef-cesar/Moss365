@@ -39,7 +39,7 @@ else
     <section class="kb-kaart">
         <h2>@T["user-detail.attributes"]</h2>
         <table class="kb-tabel kb-naast">
-            <thead><tr><th>@T["bulk-tasks.attribute"]</th>@if (State.HasAd) { <th>@T["user-detail.on-premises-ad"]</th> }@if (State.HasMicrosoft365) { <th>@T["user-detail.entra-id"]</th> }</tr></thead>
+            <thead><tr><th>@T["bulk-tasks.attribute"]</th>@if (State.HasAd) { <th>@T["user-detail.on-premises-ad"] <PlatformLabel Platform="Platform.ActiveDirectory" /></th> }@if (State.HasMicrosoft365) { <th>@T["user-detail.entra-id"] <PlatformLabel Platform="Platform.EntraId" /></th> }</tr></thead>
             <tbody>
                 @foreach (var r in Rows().Where(r => (State.HasAd && r.Ad.Length > 0) || (State.HasMicrosoft365 && r.Entra.Length > 0) || (State.HasAd && State.HasMicrosoft365)))
                 {
@@ -73,7 +73,7 @@ else
         @if (State.HasAd)
         {
         <section class="kb-kaart">
-            <h2>@T.Format("user-detail.ad-groups-0", adGroups.Count)</h2>
+            <h2>@T.Format("user-detail.ad-groups-0", adGroups.Count) <PlatformLabel Platform="Platform.ActiveDirectory" /></h2>
             @if (person.Ad is null)
             {
                 <p class="kb-zacht">@T["user-detail.no-ad-account"]</p>
@@ -99,7 +99,7 @@ else
         @if (State.HasMicrosoft365)
         {
         <section class="kb-kaart">
-            <h2>@T.Format("user-detail.cloud-groups-0", cloudGroups.Count)</h2>
+            <h2>@T.Format("user-detail.cloud-groups-0", cloudGroups.Count) <PlatformLabel Platform="Platform.EntraId" /></h2>
             @if (person.Entra is null)
             {
                 <p class="kb-zacht">@T["user-detail.no-entra-account"]</p>
@@ -127,7 +127,7 @@ else
     {
     <div class="kb-kolommen">
         <section class="kb-kaart">
-            <h2>@T.Format("user-detail.only-in-exchange-0", exoGroups.Count)</h2>
+            <h2>@T.Format("user-detail.only-in-exchange-0", exoGroups.Count) <PlatformLabel Platform="Platform.ExchangeOnline" /></h2>
             @if (exoGroups.Count == 0) { <p class="kb-zacht">@T["user-detail.no-groups-that-exist-only"]</p> }
             <ul class="kb-lijst-plat">
                 @foreach (var g in exoGroups)
@@ -137,7 +137,7 @@ else
             </ul>
         </section>
         <section class="kb-kaart">
-            <h2>@T.Format("user-detail.shared-mailboxes", mailboxPermissions.Select(r => r.Mailbox).Distinct().Count())</h2>
+            <h2>@T.Format("user-detail.shared-mailboxes", mailboxPermissions.Select(r => r.Mailbox).Distinct().Count()) <PlatformLabel Platform="Platform.ExchangeOnline" /></h2>
             @if (mailboxPermissions.Count == 0) { <p class="kb-zacht">@T["user-detail.no-permissions-on-shared-mailboxes"]</p> }
             <table class="kb-tabel">
                 <tbody>

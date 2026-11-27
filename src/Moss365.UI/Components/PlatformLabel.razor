@@ -1,0 +1,9 @@
+@using Moss365.Core.Changes
+@* The label of a platform (G0, U30): its name on its fixed colour. The name is always there, so the colour is never the
+   only sign; the full name is the tooltip. *@
+
+<span class="kb-platform" style="--kb-platform-kleur: @Platforms.Colour(Platform)" title="@Platforms.Name(Platform)">@Platforms.Short(Platform)</span>
+
+@code {
+    [Parameter, EditorRequired] public Platform Platform { get; set; }
+}

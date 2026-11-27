@@ -123,6 +123,26 @@ public sealed partial class PlanScreenTests
     }
 
     [Fact]
+    public void EveryPlanStepAndLineOfTheChangeLogHasItsPlatformLabel()
+    {
+        var cas = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key));
+        Assert.Contains("kb-platform", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains(">AD</span>", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains(">Entra ID</span>", cut.Markup, StringComparison.Ordinal);
+
+        var plan = new List<Moss365.Core.Changes.Change>
+        {
+            new() { TargetSystem = Moss365.Core.Changes.TargetSystem.ActiveDirectory, ChangeAction = Moss365.Core.Changes.ChangeAction.AdUnlockAccount, Target = "x", Description = "Ontgrendelen" },
+            new() { TargetSystem = Moss365.Core.Changes.TargetSystem.Exchange, ChangeAction = Moss365.Core.Changes.ChangeAction.ExchangeAutoReply, Target = "y", Description = "Afwezig" },
+        };
+        var view = RenderComponent<PlanView>(p => p.Add(x => x.Plan, plan).Add(x => x.Title, "Plan"));
+        var labels = view.FindAll("td .kb-platform").Select(l => l.TextContent).ToList();
+        Assert.Equal(new[] { "AD", "Exchange Online" }, labels);
+        Assert.All(view.FindAll("td .kb-platform"), l => Assert.Contains("--kb-platform-kleur: #", l.GetAttribute("style"), StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void WithoutMicrosoft365LeavesOutEveryCloudFile()
     {
         var data = new InventoryData
@@ -134,5 +154,66 @@ public sealed partial class PlanScreenTests
 
         Assert.Equal("ad-gebruikers.csv", Assert.Single(without.Sources).File);
         Assert.Same(without, without.WithoutMicrosoft365());
+    }
+}
+
+/// <summary>G0, U30: every platform has a label with a name and a fixed colour; every change and line of the log gets one.</summary>
+public class PlatformLabelTests
+{
+    [Fact]
+    public void EveryChangeActionBelongsToThePlatformOfItsSystem()
+    {
+        foreach (var action in Enum.GetValues<Moss365.Core.Changes.ChangeAction>())
+        {
+            var platform = Moss365.Core.Changes.Platforms.Of(action);
+            var name = action.ToString();
+            Assert.True(name.StartsWith("Ad", StringComparison.Ordinal) || name.StartsWith("Graph", StringComparison.Ordinal)
+                        || name.StartsWith("Exchange", StringComparison.Ordinal) || name.StartsWith("Intune", StringComparison.Ordinal), name);
+            Assert.Equal(name.StartsWith("Ad", StringComparison.Ordinal) ? TenantSystems.ActiveDirectory : TenantSystems.Microsoft365,
+                Moss365.Core.Changes.Platforms.System(platform));
+        }
+
+        Assert.Equal(Moss365.Core.Changes.Platform.Intune, Moss365.Core.Changes.Platforms.Of(Moss365.Core.Changes.ChangeAction.IntuneDeviceAction));
+        Assert.Equal(Moss365.Core.Changes.Platform.EntraId, Moss365.Core.Changes.Platforms.Of(Moss365.Core.Changes.ChangeAction.GraphDeleteDevice));
+        Assert.Equal(Moss365.Core.Changes.Platform.ExchangeOnline, Moss365.Core.Changes.Platforms.Of(Moss365.Core.Changes.ChangeAction.ExchangeAutoReply));
+    }
+
+    [Fact]
+    public void EveryPlatformHasANameAndItsOwnColour()
+    {
+        var platforms = Moss365.Core.Changes.Platforms.All;
+        Assert.Equal(platforms.Count, platforms.Select(Moss365.Core.Changes.Platforms.Colour).Distinct().Count());
+        Assert.All(platforms, p => Assert.False(string.IsNullOrWhiteSpace(Moss365.Core.Changes.Platforms.Short(p))));
+        Assert.All(platforms, p => Assert.Matches("^#[0-9a-f]{6}$", Moss365.Core.Changes.Platforms.Colour(p)));
+        // White text stays readable on every colour (WCAG contrast 4.5:1)
+        Assert.All(platforms, p => Assert.True(ContrastWithWhite(Moss365.Core.Changes.Platforms.Colour(p)) >= 4.5, p.ToString()));
+    }
+
+    [Fact]
+    public void LinesOfTheLogAndTablesOfTheSnapshotsGetTheirPlatform()
+    {
+        Assert.Equal(Moss365.Core.Changes.Platform.ActiveDirectory, Moss365.Core.Changes.Platforms.OfLog("AdSetPassword"));
+        Assert.Equal(Moss365.Core.Changes.Platform.EntraId, Moss365.Core.Changes.Platforms.OfLog("GraphRevokeSessions"));
+        Assert.Null(Moss365.Core.Changes.Platforms.OfLog("AcceptRisk"));
+        Assert.Null(Moss365.Core.Changes.Platforms.OfLog("UpdateApp"));
+        Assert.Equal(Moss365.Core.Changes.Platform.ActiveDirectory, Moss365.Core.Changes.Platforms.OfTable("ad-gebruikers.csv"));
+        Assert.Equal(Moss365.Core.Changes.Platform.ExchangeOnline, Moss365.Core.Changes.Platforms.OfTable("exo-postvakken-niet-gebruikers.csv"));
+        Assert.Equal(Moss365.Core.Changes.Platform.Intune, Moss365.Core.Changes.Platforms.OfTable("toestellen-intune.csv"));
+        Assert.Null(Moss365.Core.Changes.Platforms.OfTable("functieprofielen"));
+    }
+
+    private static double ContrastWithWhite(string hex)
+    {
+        static double Channel(int v)
+        {
+            var c = v / 255.0;
+            return c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+        }
+
+        var r = Convert.ToInt32(hex.Substring(1, 2), 16);
+        var g = Convert.ToInt32(hex.Substring(3, 2), 16);
+        var b = Convert.ToInt32(hex.Substring(5, 2), 16);
+        var luminance = 0.2126 * Channel(r) + 0.7152 * Channel(g) + 0.0722 * Channel(b);
+        return 1.05 / (luminance + 0.05);
     }
 }

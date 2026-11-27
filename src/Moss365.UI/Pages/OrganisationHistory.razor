@@ -52,7 +52,7 @@ else
                 <p>@T.Format("organisation-history.count", list.Count)@(list.Count > Max ? T.Format("code.organisation-history.the-first-below", Max) : string.Empty).</p>
                 @foreach (var g in list.Take(Max).GroupBy(c => c.Table))
                 {
-                    <h3>@TableName(g.Key) <span class="kb-zacht">(@g.Count())</span></h3>
+                    <h3>@TableName(g.Key) @if (Platforms.OfTable(g.Key) is { } platform) { <PlatformLabel Platform="@platform" /> } <span class="kb-zacht">(@g.Count())</span></h3>
                     <table class="kb-tabel">
                         <thead><tr><th>@T["service-health-card.what"]</th><th>@T["plan.object"]</th><th>@T["organisation-history.changed"]</th></tr></thead>
                         <tbody>

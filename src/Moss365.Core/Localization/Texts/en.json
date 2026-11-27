@@ -3854,5 +3854,7 @@
   "systems.list": "{0} and {1}",
   "connections.systems-of": "Systems of {0}",
   "start.systems.google": "Google Workspace (reading comes with G1)",
-  "connections.google.later": "Signing in to Google Workspace and reading it come with G1: with your own Google Cloud project, made by a script and checked by the wizard. Until then there is nothing to load from Google."
+  "connections.google.later": "Signing in to Google Workspace and reading it come with G1: with your own Google Cloud project, made by a script and checked by the wizard. Until then there is nothing to load from Google.",
+  "platform.exchange-on-premises": "Exchange (on-premises)",
+  "platform.exchange-on-premises.short": "Exchange on-prem"
 }
