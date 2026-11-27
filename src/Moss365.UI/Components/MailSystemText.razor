@@ -1,0 +1,14 @@
+@using Moss365.Core.Mail
+@* Where mail lives, in a cell or a sentence (G0): the platform label where it has one, else the words. *@
+@if (MailLocations.PlatformOf(System) is { } platform)
+{
+    <PlatformLabel Platform="@platform" />
+}
+else
+{
+    <span>@MailLocations.Name(System)</span>
+}
+
+@code {
+    [Parameter] public MailSystem System { get; set; }
+}

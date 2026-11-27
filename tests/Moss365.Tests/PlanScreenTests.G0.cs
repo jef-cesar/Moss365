@@ -217,3 +217,73 @@ public class PlatformLabelTests
         return 1.05 / (luminance + 0.05);
     }
 }
+
+/// <summary>G0, U31: where the mail lives, on its page and on the user page.</summary>
+public sealed partial class PlanScreenTests
+{
+    private sealed class FakeMxLookup : Moss365.Core.Mail.IMxLookup
+    {
+        public List<string> Asked { get; } = new();
+
+        public Task<IReadOnlyList<Moss365.Core.Mail.MxRecord>> MxAsync(string domain, CancellationToken cancel = default)
+        {
+            Asked.Add(domain);
+            var host = domain.Contains("fabrikam", StringComparison.Ordinal) ? "aspmx.l.google.com" : domain.Replace('.', '-') + ".mail.protection.outlook.com";
+            return Task.FromResult<IReadOnlyList<Moss365.Core.Mail.MxRecord>>(new[] { new Moss365.Core.Mail.MxRecord(10, host) });
+        }
+    }
+
+    private sealed partial class FakeFactory
+    {
+        public FakeMxLookup MxFake { get; } = new();
+
+        public Moss365.Core.Mail.IMxLookup? Dns => MxFake;
+    }
+
+    [Fact]
+    public void WhereTheMailLivesIsCheckedChosenAndLogged()
+    {
+        var cut = RenderComponent<MailLocationPage>();
+        Assert.Contains("Waar de mail zit", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("het voorstel: Exchange Online", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<option value=\"Gmail\"", cut.Markup, StringComparison.Ordinal); // this tenant has no Google Workspace
+
+        cut.FindAll("button").First(b => b.TextContent == "Nu controleren").Click();
+        cut.WaitForAssertion(() => Assert.NotNull(State.MailSettings.CheckedAt));
+        Assert.NotEmpty(_factory.MxFake.Asked);
+        Assert.All(State.MailSettings.Routes, r => Assert.Equal(Moss365.Core.Mail.MailSystem.ExchangeOnline, r.System));
+        cut.WaitForAssertion(() => Assert.Contains("Laatste controle", cut.Markup, StringComparison.Ordinal));
+
+        // The default chosen by hand, in the change log with what it was before
+        cut.Find("section select").Change(nameof(Moss365.Core.Mail.MailSystem.ExchangeOnPremises));
+        cut.FindAll("button").First(b => b.TextContent == "Bewaren").Click();
+        Assert.Equal(Moss365.Core.Mail.MailSystem.ExchangeOnPremises, State.MailSettings.Default);
+        var line = State.ChangeLog.Recent(5).First(r => r.ChangeAction == "MailLocation");
+        Assert.Equal("ExchangeOnPremises", line.Parameters["standaard"]);
+        Assert.Equal("Unknown", line.Previous!["standaard"]);
+        // The domains of this tenant now arrive elsewhere than the default: a warning
+        cut.WaitForAssertion(() => Assert.Contains("komt niet aan in de standaard", cut.Markup, StringComparison.Ordinal));
+        // Only counts in the technical log, never a domain
+        Assert.DoesNotContain(State.Database.ReadTechnicalLog(50), l => State.MailSettings.Routes.Any(r => l.Message.Contains(r.Domain, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [Fact]
+    public void ThePageOfAPersonSaysWhereTheMailIsAndLeavesOutWhatOnlyExchangeCanDo()
+    {
+        var cas = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        var page = RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key));
+        Assert.Contains("mail in", page.Markup, StringComparison.Ordinal);
+        Assert.Contains(">Exchange Online</span>", page.Markup, StringComparison.Ordinal);
+
+        State.SetMailOf(cas, Moss365.Core.Mail.MailSystem.Other);
+        page = RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key));
+        Assert.Contains("een ander systeem", page.Markup, StringComparison.Ordinal);
+        Assert.Contains("enkel voor Exchange Online", page.Markup, StringComparison.Ordinal);
+
+        var list = RenderComponent<MailLocationPage>();
+        Assert.Contains("met de hand gekozen", list.Markup, StringComparison.Ordinal);
+        list.FindAll("button").First(b => b.TextContent == "Terug naar de standaard").Click();
+        Assert.False(State.MailSettings.Users.ContainsKey(cas.Key));
+        Assert.Equal(2, State.ChangeLog.Recent(10).Count(r => r.ChangeAction == "MailLocation" && r.Target == cas.Key));
+    }
+}

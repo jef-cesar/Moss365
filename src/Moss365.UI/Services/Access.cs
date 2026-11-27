@@ -29,7 +29,7 @@ public static class Access
             "sleutels" or "wachtwoorden" => Permission.Helpdesk,
             "scripts" => Permission.Scripts,
             "logboek" => Permission.ChangeLogOwn,
-            "organisatie" or "tenants" or "tenantvergelijking" or "inrichten" or "databank" or "lezen-zonder-venster" or "alle-tenants" => Permission.Settings,
+            "organisatie" or "tenants" or "tenantvergelijking" or "inrichten" or "databank" or "lezen-zonder-venster" or "alle-tenants" or "postlocatie" => Permission.Settings,
             _ => Permission.View,
         };
     }

@@ -1,0 +1,162 @@
+@page "/postlocatie"
+@layout SettingsLayout
+@inherits RefreshingPage
+@using Moss365.Core.Mail
+@using Moss365.Core.Permissions
+@* Where the mail lives (G0, U31): the default of the tenant, a different system per person where needed (co-existence,
+   a migration), and the MX check per domain that shows where the mail really arrives. Moss365 never changes DNS or
+   mail routing. *@
+
+<h1>@T["menu.postlocatie"]</h1>
+<p class="kb-zacht">@T["mail.intro"]</p>
+
+<section class="kb-kaart">
+    <h2>@T["mail.default"]</h2>
+    @{ var proposal = MailLocations.ProposeDefault(State.MailSettings.Routes, State.Systems); }
+    <div class="kb-rij">
+        <label>
+            @T["mail.default.label"]
+            <select value="@choice" @onchange="e => choice = Enum.Parse<MailSystem>(e.Value?.ToString() ?? nameof(MailSystem.Unknown))" disabled="@(!CanChange)">
+                <option value="@MailSystem.Unknown">@T.Format("mail.default.proposal", MailLocations.Name(proposal))</option>
+                @foreach (var s in MailLocations.Choices(State.Systems))
+                {
+                    <option value="@s">@MailLocations.Name(s)</option>
+                }
+            </select>
+        </label>
+        @if (CanChange)
+        {
+            <button class="kb-knop kb-primair" disabled="@(choice == State.MailSettings.Default)" @onclick="SaveDefault">@T["action.save"]</button>
+        }
+        <span>@T["mail.default.now"] <MailSystemText System="@State.MailDefault" /></span>
+    </div>
+    <p class="kb-zacht">@T["mail.default.help"]</p>
+</section>
+
+<section class="kb-kaart" id="mx">
+    <h2>@T["mail.mx"]</h2>
+    <p class="kb-zacht">@T["mail.mx.help"]</p>
+    <div class="kb-rij">
+        <button class="kb-knop" disabled="@(!State.CanCheckMail || checking)" @onclick="Check">@(checking ? T["mail.mx.checking"] : T["mail.mx.check"])</button>
+        @if (State.MailSettings.CheckedAt is { } at) { <span class="kb-zacht">@T.Format("mail.mx.checked-at", at.LocalDateTime.ToString("dd/MM/yyyy HH:mm"))</span> }
+        @if (!State.CanCheckMail && !State.IsHistoric) { <span class="kb-zacht">@T["mail.check.not-here"]</span> }
+        @if (message is not null) { <span class="kb-melding">@message</span> }
+    </div>
+
+    @if (MailLocations.Differing(State.MailSettings, State.Systems) is { Count: > 0 } differing)
+    {
+        <div class="kb-melding kb-waarschuwing">
+            @T.Format("mail.mx.differs", MailLocations.Name(State.MailDefault))
+            <ul>
+                @foreach (var r in differing)
+                {
+                    <li><strong>@r.Domain</strong>: @MailLocations.Name(r.System)</li>
+                }
+            </ul>
+            @T["mail.mx.differs.what"]
+        </div>
+    }
+
+    @if (State.MailSettings.Routes.Count > 0)
+    {
+        <table class="kb-tabel">
+            <thead><tr><th>@T["mail.mx.domain"]</th><th>@T["mail.mx.arrives"]</th><th>@T["mail.mx.hosts"]</th></tr></thead>
+            <tbody>
+                @foreach (var r in State.MailSettings.Routes)
+                {
+                    <tr>
+                        <td>@r.Domain</td>
+                        <td>
+                            @if (r.Error is not null) { <span class="kb-ontbreekt">@T.Format("mail.mx.error", r.Error)</span> }
+                            else { <MailSystemText System="@r.System" /> }
+                        </td>
+                        <td class="kb-zacht">@string.Join(", ", r.Hosts.Take(3))@(r.Hosts.Count > 3 ? " …" : null)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+<section class="kb-kaart" id="personen">
+    <h2>@T["mail.people"]</h2>
+    <p class="kb-zacht">@T["mail.people.help"]</p>
+    @{ var different = State.Data.Persons.Select(p => (Person: p, Where: State.MailOf(p))).Where(x => x.Where.Reason != MailLocationReason.Default).OrderBy(x => x.Person.Name).ToList(); }
+    @if (different.Count == 0)
+    {
+        <p class="kb-zacht">@T["mail.people.none"]</p>
+    }
+    else
+    {
+        <table class="kb-tabel">
+            <thead><tr><th>@T["plan.object"]</th><th>@T["mail.people.where"]</th><th>@T["mail.people.why"]</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var (p, where) in different)
+                {
+                    <tr>
+                        <td><a href="gebruiker/@Uri.EscapeDataString(p.Key)">@p.Name</a></td>
+                        <td><MailSystemText System="@where.System" /></td>
+                        <td class="kb-zacht">@(where.Reason == MailLocationReason.ByHand ? T["mail.people.by-hand"] : T.Format("mail.people.by-domain", MailLocations.DomainOf(MailLocations.AddressOf(p)) ?? string.Empty))</td>
+                        <td>@if (CanChange && where.Reason == MailLocationReason.ByHand) { <button class="kb-knop" @onclick="() => State.SetMailOf(p, null)">@T["mail.people.back"]</button> }</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (CanChange)
+    {
+        <div class="kb-rij">
+            <PersonPicker Label="@T["mail.people.add"]" @bind-Selected="person" />
+            <select value="@personChoice" @onchange="e => personChoice = Enum.Parse<MailSystem>(e.Value?.ToString() ?? nameof(MailSystem.ExchangeOnline))" aria-label="@T["mail.people.where"]">
+                @foreach (var s in MailLocations.Choices(State.Systems))
+                {
+                    <option value="@s">@MailLocations.Name(s)</option>
+                }
+            </select>
+            <button class="kb-knop" disabled="@(person is null)" @onclick="AddPerson">@T["mail.people.set"]</button>
+        </div>
+    }
+</section>
+
+@code {
+    private MailSystem choice;
+    private MailSystem personChoice;
+    private Person? person;
+    private bool checking;
+    private string? message;
+
+    private bool CanChange => State.Can(Permission.Settings) && !State.IsHistoric;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        choice = State.MailSettings.Default;
+        personChoice = MailLocations.Choices(State.Systems)[0];
+    }
+
+    private void SaveDefault() => State.SetMailDefault(choice);
+
+    private void AddPerson()
+    {
+        if (person is not null)
+        {
+            State.SetMailOf(person, personChoice);
+            person = null;
+        }
+    }
+
+    private async Task Check()
+    {
+        checking = true;
+        message = null;
+        try
+        {
+            message = await State.CheckMailRoutesAsync();
+        }
+        finally
+        {
+            checking = false;
+        }
+    }
+}

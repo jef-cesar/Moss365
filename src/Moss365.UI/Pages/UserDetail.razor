@@ -8,10 +8,12 @@
 }
 else
 {
+    var mail = State.MailOf(person);
     <h1>@person.Name</h1>
     <ObjectStatus Object="State.Data.Index.Ref(person)" />
     <p class="kb-zacht">
         @person.Source &middot; @(person.Enabled ? T["word.enabled"] : T["word.disabled"])
+        @if (!person.IsGuest) { <text> &middot; @T["mail.person"] </text><MailSystemText System="@mail.System" /> }
         @if (person.Ad?.LockedOut == true) { <span class="kb-label kb-rood">@T["helpdesk.locked"]</span> }
         &middot; <a href="@($"spiegel?referentie={Uri.EscapeDataString(person.Key)}")">@T["user-detail.asmirror"]</a>
         &middot; <a href="@($"spiegel?doel={Uri.EscapeDataString(person.Key)}")">@T["user-detail.astarget"]</a>
@@ -26,8 +28,12 @@ else
     }
 
     @if (State.Can(Permission.Helpdesk)) { <Helpdesk Person="person" /> }
-    @if (State.Can(Permission.Manage) && State.HasMicrosoft365 && person.Entra is not null && !person.IsGuest && !State.IsHistoric) { <AbsenceCard Person="person" /> }
-    @if (State.Can(Permission.Helpdesk) && State.HasMicrosoft365 && person.Entra is not null && !State.IsHistoric) { <MessageTraceCard Person="person" /> }
+    @if (State.Can(Permission.Manage) && State.HasMicrosoft365 && person.Entra is not null && !person.IsGuest && !State.IsHistoric && mail.System == Moss365.Core.Mail.MailSystem.ExchangeOnline) { <AbsenceCard Person="person" /> }
+    @if (State.Can(Permission.Helpdesk) && State.HasMicrosoft365 && person.Entra is not null && !State.IsHistoric && mail.System == Moss365.Core.Mail.MailSystem.ExchangeOnline) { <MessageTraceCard Person="person" /> }
+    @if (!person.IsGuest && mail.System is Moss365.Core.Mail.MailSystem.Gmail or Moss365.Core.Mail.MailSystem.ExchangeOnPremises or Moss365.Core.Mail.MailSystem.Other)
+    {
+        <p class="kb-zacht">@T.Format("mail.person.elsewhere", Moss365.Core.Mail.MailLocations.Name(mail.System)) <a href="postlocatie">@T["menu.postlocatie"]</a></p>
+    }
     @if (State.Can(Permission.Manage) && !State.IsHistoric && (person.Ad is not null || person.Entra is not null) && !person.IsGuest) { <CompromisedCard Person="person" /> }
     @if (State.Can(Permission.Helpdesk) && State.HasMicrosoft365 && person.Entra is not null && !person.IsGuest) { <UserDevicesCard Person="person" /> }
     @if (State.Can(Permission.Security) && State.HasMicrosoft365)

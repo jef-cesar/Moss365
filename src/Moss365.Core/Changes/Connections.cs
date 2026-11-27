@@ -366,6 +366,9 @@ public interface IConnectionFactory
     /// <summary>Searching for a new version of the app; null where that is not possible.</summary>
     IUpdateCheck? Updates => null;
 
+    /// <summary>The MX records of domains through DNS (G0, where the mail lives); null where that is not possible.</summary>
+    Mail.IMxLookup? Dns => null;
+
     /// <summary>The wizard (R5): reads and sets up a tenant with the sign-in of Microsoft Graph PowerShell; null where
     /// that is not possible.</summary>
     Setup.ITenantSetupConnection? Setup(string tenantId) => null;
