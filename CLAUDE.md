@@ -8,7 +8,8 @@ Motto: **data under your own control** ("data in eigen beheer"): the Desktop sta
 feature needs a server or a service of the makers.
 
 Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R14 are done (0.37.0); R16 to R20 have their first
-version in 0.39.0 and are complete on `main` for 0.40.0 (only the test in a test tenant remains, issue 19); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
+version in 0.39.0 and are complete in 0.40.0 (only the test in a test tenant remains, issue 19); G0, the platform basis,
+has its first version for 0.41.0 (issue 46; Google itself is read from G1 on); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
 per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. The code targets .NET 10 (U22, in the CHANGELOG under 0.39.0: .NET 8 has no support since 10 November 2026; `bunit` stays 1.40 until a separate move to bUnit 2). Next, before 1.0 (decided 26 November 2026, U15): R16 security advice (explanation, solving as a plan, guided for high risk, exceptions, hardening score, compromised account), R17 devices and Intune (a destructive action: one device per plan, never a personal device; a device record is deleted only after 90 days disabled), R18 own data (sign-in and audit logs kept locally, reading without a window), R19 the overview (All tenants: only scores and counts, never stored together), R20 access reviews; then (27 November 2026, U27 and U28) G0 the platform basis (Google Workspace as a third system per tenant,
 platform labels, where the mail lives, linking persons, the source of truth), R21 edit every object (every field, one
 intuitive way of editing, plans with undo), R22 the mailbox as PST at offboarding, and G1 to G5 Google Workspace
@@ -64,10 +65,28 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
 - Script library (R8, `Scripts/ScriptIndex.cs`): `scripts/index.json` must match `scripts/` (a test; regenerate with
   `MOSS365_WRITE_INDEX=1`, see CONTRIBUTING). Downloads are checked against the SHA-256 in the index; pins per tenant in
   `scripts/pins.json` of the tenant store. Never change the bytes of `scripts/` through Git (`.gitattributes`).
-- Systems per tenant (0.19, `TenantInfo.Systems`: AD, Microsoft 365 or both): connections always use
+- Systems per tenant (0.19; G0: `TenantInfo.Systems`, any combination of AD, Microsoft 365 and Google Workspace,
+  `TenantSystemsInfo.Effective`: nothing chosen is AD and Microsoft 365): connections always use
   `ManagementState.EffectiveSettings`, never `Settings`, so that nothing touches a system the tenant does not have;
   screens check `State.HasAd` / `State.HasMicrosoft365`, the menu `Access.FitsTenant`. Without AD, `State.Data` leaves
   every AD object out (`InventoryData.WithoutAd`); background steps update the full data (`_data`), never `Data`.
+  Without Microsoft 365, `State.Data` leaves out Entra and Exchange (`WithoutMicrosoft365`), without Google
+  `WithoutGoogle`; `Access.FitsTenant(path, State.Systems)` decides the menu, the settings and Ctrl+K (a test checks all
+  seven combinations; `koppelingen` and `bron` need two systems).
+- Platform labels (G0, U30): `Changes/Platforms.cs` (`Platform`: AD, Entra ID, Exchange Online, Exchange on-premises,
+  Intune, Google Workspace, Gmail; a name and a fixed colour, never a logo; `Platforms.Of(change)` by the first word of
+  the action, `OfLog` for the change log, `OfTable` for the snapshot tables), shown by `PlatformLabel` on plan steps, the
+  change log, the differences between snapshots and the sections of pages. A new kind of section or action gets its label.
+- Where the mail lives (G0, U31): `Mail/MailLocations.cs` (a default per tenant, per person by hand or by the domain,
+  `Classify` of MX hosts, `Differing`), document `postlocatie` (`ManagementState.Mail.cs`, in the change log); the MX
+  check through `IConnectionFactory.Dns` (`Connections/Dns/MxLookup.cs`, one UDP question to the DNS servers of the PC,
+  only counts in the technical log); page `postlocatie`. Screens for mail work with `State.MailOf(person)`.
+- Linking persons (G0, U32): `Linking/PersonLinks.cs` (AD and Entra by the anchor as before; a Google account by address,
+  employee id, alias; links by hand win, document `koppelingen`; doubtful cases, also AD accounts not synchronised next
+  to a cloud account with their address), applied in `State.Data` once there are Google users; page `koppelingen`.
+- Source of truth (G0, U33): `Linking/SourceOfTruth.cs` (chains per kind, proposed from the synchronisation, asked for
+  Google: itself, from Entra, from AD), document `bron`; page `bron`. A change goes to the source
+  (`AttributePlans.ViaAd` for a synchronised account; a test proves it).
 - Organisation settings (R9): naming in `Configuration/Naming.cs` (`OrganisationConfig.Naming`, used by
   `PlanBuilder.NewUser`), suggestions in `Setup/OrganisationSuggestions.cs` (shown by `SuggestionsPanel` on Organisatie
   and in the wizard), templates in `Configuration/OrganisationTemplates.cs` (only add what is missing). Job profiles
