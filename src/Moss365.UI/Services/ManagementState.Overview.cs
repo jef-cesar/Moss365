@@ -22,7 +22,7 @@ public sealed partial class ManagementState
     private static readonly IReadOnlySet<string> OwnTiles = new HashSet<string>(StringComparer.Ordinal)
     {
         "hardening", "advice-open", "devices-noncompliant", "devices-stale", "devices-outdated", "devices-unencrypted",
-        "guests-due", "licence-waste", "data-quality", "reviews-due", "requests-open", "scheduled-due", "follow-up", "secrets-expiring",
+        "guests-due", "licence-waste", "data-quality", "reviews-due", "requests-open", "scheduled-due", "follow-up", "secrets-expiring", "passwords-expiring",
     };
 
     /// <summary>The tiles of the overview with their trend against the given number of days ago.</summary>
@@ -35,6 +35,7 @@ public sealed partial class ManagementState
         var reference = AsOf?.Time.LocalDateTime ?? DateTime.Now;
         var kept = Database.ReadKpiSnapshot(DateOnly.FromDateTime(reference.AddDays(-days - 7)));
         var then = DateOnly.FromDateTime(reference.AddDays(-days));
+        var today = DateOnly.FromDateTime(reference);
         var tiles = new List<OverviewTile>();
 
         void Kpi(OverviewBlock block, Kpi k)
@@ -45,11 +46,17 @@ public sealed partial class ManagementState
             }
 
             var count = KpiCount(k);
-            tiles.Add(new OverviewTile(k.Key, block, count, k.Label, k.Link, k.Attention && count > 0, Overview.ValueAt(kept, k.Key, then)));
+            tiles.Add(new OverviewTile(k.Key, block, count, k.Label, k.Link, k.Attention && count > 0, Overview.ValueAt(kept, k.Key, then))
+            {
+                History = Overview.HistoryOf(kept, k.Key, then, today),
+            });
         }
 
         void Own(string key, OverviewBlock block, int? value, string label, string link, bool let, string unit = "", bool higherIsBetter = false)
-            => tiles.Add(new OverviewTile(key, block, value, label, link, let, Overview.ValueAt(kept, Overview.CountPrefix + key, then), unit, higherIsBetter));
+            => tiles.Add(new OverviewTile(key, block, value, label, link, let, Overview.ValueAt(kept, Overview.CountPrefix + key, then), unit, higherIsBetter)
+            {
+                History = Overview.HistoryOf(kept, Overview.CountPrefix + key, then, today),
+            });
 
         // Security: what is only kept now (the checks, the visit) is not shown for a date in the past
         if (!IsHistoric)
@@ -125,6 +132,11 @@ public sealed partial class ManagementState
             Own("scheduled-due", OverviewBlock.Work, scheduled, Texts.T["overview.scheduled-due"], "gepland", scheduled > 0);
             var followUp = FollowUp.Read().Count;
             Own("follow-up", OverviewBlock.Work, followUp, Texts.T["overview.follow-up"], "opvolging", followUp > 0);
+            if (HasAd && Config.PasswordMaxAgeDays > 0)
+            {
+                var expiring = Core.Helpdesk.HelpdeskTools.ExpiringPasswords(Data, Config.PasswordMaxAgeDays, 14, reference).Count;
+                Own("passwords-expiring", OverviewBlock.Work, expiring, Texts.T["overview.passwords-expiring"], "wachtwoorden", expiring > 0);
+            }
             if (HasMicrosoft365 && SecurityCheckResults.TryGetValue("app-geheimen", out var secrets))
             {
                 var expiring = secrets.Rows.Count(r => r.Status is not CheckStatus.Ok);

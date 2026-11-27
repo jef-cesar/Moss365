@@ -1,0 +1,167 @@
+@using Moss365.Core.Devices
+@* Cleaning up old devices (R17, U18, U25): in Entra first disable (not seen for 90 days; can be undone), and delete only
+   after 90 days disabled, with the record in Intune and a warning for BitLocker keys. Hybrid joined devices are cleaned
+   up in AD, Autopilot devices never. Without the part "clean up old devices in Entra" only the lists, and the clean-up of
+   Intune records not seen for 180 days. *@
+@inject ManagementState State
+
+<section class="kb-kaart" id="opkuis">
+    <h2>@T["device.cleanup.title"]</h2>
+    <p class="kb-zacht">@T["device.cleanup.help"]</p>
+    @if (State.EntraDevices is { } entra)
+    {
+        var toDisable = DeviceCleanup.ToDisable(entra, Now);
+        var toDelete = State.EntraDevicesToDelete;
+        var leftAlone = DeviceCleanup.LeftAlone(entra, Now);
+        @if (!State.EntraCleanupOn)
+        {
+            <p class="kb-zacht">@T["device.cleanup.part-off"] <a href="inrichten">@T["menu.inrichten"]</a></p>
+        }
+
+        <h3>@T.Format("device.cleanup.to-disable", toDisable.Count)</h3>
+        @EntraTable("uit-te-schakelen", toDisable, disable)
+        @if (CanWrite && State.EntraCleanupOn && toDisable.Count > 0)
+        {
+            <div class="kb-filters">
+                <button class="kb-knop kb-klein" @onclick="() => ChooseAll(disable, toDisable.Select(d => d.Id))">@T["device.cleanup.choose-all"]</button>
+                <button class="kb-knop" disabled="@(Chosen(toDisable, disable).Count == 0)" @onclick="() => outcome = DeviceCleanup.Disable(Chosen(toDisable, disable), State.Config.PermissionParts)">@T.Format("device.cleanup.make-disable", Chosen(toDisable, disable).Count)</button>
+            </div>
+        }
+
+        <h3>@T.Format("device.cleanup.to-delete", toDelete.Count)</h3>
+        @EntraTable("te-verwijderen", toDelete, delete)
+        @if (CanWrite && State.EntraCleanupOn && toDelete.Count > 0)
+        {
+            <div class="kb-filters">
+                <button class="kb-knop kb-klein" @onclick="() => ChooseAll(delete, toDelete.Select(d => d.Id))">@T["device.cleanup.choose-all"]</button>
+                <button class="kb-knop kb-gevaar" disabled="@(busy || Chosen(toDelete, delete).Count == 0)" @onclick="() => MakeDelete(Chosen(toDelete, delete))">@T.Format("device.cleanup.make-delete", Chosen(toDelete, delete).Count)</button>
+            </div>
+        }
+
+        @if (leftAlone.Count > 0)
+        {
+            <h3>@T.Format("device.cleanup.left-alone", leftAlone.Count)</h3>
+            <table class="kb-tabel" id="blijven-staan">
+                <thead><tr><th>@T["keys.device"]</th><th>@T["plan.system"]</th><th>@T["keys.last-seen"]</th><th>@T["device.cleanup.why"]</th></tr></thead>
+                <tbody>
+                    @foreach (var (d, why) in leftAlone.Take(200))
+                    {
+                        <tr><td>@d.Name</td><td>@d.OperatingSystem</td><td>@Seen(d.LastSignIn)</td><td class="kb-zacht">@why</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+
+    @if (State.IntuneDevices is { } intune)
+    {
+        var stale = DeviceCleanup.IntuneStale(intune, Now);
+        <h3>@T.Format("device.cleanup.intune-stale", stale.Count)</h3>
+        @if (stale.Count == 0)
+        {
+            <p class="kb-zacht">@T["device.cleanup.none"]</p>
+        }
+        else
+        {
+            <table class="kb-tabel" id="intune-oud">
+                <thead><tr><th></th><th>@T["keys.device"]</th><th>@T["sign-in-list.user"]</th><th>@T["plan.system"]</th><th>@T["keys.last-seen"]</th></tr></thead>
+                <tbody>
+                    @foreach (var d in stale.Take(200))
+                    {
+                        var id = d.Id;
+                        <tr>
+                            <td><input type="checkbox" checked="@intuneChosen.Contains(id)" disabled="@(!CanWrite)" aria-label="@d.Name" @onchange="e => Toggle(intuneChosen, id, e.Value is true)" /></td>
+                            <td>@d.Name</td><td>@d.Owner</td><td>@d.OperatingSystem @d.Version</td><td>@Seen(d.LastSync)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (CanWrite)
+            {
+                <div class="kb-filters">
+                    <button class="kb-knop kb-klein" @onclick="() => ChooseAll(intuneChosen, stale.Select(d => d.Id))">@T["device.cleanup.choose-all"]</button>
+                    <button class="kb-knop kb-gevaar" disabled="@(stale.Count(d => intuneChosen.Contains(d.Id)) == 0)" @onclick="() => outcome = DeviceCleanup.DeleteIntune(stale.Where(d => intuneChosen.Contains(d.Id)))">@T.Format("device.cleanup.make-delete-intune", stale.Count(d => intuneChosen.Contains(d.Id)))</button>
+                </div>
+            }
+        }
+    }
+
+    @if (outcome is not null)
+    {
+        @foreach (var e in outcome.Errors)
+        {
+            <div class="kb-melding kb-fout">@e</div>
+        }
+        @if (outcome.Plan.Count > 0)
+        {
+            <PlanView Plan="outcome.Plan" Context="@T["device.cleanup.context"]" Title="@T["device.cleanup.title"]" />
+        }
+    }
+</section>
+
+@code {
+    private readonly HashSet<string> disable = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> delete = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> intuneChosen = new(StringComparer.OrdinalIgnoreCase);
+    private Moss365.Core.Changes.PlanOutcome? outcome;
+    private bool busy;
+
+    private static DateTimeOffset Now => DateTimeOffset.Now;
+
+    private bool CanWrite => State.Can(Permission.Manage) && !State.IsHistoric;
+
+    private static string Seen(DateTimeOffset? t) => t?.LocalDateTime.ToString("dd/MM/yyyy") ?? T["word.never"];
+
+    private static IReadOnlyList<EntraDevice> Chosen(IReadOnlyList<EntraDevice> list, HashSet<string> chosen) => list.Where(d => chosen.Contains(d.Id)).ToList();
+
+    private void Toggle(HashSet<string> set, string id, bool on)
+    {
+        if (on) { set.Add(id); } else { set.Remove(id); }
+        outcome = null;
+    }
+
+    private void ChooseAll(HashSet<string> set, IEnumerable<string> ids)
+    {
+        set.UnionWith(ids);
+        outcome = null;
+    }
+
+    // The BitLocker keys of the devices to delete are counted first (the list, never a key), for the warning in the plan
+    private async Task MakeDelete(IReadOnlyList<EntraDevice> chosen)
+    {
+        busy = true;
+        try
+        {
+            var keys = await State.CountBitLockerKeysAsync(chosen);
+            outcome = DeviceCleanup.Delete(chosen, State.IntuneDevices, keys, State.Config.PermissionParts);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private RenderFragment EntraTable(string id, IReadOnlyList<EntraDevice> list, HashSet<string> chosen) => __builder =>
+    {
+        @if (list.Count == 0)
+        {
+            <p class="kb-zacht">@T["device.cleanup.none"]</p>
+        }
+        else
+        {
+            <table class="kb-tabel" id="@id">
+                <thead><tr><th></th><th>@T["keys.device"]</th><th>@T["plan.system"]</th><th>@T["keys.last-seen"]</th></tr></thead>
+                <tbody>
+                    @foreach (var d in list.Take(200))
+                    {
+                        var key = d.Id;
+                        <tr>
+                            <td><input type="checkbox" checked="@chosen.Contains(key)" disabled="@(!CanWrite || !State.EntraCleanupOn)" aria-label="@d.Name" @onchange="e => Toggle(chosen, key, e.Value is true)" /></td>
+                            <td>@d.Name</td><td>@d.OperatingSystem @d.Version</td><td>@Seen(d.LastSignIn)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    };
+}

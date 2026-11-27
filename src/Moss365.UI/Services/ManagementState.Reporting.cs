@@ -44,8 +44,12 @@ public sealed partial class ManagementState
         var history = Database.ReadKpiSnapshot(period.From.AddDays(-400));
         var log = ChangeLog.Recent(100_000);
         var quality = DataQuality.PerDepartment(KpiSource);
-        var standards = Standards.Evaluate(SecurityCheckResults, SecurityCheckList().Select(c => c.Key));
-        return PeriodReport.Build(Tenant.Name, period, DateTimeOffset.Now, User, history, log, quality, standards);
+        // The access reviews (R20) count as a check for the standards: attention while a review is due
+        var due = AccessReviewsDue();
+        var reviews = AccessReviews.Summary(log, new DateTimeOffset(period.From.ToDateTime(TimeOnly.MinValue)), new DateTimeOffset(period.To.ToDateTime(TimeOnly.MaxValue)), due);
+        var checks = new Dictionary<string, Core.Security.SecurityCheck>(SecurityCheckResults, StringComparer.OrdinalIgnoreCase) { [AccessReviews.CheckKey] = AccessReviews.AsCheck(reviews) };
+        var standards = Standards.Evaluate(checks, SecurityCheckList().Select(c => c.Key).Append(AccessReviews.CheckKey));
+        return PeriodReport.Build(Tenant.Name, period, DateTimeOffset.Now, User, history, log, quality, standards) with { Reviews = due.Count == 0 ? null : reviews };
     }
 
     /// <summary>Saves the report in the export folder of this tenant (goes to the access log).</summary>

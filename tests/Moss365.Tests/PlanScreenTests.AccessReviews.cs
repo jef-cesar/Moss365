@@ -1,8 +1,10 @@
 using Bunit;
 using Moss365.Core.Changes;
 using Moss365.Core.Inventory;
+using Moss365.Core.Reporting;
 using Moss365.Core.Security;
 using Moss365.UI.Pages;
+using CheckStatus = Moss365.Core.Security.CheckStatus;
 using Moss365.UI.Services;
 using Xunit;
 
@@ -81,6 +83,62 @@ public sealed partial class PlanScreenTests
         var roleOutcome = AccessReviews.Removals(role, new[] { new ReviewDecision("e-bo", false) });
         Assert.Empty(roleOutcome.Plan);
         Assert.Contains("Moss365 wijzigt geen beheerrollen", Assert.Single(roleOutcome.Errors), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EntraGroupsWithARoleAndAppPermissionsAreReviewedButNeverChangedHere()
+    {
+        var data = State.Data with
+        {
+            Security = new SecurityData(Array.Empty<MfaRegistration>(), new[] { new RoleMember("Security Administrator", "g-eigen", "WKG_Eigen", string.Empty, "group") }),
+        };
+        var checks = new Dictionary<string, SecurityCheck>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["app-rechten"] = new SecurityCheck("app-rechten", "App-rechten", CheckStatus.Problem, "x", new[]
+            {
+                new CheckRow("Oude app", "Mail.ReadWrite zonder gebruiker", CheckStatus.Problem),
+                new CheckRow("Oude app", "Files.Read.All", CheckStatus.Attention),
+                new CheckRow("Goede app", "User.Read", CheckStatus.Ok),
+            }),
+        };
+
+        var subjects = AccessReviews.Subjects(data, checks);
+
+        var group = Assert.Single(subjects, s => s.Kind == ReviewKind.EntraGroup);
+        Assert.Equal("WKG_Eigen (Security Administrator)", group.Name);
+        Assert.Equal("e-bo", Assert.Single(group.Members).Key);
+        Assert.DoesNotContain(subjects, s => s.Kind == ReviewKind.AdminRole); // the group is the subject, not a role with a group in it
+        var app = Assert.Single(subjects, s => s.Kind == ReviewKind.AppPermission);
+        Assert.Equal(("Oude app", 2), (app.Name, app.Members.Count));
+
+        // Removing is the way in Entra, never a plan: Moss365 has no permission to change roles or apps
+        var groupOutcome = AccessReviews.Removals(group, new[] { new ReviewDecision("e-bo", false) });
+        Assert.Empty(groupOutcome.Plan);
+        Assert.Contains("Moss365 wijzigt geen beheerrollen", Assert.Single(groupOutcome.Errors), StringComparison.Ordinal);
+        var appOutcome = AccessReviews.Removals(app, app.Members.Select(m => new ReviewDecision(m.Key, false)).ToList());
+        Assert.Empty(appOutcome.Plan);
+        Assert.Equal(2, appOutcome.Errors.Count);
+    }
+
+    [Fact]
+    public void TheReviewsAreInThePeriodReportAndWithTheStandards()
+    {
+        var subject = AccessReviews.Subjects(State.Data).Single(s => s.Name == "Domain Admins");
+        var an = subject.Members.Single(m => m.Detail == "an.peeters@test.be");
+        State.FinishReview(subject, subject.Members.Select(m => new ReviewDecision(m.Key, m.Key != an.Key)).ToList());
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var report = State.BuildReport(new ReportPeriod(today.AddDays(-7), today, "week"));
+
+        Assert.Equal((1, subject.Members.Count - 1, 1), (report.Reviews!.Reviewed, report.Reviews.Kept, report.Reviews.Removed));
+        Assert.True(report.Reviews.Due > 0); // the mailboxes are still due
+        Assert.Contains("gereviewd in deze periode", report.ToHtml(), StringComparison.Ordinal);
+        Assert.Contains("Toegangsreviews", report.ToCsv(), StringComparison.Ordinal);
+        foreach (var id in new[] { "21.2.i", "6" })
+        {
+            var row = report.Standards.Single(s => s.Control.Id == id);
+            Assert.Contains(row.Results, r => r.Check == AccessReviews.CheckKey && r.Status == CheckStatus.Attention);
+        }
     }
 
     [Fact]

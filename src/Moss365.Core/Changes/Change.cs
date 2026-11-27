@@ -91,6 +91,17 @@ public enum ChangeAction
     // New in 0.39: security advice (R16)
     AdSetAccountFlag,             // Target = DN; vlag (a name in SecurityAdvice.AccountFlags), aan (True/False); Previous aan
     IntuneDeviceAction,           // Target = managed device id; actie (DevicePlans.Actions), toestel, eigendom (company/personal), naam (rename); Previous naam
+
+    // New in 0.40: compliance and the clean-up of devices (R17, U18, U25, U26)
+    IntuneCreateCompliancePolicy, // Target = name of the policy; json = the policy (a template), platform
+    GraphSetDeviceEnabled,        // Target = object id of the device in Entra; aan (True/False), deviceId; Previous aan
+    GraphDeleteDevice,            // Target = object id of the device in Entra; deviceId, sleutels (BitLocker keys that go with it)
+    IntuneDeleteDevice,           // Target = managed device id; toestel, eigendom
+    IntuneSetComplianceSettings,  // Target = deviceManagement; json = the compliance settings (all of them, as read, one changed); Previous json
+    AdHardening,                  // Target = DN; wat (AdHardening.Kinds), waarde (encryptionTypes, machineAccountQuota), beschermd (adminCount); Previous
+    GraphUpdatePolicy,            // Target = a policy of TenantAdvice.PolicyTargets; json = the fields that change; Previous json
+    GraphRoleEligibility,         // Target = principal id; rolId, rol, naar (eligible/active); Previous naar
+    ExchangeOrganisationSetting,  // Target = setting or object; instelling (ExchangeAdvice.Settings), waarde, identity; Previous waarde
 }
 
 /// <summary>

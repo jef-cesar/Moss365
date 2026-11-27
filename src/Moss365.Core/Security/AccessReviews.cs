@@ -12,6 +12,20 @@ public enum ReviewKind
     AdGroup,
     AdminRole,
     Mailbox,
+
+    /// <summary>An Entra group that holds an admin role (role-assignable): its members have the role.</summary>
+    EntraGroup,
+
+    /// <summary>The permissions of an app (from the last check of app permissions).</summary>
+    AppPermission,
+}
+
+/// <summary>The access reviews in a period, for the period report and the standards (R20): how many subjects were
+/// reviewed, how many members kept and to be removed, and how many subjects are due now.</summary>
+public sealed record ReviewSummary(int Reviewed, int Kept, int Removed, int Due, int Subjects)
+{
+    /// <summary>The result for the standards: unknown without subjects, attention while one is due.</summary>
+    public CheckStatus Status => Subjects == 0 ? CheckStatus.Unknown : Due > 0 ? CheckStatus.Attention : CheckStatus.Ok;
 }
 
 /// <summary>One member of what is reviewed: its key (the DN in AD, the id in Entra, "permission|trustee" for a
@@ -75,9 +89,15 @@ public static class AccessReviews
 
     public static string Write(IEnumerable<ReviewSetting> settings) => JsonSerializer.Serialize(settings.OrderBy(s => s.Subject, StringComparer.Ordinal).ToList(), Json);
 
-    /// <summary>Everything to review in the data: privileged AD groups and admin roles with members, and shared mailboxes
-    /// with FullAccess or SendAs.</summary>
-    public static IReadOnlyList<ReviewSubject> Subjects(InventoryData d)
+    /// <summary>The key of the pseudo-check for the standards (NIS2 21.2.i, CIS 6).</summary>
+    public const string CheckKey = "toegangsreviews";
+
+    /// <summary>
+    /// Everything to review in the data: privileged AD groups and admin roles with members, Entra groups that hold an
+    /// admin role, shared mailboxes with FullAccess or SendAs, and, from the last check of app permissions, the apps
+    /// with broad permissions or consents.
+    /// </summary>
+    public static IReadOnlyList<ReviewSubject> Subjects(InventoryData d, IReadOnlyDictionary<string, SecurityCheck>? checks = null)
     {
         var output = new List<ReviewSubject>();
         var usersByDn = d.AdUsers.GroupBy(u => u.DistinguishedName, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -95,7 +115,27 @@ public static class AccessReviews
             }
         }
 
-        foreach (var role in (d.Security?.Roles ?? Array.Empty<RoleMember>()).GroupBy(r => r.Role, StringComparer.OrdinalIgnoreCase))
+        var roles = d.Security?.Roles ?? Array.Empty<RoleMember>();
+        var users = d.EntraUsers.GroupBy(u => u.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        foreach (var group in roles.Where(r => string.Equals(r.MemberKind, "group", StringComparison.OrdinalIgnoreCase)).GroupBy(r => r.MemberId, StringComparer.OrdinalIgnoreCase))
+        {
+            var name = d.CloudGroups.TryGetValue(group.Key, out var cloud) ? cloud.DisplayName : group.First().MemberName;
+            var members = d.CloudMembership.Where(kv => kv.Value.Contains(group.Key)).Select(kv => kv.Key)
+                .Select(id => users.TryGetValue(id, out var u) ? new ReviewMember(id, u.DisplayName, u.UserPrincipalName) : new ReviewMember(id, id, string.Empty))
+                .OrderBy(m => m.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+            output.Add(new ReviewSubject(ReviewKind.EntraGroup, group.Key, $"{name} ({string.Join(", ", group.Select(r => r.Role).Distinct(StringComparer.OrdinalIgnoreCase))})", members));
+        }
+
+        if (checks?.GetValueOrDefault("app-rechten") is { } apps)
+        {
+            foreach (var app in apps.Rows.Where(r => r.Status is not CheckStatus.Ok).GroupBy(r => r.Object, StringComparer.OrdinalIgnoreCase))
+            {
+                output.Add(new ReviewSubject(ReviewKind.AppPermission, app.Key, app.Key,
+                    app.Select(r => r.Detail).Distinct(StringComparer.Ordinal).Select(detail => new ReviewMember(detail, detail, string.Empty)).ToList()));
+            }
+        }
+
+        foreach (var role in roles.Where(r => !string.Equals(r.MemberKind, "group", StringComparison.OrdinalIgnoreCase)).GroupBy(r => r.Role, StringComparer.OrdinalIgnoreCase))
         {
             output.Add(new ReviewSubject(ReviewKind.AdminRole, role.Key, role.Key,
                 role.DistinctBy(r => r.MemberId, StringComparer.OrdinalIgnoreCase)
@@ -193,6 +233,12 @@ public static class AccessReviews
                         Description = Texts.T.Format("access-reviews.remove-permission", m.Detail, m.Name),
                     });
                     break;
+                case ReviewKind.EntraGroup:
+                    errors.Add(Texts.T.Format("access-reviews.group-in-entra", m.Name, s.Name));
+                    break;
+                case ReviewKind.AppPermission:
+                    errors.Add(Texts.T.Format("access-reviews.app-in-entra", m.Name, s.Name));
+                    break;
                 default:
                     errors.Add(Texts.T.Format("access-reviews.role-in-entra", m.Name, s.Name));
                     break;
@@ -234,6 +280,19 @@ public static class AccessReviews
 
         return PlanOutcome.Of(plan, errors);
     }
+
+    /// <summary>The reviews of a period: the decisions of the change log in it, and what is due now.</summary>
+    public static ReviewSummary Summary(IEnumerable<LogEntry> changeLog, DateTimeOffset from, DateTimeOffset to, IReadOnlyList<ReviewDue> due)
+    {
+        var lines = changeLog.Where(r => r.ChangeAction == LogAction && r.Time >= from && r.Time <= to).ToList();
+        return new ReviewSummary(lines.Select(r => r.Target).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+            lines.Count(r => r.Parameters.GetValueOrDefault("besluit") == "keep"), lines.Count(r => r.Parameters.GetValueOrDefault("besluit") == "remove"),
+            due.Count(r => r.Overdue), due.Count);
+    }
+
+    /// <summary>The reviews as a check, for the standards: attention while a review is due.</summary>
+    public static SecurityCheck AsCheck(ReviewSummary summary)
+        => new(CheckKey, Texts.T["menu.toegangsreviews"], summary.Status, Texts.T.Format("access-reviews.standard", summary.Due, summary.Subjects), Array.Empty<CheckRow>());
 
     private static string First(params string?[] values) => values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? string.Empty;
 }

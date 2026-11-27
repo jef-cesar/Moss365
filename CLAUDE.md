@@ -8,8 +8,9 @@ Motto: **data under your own control** ("data in eigen beheer"): the Desktop sta
 feature needs a server or a service of the makers.
 
 Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R14 are done (0.37.0); R16 to R20 have their first
-version in 0.39.0 (what is still open per step is in the roadmap); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
-per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. The code targets .NET 10 (U22, in the CHANGELOG under 0.39.0: .NET 8 has no support since 10 November 2026; `bunit` stays 1.40 until a separate move to bUnit 2). Next, before 1.0 (decided 26 November 2026, U15): R16 security advice (explanation, solving as a plan, guided for high risk, exceptions, hardening score, compromised account), R17 devices and Intune (a destructive action: one device per plan, never a personal device; a device record is deleted only after 90 days disabled), R18 own data (sign-in and audit logs kept locally, reading without a window), R19 the overview (All tenants: only scores and counts, never stored together), R20 access reviews; then the native-speaker review of R15 and 1.0. Open work is in the
+version in 0.39.0 and are complete on `main` for 0.40.0 (only the test in a test tenant remains, issue 19); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
+per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. The code targets .NET 10 (U22, in the CHANGELOG under 0.39.0: .NET 8 has no support since 10 November 2026; `bunit` stays 1.40 until a separate move to bUnit 2). Next, before 1.0 (decided 26 November 2026, U15): R16 security advice (explanation, solving as a plan, guided for high risk, exceptions, hardening score, compromised account), R17 devices and Intune (a destructive action: one device per plan, never a personal device; a device record is deleted only after 90 days disabled), R18 own data (sign-in and audit logs kept locally, reading without a window), R19 the overview (All tenants: only scores and counts, never stored together), R20 access reviews; then (U27, 27 November 2026, for the next run) R21 edit every object (every field, one intuitive way
+of editing, plans with undo) and R22 the mailbox as PST at offboarding; then the native-speaker review of R15 and 1.0. Open work is in the
 GitHub issues (label `roadmap` per step, `limitation`, `test`). The interface texts move to dictionaries (R15, [docs/translating.md](docs/translating.md)): new text in a screen goes through `T["key"]` (in Core and Connections `Texts.T["key"]`, never in a `static readonly` field or `const`) with the key in all five `Localization/Texts/*.json`, and `tests/Moss365.Tests/Localization/untranslated.txt` may only go down; the inventory
 keeps the (Dutch) CSV file names of `tools/Export-Inventaris.ps1` (they are also the table names of the snapshots). Script headers are English since 0.18 (`Name:`, `Version:`, ...); the
 Dutch keys of older scripts are still read. Data saved before 0.11 uses Dutch
@@ -38,7 +39,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   `$batch` calls of 20 (`GraphClient.BatchGetAsync`), with a request of its own for what the batch did not answer.
 - Set-up (`Core/Setup`, R5): `TenantSetup.Assess` compares what the wizard read with `AppManifest` and plans only the
   difference; `TenantSetupConnection` runs it with the Graph PowerShell client. Keep `AppManifest` and
-  `tools/Register-App.ps1` the same (permissions, app role ids).
+  `tools/Register-App.ps1` the same (permissions, app role ids). A broad or rarely needed permission belongs to a part
+  (`Setup/PermissionParts.cs`, U25, U26; `OrganisationConfig.PermissionParts`; `-Onderdelen` in the script): asked
+  only when the part is on, taken away when it is off, and the engine refuses the changes of a part that is off.
 - Maintenance (`Storage/Maintenance.cs`): retention in `OrganisationConfig.Retention`; cleaning up is always preview,
   confirmation, archive (change log, access log), then remove. `RemoveSnapshots` keeps every remaining date exact
   (a test compares all of them).
@@ -76,12 +79,20 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   `Security/SecurityChecks.cs` computes OK/attention/problem/unknown from readings (`IGraphConnection.ReadAppsAsync`, ...,
   `IAdConnection.ReadSecurityAsync`/`ReadGpoAsync`, `IExchangeConnection.ReadForwardingAsync`); run by `ManagementState.SecurityChecks.cs`. Advice (R16): `Security/SecurityAdvice.cs` (the explanation per check in
   `advice.<key>.what/why/fix/risk`, weights, MITRE and Learn links, accepted risks as change log lines `AcceptRisk`,
-  the hardening score); document `beveiligingscontroles` keeps the last results, the accepted risks and the score per
-  day. `SecurityCheckResults` applies the accepted risks; an unknown result never replaces a real one kept earlier. A compromised account:
+  the hardening score); document `beveiligingscontroles` keeps the last results, the accepted risks, the score per
+  day and the result of every check per day (`SecurityResults.History`, 400 days: what was open on a date in the past). `SecurityCheckResults` applies the accepted risks; an unknown result never replaces a real one kept earlier. A compromised account:
   `Security/CompromisedAccount.cs` (block in AD, a cloud account in Entra, new random password in `Secret`, revoke
   sessions, out of privileged AD groups; never deletes), shown by `CompromisedCard` on the user page.
-  Solving advice (R16): a `CheckRow.Fix` names the flag; `SecurityAdvice.Solve` makes `AdSetAccountFlag` changes
-  (only the flags in `SecurityAdvice.AccountFlags`; the engine refuses others), undone through `Previous`. Licences (0.35): `Licences/LicenceAnalysis.cs`
+  Solving advice (R16): a `CheckRow.Fix` (with `FixData` from the reading) names what solves it: an account flag of
+  `SecurityAdvice.AccountFlags` (`AdSetAccountFlag`), a kind of `Security/AdHardening.cs` (`AdHardening`, only
+  `AdHardening.Kinds`; also the check of the privileged AD groups, found by well-known SID), of `Security/TenantAdvice.cs`
+  (`GraphUpdatePolicy` only for `TenantAdvice.PolicyTargets`, `GraphRoleEligibility` for PIM) or of
+  `Security/ExchangeAdvice.cs` (`ExchangeOrganisationSetting` through the fixed `OrganisatieInstellen` of Exchange.ps1,
+  only `ExchangeAdvice.Settings`; SPF and DMARC read with Resolve-DnsName in that process), or a library script
+  (`script:Name`, e.g. `scripts/Security/Reset-KrbtgtPassword.ps1`). `SecurityAdvice.Solve` makes one plan of what is not
+  guided; a guided fix (U16: delegation, Protected Users, SMS and voice, SMTP AUTH) is `SolveRow`, one line per plan.
+  Every write permission belongs to a part (`PermissionParts`, U25), refused by the planner and the engine when off;
+  `TenantAdvice.Refusal` and `ExchangeAdvice.Refusal` are in the refuse chain. Everything is undone through `Previous`. Licences (0.35): `Licences/LicenceAnalysis.cs`
   (waste, costs with `OrganisationConfig.LicencePrices`, against job profiles); `GraphRemoveLicences` takes optional `skuIds`.
   Devices, Teams and SharePoint (0.36): `Devices/DeviceAnalysis.cs` (stale computers, systems, Intune, groups without
   owner/with guests/unused, sites); reads `IAdConnection.ReadComputersAsync`, `IGraphConnection.ReadIntuneDevicesAsync`/
@@ -91,7 +102,17 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   Intune devices are `IntuneDeviceAction` changes from `Devices/DevicePlans.cs` (safe: Helpdesk; rename and retire:
   Manage; wipe and fresh start: Manage, the device name typed, never a personal device); `DeviceSafety` checks every
   plan in the planner and in the engine (never a personal device, one device to wipe per plan), like `CaSafety`, and
-  `GraphConnection` asks Intune again before wiping. Only a rename can be undone.
+  `GraphConnection` asks Intune again before wiping. Only a rename or a new primary user can be undone. Offboarding
+  takes the person's devices along (`LeaverDevices`: retire a personal device, never a wipe). Every read on Toestellen
+  is a snapshot of the device tables (`Devices/DeviceSnapshot.cs`, `toestellen-*.csv`, no moment of last seen); on a
+  date in the past `AdComputers`/`IntuneDevices`/`EntraDevices` come from that snapshot. Compliance (U26):
+  `Devices/Compliance.cs` (`ComplianceAnalysis`, `ComplianceTemplates`; `IGraphConnection.ReadComplianceAsync`, per device
+  `ReadDeviceComplianceAsync` from the beta), read with the devices and never in a snapshot; the baselines and the setting
+  for devices without a policy (`IntuneSetComplianceSettings`, all settings as read with one changed) are plans of the part
+  `compliance-policies`. Clean-up (U18, U25): `Devices/DeviceCleanup.cs` (disable after 90 days not seen, delete after 90
+  days disabled with the Intune record first and a BitLocker warning; never hybrid joined or Autopilot, and
+  `GraphConnection` asks Entra again); Entra only with the part `entra-device-cleanup`. `PermissionParts.Refusal` is in the
+  refuse chain of `ManagementState.ExecuteAsync`: the engine refuses a write of a part that is off.
   Own data (R18): `Security/LocalLogs.cs` decides which sign-ins are kept (failed, risky, administrators, emergency
   accounts) next to the whole directory audit log; table `LocalLog` (migration 5, `Storage/LocalLogStore.cs`, never a
   line twice) is filled after every read of Entra (`ManagementState.LocalLogs.cs`) while `Retention.KeepLocalLogs` is
@@ -104,9 +125,12 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   (`Desktop/Headless.cs`: skips while the app is open, never a sign-in link, `ConnectionFactory(withoutWindow: true)`),
   `ManagementState.RunUnattendedAsync` (AD and Entra only, never a write), `IAppEnvironment.Scheduler` (schtasks in
   `Desktop/WindowsTaskScheduler.cs`), page `lezen-zonder-venster`.
-  Access reviews (R20): `Security/AccessReviews.cs` (privileged AD groups, admin roles, shared mailboxes; reviewer and
-  interval per subject in document `toegangsreviews`; each decision a change log line with action `Review`; removals
-  as plans, admin roles never: no permission to change roles), page `toegangsreviews` (Security to see, Manage to record).
+  Access reviews (R20): `Security/AccessReviews.cs` (privileged AD groups, admin roles, Entra groups with a role, shared
+  mailboxes, app permissions from the check `app-rechten`; reviewer and interval per subject in document
+  `toegangsreviews`; each decision a change log line with action `Review`; removals as plans for AD groups and
+  mailboxes only: no permission to change roles, role-assignable groups or apps), page `toegangsreviews` (Security to
+  see, Manage to record); `AccessReviews.Summary` goes into the period report and, as the pseudo-check
+  `toegangsreviews`, into the standards.
   The overview (R19): `Reporting/Overview.cs` (tiles with a key, block, link and trend; the layout per role, kept per
   person in document `overzicht-indeling`), computed by `ManagementState.Overview.cs`; after a read the own tiles are kept
   per day in `KpiStand` with the prefix `overzicht:` (counts only). The start screen shows the blocks; the inventory is

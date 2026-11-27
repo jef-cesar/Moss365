@@ -18,8 +18,12 @@ public sealed record CheckRow(string Object, string Detail, CheckStatus Status, 
     /// <summary>The risk of this line is accepted until this date (R16).</summary>
     public DateOnly? AcceptedUntil { get; init; }
 
-    /// <summary>What solves this line as a plan (R16): a flag of <see cref="SecurityAdvice.AccountFlags"/> to turn off.</summary>
+    /// <summary>What solves this line as a plan (R16): a flag of <see cref="SecurityAdvice.AccountFlags"/>, a kind of
+    /// <see cref="AdHardening"/>, or a library script ("script:Name").</summary>
     public string? Fix { get; init; }
+
+    /// <summary>What the fix needs (the DN of the account, the group, the value before), from the reading.</summary>
+    public IReadOnlyDictionary<string, string>? FixData { get; init; }
 }
 
 public sealed record SecurityCheck(string Key, string Title, CheckStatus Status, string Summary, IReadOnlyList<CheckRow> Rows)
@@ -60,13 +64,53 @@ public sealed record AdSecurityReading(
     IReadOnlyList<string> ReversibleEncryption,
     DateTimeOffset? KrbtgtPasswordSet,
     IReadOnlyList<string> AdminCountOrphans,
-    IReadOnlyList<(string Name, string OperatingSystem)> OldSystems);
+    IReadOnlyList<(string Name, string OperatingSystem)> OldSystems)
+{
+    // R16: what the advice needs to be carried out as a plan (empty or null when it was not read)
+    public string DomainDn { get; init; } = string.Empty;
+
+    /// <summary>Enabled accounts with Kerberos pre-authentication off (AS-REP roasting).</summary>
+    public IReadOnlyList<AdObject> NoPreauth { get; init; } = Array.Empty<AdObject>();
+
+    public IReadOnlyList<SpnAccount> SpnAccounts { get; init; } = Array.Empty<SpnAccount>();
+
+    public IReadOnlyList<DelegationAccount> Delegation { get; init; } = Array.Empty<DelegationAccount>();
+
+    public IReadOnlyList<AdObject> Orphans { get; init; } = Array.Empty<AdObject>();
+
+    /// <summary>ms-DS-MachineAccountQuota of the domain: how many computers every user may join.</summary>
+    public int? MachineAccountQuota { get; init; }
+
+    public bool? RecycleBin { get; init; }
+
+    /// <summary>Enabled computers (not domain controllers) without a LAPS password in AD (Windows LAPS or the legacy one).</summary>
+    public IReadOnlyList<string>? WithoutLaps { get; init; }
+
+    public IReadOnlyList<AdminAccount> Admins { get; init; } = Array.Empty<AdminAccount>();
+
+    public IReadOnlyList<PrivilegedGroup> Groups { get; init; } = Array.Empty<PrivilegedGroup>();
+
+    /// <summary>The group Protected Users (null: the domain does not have it yet, before Windows Server 2012 R2).</summary>
+    public string? ProtectedUsersDn { get; init; }
+}
 
 public sealed record GpoInfo(string Id, string Name, bool UserDisabled, bool ComputerDisabled, int Version, IReadOnlyList<string> Links, DateTimeOffset? Changed);
 
 public sealed record SecureScoreReading(IReadOnlyList<(DateTimeOffset Date, double Score, double Max)> History, IReadOnlyList<(string Title, double MaxScore, string Url)> Actions);
 
-public sealed record RoleAssignmentInfo(string Role, string Principal, string Kind, DateTimeOffset? End);
+public sealed record RoleAssignmentInfo(string Role, string Principal, string Kind, DateTimeOffset? End)
+{
+    // R16: what making a role eligible needs
+    public string RoleId { get; init; } = string.Empty;
+
+    public string PrincipalId { get; init; } = string.Empty;
+
+    /// <summary>user, group or servicePrincipal.</summary>
+    public string PrincipalType { get; init; } = string.Empty;
+
+    /// <summary>Read through PIM (the tenant has Entra ID P2).</summary>
+    public bool ViaPim { get; init; }
+}
 
 public sealed record RiskyUser(string Upn, string Level, string State, DateTimeOffset? Updated);
 
@@ -154,7 +198,7 @@ public static class SecurityChecks
         foreach (var g in r.Permissions.Where(p => p.ConsentType == "Principal").GroupBy(p => p.App))
         {
             var broad = g.Any(p => BroadPermissions.Contains(p.Permission, StringComparer.OrdinalIgnoreCase));
-            rows.Add(new CheckRow(g.Key, $"toestemming van {g.Select(p => p.Principal).Distinct().Count()} gebruiker(s): {string.Join(", ", g.Select(p => p.Permission).Distinct().Take(6))}",
+            rows.Add(new CheckRow(g.Key, Texts.T.Format("code.security-checks.consent-of-users", g.Select(p => p.Principal).Distinct().Count(), string.Join(", ", g.Select(p => p.Permission).Distinct().Take(6))),
                 broad ? CheckStatus.Problem : CheckStatus.Attention));
         }
 
@@ -172,19 +216,78 @@ public static class SecurityChecks
             return SecurityCheck.Unknown("ad-beveiliging", title, Texts.T["code.security-checks.not-checked-yet-ad"]);
         }
 
+        static Dictionary<string, string> Data(params (string Key, string Value)[] values)
+            => values.ToDictionary(v => v.Key, v => v.Value, StringComparer.OrdinalIgnoreCase);
+
         var rows = new List<CheckRow>();
-        rows.AddRange(r.SpnUsers.Select(u => new CheckRow(u, Texts.T["code.security-checks.user-account-with-an-spn"], CheckStatus.Attention)));
-        rows.AddRange(r.UnconstrainedDelegation.Select(u => new CheckRow(u, Texts.T["code.security-checks.unconstrained-kerberos-delegation"], CheckStatus.Problem)));
+        // R16: kerberoasting with RC4 can be solved (AES only, with undo); AES only stays a point: a gMSA is better
+        if (r.SpnAccounts.Count > 0)
+        {
+            rows.AddRange(r.SpnAccounts.Select(a => a.AesOnly
+                ? new CheckRow(a.Name, Texts.T["advice.aes.only"], CheckStatus.Attention)
+                : new CheckRow(a.Name, Texts.T["advice.aes.rc4"], CheckStatus.Attention)
+                {
+                    Fix = AdHardening.AesOnly,
+                    FixData = Data(("dn", a.Dn), ("was", a.EncryptionTypes?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty),
+                        ("nieuw", a.AesValue.ToString(System.Globalization.CultureInfo.InvariantCulture))),
+                }));
+        }
+        else
+        {
+            rows.AddRange(r.SpnUsers.Select(u => new CheckRow(u, Texts.T["code.security-checks.user-account-with-an-spn"], CheckStatus.Attention)));
+        }
+
+        // Unconstrained delegation is guided (U16): who uses it (the SPNs) first, then a plan per account
+        if (r.Delegation.Count > 0)
+        {
+            rows.AddRange(r.Delegation.Select(a => new CheckRow(a.Name, Texts.T["code.security-checks.unconstrained-kerberos-delegation"]
+                    + (a.Spns.Count > 0 ? " " + Texts.T.Format("advice.delegation.spns", string.Join(", ", a.Spns.Take(5))) : string.Empty), CheckStatus.Problem)
+                { Fix = "TrustedForDelegation", FixData = Data(("dn", a.Dn)) }));
+        }
+        else
+        {
+            rows.AddRange(r.UnconstrainedDelegation.Select(u => new CheckRow(u, Texts.T["code.security-checks.unconstrained-kerberos-delegation"], CheckStatus.Problem)));
+        }
+
+        rows.AddRange(r.NoPreauth.Select(u => new CheckRow(u.Name, Texts.T["advice.preauth.off"], CheckStatus.Problem) { Fix = "DontRequirePreauth", FixData = Data(("dn", u.Dn)) }));
         rows.AddRange(r.PasswordNotRequired.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-not-required-is-on"], CheckStatus.Problem) { Fix = "PasswordNotRequired" }));
         rows.AddRange(r.ReversibleEncryption.Select(u => new CheckRow(u, Texts.T["code.security-checks.password-with-reversible-encryption"], CheckStatus.Problem) { Fix = "ReversibleEncryption" }));
-        rows.AddRange(r.AdminCountOrphans.Select(u => new CheckRow(u, Texts.T["code.security-checks.admincount-1-but-not-any"], CheckStatus.Attention)));
+        if (r.Orphans.Count > 0)
+        {
+            rows.AddRange(r.Orphans.Select(u => new CheckRow(u.Name, Texts.T["code.security-checks.admincount-1-but-not-any"], CheckStatus.Attention) { Fix = AdHardening.AdminCount, FixData = Data(("dn", u.Dn)) }));
+        }
+        else
+        {
+            rows.AddRange(r.AdminCountOrphans.Select(u => new CheckRow(u, Texts.T["code.security-checks.admincount-1-but-not-any"], CheckStatus.Attention)));
+        }
+
+        if (r.MachineAccountQuota is > 0 and var quota)
+        {
+            rows.Add(new CheckRow("ms-DS-MachineAccountQuota", Texts.T.Format("advice.quota.detail", quota), CheckStatus.Attention)
+            {
+                Fix = AdHardening.Quota,
+                FixData = Data(("dn", r.DomainDn), ("was", quota.ToString(System.Globalization.CultureInfo.InvariantCulture))),
+            });
+        }
+
+        if (r.RecycleBin == false)
+        {
+            rows.Add(new CheckRow(Texts.T["advice.recyclebin.object"], Texts.T["advice.recyclebin.off"], CheckStatus.Attention) { Fix = AdHardening.RecycleBin, FixData = Data(("dn", r.DomainDn)) });
+        }
+
+        // LAPS: advice only (Group Policy or Intune); a device that backs up to Entra is not in AD
+        rows.AddRange((r.WithoutLaps ?? Array.Empty<string>()).Select(c => new CheckRow(c, Texts.T["advice.laps.none"], CheckStatus.Attention)));
         // The connection gives the systems of the enabled computers; the life cycle data says which are no longer supported
         rows.AddRange(r.OldSystems.Where(c => Devices.Lifecycle.Of(c.OperatingSystem, string.Empty, now).Status == Devices.SupportStatus.Ended)
             .Select(c => new CheckRow(c.Name, Texts.T.Format("code.security-checks.outdated-operating-system", c.OperatingSystem), CheckStatus.Problem)));
         if (r.KrbtgtPasswordSet is { } k)
         {
             var days = (now - k).TotalDays;
-            rows.Add(new CheckRow("krbtgt", Texts.T.Format("code.security-checks.password-days-old", Math.Round(days)) + (days > 180 ? (" " + Texts.T["code.security-checks.renew-every-180-days"]) : string.Empty), days > 180 ? CheckStatus.Attention : CheckStatus.Ok));
+            // Guided (U16): two rounds with a replication check and the waiting time in between, through the library script
+            rows.Add(new CheckRow("krbtgt", Texts.T.Format("code.security-checks.password-days-old", Math.Round(days)) + (days > 180 ? (" " + Texts.T["code.security-checks.renew-every-180-days"]) : string.Empty), days > 180 ? CheckStatus.Attention : CheckStatus.Ok)
+            {
+                Fix = days > 180 ? AdHardening.ScriptPrefix + "Reset-KrbtgtPassword" : null,
+            });
         }
 
         var shown = rows.Where(x => x.Status != CheckStatus.Ok).ToList();
@@ -263,6 +366,20 @@ public static class SecurityChecks
         return new SecurityCheck("rollen", title, status,
             Texts.T.Format("security.roles", roles.Count, permanent, roles.Count(r => r.Kind == "in aanmerking"), globals > 5 ? Texts.T.Format("security.roles.globals", globals) : string.Empty),
             rows);
+    }
+
+    /// <summary>The check of admin roles with the lines about the accounts themselves (R16): synchronised from AD, the
+    /// daily account with a mailbox, and a permanent critical role that can become eligible.</summary>
+    public static SecurityCheck Roles(IReadOnlyList<RoleAssignmentInfo>? roles, InventoryData d, Configuration.OrganisationConfig c, string? ownUpn)
+    {
+        var check = Roles(roles);
+        if (roles is null)
+        {
+            return check;
+        }
+
+        var extra = TenantAdvice.RoleRows(roles, d, c, ownUpn);
+        return extra.Count == 0 ? check : check with { Rows = check.Rows.Concat(extra).ToList(), Status = new[] { check.Status, Worst(extra) }.Max() };
     }
 
     /// <summary>Who only has weak MFA methods (SMS, phone call, e-mail) or none at all.</summary>

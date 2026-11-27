@@ -84,6 +84,20 @@
     private string name = string.Empty;
     private string keyId = string.Empty;
     private bool busy;
+
+    // From the panel of a device on Toestellen (R17): the name is filled in and searched at once; showing a key or
+    // password still takes a click, and goes to the access log
+    [Parameter, SupplyParameterFromQuery(Name = "toestel")] public string? DeviceQuestion { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (DeviceQuestion is { } question && question.Trim().Length >= 2)
+        {
+            name = question.Trim();
+            await Search();
+        }
+    }
+
     private string? error;
     private IReadOnlyList<DeviceInfo>? devices;
     private IReadOnlyList<BitLockerKey>? keys;

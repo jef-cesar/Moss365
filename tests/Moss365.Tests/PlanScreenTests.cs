@@ -679,6 +679,21 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public SecurityData? Security { get; set; }
 
+        /// <summary>The organisation settings of Exchange and who used SMTP AUTH, for the advice of R16 (null: not readable).</summary>
+        public Core.Security.ExchangeOrganisationReading? ExchangeOrganisation { get; set; }
+        public Core.Security.SmtpAuthUsage? SmtpUsage { get; set; }
+
+        /// <summary>The settings of the tenant for the advice of R16 (null: not readable).</summary>
+        public Core.Security.TenantSettingsReading? TenantSettings { get; set; }
+
+        /// <summary>The security reading of AD with what the advice of R16 needs (null: the small one of 0.34).</summary>
+        public Core.Security.AdSecurityReading? AdSecurity { get; set; }
+
+        /// <summary>Devices next to the fixed ones (R17: old devices to clean up), and compliance per policy.</summary>
+        public List<Core.Devices.EntraDevice> ExtraEntraDevices { get; } = new();
+        public List<Core.Devices.IntuneDevice> ExtraIntuneDevices { get; } = new();
+        public Core.Devices.ComplianceReading? Compliance { get; set; }
+
         /// <summary>The calendar of a room (#20); with CalendarNoPermission reading fails as with a 403.</summary>
         public List<Appointment> Calendar { get; } = new();
         public bool CalendarNoPermission { get; set; }
@@ -761,9 +776,12 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
             });
 
         public Task<Core.Security.AdSecurityReading?> ReadSecurityAsync(CancellationToken cancel)
-            => Task.FromResult<Core.Security.AdSecurityReading?>(new Core.Security.AdSecurityReading(
+        {
+            f.Read("ad-security");
+            return Task.FromResult<Core.Security.AdSecurityReading?>(f.AdSecurity ?? new Core.Security.AdSecurityReading(
                 new[] { "svc.sql" }, Array.Empty<string>(), new[] { "oud.account" }, Array.Empty<string>(), DateTimeOffset.Now.AddDays(-400),
                 Array.Empty<string>(), new[] { ("SRV-OUD", "Windows Server 2008 R2") }));
+        }
 
         public Task<IReadOnlyList<Core.Security.GpoInfo>?> ReadGpoAsync(CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Security.GpoInfo>?>(new[]
@@ -803,9 +821,9 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
             => Task.FromResult<IReadOnlyList<Core.Devices.IntuneDevice>?>(new[]
             {
                 new Core.Devices.IntuneDevice("d1", "LAPTOP-1", "an.peeters@test.be", "Windows", "10.0.22631", "compliant", DateTimeOffset.Now.AddDays(-1), "company") { EntraDeviceId = "e-dev-1", Serial = "SN-0001", Model = "Latitude 5440", Encrypted = true },
-                new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal") { EntraDeviceId = "e-dev-2" },
+                new Core.Devices.IntuneDevice("d2", "GSM-BO", "bo.janssens@test.be", "iOS", "16.1", "noncompliant", DateTimeOffset.Now.AddDays(-3), "personal") { EntraDeviceId = "e-dev-2" },
                 new Core.Devices.IntuneDevice("d3", "LAPTOP-OUD", "cas@test.be", "Windows", "10.0.19045", "compliant", DateTimeOffset.Now.AddDays(-60), "company"),
-            });
+            }.Concat(f.ExtraIntuneDevices).ToList());
 
         public Task<IReadOnlyList<Core.Devices.EntraDevice>?> ReadEntraDevicesAsync(CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Devices.EntraDevice>?>(new[]
@@ -814,7 +832,28 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
                 new Core.Devices.EntraDevice("o2", "e-dev-2", "GSM-BO", "iOS", "16.1", true, DateTimeOffset.Now.AddDays(-3), "Workplace"),
                 new Core.Devices.EntraDevice("o3", "e-dev-3", "PC-NIEUW", "Windows", "10.0.22631", true, DateTimeOffset.Now.AddDays(-2), "ServerAd"),
                 new Core.Devices.EntraDevice("o4", "e-dev-4", "TABLET-X", "Windows", "10.0.26100", true, DateTimeOffset.Now.AddDays(-5), "AzureAd"),
+            }.Concat(f.ExtraEntraDevices).ToList());
+
+        public Task<Core.Devices.ComplianceReading?> ReadComplianceAsync(CancellationToken cancel) => Task.FromResult(f.Compliance);
+
+        public Task<Core.Security.TenantSettingsReading?> ReadTenantSettingsAsync(CancellationToken cancel) => Task.FromResult(f.TenantSettings);
+
+        public Task<Core.Security.SmtpAuthUsage?> ReadSmtpAuthUsageAsync(CancellationToken cancel) => Task.FromResult(f.SmtpUsage);
+
+        public Task<IReadOnlyList<Core.Devices.DeviceComplianceState>?> ReadDeviceComplianceAsync(string managedDeviceId, CancellationToken cancel)
+            => Task.FromResult<IReadOnlyList<Core.Devices.DeviceComplianceState>?>(new[]
+            {
+                new Core.Devices.DeviceComplianceState("Basis Windows", "nonCompliant", new[]
+                {
+                    new Core.Devices.ComplianceSettingState("BitLocker vereist", "nonCompliant"), new Core.Devices.ComplianceSettingState("Firewall", "compliant"),
+                }),
             });
+
+        public Task<int?> CountBitLockerKeysAsync(string deviceId, CancellationToken cancel)
+        {
+            f.Read("bitlocker-count:" + deviceId);
+            return Task.FromResult<int?>(2);
+        }
 
         public Task<Core.Devices.CollaborationReading?> ReadCollaborationAsync(CancellationToken cancel)
             => Task.FromResult<Core.Devices.CollaborationReading?>(new Core.Devices.CollaborationReading(
@@ -922,6 +961,12 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
     private sealed class FakeExchange(FakeFactory f) : IExchangeConnection, IExecutor
     {
         public TargetSystem TargetSystem => TargetSystem.Exchange;
+
+        public Task<Core.Security.ExchangeOrganisationReading?> ReadOrganisationAsync(CancellationToken cancel)
+        {
+            f.Read("exchange-organisatie");
+            return Task.FromResult(f.ExchangeOrganisation);
+        }
 
         public Task<IReadOnlyList<Core.Security.ForwardingRule>> ReadForwardingAsync(bool includeRules, IProgress<string>? progress, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Security.ForwardingRule>>(new[]

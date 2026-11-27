@@ -12,7 +12,8 @@ public sealed partial class ManagementState
     public IReadOnlyList<ReviewSetting> ReviewSettings() => AccessReviews.Read(Database.ReadDocument(AccessReviews.Document));
 
     /// <summary>Everything to review in the current data, with when it is due.</summary>
-    public IReadOnlyList<ReviewDue> AccessReviewsDue() => AccessReviews.Due(AccessReviews.Subjects(Data), ReviewSettings(), DateTimeOffset.Now);
+    public IReadOnlyList<ReviewDue> AccessReviewsDue()
+        => AccessReviews.Due(AccessReviews.Subjects(Data, IsHistoric ? null : SecurityCheckResults), ReviewSettings(), DateTimeOffset.Now);
 
     /// <summary>The reviewer or the interval of a subject (needs the role for managing).</summary>
     public void SaveReviewSetting(ReviewSetting setting)

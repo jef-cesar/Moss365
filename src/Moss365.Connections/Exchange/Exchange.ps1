@@ -61,6 +61,8 @@ $Toegestaan = @{
     'RechtVerwijderen' = @('Identity', 'Recht', 'Trustee')
     'PostvakAanmaken'  = @('Name', 'DisplayName', 'Alias', 'PrimarySmtpAddress')
     'GroepAanmaken'    = @('Name', 'DisplayName', 'Alias', 'PrimarySmtpAddress', 'Type')
+    'LeesOrganisatie'  = @()
+    'OrganisatieInstellen' = @('Instelling', 'Waarde', 'Identity')
 }
 $Getallen = @('BookingWindowInDays', 'MaximumDurationInMinutes', 'Floor', 'Capacity')
 $JaNee = @('AllowConflicts', 'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward')
@@ -378,6 +380,13 @@ function Invoke-Opdracht {
             New-Mailbox -Shared @P -ErrorAction Stop | Out-Null
             return $null
         }
+        'LeesOrganisatie' {
+            return (Get-OrganisatieVoorApp)
+        }
+        'OrganisatieInstellen' {
+            Set-OrganisatieVoorApp -P $P
+            return $null
+        }
         'GroepAanmaken' {
             # Security (mail-enabled security group, default) or Distribution (distribution list)
             $type = 'Security'
@@ -386,6 +395,112 @@ function Invoke-Opdracht {
             New-DistributionGroup @P -Type $type -MemberJoinRestriction Closed -MemberDepartRestriction Closed -ErrorAction Stop | Out-Null
             return $null
         }
+    }
+}
+
+function Get-TxtRecords {
+    # TXT records of a name through DNS (for SPF and DMARC); an empty list when there are none or DNS does not answer
+    param([string]$Naam, [string]$Begin)
+    try {
+        return @(Resolve-DnsName -Name $Naam -Type TXT -DnsOnly -ErrorAction Stop |
+            Where-Object { $_.Strings } | ForEach-Object { ($_.Strings -join '') } | Where-Object { $_ -like "$Begin*" })
+    }
+    catch { return @() }
+}
+
+function Get-OrganisatieVoorApp {
+    # Read only (R16): the organisation settings the advice looks at, and SPF, DKIM and DMARC per accepted domain
+    $transport = Get-TransportConfig -ErrorAction Stop
+    $smtp = @(Get-CASMailbox -ResultSize Unlimited -Filter 'SmtpClientAuthenticationDisabled -eq $false' -ErrorAction SilentlyContinue |
+        ForEach-Object { "$($_.PrimarySmtpAddress)" })
+    $spam = @(Get-HostedOutboundSpamFilterPolicy -ErrorAction SilentlyContinue |
+        ForEach-Object { [ordered]@{ Name = "$($_.Name)"; Mode = "$($_.AutoForwardingMode)"; Default = [bool]$_.IsDefault } })
+    $extern = $null
+    try { $extern = [bool](@(Get-ExternalInOutlook -ErrorAction Stop)[0].Enabled) } catch { }
+    $audit = $null
+    try { $audit = [bool](Get-AdminAuditLogConfig -ErrorAction Stop).UnifiedAuditLogIngestionEnabled } catch { }
+    $dkim = @{}
+    foreach ($d in @(Get-DkimSigningConfig -ErrorAction SilentlyContinue)) { $dkim["$($d.Domain)"] = $d }
+    $domeinen = foreach ($a in @(Get-AcceptedDomain -ErrorAction SilentlyContinue)) {
+        $naam = "$($a.DomainName)"
+        $k = $dkim[$naam]
+        # An empty array through an if statement becomes $null: so first in a variable
+        $spf = @()
+        $dmarc = @()
+        if ($naam -notlike '*.onmicrosoft.com') {
+            $spf = @(Get-TxtRecords -Naam $naam -Begin 'v=spf1')
+            $dmarc = @(Get-TxtRecords -Naam "_dmarc.$naam" -Begin 'v=DMARC1')
+        }
+        [ordered]@{
+            Domain      = $naam
+            Spf         = @($spf)
+            Dmarc       = @($dmarc)
+            DkimEnabled = if ($k) { [bool]$k.Enabled } else { $null }
+            Selector1   = if ($k) { "$($k.Selector1CNAME)" } else { '' }
+            Selector2   = if ($k) { "$($k.Selector2CNAME)" } else { '' }
+        }
+    }
+    $preset = $null
+    try {
+        $eop = @(Get-EOPProtectionPolicyRule -ErrorAction Stop | ForEach-Object { [ordered]@{ Name = "$($_.Name)"; State = "$($_.State)" } })
+        $atp = @()
+        $atpOk = $true
+        try { $atp = @(Get-ATPProtectionPolicyRule -ErrorAction Stop | ForEach-Object { [ordered]@{ Name = "$($_.Name)"; State = "$($_.State)" } }) }
+        catch { $atpOk = $false }
+        $preset = [ordered]@{ Eop = @($eop); Atp = @($atp); AtpBeschikbaar = $atpOk }
+    }
+    catch { }
+    return [ordered]@{
+        SmtpAuthUit        = [bool]$transport.SmtpClientAuthenticationDisabled
+        SmtpAuthPostvakken = @($smtp)
+        Doorsturen         = @($spam)
+        ExternLabel        = $extern
+        Auditlog           = $audit
+        Domeinen           = @($domeinen)
+        Preset             = $preset
+    }
+}
+
+function Set-OrganisatieVoorApp {
+    # Only these settings, with these values (R16); the app keeps the previous value of each (undo)
+    param([hashtable]$P)
+    $aan = "$($P.Waarde)" -in @('True', 'true')
+    switch ([string]$P.Instelling) {
+        'SmtpAuth' { Set-TransportConfig -SmtpClientAuthenticationDisabled (-not $aan) -ErrorAction Stop }
+        'SmtpAuthPostvak' {
+            # An empty value: the mailbox follows the organisation again
+            if ("$($P.Waarde)" -eq '') { Set-CASMailbox -Identity $P.Identity -SmtpClientAuthenticationDisabled $null -ErrorAction Stop }
+            else { Set-CASMailbox -Identity $P.Identity -SmtpClientAuthenticationDisabled (-not $aan) -ErrorAction Stop }
+        }
+        'Doorsturen' {
+            if ("$($P.Waarde)" -notin @('Automatic', 'On', 'Off')) { throw "'$($P.Waarde)' is not a forwarding mode." }
+            Set-HostedOutboundSpamFilterPolicy -Identity $P.Identity -AutoForwardingMode $P.Waarde -ErrorAction Stop
+        }
+        'ExternLabel' { Set-ExternalInOutlook -Enabled $aan -ErrorAction Stop }
+        'Auditlog' { Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $aan -ErrorAction Stop }
+        'Dkim' {
+            if (Get-DkimSigningConfig -Identity $P.Identity -ErrorAction SilentlyContinue) { Set-DkimSigningConfig -Identity $P.Identity -Enabled $aan -ErrorAction Stop }
+            else { New-DkimSigningConfig -DomainName $P.Identity -Enabled $aan -ErrorAction Stop }
+        }
+        'Preset' {
+            # The preset rule of Standard or Strict for every accepted domain; the Defender for Office part where it exists
+            if ("$($P.Identity)" -notin @('Standard Preset Security Policy', 'Strict Preset Security Policy')) { throw "'$($P.Identity)' is not a preset policy." }
+            $atp = Get-ATPProtectionPolicyRule -Identity $P.Identity -ErrorAction SilentlyContinue
+            if ($aan) {
+                $domeinen = @(Get-AcceptedDomain -ErrorAction Stop | ForEach-Object { "$($_.DomainName)" })
+                Set-EOPProtectionPolicyRule -Identity $P.Identity -RecipientDomainIs $domeinen -ErrorAction Stop
+                Enable-EOPProtectionPolicyRule -Identity $P.Identity -Confirm:$false -ErrorAction Stop
+                if ($atp) {
+                    Set-ATPProtectionPolicyRule -Identity $P.Identity -RecipientDomainIs $domeinen -ErrorAction Stop
+                    Enable-ATPProtectionPolicyRule -Identity $P.Identity -Confirm:$false -ErrorAction Stop
+                }
+            }
+            else {
+                Disable-EOPProtectionPolicyRule -Identity $P.Identity -Confirm:$false -ErrorAction Stop
+                if ($atp) { Disable-ATPProtectionPolicyRule -Identity $P.Identity -Confirm:$false -ErrorAction Stop }
+            }
+        }
+        default { throw "Setting '$($P.Instelling)' is not allowed." }
     }
 }
 

@@ -37,6 +37,14 @@
 .PARAMETER Beheerders
     UPNs of the administrators who may use the app. Default: whoever runs this script.
 
+.PARAMETER Onderdelen
+    Parts with a permission of their own, only for a tenant that uses them: entra-device-cleanup (disable and delete
+    old devices in Entra; Directory.AccessAsUser.All), compliance-policies (baseline compliance policies;
+    DeviceManagementConfiguration.ReadWrite.All), tenant-policies (apps, consent and guests; Policy.ReadWrite.Authorization
+    and Policy.ReadWrite.ConsentRequest), authentication-methods (Policy.ReadWrite.AuthenticationMethod), pim (admin
+    roles made eligible; RoleEligibilitySchedule.ReadWrite.Directory and RoleAssignmentSchedule.ReadWrite.Directory) and
+    sharepoint-settings (SharePointTenantSettings.ReadWrite.All). The wizard in the app does the same per tenant.
+
 .PARAMETER Naam
     Name of the app registration. Default "Moss365".
 
@@ -53,7 +61,9 @@
 param(
     [string[]]$Beheerders,
     [string]$Naam = 'Moss365',
-    [switch]$GroepenMaken
+    [switch]$GroepenMaken,
+    [ValidateSet('entra-device-cleanup', 'compliance-policies', 'tenant-policies', 'authentication-methods', 'pim', 'sharepoint-settings')]
+    [string[]]$Onderdelen = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -70,8 +80,19 @@ $Rechten = @(
     'SecurityEvents.Read.All', 'RoleManagement.Read.Directory', 'IdentityRiskyUser.Read.All', # 0.34: security checks
     'DeviceManagementManagedDevices.Read.All', 'Reports.Read.All', 'SharePointTenantSettings.Read.All', # 0.36: devices, Teams, SharePoint
     'ServiceHealth.Read.All', 'ServiceMessage.Read.All', # 0.37: service health and the message center
-    'DeviceManagementManagedDevices.PrivilegedOperations.All', 'DeviceManagementManagedDevices.ReadWrite.All' # 0.39: actions on Intune devices
+    'DeviceManagementManagedDevices.PrivilegedOperations.All', 'DeviceManagementManagedDevices.ReadWrite.All', # 0.39: actions on Intune devices
+    'DeviceManagementConfiguration.Read.All' # 0.40: compliance per policy (read)
 )
+# Parts with a permission of their own (U25, U26): only asked with -Onderdelen, the same as PermissionParts in the app
+$OnderdeelRechten = @{
+    'entra-device-cleanup' = @('Directory.AccessAsUser.All')
+    'compliance-policies' = @('DeviceManagementConfiguration.ReadWrite.All')
+    'tenant-policies' = @('Policy.ReadWrite.Authorization', 'Policy.ReadWrite.ConsentRequest')
+    'authentication-methods' = @('Policy.ReadWrite.AuthenticationMethod')
+    'pim' = @('RoleEligibilitySchedule.ReadWrite.Directory', 'RoleAssignmentSchedule.ReadWrite.Directory')
+    'sharepoint-settings' = @('SharePointTenantSettings.ReadWrite.All')
+}
+foreach ($onderdeel in $Onderdelen) { $Rechten += $OnderdeelRechten[$onderdeel] }
 $ExchangeRechten = @('Exchange.Manage')
 
 # The profiles (0.8). The ids are fixed: the same as in the app (Core/Permissions/Permissions.cs), so that running again duplicates nothing.

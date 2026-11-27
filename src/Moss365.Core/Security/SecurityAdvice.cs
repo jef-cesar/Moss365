@@ -36,6 +36,9 @@ public sealed record AdviceException(string CheckKey, string Object, string Reas
 /// <summary>One point of the hardening score (one per day).</summary>
 public sealed record ScorePoint(DateOnly Date, int Score);
 
+/// <summary>The result of one check on one day (R16): what was open on a date in the past (without the lines).</summary>
+public sealed record CheckDay(DateOnly Date, string Key, CheckStatus Status, int Open, string Summary);
+
 /// <summary>The last result of every check and the score per day, kept in the tenant database (document <see cref="SecurityAdvice.Document"/>).</summary>
 public sealed record SecurityResults
 {
@@ -44,6 +47,9 @@ public sealed record SecurityResults
     public IReadOnlyList<AdviceException> Exceptions { get; init; } = Array.Empty<AdviceException>();
 
     public IReadOnlyList<ScorePoint> Scores { get; init; } = Array.Empty<ScorePoint>();
+
+    /// <summary>The result of every check per day (the last of that day), for a date in the past.</summary>
+    public IReadOnlyList<CheckDay> History { get; init; } = Array.Empty<CheckDay>();
 }
 
 /// <summary>
@@ -61,6 +67,9 @@ public static class SecurityAdvice
     public const int MaxStoredRows = 500;
 
     private const int MaxScorePoints = 800;
+
+    /// <summary>How long the result per check per day is kept.</summary>
+    public const int HistoryDays = 400;
 
     private static readonly JsonSerializerOptions Json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = false }.WithLegacyNames();
 
@@ -89,6 +98,30 @@ public static class SecurityAdvice
             "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/forest-recovery-guide/ad-forest-recovery-reset-the-krbtgt-password",
         }),
         new("gpo", 1, "T1484.001", Array.Empty<string>()),
+        new("m365-instellingen", 3, "T1556", new[]
+        {
+            "https://learn.microsoft.com/entra/fundamentals/security-defaults",
+            "https://learn.microsoft.com/entra/identity/enterprise-apps/configure-admin-consent-workflow",
+            "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-methods-manage",
+        }),
+        new("exchange-instellingen", 2, "T1114.003", new[]
+        {
+            "https://learn.microsoft.com/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission",
+            "https://learn.microsoft.com/defender-office-365/preset-security-policies",
+            "https://learn.microsoft.com/purview/audit-log-enable-disable",
+        }),
+        new("maildomeinen", 2, "T1566", new[]
+        {
+            "https://learn.microsoft.com/defender-office-365/email-authentication-about",
+            "https://learn.microsoft.com/defender-office-365/email-authentication-dkim-configure",
+        }),
+        new("gedeelde-postvakken", 1, "T1078.004", new[] { "https://learn.microsoft.com/exchange/collaboration-exo/shared-mailboxes" }),
+        new("noodaccounts", 1, "T1078.004", new[] { "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access" }),
+        new("ad-groepen", 3, "T1078.002", new[]
+        {
+            "https://learn.microsoft.com/windows-server/security/credentials-protection-and-management/protected-users-security-group",
+            "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/implementing-least-privilege-administrative-models",
+        }),
     };
 
     public static AdviceInfo? Info(string key) => All.FirstOrDefault(a => string.Equals(a.Key, key, StringComparison.OrdinalIgnoreCase));
@@ -98,54 +131,104 @@ public static class SecurityAdvice
     {
         ["PasswordNotRequired"] = 0x20,
         ["ReversibleEncryption"] = 0x80,
+        ["TrustedForDelegation"] = 0x80000,
+        ["NotDelegated"] = 0x100000,
+        ["DontRequirePreauth"] = 0x400000,
     };
 
-    /// <summary>The lines of a check that can be solved as a plan: with a fix, not OK and not accepted.</summary>
+    /// <summary>The flags the advice turns on ("sensitive and cannot be delegated"); the others it turns off.</summary>
+    public static bool TurnsOn(string flag) => flag == "NotDelegated";
+
+    /// <summary>A line can be solved as a plan: it has a fix this version knows, and is not OK or accepted.</summary>
+    private static bool CanSolve(CheckRow r)
+        => r.Fix is { } f && (AccountFlags.ContainsKey(f) || f is AdHardening.Protect or AdHardening.RemoveMember or AdHardening.AesOnly
+                                  or AdHardening.AdminCount or AdHardening.Quota or AdHardening.RecycleBin || TenantAdvice.Fixes.Contains(f) || ExchangeAdvice.Fixes.Contains(f))
+           && r.AcceptedUntil is null && r.Status != CheckStatus.Ok;
+
+    /// <summary>Guided (U16): one line per plan, with what it affects first.</summary>
+    private static bool Guided(string? fix) => AdHardening.Guided(fix) || fix is TenantAdvice.WeakMethods or ExchangeAdvice.SmtpAuth;
+
+    /// <summary>The lines of a check that are solved together in one plan: with a fix that is not guided.</summary>
     public static IReadOnlyList<CheckRow> Solvable(SecurityCheck check)
         => check.AcceptedUntil is not null
             ? Array.Empty<CheckRow>()
-            : check.Rows.Where(r => r.Fix is { } f && AccountFlags.ContainsKey(f) && r.AcceptedUntil is null && r.Status != CheckStatus.Ok).ToList();
+            : check.Rows.Where(r => CanSolve(r) && !Guided(r.Fix)).ToList();
+
+    /// <summary>A line that is solved on its own (U16, guided: one account per plan, with what it affects first).</summary>
+    public static bool SolvableAlone(SecurityCheck check, CheckRow row) => check.AcceptedUntil is null && CanSolve(row) && Guided(row.Fix);
 
     /// <summary>
-    /// The plan that solves the lines of a check (U16: low risk with undo, so a plan right away): the flag is turned off
-    /// on the AD account, with its previous value for undo. A line whose account is not in the data read gives a message.
+    /// The plan that solves the lines of a check that are not guided (U16: low risk with undo, so a plan right away),
+    /// each with its previous value for undo. A line whose account is not in the data read gives a message.
     /// </summary>
-    public static PlanOutcome Solve(InventoryData data, SecurityCheck check)
+    public static PlanOutcome Solve(InventoryData data, SecurityCheck check, AdviceContext? context = null)
     {
         var plan = new List<Change>();
         var errors = new List<string>();
         foreach (var r in Solvable(check))
         {
-            var fix = r.Fix!;
-            var user = data.AdUsers.FirstOrDefault(u => string.Equals(u.SamAccountName, r.Object, StringComparison.OrdinalIgnoreCase));
-            if (user is null)
-            {
-                errors.Add(Texts.T.Format("advice.solve.not-found", r.Object));
-                continue;
-            }
-
-            plan.Add(new Change
-            {
-                TargetSystem = TargetSystem.ActiveDirectory,
-                ChangeAction = ChangeAction.AdSetAccountFlag,
-                Target = user.DistinguishedName,
-                TargetName = user.SamAccountName,
-                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["vlag"] = fix, ["aan"] = "False" },
-                Previous = new(StringComparer.OrdinalIgnoreCase) { ["aan"] = "True" },
-                Description = Texts.T.Format("advice.solve.flag-off", FlagText(fix), user.SamAccountName),
-                CurrentValue = Texts.T["device.enabled"],
-                NewValue = Texts.T["device.disabled"],
-                Warning = fix == "ReversibleEncryption" ? Texts.T["advice.solve.reversible-warning"] : null,
-            });
+            var outcome = SolveRow(data, r, context);
+            plan.AddRange(outcome.Plan);
+            errors.AddRange(outcome.Errors);
         }
 
         return PlanOutcome.Of(plan, errors);
+    }
+
+    /// <summary>The plan for one line: an account flag, or a fix of <see cref="AdHardening"/>.</summary>
+    public static PlanOutcome SolveRow(InventoryData data, CheckRow r, AdviceContext? context = null)
+    {
+        if ((AdHardening.Plan(r, data) ?? TenantAdvice.Plan(r, data, context) ?? ExchangeAdvice.Plan(r)) is { } solved)
+        {
+            return solved;
+        }
+
+        var fix = r.Fix ?? string.Empty;
+        if (!AccountFlags.ContainsKey(fix))
+        {
+            return PlanOutcome.Of(Array.Empty<Change>(), new[] { Texts.T["advice.solve.unknown-flag"] });
+        }
+
+        // The DN from the reading; lines of older results give the account name only
+        var dn = r.FixData?.GetValueOrDefault("dn") is { Length: > 0 } known ? known
+            : data.AdUsers.FirstOrDefault(u => string.Equals(u.SamAccountName, r.Object, StringComparison.OrdinalIgnoreCase))?.DistinguishedName;
+        if (dn is null)
+        {
+            return PlanOutcome.Of(Array.Empty<Change>(), new[] { Texts.T.Format("advice.solve.not-found", r.Object) });
+        }
+
+        var on = TurnsOn(fix);
+        return PlanOutcome.Of(new[]
+        {
+            new Change
+            {
+                TargetSystem = TargetSystem.ActiveDirectory,
+                ChangeAction = ChangeAction.AdSetAccountFlag,
+                Target = dn,
+                TargetName = r.Object,
+                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["vlag"] = fix, ["aan"] = on ? "True" : "False" },
+                Previous = new(StringComparer.OrdinalIgnoreCase) { ["aan"] = on ? "False" : "True" },
+                Description = Texts.T.Format(on ? "advice.solve.flag-on" : "advice.solve.flag-off", FlagText(fix), r.Object),
+                CurrentValue = on ? Texts.T["device.disabled"] : Texts.T["device.enabled"],
+                NewValue = on ? Texts.T["device.enabled"] : Texts.T["device.disabled"],
+                Warning = fix switch
+                {
+                    "ReversibleEncryption" => Texts.T["advice.solve.reversible-warning"],
+                    "TrustedForDelegation" => Texts.T["advice.delegation.warning"],
+                    "DontRequirePreauth" => Texts.T["advice.preauth.warning"],
+                    _ => null,
+                },
+            },
+        });
     }
 
     public static string FlagText(string flag) => flag switch
     {
         "PasswordNotRequired" => Texts.T["advice.flag.password-not-required"],
         "ReversibleEncryption" => Texts.T["advice.flag.reversible-encryption"],
+        "TrustedForDelegation" => Texts.T["advice.flag.delegation"],
+        "NotDelegated" => Texts.T["advice.flag.sensitive"],
+        "DontRequirePreauth" => Texts.T["advice.flag.preauth"],
         _ => flag,
     };
 
@@ -220,8 +303,18 @@ public static class SecurityAdvice
     {
         var kept = check with { Rows = check.Rows.Take(MaxStoredRows).ToList(), Time = now };
         var last = results.Last.Where(c => !string.Equals(c.Key, check.Key, StringComparison.OrdinalIgnoreCase)).Append(kept).ToList();
-        return WithScore(results with { Last = last }, now);
+        var today = DateOnly.FromDateTime(now.LocalDateTime);
+        var history = results.History
+            .Where(h => h.Date >= today.AddDays(-HistoryDays) && !(h.Date == today && string.Equals(h.Key, check.Key, StringComparison.OrdinalIgnoreCase)))
+            .Append(new CheckDay(today, check.Key, check.Status, check.Rows.Count(r => r.Status is CheckStatus.Attention or CheckStatus.Problem), check.Summary))
+            .OrderBy(h => h.Date).ThenBy(h => h.Key, StringComparer.Ordinal).ToList();
+        return WithScore(results with { Last = last, History = history }, now);
     }
+
+    /// <summary>The result of every check as it was on a date: per check the last day at or before it.</summary>
+    public static IReadOnlyDictionary<string, CheckDay> At(SecurityResults results, DateOnly date)
+        => results.History.Where(h => h.Date <= date).GroupBy(h => h.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.OrderBy(h => h.Date).Last(), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The results with an accepted risk added, or (<paramref name="add"/> false) lifted, and today's score.</summary>
     public static SecurityResults WithException(SecurityResults results, AdviceException exception, bool add, DateTimeOffset now)

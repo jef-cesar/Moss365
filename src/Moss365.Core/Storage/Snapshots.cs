@@ -49,6 +49,9 @@ public static class Snapshots
         [InventoryLoader.ExoGroupMembers] = new[] { "Groep", "Lid" },
         [InventoryLoader.ExoMailboxes] = new[] { "PrimarySmtpAddress" },
         [InventoryLoader.ExoMailboxPermissions] = new[] { "Postvak", "Recht", "Gebruiker" },
+        [Devices.DeviceSnapshot.AdTable] = Devices.DeviceSnapshot.KeyColumns[Devices.DeviceSnapshot.AdTable],
+        [Devices.DeviceSnapshot.EntraTable] = Devices.DeviceSnapshot.KeyColumns[Devices.DeviceSnapshot.EntraTable],
+        [Devices.DeviceSnapshot.IntuneTable] = Devices.DeviceSnapshot.KeyColumns[Devices.DeviceSnapshot.IntuneTable],
     };
 
     /// <summary>The key of a row in its table.</summary>

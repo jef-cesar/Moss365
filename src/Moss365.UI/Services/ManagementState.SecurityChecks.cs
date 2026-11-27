@@ -25,6 +25,18 @@ public sealed partial class ManagementState
         {
             var now = DateTimeOffset.Now;
             var stored = StoredSecurity;
+            if (IsHistoric && AsOf is { } shown)
+            {
+                // On a date in the past (R16): what was open then, per check; the lines themselves are not kept per day
+                var date = DateOnly.FromDateTime(shown.Time.LocalDateTime);
+                var keys = SecurityCheckList().Select(c => c.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                return SecurityAdvice.At(stored, date).Where(d => keys.Contains(d.Key)).ToDictionary(d => d.Key,
+                    d => SecurityAdvice.Apply(new SecurityCheck(d.Key, CheckTitle(d.Key), d.Value.Status, d.Value.Summary, Array.Empty<CheckRow>())
+                    {
+                        Time = new DateTimeOffset(d.Value.Date.ToDateTime(TimeOnly.MinValue)),
+                    }, stored.Exceptions.Where(e => e.Since <= shown.Time), shown.Time), StringComparer.OrdinalIgnoreCase);
+            }
+
             var all = new Dictionary<string, SecurityCheck>(StringComparer.OrdinalIgnoreCase);
             foreach (var c in stored.Last)
             {
@@ -42,7 +54,9 @@ public sealed partial class ManagementState
     }
 
     /// <summary>The hardening score (0 to 100) of the checks of this tenant, or null when nothing was checked yet.</summary>
-    public int? HardeningScore => SecurityAdvice.Score(SecurityCheckResults.Values);
+    public int? HardeningScore => IsHistoric && AsOf is { } shown
+        ? StoredSecurity.Scores.LastOrDefault(p => p.Date <= DateOnly.FromDateTime(shown.Time.LocalDateTime))?.Score
+        : SecurityAdvice.Score(SecurityCheckResults.Values);
 
     /// <summary>The hardening score per day, as kept.</summary>
     public IReadOnlyList<ScorePoint> HardeningScores => StoredSecurity.Scores;
@@ -118,12 +132,14 @@ public sealed partial class ManagementState
             {
                 ("doorsturen", Texts.T["code.management-state-security-checks.forwarding-outside"]), ("app-geheimen", Texts.T["code.management-state-security-checks.secrets-and-certificates-of-apps"]), ("app-rechten", Texts.T["code.management-state-security-checks.broad-app-permissions-and-consents"]),
                 ("secure-score", "Microsoft Secure Score"), ("rollen", Texts.T["code.management-state-security-checks.admin-roles-and-pim"]), ("zwakke-mfa", Texts.T["security.check.weak-mfa-methods"]), ("risico", Texts.T["security.check.risky-users"]),
+                ("m365-instellingen", Texts.T["security.check.tenant-settings"]), ("exchange-instellingen", Texts.T["security.check.exchange"]), ("maildomeinen", Texts.T["security.check.mail-domains"]),
+                ("gedeelde-postvakken", Texts.T["security.check.shared-sign-in"]), ("noodaccounts", Texts.T["security.check.emergency"]),
             });
         }
 
         if (HasAd)
         {
-            list.AddRange(new[] { ("ad-beveiliging", Texts.T["security.check.ad-security"]), ("gpo", Texts.T["security.check.group-policy-gpo"]) });
+            list.AddRange(new[] { ("ad-beveiliging", Texts.T["security.check.ad-security"]), ("ad-groepen", Texts.T["security.check.ad-groups"]), ("gpo", Texts.T["security.check.group-policy-gpo"]) });
         }
 
         return list;
@@ -146,10 +162,16 @@ public sealed partial class ManagementState
                 "app-geheimen" => SecurityChecks.AppCredentials(await AppsAsync(round, cancel), now),
                 "app-rechten" => SecurityChecks.AppPermissions(await AppsAsync(round, cancel)),
                 "secure-score" => SecurityChecks.SecureScore(Graph() is { } g3 ? await g3.ReadSecureScoreAsync(cancel) : null),
-                "rollen" => SecurityChecks.Roles(Graph() is { } g4 ? await g4.ReadRoleAssignmentsAsync(cancel) : null),
+                "rollen" => SecurityChecks.Roles(Graph() is { } g4 ? await g4.ReadRoleAssignmentsAsync(cancel) : null, Data, Config, User),
+                "m365-instellingen" => TenantAdvice.Check(Graph() is { } g6 ? await g6.ReadTenantSettingsAsync(cancel) : null, Data),
+                "exchange-instellingen" => ExchangeAdvice.Check(await ExchangeOrganisationAsync(round, cancel), Graph() is { } g7 ? await g7.ReadSmtpAuthUsageAsync(cancel) : null),
+                "maildomeinen" => ExchangeAdvice.Domains(await ExchangeOrganisationAsync(round, cancel)),
+                "gedeelde-postvakken" => TenantAdvice.SharedMailboxes(Data),
+                "noodaccounts" => TenantAdvice.Emergency(Config, KeptSignIns(now.AddDays(-30), now.AddMinutes(1)), now),
                 "zwakke-mfa" => SecurityChecks.WeakMfa(Data),
                 "risico" => SecurityChecks.Risky(Graph() is { } g5 ? await g5.ReadRiskyUsersAsync(cancel) : null),
-                "ad-beveiliging" => SecurityChecks.AdSecurity(_factory?.Ad(EffectiveSettings, AdPassword) is { } a1 ? await a1.ReadSecurityAsync(cancel) : null, now),
+                "ad-beveiliging" => SecurityChecks.AdSecurity(await AdSecurityAsync(round, cancel), now),
+                "ad-groepen" => AdHardening.Groups(await AdSecurityAsync(round, cancel)),
                 "gpo" => SecurityChecks.Gpo(_factory?.Ad(EffectiveSettings, AdPassword) is { } a2 ? await a2.ReadGpoAsync(cancel) : null),
                 _ => SecurityCheck.Unknown(key, key, Texts.T["code.management-state-security-checks.unknown-check"]),
             };
@@ -177,6 +199,28 @@ public sealed partial class ManagementState
         return round is null ? graph.ReadAppsAsync(cancel) : (round.Apps ??= graph.ReadAppsAsync(cancel));
     }
 
+    /// <summary>The organisation settings of Exchange: read once per round (two checks use them).</summary>
+    private Task<ExchangeOrganisationReading?> ExchangeOrganisationAsync(SecurityCheckRound? round, CancellationToken cancel)
+    {
+        if (!HasMicrosoft365 || _factory?.Exchange(EffectiveSettings) is not { } exchange)
+        {
+            return Task.FromResult<ExchangeOrganisationReading?>(null);
+        }
+
+        return round is null ? exchange.ReadOrganisationAsync(cancel) : (round.Exchange ??= exchange.ReadOrganisationAsync(cancel));
+    }
+
+    /// <summary>The security reading of AD: read once per round (two checks use it), or fresh for a check on its own.</summary>
+    private Task<AdSecurityReading?> AdSecurityAsync(SecurityCheckRound? round, CancellationToken cancel)
+    {
+        if (!HasAd || _factory?.Ad(EffectiveSettings, AdPassword) is not { } ad)
+        {
+            return Task.FromResult<AdSecurityReading?>(null);
+        }
+
+        return round is null ? ad.ReadSecurityAsync(cancel) : (round.AdSecurity ??= ad.ReadSecurityAsync(cancel));
+    }
+
     private async Task<IReadOnlyList<ForwardingRule>?> ForwardingAsync(bool withRules, CancellationToken cancel)
         => HasMicrosoft365 && _factory?.Exchange(EffectiveSettings) is { } exchange ? await exchange.ReadForwardingAsync(withRules, null, cancel) : null;
 
@@ -193,4 +237,8 @@ public sealed partial class ManagementState
 public sealed class SecurityCheckRound
 {
     internal Task<AppsReading?>? Apps { get; set; }
+
+    internal Task<AdSecurityReading?>? AdSecurity { get; set; }
+
+    internal Task<ExchangeOrganisationReading?>? Exchange { get; set; }
 }

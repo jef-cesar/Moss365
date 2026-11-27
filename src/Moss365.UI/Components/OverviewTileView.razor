@@ -9,6 +9,13 @@
     {
         <div class="kb-zacht">@trend</div>
     }
+    @if (Tile.History.Count >= 2)
+    {
+        <svg viewBox="0 0 @W @H" class="kb-verloop-lijn kb-mini" role="img"
+             aria-label="@T.Format("overview.history", Tile.History[0].Value, Tile.History[0].Date.ToDateTime(TimeOnly.MinValue), Tile.History[^1].Value, Tile.History[^1].Date.ToDateTime(TimeOnly.MinValue))">
+            <path d="@Line" class="kb-verloop-pad" />
+        </svg>
+    }
     @if (Tile.Value is null)
     {
         <div class="kb-zacht">@T["overview.not-known"]</div>
@@ -24,4 +31,23 @@
     [Parameter] public int Days { get; set; } = 30;
 
     private string Number => Overview.Number(Tile);
+
+    // The small line: the counts kept per day, without axes (every tile its own scale)
+    private const int W = 120, H = 28, M = 3;
+
+    private string Line
+    {
+        get
+        {
+            var points = Tile.History;
+            var first = points[0].Date.DayNumber;
+            var last = Math.Max(first + 1, points[^1].Date.DayNumber);
+            var min = points.Min(p => p.Value);
+            var max = points.Max(p => p.Value);
+            string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+            double X(DateOnly d) => M + (W - 2 * M) * (d.DayNumber - first) / (double)(last - first);
+            double Y(int v) => max == min ? H / 2.0 : H - M - (H - 2 * M) * (v - min) / (double)(max - min);
+            return "M" + string.Join(" L", points.Select(p => $"{F(X(p.Date))},{F(Y(p.Value))}"));
+        }
+    }
 }

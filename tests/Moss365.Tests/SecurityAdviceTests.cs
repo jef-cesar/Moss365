@@ -132,4 +132,27 @@ public class SecurityAdviceTests
         var accepted = SecurityAdvice.Apply(check, new[] { SecurityAdvice.Accept(check.Key, "svc-oud", "leverancier", "b", Now, new DateOnly(2027, 1, 1)) }, Now);
         Assert.DoesNotContain(SecurityAdvice.Solvable(accepted), r => r.Object == "svc-oud");
     }
+
+    [Fact]
+    public void TheResultOfEveryCheckIsKeptPerDayForADateInThePast()
+    {
+        var problem = Check("app-geheimen", CheckStatus.Problem, new CheckRow("App", "verlopen", CheckStatus.Problem), new CheckRow("Andere", "ok", CheckStatus.Ok));
+        var results = SecurityAdvice.WithResult(new SecurityResults(), problem, Now.AddDays(-3));
+        results = SecurityAdvice.WithResult(results, problem with { Status = CheckStatus.Attention }, Now.AddDays(-3).AddHours(1)); // the last of the day counts
+        results = SecurityAdvice.WithResult(results, Check("app-geheimen", CheckStatus.Ok), Now);
+        results = SecurityAdvice.WithResult(results, Check("gpo", CheckStatus.Attention), Now.AddDays(-1));
+
+        Assert.Equal(3, results.History.Count);
+        var then = SecurityAdvice.At(results, DateOnly.FromDateTime(Now.AddDays(-2).LocalDateTime));
+        Assert.Equal((CheckStatus.Attention, 1), (then["app-geheimen"].Status, then["app-geheimen"].Open));
+        Assert.False(then.ContainsKey("gpo")); // not checked yet on that day
+        var today = SecurityAdvice.At(results, DateOnly.FromDateTime(Now.LocalDateTime));
+        Assert.Equal((CheckStatus.Ok, CheckStatus.Attention), (today["app-geheimen"].Status, today["gpo"].Status));
+
+        // Kept for 400 days; the document still reads without history (written before 0.40)
+        var later = SecurityAdvice.WithResult(results, Check("gpo", CheckStatus.Ok), Now.AddDays(SecurityAdvice.HistoryDays + 2));
+        Assert.DoesNotContain(later.History, h => h.Date < DateOnly.FromDateTime(Now.LocalDateTime));
+        Assert.Empty(SecurityAdvice.Read("{\"last\":[]}").History);
+        Assert.Equal(3, SecurityAdvice.Read(SecurityAdvice.Write(results)).History.Count);
+    }
 }

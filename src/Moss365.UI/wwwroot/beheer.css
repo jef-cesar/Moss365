@@ -512,6 +512,7 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 .kb-verloop-verschil { grid-area: verschil; align-self: end; font-size: 0.85rem; text-align: right; }
 .kb-verloop-lijn, .kb-verloop-leeg { grid-area: lijn; }
 .kb-verloop-lijn { width: 100%; height: auto; }
+.kb-tegel .kb-mini { display: block; max-width: 8rem; margin-top: 0.3rem; }
 .kb-verloop-pad { fill: none; stroke: var(--kb-g-reeks); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .kb-verloop-vlak { fill: var(--kb-g-reeks); fill-opacity: 0.1; }
 .kb-verloop-punt { fill: var(--kb-g-reeks); stroke: var(--kb-vlak); stroke-width: 2; }

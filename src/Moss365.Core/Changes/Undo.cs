@@ -38,6 +38,8 @@ public static class Undo
         ChangeAction.AdSetAttributes, ChangeAction.GraphSetAttributes, ChangeAction.GraphSetGroupAttributes,
         ChangeAction.ExchangeUpdateGroup, ChangeAction.ExchangeUpdateMailbox, ChangeAction.ExchangeAutoReply, ChangeAction.GraphSetManager,
         ChangeAction.GraphUpdateCaPolicy, ChangeAction.GraphUpdateCaLocation, ChangeAction.AdSetAccountFlag, ChangeAction.IntuneDeviceAction,
+        ChangeAction.GraphSetDeviceEnabled, ChangeAction.IntuneSetComplianceSettings, ChangeAction.AdHardening,
+        ChangeAction.GraphUpdatePolicy, ChangeAction.GraphRoleEligibility, ChangeAction.ExchangeOrganisationSetting,
     };
 
     /// <summary>Can this entry be undone? If not, why not.</summary>
@@ -68,6 +70,11 @@ public static class Undo
             return r.Previous?.ContainsKey("inhoud") == true ? null : Texts.T["code.undo.the-app-does-not-delete"];
         }
 
+        if (action == ChangeAction.AdHardening && r.Parameters.GetValueOrDefault("wat") == "recycleBin")
+        {
+            return Texts.T["advice.recyclebin.no-undo"];
+        }
+
         if (action == ChangeAction.IntuneDeviceAction && r.Previous is not { Count: > 0 })
         {
             return Texts.T["device.undo.not"];
@@ -90,6 +97,8 @@ public static class Undo
             ChangeAction.GraphCreateTemporaryAccessPass => Texts.T["code.undo.a-temporary-access-pass-expires"],
             ChangeAction.GraphSendMail => Texts.T["code.undo.a-sent-e-mail-cannot"],
             ChangeAction.GraphRemoveGuest => Texts.T["code.undo.restore-through-entra-deleted-users"],
+            ChangeAction.GraphDeleteDevice or ChangeAction.IntuneDeleteDevice => Texts.T["device.cleanup.no-undo"],
+            ChangeAction.IntuneCreateCompliancePolicy => Texts.T["compliance.template.no-undo"],
             ChangeAction.AdSetPassword => Texts.T["code.undo.a-previous-password-cannot-come"],
             ChangeAction.GraphRevokeSessions => Texts.T["code.undo.revoked-sessions-cannot-come-back"],
             ChangeAction.ExchangeConvertToSharedMailbox => Texts.T["code.undo.convert-the-mailbox-back-yourself"],

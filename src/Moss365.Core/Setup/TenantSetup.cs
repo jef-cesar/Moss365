@@ -33,6 +33,7 @@ public static class AppManifest
         "DeviceManagementManagedDevices.Read.All", "Reports.Read.All", "SharePointTenantSettings.Read.All",
         "ServiceHealth.Read.All", "ServiceMessage.Read.All",
         "DeviceManagementManagedDevices.PrivilegedOperations.All", "DeviceManagementManagedDevices.ReadWrite.All",
+        "DeviceManagementConfiguration.Read.All",
     };
 
     /// <summary>Exchange Online: so that Exchange uses the same sign-in as Graph.</summary>
@@ -181,8 +182,9 @@ public sealed record SetupAssessment(IReadOnlyList<SetupItem> Items, IReadOnlyLi
     public bool Ready => Plan.Count == 0 && ClientId is not null && Items.All(i => i.Status != SetupStatus.Missing);
 }
 
-/// <summary>Choices in the wizard.</summary>
-public sealed record SetupChoices(bool CreateGroups = true, bool AssignSignedIn = true);
+/// <summary>Choices in the wizard; <paramref name="Parts"/> are the parts with a permission of their own that are on
+/// (<see cref="PermissionParts"/>).</summary>
+public sealed record SetupChoices(bool CreateGroups = true, bool AssignSignedIn = true, IReadOnlyList<string>? Parts = null);
 
 /// <summary>
 /// Compares a tenant with what Moss365 needs and makes the plan for the difference: the app registration, the
@@ -217,8 +219,12 @@ public static class TenantSetup
             return new SetupAssessment(items, plan, r.App?.AppId);
         }
 
+        // The base permissions and those of the parts that are on (U25, U26); those of parts that are off are taken away
+        var graphScopes = PermissionParts.GraphScopes(choices.Parts);
+        var notWanted = PermissionParts.NotWanted(choices.Parts);
+        var notWantedIds = notWanted.Select(n => r.GraphSp.Scopes.TryGetValue(n, out var id) ? id : null).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
         var wanted = new List<ResourceAccess>();
-        foreach (var scope in AppManifest.GraphScopes)
+        foreach (var scope in graphScopes)
         {
             if (r.GraphSp.Scopes.TryGetValue(scope, out var id))
             {
@@ -257,7 +263,7 @@ public static class TenantSetup
         else
         {
             items.Add(new(AppStep, AppManifest.Name, SetupStatus.InOrder, Texts.T.Format("code.tenant-setup.found-client-id", r.App.AppId)));
-            var update = UpdateApplication(r.App, wanted, items);
+            var update = UpdateApplication(r.App, wanted, notWantedIds, items);
             if (update is not null)
             {
                 plan.Add(update);
@@ -286,7 +292,7 @@ public static class TenantSetup
         }
 
         // 3. Admin consent, per API
-        foreach (var (sp, scopes) in new[] { (r.GraphSp, AppManifest.GraphScopes), (r.ExchangeSp, AppManifest.ExchangeScopes) })
+        foreach (var (sp, scopes, takeAway) in new[] { (r.GraphSp, graphScopes, notWanted), (r.ExchangeSp, AppManifest.ExchangeScopes, Array.Empty<string>()) })
         {
             if (sp is null)
             {
@@ -294,19 +300,30 @@ public static class TenantSetup
             }
 
             var grant = r.AppSp is null ? null : r.Grants.FirstOrDefault(g => g.ResourceId == sp.Id && g.ConsentType == "AllPrincipals");
-            var has = (grant?.Scope ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+            var given = (grant?.Scope ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+            var removed = given.Where(g => takeAway.Contains(g, StringComparer.OrdinalIgnoreCase)).ToList();
+            var has = given.Except(removed, StringComparer.OrdinalIgnoreCase).ToList();
             var missing = scopes.Where(s => sp.Scopes.ContainsKey(s) && !has.Contains(s, StringComparer.OrdinalIgnoreCase)).ToList();
-            if (missing.Count == 0)
+            if (removed.Count > 0)
+            {
+                items.Add(new(AppStep, Localization.Texts.T.Format("setup.consent", sp.DisplayName), SetupStatus.Missing, Texts.T.Format("setup.part.take-away", string.Join(", ", removed))));
+            }
+
+            if (missing.Count == 0 && removed.Count == 0)
             {
                 items.Add(new(AppStep, Localization.Texts.T.Format("setup.consent", sp.DisplayName), SetupStatus.InOrder, Texts.T["code.tenant-setup.admin-consent-for-all-permissions"]));
                 continue;
             }
 
             var scope = string.Join(' ', has.Concat(missing));
-            plan.Add(Graph(ChangeAction.GraphGrantConsent, AppManifest.Name, Texts.T.Format("setup.consent.plan", sp.DisplayName, string.Join(", ", missing)),
+            var description = missing.Count > 0 ? Texts.T.Format("setup.consent.plan", sp.DisplayName, string.Join(", ", missing)) : Texts.T.Format("setup.part.consent-away", sp.DisplayName, string.Join(", ", removed));
+            plan.Add(Graph(ChangeAction.GraphGrantConsent, AppManifest.Name, description,
                 dependentOf: createSp?.Id, current: grant?.Scope ?? string.Empty, newValue: scope, previous: grant is null ? null : ("scope", grant.Scope),
                 parameters: new[] { ("resourceId", sp.Id), ("scope", scope), ("grantId", grant?.Id ?? string.Empty) }));
-            items.Add(new(AppStep, Localization.Texts.T.Format("setup.consent", sp.DisplayName), SetupStatus.Missing, Texts.T.Format("code.tenant-setup.missing-for-permission-s", missing.Count)));
+            if (missing.Count > 0)
+            {
+                items.Add(new(AppStep, Localization.Texts.T.Format("setup.consent", sp.DisplayName), SetupStatus.Missing, Texts.T.Format("code.tenant-setup.missing-for-permission-s", missing.Count)));
+            }
         }
 
         // 4. A group per profile, assigned to its app role
@@ -419,7 +436,7 @@ public static class TenantSetup
         }).ToArray());
 
     /// <summary>The fields of an existing app registration that differ, as one change (null when all is in order).</summary>
-    private static Change? UpdateApplication(ApplicationInfo app, IReadOnlyList<ResourceAccess> wanted, List<SetupItem> items)
+    private static Change? UpdateApplication(ApplicationInfo app, IReadOnlyList<ResourceAccess> wanted, IReadOnlySet<string> notWantedIds, List<SetupItem> items)
     {
         var patch = new JsonObject();
         var previous = new JsonObject();
@@ -439,14 +456,17 @@ public static class TenantSetup
             what.Add(Texts.T["code.tenant-setup.public-client"]);
         }
 
-        var has = app.RequiredAccess.Select(a => (a.ResourceAppId.ToLowerInvariant(), a.Id.ToLowerInvariant())).ToHashSet();
+        // The permission of a part that is off goes out of the app registration (U25, U26)
+        var keep = app.RequiredAccess.Where(a => !(string.Equals(a.ResourceAppId, AppManifest.GraphAppId, StringComparison.OrdinalIgnoreCase) && notWantedIds.Contains(a.Id))).ToList();
+        var removed = app.RequiredAccess.Count - keep.Count;
+        var has = keep.Select(a => (a.ResourceAppId.ToLowerInvariant(), a.Id.ToLowerInvariant())).ToHashSet();
         var missing = wanted.Where(w => !has.Contains((w.ResourceAppId.ToLowerInvariant(), w.Id.ToLowerInvariant()))).ToList();
-        if (missing.Count > 0)
+        if (missing.Count > 0 || removed > 0)
         {
-            patch["requiredResourceAccess"] = RequiredAccess(app.RequiredAccess.Concat(missing));
+            patch["requiredResourceAccess"] = RequiredAccess(keep.Concat(missing));
             previous["requiredResourceAccess"] = RequiredAccess(app.RequiredAccess);
-            what.Add(Texts.T.Format("code.tenant-setup.permission-s", missing.Count));
-            items.Add(new(AppStep, Texts.T["code.tenant-setup.permissions"], SetupStatus.Missing, Texts.T.Format("code.tenant-setup.permission-s-missing-in-the", missing.Count)));
+            what.Add(Texts.T.Format("code.tenant-setup.permission-s", missing.Count + removed));
+            items.Add(new(AppStep, Texts.T["code.tenant-setup.permissions"], SetupStatus.Missing, Texts.T.Format("code.tenant-setup.permission-s-missing-in-the", missing.Count + removed)));
         }
         else
         {

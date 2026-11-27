@@ -36,8 +36,13 @@
     }
 </section>
 
+@if (State.IsHistoric && State.AsOf is { } shown)
+{
+    <div class="kb-melding" id="op-datum">@T.Format("advice.history.shown", shown.Time.LocalDateTime.ToString("d", T.Culture))</div>
+}
+
 <div class="kb-filters">
-    <button class="kb-knop kb-primair" disabled="@busy" @onclick="All">@T["security-checks.check-everything"]</button>
+    <button class="kb-knop kb-primair" disabled="@(busy || State.IsHistoric)" @onclick="All">@T["security-checks.check-everything"]</button>
     <label>@T["security-checks.alerts"]
         <select class="kb-invoer" @bind="days" aria-label="@T["security-checks.alerts"]"><option value="1">@T["security-checks.day"]</option><option value="7">@T["days.7"]</option><option value="30">@T["days.30"]</option></select>
     </label>
@@ -86,7 +91,7 @@
                     }
                 </td>
                 <td><span class="kb-filters">
-                    <button class="kb-knop kb-klein" disabled="@busy" @onclick="() => Run(key)">@T["library-panel.check"]</button>
+                    <button class="kb-knop kb-klein" disabled="@(busy || State.IsHistoric)" @onclick="() => Run(key)">@T["library-panel.check"]</button>
                     @if (c is { Rows.Count: > 0 }) { <button class="kb-knop kb-klein" @onclick="() => open = open == key ? null : key">@(open == key ? T["word.hide"] : $"Details ({c.Rows.Count})")</button> }
                     @if (MayAccept && c is not null && SecurityAdvice.Solvable(c).Count is > 0 and var solvable)
                     {
@@ -163,8 +168,16 @@
                                         }
                                     </td>
                                     <td>@r.Object</td>
-                                    <td>@if (r.Href is { Length: > 0 } href) { <a href="@href" target="_blank" rel="noopener">@r.Detail</a> } else { @r.Detail }</td>
+                                    <td>@if (r.Href is { Length: > 0 } href) { @if (href.StartsWith("http", StringComparison.OrdinalIgnoreCase)) { <a href="@href" target="_blank" rel="noopener">@r.Detail</a> } else { <a href="@href">@r.Detail</a> } } else { @r.Detail }</td>
                                     <td>
+                                        @if (MayAccept && SecurityAdvice.SolvableAlone(c, r))
+                                        {
+                                            <button class="kb-knop kb-klein kb-primair" aria-label="@T.Format("advice.solve.guided-for", r.Object)" @onclick="() => SolveOne(c, r)">@T["advice.solve.guided"]</button>
+                                        }
+                                        else if (r.AcceptedUntil is null && ScriptFor(r) is { } script)
+                                        {
+                                            <a class="kb-knop kb-klein" href="@($"scripts/starten/{Uri.EscapeDataString(script)}")">@T["advice.solve.script"]</a>
+                                        }
                                         @if (MayAccept && r.AcceptedUntil is null && r.Status is CheckStatus.Attention or CheckStatus.Problem && c.AcceptedUntil is null)
                                         {
                                             <button class="kb-knop kb-klein" @onclick="() => StartAccept(key, r.Object)">@T["advice.exception"]</button>
@@ -192,6 +205,10 @@
 {
     <p class="kb-zacht">@Html("security-checks.health", $"scripts/starten/{Uri.EscapeDataString(health)}")</p>
 }
+@if (State.HasAd && LibraryScript("Test-DomainControllerHardening") is { } hardening)
+{
+    <p class="kb-zacht">@Html("security-checks.dc-hardening", $"scripts/starten/{Uri.EscapeDataString(hardening)}")</p>
+}
 
 @code {
     private bool busy;
@@ -213,11 +230,30 @@
     // Solving advice as a plan (R16, U16): the lines with a fix of one check; shown, confirmed and run as every plan
     private (string Key, Moss365.Core.Changes.PlanOutcome Outcome)? solving;
 
-    private void Solve(SecurityCheck check) => solving = (check.Key, SecurityAdvice.Solve(State.Data, check));
+    private AdviceContext Context => new(State.Config, State.User);
+
+    private void Solve(SecurityCheck check) => solving = (check.Key, SecurityAdvice.Solve(State.Data, check, Context));
+
+    // Guided (U16): one account per plan; the plan says what it affects before anything is confirmed
+    private void SolveOne(SecurityCheck check, CheckRow row) => solving = (check.Key, SecurityAdvice.SolveRow(State.Data, row, Context));
+
+    // Advice carried out with a library script (krbtgt): the script page, with its preview (-WhatIf); only when the
+    // library has the script and the role may run scripts
+    private string? ScriptFor(CheckRow row)
+    {
+        if (row.Fix is not { } fix || !fix.StartsWith(AdHardening.ScriptPrefix, StringComparison.Ordinal) || !State.Can(Permission.Scripts) || State.IsHistoric)
+        {
+            return null;
+        }
+
+        return LibraryScript(fix[AdHardening.ScriptPrefix.Length..]);
+    }
 
     private ScorePoint? Previous => State.HardeningScores.LastOrDefault(p => p.Date < DateOnly.FromDateTime(DateTime.Today));
 
-    private string? HealthScript => State.ReadScripts().FirstOrDefault(s => string.Equals(s.Key, "Get-AdHealth", StringComparison.OrdinalIgnoreCase))?.Key;
+    private string? HealthScript => LibraryScript("Get-AdHealth");
+
+    private string? LibraryScript(string name) => State.ReadScripts().FirstOrDefault(s => string.Equals(s.Key, name, StringComparison.OrdinalIgnoreCase))?.Key;
 
     private AdviceException? ExceptionFor(string key, string obj)
         => State.AcceptedRisks.FirstOrDefault(e => string.Equals(e.CheckKey, key, StringComparison.OrdinalIgnoreCase) && string.Equals(e.Object, obj, StringComparison.OrdinalIgnoreCase));

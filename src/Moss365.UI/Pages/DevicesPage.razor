@@ -10,7 +10,7 @@
     @T["devices.computers-in-ad-that-no"]
 </p>
 
-<button class="kb-knop kb-primair" disabled="@busy" @onclick="Read">@(busy ? T["code.collaboration.reading"] : T["code.devices.read-devices"])</button>
+<button class="kb-knop kb-primair" disabled="@(busy || State.IsHistoric)" @onclick="Read">@(busy ? T["code.collaboration.reading"] : T["code.devices.read-devices"])</button>
 @if (State.DevicesNote is { } note)
 {
     <div class="kb-melding">@note</div>
@@ -96,6 +96,11 @@
     </section>
 }
 
+@if (State.HasMicrosoft365 && (State.IntuneDevices is not null || State.Compliance is not null))
+{
+    <ComplianceCard />
+}
+
 @if (State.AdComputers is not null || State.IntuneDevices is not null || State.EntraDevices is not null)
 {
     var list = State.DeviceList;
@@ -160,6 +165,42 @@
                 }
             </tbody>
         </table>
+        @if (sel.Intune is { } compliance)
+        {
+            <h3>@T["device.compliance"]</h3>
+            @if (ComplianceAnalysis.FailedBy(State.Compliance, sel.Name) is { Count: > 0 } failed)
+            {
+                <p>@T.Format("device.compliance.fails", string.Join(", ", failed.Select(p => p.Name)))</p>
+            }
+            else if (State.Compliance is not null)
+            {
+                <p class="kb-zacht">@T["device.compliance.no-failing-policy"]</p>
+            }
+            @if (!State.IsHistoric && State.Can(Permission.Helpdesk))
+            {
+                <button class="kb-knop kb-klein" disabled="@readingCompliance" @onclick="() => ReadCompliance(compliance)">@T["device.compliance.read"]</button>
+            }
+            @if (complianceNote is { } cn)
+            {
+                <p class="kb-zacht">@cn</p>
+            }
+            @if (deviceCompliance is { } states)
+            {
+                <table class="kb-tabel" id="toestel-naleving">
+                    <thead><tr><th>@T["compliance.policy"]</th><th>@T["compliance.status"]</th><th>@T["device.compliance.failing-settings"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var st in states)
+                        {
+                            <tr><td>@st.Policy</td><td>@st.State</td><td>@(st.Failing.Count == 0 ? "-" : string.Join(", ", st.Failing.Select(f => f.Setting)))</td></tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+        @if (!State.IsHistoric && State.Can(Permission.Helpdesk) && (sel.Entra is not null || sel.Ad is not null))
+        {
+            <p><a href="@($"sleutels?toestel={Uri.EscapeDataString(sel.Name)}")">@T["device.keys-link"]</a> <span class="kb-zacht">@T["device.keys-link.help"]</span></p>
+        }
         @if (sel.Intune is { } device && !State.IsHistoric)
         {
             <h3>@T["device.actions"]</h3>
@@ -179,6 +220,7 @@
                     <button class="kb-knop kb-klein" @onclick='() => DeviceAction(device, "rename")'>@T["device.button.rename"]</button>
                     <button class="kb-knop kb-klein" @onclick='() => DeviceAction(device, "retire")'>@T["device.button.retire"]</button>
                 </div>
+                <PersonPicker Label="@T["device.new-primary-user"]" Selected="null" SelectedChanged="p => PrimaryUser(device, p)" />
                 @if (device.Personal)
                 {
                     <p class="kb-zacht">@T["device.personal-only-retire"]</p>
@@ -212,6 +254,11 @@
     <PlanView Plan="outcome.Plan" Context="@T["devices.old-computers"]" Title="@T["devices.disable-computers"]" />
 }
 
+@if (State.EntraDevices is not null || State.IntuneDevices is not null)
+{
+    <DeviceCleanupCard />
+}
+
 @code {
     // The life cycle data (R17): no longer supported, or support that ends within half a year
     private RenderFragment SupportLabel(string os, string version)
@@ -233,9 +280,45 @@
     private string typedName = string.Empty;
     private Moss365.Core.Changes.PlanOutcome? deviceOutcome;
 
-    private void Select(DeviceRecord r) => (selected, newName, typedName, deviceOutcome) = (r, string.Empty, string.Empty, null);
+    private void Select(DeviceRecord r) => (selected, newName, typedName, deviceOutcome, deviceCompliance, complianceNote) = (r, string.Empty, string.Empty, null, null, null);
+
+    // The compliance of the device shown, with the settings it fails (read live, on request)
+    private IReadOnlyList<DeviceComplianceState>? deviceCompliance;
+    private string? complianceNote;
+    private bool readingCompliance;
+
+    private async Task ReadCompliance(IntuneDevice device)
+    {
+        readingCompliance = true;
+        try
+        {
+            (deviceCompliance, complianceNote) = await State.ReadDeviceComplianceAsync(device);
+            if (deviceCompliance is { Count: 0 })
+            {
+                complianceNote = T["device.compliance.none"];
+            }
+        }
+        finally
+        {
+            readingCompliance = false;
+        }
+    }
 
     private void DeviceAction(IntuneDevice device, string action) => deviceOutcome = DevicePlans.Action(device, action, newName, typedName);
+
+    // A new primary user (R17): someone with an Entra account; the previous one is kept for undo
+    private void PrimaryUser(IntuneDevice device, Person? person)
+    {
+        if (person is null)
+        {
+            return;
+        }
+
+        var previous = State.Data.EntraUsers.FirstOrDefault(u => string.Equals(u.UserPrincipalName, device.Owner, StringComparison.OrdinalIgnoreCase))?.Id;
+        deviceOutcome = person.Entra is { } user
+            ? DevicePlans.PrimaryUser(device, user, previous)
+            : Moss365.Core.Changes.PlanOutcome.Of(Array.Empty<Moss365.Core.Changes.Change>(), new[] { T["device.primary-user-cloud"] });
+    }
 
     private static string FindingText(string f) => T[$"devices.finding.{f}"];
 

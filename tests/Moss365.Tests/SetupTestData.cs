@@ -10,7 +10,8 @@ public static class SetupTestData
     public const string AppId = "aaaaaaaa-0000-0000-0000-000000000001";
 
     public static ServicePrincipalInfo GraphSp() => new("sp-graph", AppManifest.GraphAppId, "Microsoft Graph", false,
-        AppManifest.GraphScopes.Concat(new[] { "Mail.Read" }).ToDictionary(s => s, s => "id-" + s, StringComparer.OrdinalIgnoreCase));
+        AppManifest.GraphScopes.Concat(PermissionParts.All.SelectMany(p => p.GraphScopes)).Concat(new[] { "Mail.Read" }).Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(s => s, s => "id-" + s, StringComparer.OrdinalIgnoreCase));
 
     public static ServicePrincipalInfo ExchangeSp() => new("sp-exo", AppManifest.ExchangeAppId, "Office 365 Exchange Online", false,
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Exchange.Manage"] = "id-Exchange.Manage" });

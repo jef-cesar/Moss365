@@ -2,6 +2,87 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.40.0
+
+The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
+
+- **The overview** (R19): every tile also draws a small line of its counts in the chosen period, and the work block
+  shows the passwords that expire within 14 days (when a maximum age of passwords is set on *Wachtwoord verloopt*).
+- **Access reviews** (R20) also for **Entra groups that hold an admin role** and for the **permissions of apps** found
+  by the last check of app permissions. Removing those is done in Entra itself, with the way explained: Moss365 has no
+  permission to change roles or apps. The period report has a section on the reviews of the period, and a review that
+  is due counts as "attention" with the standards (NIS2 21.2.i and CIS 6).
+- The consent of users in the check of app permissions is now in the language of the interface.
+- **Permissions per part** (R16, U25, U26): *Tenant inrichten* has parts with a permission of their own, asked only for
+  a tenant that turns the part on, and taken away again when it is turned off: *clean up old devices in Entra*
+  (Directory.AccessAsUser.All, which Microsoft requires for disabling and deleting devices) and *baseline compliance
+  policies* (DeviceManagementConfiguration.ReadWrite.All). `Register-App.ps1` takes the same parts with `-Onderdelen`.
+  Every tenant gets the read permission DeviceManagementConfiguration.Read.All, for compliance per policy.
+- **Devices** (R17): on the panel of a device, *Nieuwe primaire gebruiker* makes a plan that gives the device to another
+  person (with undo). **Offboarding** now takes the devices of the person along: a personal device is retired in the
+  same plan, and a company device gets a note to have it returned (it is wiped on *Toestellen* once it is back, never in
+  the offboarding plan).
+- **Devices in the snapshots** (R17): every read on *Toestellen* keeps the computers in AD and the devices in Entra and
+  Intune as a snapshot, like the users (only what changed is stored; of "last seen" only whether it was within 90
+  days). On a date in the past, *Toestellen* shows the devices of then, and the overview keeps the device counts per day
+  for their trend.
+- **Compliance per policy** (R17, U26): *Toestellen* shows per compliance policy which devices fail it, the settings
+  that fail most, the platforms without any policy, and whether a device without a policy counts as compliant (with
+  where to change that in Intune). The panel of a device shows the policies it fails and, on request, the settings it
+  fails. With the part *baseline compliance policies* on, the baselines for Windows, iOS and Android (work profile) are
+  plans (made without assignment), and so is marking devices without a policy as not compliant (the devices that would
+  then fail are named; undo puts the settings back).
+- **Cleaning up old devices** (R17, U18, U25): a device in Entra not seen for 90 days is first disabled (undo possible);
+  only after 90 days disabled does a separate plan delete its record in Intune and in Entra, with a warning when
+  BitLocker keys would go with it. Hybrid joined devices are cleaned up in AD and Autopilot devices never; Entra is
+  asked again just before. Entra only with the part *clean up old devices in Entra* on; records in Intune not seen for
+  180 days can always be deleted. The engine refuses the changes of a part that is off, also in a plan made by hand.
+- The panel of a device leads to *BitLocker en LAPS* with its name filled in (every lookup still goes to the access
+  log).
+- **Advice for Active Directory as plans** (R16, U16): the AD check on *Controles* also finds Kerberos
+  pre-authentication off, RC4 on service accounts with an SPN, a machine account quota above 0, the AD Recycle Bin off
+  and computers without a LAPS password. *Oplossen als plan* makes one plan of the low-risk ones, with undo
+  (pre-authentication on, AES only, adminCount leftovers cleared with the inheritance of rights on again, the quota to
+  0; turning on the Recycle Bin cannot be undone, and the plan says so). Unconstrained delegation is guided: one account
+  per plan, with its services named and what stops working.
+- New check **Privileged AD groups**: administrators outside Protected Users or not marked sensitive (guided, one at a
+  time, with what changes for the account; an administrator that runs a service first needs a gMSA), disabled members,
+  members of Account, Server, Print and Backup Operators, and Schema or Enterprise Admins that are not empty (removing
+  them is a plan with undo). The groups are found by their well-known SID, so also on a domain controller in another
+  language. A round of checks reads AD once for both AD checks.
+- **Advice for Microsoft 365 as plans** (R16): the new check *Instellingen van Microsoft 365* finds MFA for nobody
+  (neither Security Defaults nor Conditional Access), apps and tenants made by users, consent to apps without the admin
+  consent workflow, guests who see the directory and members who invite them, SMS and voice as second factor, no
+  passkeys or Authenticator, and links for everyone in SharePoint. Each becomes a plan with undo: Security Defaults on
+  (without Entra ID P1) or the baseline of Conditional Access in report-only (with P1, `CaSafety` as always), users no
+  longer register apps or consent themselves (team owners keep theirs) with the workflow on and you as reviewer,
+  restricted guests, passkeys and Authenticator on, no links for everyone. Turning off SMS and voice is guided: the plan
+  refuses while someone has nothing else, and names them.
+- **Admin roles** (R16): the check of admin roles also names a role on an account synchronised from AD or on the daily
+  account with a mailbox, and makes a permanent critical role eligible through PIM as a plan (with Entra ID P2; never an
+  emergency account or your own; undo makes it active again); without P2 it says so.
+- New checks **Gedeelde postvakken met aanmelding** (a plan blocks signing in, in AD for a synchronised one, with undo)
+  and **Aanmeldingen van noodaccounts** (every sign-in of an emergency account in 30 days, from the kept sign-ins).
+- **Write permissions per part** (R16, U25): four new parts on *Tenant inrichten*, each asked only when turned on and
+  refused by the engine when off: *Beleid van de tenant* (Policy.ReadWrite.Authorization, Policy.ReadWrite.ConsentRequest),
+  *Verificatiemethoden* (Policy.ReadWrite.AuthenticationMethod), *PIM* (RoleEligibilitySchedule.ReadWrite.Directory,
+  RoleAssignmentSchedule.ReadWrite.Directory) and *Delen in SharePoint* (SharePointTenantSettings.ReadWrite.All).
+  `Register-App.ps1 -Onderdelen` takes the same. Only the policies of the advice can be changed: the engine refuses any
+  other.
+- **Advice for Exchange Online as plans** (R16): the new check *Instellingen van Exchange Online* finds SMTP AUTH on,
+  automatic forwarding to outside, no External tag in Outlook, the audit log off and no preset security policy (and says
+  when Defender for Office 365 is not in the licence). Turning off SMTP AUTH is guided: whoever sent with it in the last
+  30 days (the usage report) keeps an exception per mailbox, and the organisation follows only when those worked; the
+  rest is one plan with undo. The new check *SPF, DKIM en DMARC* looks at every own domain through DNS (from the
+  Exchange process, without anything extra); turning on DKIM is a plan, with the two CNAME records it needs. Every change
+  goes through one fixed command of `Exchange.ps1` that only knows these settings and their values.
+- **The checks on a date in the past** (R16): the result of every check is kept per day (400 days), so that *Controles*
+  on a date in the past shows what was open then, with the hardening score of that day; checking and solving stay on
+  today.
+- Two scripts in the library: *krbtgt-wachtwoord vernieuwen* (two rounds, a replication check before each, and round 2
+  only after the waiting time of the Kerberos policy; with a preview) and *Domeincontrollers controleren* (LDAP signing
+  and channel binding, NTLMv1, SMBv1 and the print spooler; reads only). The krbtgt advice leads to the first.
+
 ## 0.39.0
 
 .NET 10, the first version of R16 to R20 (security advice, devices and Intune, own data, the overview and access
