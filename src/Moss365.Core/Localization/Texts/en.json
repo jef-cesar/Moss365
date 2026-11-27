@@ -3848,5 +3848,10 @@
   "advice.maildomeinen.why": "Without them anyone can send mail as your domain (an invoice from 'the director'), and big mail providers deliver your own mail less often.",
   "advice.maildomeinen.fix": "SPF with include:spf.protection.outlook.com and -all; DKIM on in Exchange (a plan here, after the two CNAME records); DMARC first with p=none and reports, then quarantine or reject. The DNS records are made at your DNS provider.",
   "advice.maildomeinen.risk": "A strict SPF or DMARC stops mail of a service that sends in your name and is not in SPF (a newsletter, a ticket system): add those first, and start DMARC with p=none.",
-  "advice.history.shown": "The results as they were on {0}: per check its status and summary of that day. Checking and solving happen on today."
+  "advice.history.shown": "The results as they were on {0}: per check its status and summary of that day. Checking and solving happen on today.",
+  "desktop.error.title": "Moss365 - unexpected error",
+  "desktop.error.no-message": "The error has no description.",
+  "desktop.error.kind": "Kind: {0}",
+  "desktop.error.place": "Where:",
+  "desktop.error.copy": "Ctrl+C copies this text, for example for an issue on GitHub."
 }

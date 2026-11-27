@@ -37,6 +37,11 @@ public partial class MainWindow : Window
         Moss365.UI.Pages.LanguagePage.System = System.Globalization.CultureInfo.CurrentUICulture;
         UiText.Start(hub.App, Moss365.UI.Pages.LanguagePage.System);
 
+        App.LogError = ex =>
+        {
+            var current = hub.CurrentTenant.Id;
+            hub.Opened.FirstOrDefault(s => s.Tenant.Id == current)?.Log.Error("Onverwachte fout {Plaats}", UnexpectedError.ForLog(ex));
+        };
         services.AddSingleton(hub);
         services.AddSingleton(new AppUpdates(new Moss365.Connections.Updates.VelopackUpdater(), hub));
         services.AddScoped(sp => sp.GetRequiredService<TenantHub>().Current);

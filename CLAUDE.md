@@ -28,7 +28,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
 - `src/Moss365.UI` (Razor class library): the screens; logic in screens limited to presentation. `TenantHub` holds the
   tenants; every tenant has its own `ManagementState` (database, connections, sign-in). Screens get the open tenant's
   state (scoped); switching reloads the page.
-- `src/Moss365.Desktop` (net10.0-windows, WPF + BlazorWebView): the window and dependency injection only.
+- `src/Moss365.Desktop` (net10.0-windows10.0.17763.0, WPF + BlazorWebView): the window and dependency injection only.
+  The Windows version in the target framework is needed: BlazorWebView 10 uses `WebView2CompositionControl`, which needs
+  the Windows SDK projection (without it 0.39.0 stopped at the start; the start test in `build.yml` checks it).
 - `tests/Moss365.Tests`: xUnit for the core, bUnit for the screens; `tests/powershell` and `tools/tests`: Pester.
 - `config/organisatie.json`: the sample organisation (Contoso, made up).
 - `scripts/`: the script library (header `<#MOSS365 ... #>`), shipped in the download.
@@ -56,8 +58,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
 - Updates (R7): Velopack, pack id `Moss365.Desktop` (never `Moss365`: Velopack removes its install folder on uninstall,
   and `%LOCALAPPDATA%\Moss365` holds the data). `Program.Main` runs `VelopackApp` first. `AppUpdates` refuses while
   anything runs or is open and copies every database first. The release workflow packs channel `stable`, or `preview`
-  for a version with a suffix. The job `release` only runs for a new `Version` and waits for the maintainer's approval
-  (U23: the GitHub environment `release` with a required reviewer); never work around it.
+  for a version with a suffix. The job `release` only runs for a new `Version` and publishes it right away (U23, the
+  maintainer's approval, was reverted on 27 November 2026): raising `Version` is the decision to release, so only with
+  the maintainer's go-ahead.
 - Script library (R8, `Scripts/ScriptIndex.cs`): `scripts/index.json` must match `scripts/` (a test; regenerate with
   `MOSS365_WRITE_INDEX=1`, see CONTRIBUTING). Downloads are checked against the SHA-256 in the index; pins per tenant in
   `scripts/pins.json` of the tenant store. Never change the bytes of `scripts/` through Git (`.gitattributes`).

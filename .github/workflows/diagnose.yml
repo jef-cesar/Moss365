@@ -11,8 +11,10 @@ permissions:
 jobs:
   start:
     runs-on: windows-latest
+    timeout-minutes: 40
     env:
       GH_TOKEN: ${{ github.token }}
+      DOTNET_ROLL_FORWARD: Major
     steps:
       - uses: actions/checkout@v7
 
@@ -20,138 +22,76 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: WebView2 runtime
-        shell: pwsh
-        run: |
-          $f = Join-Path $env:RUNNER_TEMP 'wv2.exe'
-          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $f
-          Start-Process $f -ArgumentList '/silent','/install' -Wait
-          Write-Host "WebView2 installed"
-
-      - name: Startup hook that writes every exception
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory hook | Out-Null
-          @'
-          <Project Sdk="Microsoft.NET.Sdk">
-            <PropertyGroup><TargetFramework>net8.0</TargetFramework><AssemblyName>DiagHook</AssemblyName><Nullable>disable</Nullable></PropertyGroup>
-          </Project>
-          '@ | Set-Content hook/DiagHook.csproj
-          @'
-          using System;
-          using System.IO;
-          internal class StartupHook
-          {
-              [ThreadStatic] private static bool _busy;
-              public static void Initialize()
-              {
-                  var path = Environment.GetEnvironmentVariable("MOSS_DIAG_LOG");
-                  File.AppendAllText(path, "hook loaded " + Environment.Version + Environment.NewLine);
-                  AppDomain.CurrentDomain.FirstChanceException += (s, e) =>
-                  {
-                      if (_busy) return;
-                      _busy = true;
-                      try
-                      {
-                          File.AppendAllText(path, "=== " + DateTime.Now.ToString("HH:mm:ss.fff") + " " + e.Exception.GetType().FullName
-                              + " HR=0x" + e.Exception.HResult.ToString("X8") + Environment.NewLine
-                              + "Message: [" + e.Exception.Message + "]" + Environment.NewLine
-                              + "Inner: " + (e.Exception.InnerException == null ? "-" : e.Exception.InnerException.ToString()) + Environment.NewLine
-                              + Environment.StackTrace + Environment.NewLine);
-                      }
-                      catch { }
-                      finally { _busy = false; }
-                  };
-              }
-          }
-          '@ | Set-Content hook/StartupHook.cs
-          dotnet build hook/DiagHook.csproj -c Release -o hookbin
-          if ($LASTEXITCODE -ne 0) { throw "hook build failed" }
-
-      - name: Download 0.38.6 and 0.39.0
-        shell: pwsh
-        run: |
-          foreach ($v in '0.38.6', '0.39.0') {
-            New-Item -ItemType Directory "rel/$v" | Out-Null
-            gh release download "v$v" -D "rel/$v" -p "Moss365-win-x64-v$v.zip" -p "Moss365.Desktop-stable-Setup.exe" -p "Moss365.Desktop-$v-full.nupkg"
-            Expand-Archive "rel/$v/Moss365-win-x64-v$v.zip" -DestinationPath "app/$v"
-          }
-          Get-ChildItem rel -Recurse | ForEach-Object { Write-Host $_.FullName }
-
-      - name: Publish the current branch
+      - name: Publish the branch
         run: >
           dotnet publish src/Moss365.Desktop -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true -p:DebugType=none -o app/branch
+          -p:EnableCompressionInSingleFile=true -p:DebugType=none -o publish
 
-      - name: Scenarios
+      - name: WebView2 runtime
         shell: pwsh
         run: |
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $wv2 = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          Write-Host "before: $((Get-ItemProperty $wv2 -ErrorAction SilentlyContinue).pv)"
+          if (-not (Get-ItemProperty $wv2 -ErrorAction SilentlyContinue).pv) {
+            $setup = Join-Path $env:RUNNER_TEMP 'wv2.exe'
+            Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $setup
+            (Start-Process $setup -ArgumentList '/silent', '/install' -PassThru).WaitForExit()
+          }
+          Write-Host "after: $((Get-ItemProperty $wv2 -ErrorAction SilentlyContinue).pv)"
+
+      - name: A - the branch starts
+        timeout-minutes: 8
+        shell: pwsh
+        run: |
           New-Item -ItemType Directory shots | Out-Null
-          $data = Join-Path $env:LOCALAPPDATA 'Moss365'
-          function Shot($name) {
-            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-            $g = [System.Drawing.Graphics]::FromImage($bmp)
-            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-            $bmp.Save((Join-Path $PWD "shots/$name.png"))
-          }
-          function Run($name, $exe, $seconds = 60, [switch]$hook) {
-            Write-Host "::group::$name ($exe)"
-            $log = Join-Path $PWD "shots/$name-exceptions.txt"
-            if ($hook) { $env:DOTNET_STARTUP_HOOKS = (Resolve-Path hookbin/DiagHook.dll).Path; $env:MOSS_DIAG_LOG = $log } else { Remove-Item env:DOTNET_STARTUP_HOOKS -ErrorAction SilentlyContinue }
-            $p = Start-Process $exe -PassThru
-            Start-Sleep -Seconds $seconds
-            Shot $name
-            Get-Process Moss365 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "window: [$($_.MainWindowTitle)] responding=$($_.Responding)" }
-            Get-Process Moss365 -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null }
-            Start-Sleep -Seconds 8
-            Get-Process Moss365, msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds 3
-            Remove-Item env:DOTNET_STARTUP_HOOKS -ErrorAction SilentlyContinue
-            if (Test-Path $log) {
-              # Only the exceptions of Moss365 and the interesting ones; the full file is in the artifact
-              Get-Content $log | Select-String -Pattern '^=== |^Message: |hook loaded' | Select-Object -First 300 | ForEach-Object { Write-Host $_.Line }
-            } else { Write-Host "no exception log" }
-            if (Test-Path "$data/logs") { Get-ChildItem "$data/logs" -File | ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName -Tail 40 } }
-            Write-Host "::endgroup::"
+          Copy-Item publish "$env:RUNNER_TEMP/a" -Recurse
+          ./tools/Test-AppStart.ps1 -Exe "$env:RUNNER_TEMP/a/Moss365.exe" -Seconds 60 -Screenshot "$PWD/shots/A-branch.png"
+
+      - name: B - 0.39.0 fails the start test
+        timeout-minutes: 8
+        shell: pwsh
+        run: |
+          gh release download v0.39.0 -D rel39 -p 'Moss365-win-x64-v0.39.0.zip' -p 'Moss365.Desktop-stable-Setup.exe'
+          Expand-Archive rel39/Moss365-win-x64-v0.39.0.zip -DestinationPath app39
+          try {
+            ./tools/Test-AppStart.ps1 -Exe "$PWD/app39/Moss365.exe" -Seconds 60 -Screenshot "$PWD/shots/B-0.39.0.png"
+            throw 'The start test did not see the error of 0.39.0'
+          } catch {
+            if ($_.Exception.Message -like 'The start test did not see*') { throw }
+            Write-Host "As expected: $($_.Exception.Message)"
           }
 
-          # A: 0.39.0 on a fresh PC
-          Run 'A-0.39.0-fresh' (Resolve-Path app/0.39.0/Moss365.exe).Path -hook
-          Copy-Item $data shots/A-data -Recurse -ErrorAction SilentlyContinue
-          Remove-Item $data -Recurse -Force -ErrorAction SilentlyContinue
-
-          # B: 0.38.6 first (its data), then 0.39.0 on that data
-          Run 'B1-0.38.6' (Resolve-Path app/0.38.6/Moss365.exe).Path -hook
-          Run 'B2-0.39.0-after-0.38.6' (Resolve-Path app/0.39.0/Moss365.exe).Path -hook
-          # C: the current branch on the same data
-          Run 'C-branch-after-0.39.0' (Resolve-Path app/branch/Moss365.exe).Path -hook
-          Remove-Item $data -Recurse -Force -ErrorAction SilentlyContinue
-
-          # D: the real thing with Velopack: install 0.38.6, start it, update to 0.39.0, start again
-          Write-Host "::group::D install 0.38.6"
-          Start-Process (Resolve-Path rel/0.38.6/Moss365.Desktop-stable-Setup.exe).Path -ArgumentList '--silent' -Wait
-          Start-Sleep -Seconds 20
-          Get-Process Moss365 -ErrorAction SilentlyContinue | Stop-Process -Force
+      - name: C - repair an installed 0.39.0 with the new Setup.exe
+        timeout-minutes: 15
+        shell: pwsh
+        run: |
           $root = Join-Path $env:LOCALAPPDATA 'Moss365.Desktop'
-          Get-ChildItem $root -Recurse -Depth 1 | ForEach-Object { Write-Host $_.FullName }
-          Write-Host "::endgroup::"
-          Run 'D1-installed-0.38.6' (Join-Path $root 'current/Moss365.exe') -hook
-          Write-Host "::group::D update to 0.39.0"
-          $pkg = (Resolve-Path rel/0.39.0/Moss365.Desktop-0.39.0-full.nupkg).Path
-          & (Join-Path $root 'Update.exe') apply --package $pkg 2>&1 | ForEach-Object { Write-Host $_ }
-          Write-Host "exit $LASTEXITCODE"
-          Start-Sleep -Seconds 20
-          Get-Process Moss365 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "running after update: [$($_.MainWindowTitle)]" }
-          Shot 'D2-right-after-update'
+          Get-Process Moss365 -ErrorAction SilentlyContinue | Stop-Process -Force
+          $p = Start-Process (Resolve-Path rel39/Moss365.Desktop-stable-Setup.exe).Path -ArgumentList '--silent' -PassThru
+          if (-not $p.WaitForExit(180000)) { Write-Host 'Setup 0.39.0 still running after 3 minutes' }
+          Start-Sleep -Seconds 15
+          Get-ChildItem $root -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
+          if (-not (Get-Process Moss365 -ErrorAction SilentlyContinue)) { Start-Process (Join-Path $root 'current/Moss365.exe') | Out-Null; Start-Sleep -Seconds 15 }
+          Get-Process Moss365 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "0.39.0 running (as a user would leave it): $($_.Path)" }
+
+          dotnet tool install -g vpk --version 1.2.161
+          vpk pack --packId Moss365.Desktop --packVersion 0.40.0 --packDir publish --mainExe Moss365.exe `
+            --packTitle Moss365 --packAuthors "Moss365 contributors" --channel stable --icon src/Moss365.Desktop/moss365.ico -o new
+          if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
+          Get-ChildItem new | ForEach-Object { Write-Host "  $($_.Name)" }
+
+          $p = Start-Process (Resolve-Path new/Moss365.Desktop-stable-Setup.exe).Path -ArgumentList '--silent' -PassThru
+          if (-not $p.WaitForExit(240000)) { Write-Host 'Setup 0.40.0 still running after 4 minutes' }
+          Write-Host "Setup 0.40.0 exit code: $($p.ExitCode)"
+          Start-Sleep -Seconds 15
+          Get-Process Moss365 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "running: $($_.Path) $($_.MainModule.FileVersionInfo.ProductVersion)" }
           Get-Process Moss365, msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-          Get-ChildItem $root -Recurse -Depth 1 | ForEach-Object { Write-Host $_.FullName }
-          if (Test-Path "$root/velopack.log") { Get-Content "$root/velopack.log" -Tail 60 }
-          Write-Host "::endgroup::"
-          Run 'D3-updated-0.39.0' (Join-Path $root 'current/Moss365.exe') -hook
-          exit 0
+          Start-Sleep -Seconds 3
+          $exe = Join-Path $root 'current/Moss365.exe'
+          Write-Host "installed: $((Get-Item $exe).VersionInfo.ProductVersion)"
+          Get-ChildItem $root -Filter *.log -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "--- $($_.FullName)"; Get-Content $_.FullName -Tail 40 }
+          ./tools/Test-AppStart.ps1 -Exe $exe -Seconds 60 -Screenshot "$PWD/shots/C-repaired.png"
 
       - uses: actions/upload-artifact@v7
         if: always()
