@@ -179,7 +179,7 @@
 
     private IEnumerable<MenuItem> AllItems => MenuModel.Main.SelectMany(g => g.Items);
 
-    private bool Visible(MenuItem i) => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.HasAd, State.HasMicrosoft365);
+    private bool Visible(MenuItem i) => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.Systems);
 
     /// <summary>The text of an item, with what is waiting (a running script, actions that are due, follow-up tasks).</summary>
     private string Label(MenuItem i) => i.Href switch

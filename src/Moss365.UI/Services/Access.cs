@@ -1,4 +1,5 @@
 using Moss365.Core.Permissions;
+using Moss365.Core.Storage;
 
 namespace Moss365.UI.Services;
 
@@ -38,8 +39,23 @@ public static class Access
     /// comparison of AD and Entra only for a tenant with both.
     /// </summary>
     public static bool FitsTenant(string path, bool hasAd, bool hasMicrosoft365)
+        => FitsTenant(path, (hasAd ? TenantSystems.ActiveDirectory : TenantSystems.None) | (hasMicrosoft365 ? TenantSystems.Microsoft365 : TenantSystems.None));
+
+    /// <summary>
+    /// The page fits the systems of the tenant (G0: any combination of AD, Microsoft 365 and Google Workspace): the menu,
+    /// the settings and Ctrl+K only show what the tenant has. A page about one system needs that system; linking persons
+    /// and the source of truth need at least two systems.
+    /// </summary>
+    public static bool FitsTenant(string path, TenantSystems systems)
     {
+        var hasAd = systems.HasFlag(TenantSystems.ActiveDirectory);
+        var hasMicrosoft365 = systems.HasFlag(TenantSystems.Microsoft365);
         var first = path.Split('?', '#')[0].Split('/')[0];
+        if (first is "koppelingen" or "bron")
+        {
+            return TenantSystemsInfo.Each.Count(s => systems.HasFlag(s)) >= 2;
+        }
+
         return first switch
         {
             "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "beveiliging" or "conditional-access" or "inrichten" or "bewaarde-logboeken" => hasMicrosoft365,

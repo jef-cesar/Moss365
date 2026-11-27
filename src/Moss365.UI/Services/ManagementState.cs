@@ -174,27 +174,30 @@ public sealed partial class ManagementState
 
     public IAppEnvironment AppEnvironment => _environment;
     private InventoryData _data = new();
-    private (InventoryData Of, InventoryData Without)? _withoutAd;
+    private (InventoryData Of, TenantSystems Systems, InventoryData Shown)? _shown;
 
-    /// <summary>The data shown; for a tenant without AD everything of AD is left out (0.21.1), whatever was read or
-    /// imported, also right after the systems of the tenant change. What was read stays in <see cref="_data"/>.</summary>
+    /// <summary>The data shown: everything of a system the tenant does not have is left out (AD since 0.21.1, Microsoft
+    /// 365 since G0), whatever was read or imported, also right after the systems of the tenant change. What was read
+    /// stays in <see cref="_data"/>.</summary>
     public InventoryData Data
     {
         get
         {
-            if (HasAd)
+            var systems = Tenant.Systems.Effective();
+            if (systems.HasFlag(TenantSystems.Both))
             {
                 return _data;
             }
 
             var data = _data;
-            if (_withoutAd is not { } w || !ReferenceEquals(w.Of, data))
+            if (_shown is not { } w || !ReferenceEquals(w.Of, data) || w.Systems != systems)
             {
-                w = (data, data.WithoutAd());
-                _withoutAd = w;
+                var shown = systems.HasAd() ? data : data.WithoutAd();
+                w = (data, systems, systems.HasMicrosoft365() ? shown : shown.WithoutMicrosoft365());
+                _shown = w;
             }
 
-            return w.Without;
+            return w.Shown;
         }
         private set => _data = value;
     }
@@ -332,10 +335,16 @@ public sealed partial class ManagementState
     public bool CanConnect => _factory is not null;
 
     /// <summary>This tenant has on-premises AD (chosen per tenant, Settings > Tenants).</summary>
-    public bool HasAd => Tenant.Systems.HasFlag(TenantSystems.ActiveDirectory);
+    public bool HasAd => Tenant.Systems.HasAd();
 
     /// <summary>This tenant has Microsoft 365: Entra ID and Exchange Online.</summary>
-    public bool HasMicrosoft365 => Tenant.Systems.HasFlag(TenantSystems.Microsoft365);
+    public bool HasMicrosoft365 => Tenant.Systems.HasMicrosoft365();
+
+    /// <summary>This tenant has Google Workspace (G0). Reading and writing it come with G1 and G2.</summary>
+    public bool HasGoogle => Tenant.Systems.HasGoogle();
+
+    /// <summary>The systems of this tenant as they count (nothing chosen is AD and Microsoft 365).</summary>
+    public TenantSystems Systems => Tenant.Systems.Effective();
 
     /// <summary>The connection settings as the connections use them: without AD for a tenant that has no AD, without
     /// Microsoft 365 for one that has no Microsoft 365, so that nothing reads or writes there.</summary>

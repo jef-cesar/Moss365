@@ -303,6 +303,36 @@ public sealed record InventoryData
 
     private static bool IsAdSource(SourceFile f) => f.File.StartsWith("ad-", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// The data without anything of Microsoft 365 (G0): for a tenant that does not have it, whatever was imported. Entra
+    /// ID and Exchange Online: users, groups and their members, rooms, licences, mailboxes, the security readings and
+    /// Conditional Access.
+    /// </summary>
+    public InventoryData WithoutMicrosoft365()
+        => EntraUsers.Count == 0 && CloudGroups.Count == 0 && CloudMembership.Count == 0 && Rooms.Count == 0 && Licences.Count == 0
+           && ExoGroups.Count == 0 && Mailboxes.Count == 0 && MailboxPermissions.Count == 0 && Security is null && ConditionalAccess is null
+           && !Sources.Any(IsMicrosoft365Source)
+            ? this
+            : this with
+            {
+                EntraUsers = Array.Empty<EntraUser>(),
+                CloudGroups = new Dictionary<string, CloudGroup>(StringComparer.OrdinalIgnoreCase),
+                CloudMembership = new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase),
+                CloudMemberNames = new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase),
+                Rooms = Array.Empty<Room>(),
+                Licences = Array.Empty<Licence>(),
+                ExoGroups = Array.Empty<ExoGroup>(),
+                Mailboxes = Array.Empty<Mailbox>(),
+                MailboxPermissions = Array.Empty<MailboxPermission>(),
+                Security = null,
+                ConditionalAccess = null,
+                Persons = InventoryLoader.LinkPersons(AdUsers, Array.Empty<EntraUser>()),
+                Sources = Sources.Where(f => !IsMicrosoft365Source(f)).ToList(),
+            };
+
+    private static bool IsMicrosoft365Source(SourceFile f)
+        => f.File.StartsWith("entra-", StringComparison.OrdinalIgnoreCase) || f.File.StartsWith("exo-", StringComparison.OrdinalIgnoreCase);
+
     public Person? SearchPerson(string key)
         => Persons.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase));
 

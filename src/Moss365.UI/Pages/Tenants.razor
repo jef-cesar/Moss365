@@ -269,14 +269,9 @@ else
     private TenantSystems editSystems = TenantSystems.Both;
     private TenantSystems newSystems = TenantSystems.Both;
 
-    private void Edit(TenantInfo t) => (editing, editName, editColour, editSystems) = (t.Id, t.Name, t.Colour, t.Systems == TenantSystems.None ? TenantSystems.Both : t.Systems);
+    private void Edit(TenantInfo t) => (editing, editName, editColour, editSystems) = (t.Id, t.Name, t.Colour, t.Systems.Effective());
 
-    private static string SystemsText(TenantSystems s) => s switch
-    {
-        TenantSystems.ActiveDirectory => "Active Directory",
-        TenantSystems.Microsoft365 => "Microsoft 365",
-        _ => T["code.tenants.active-directory-and-microsoft-365"],
-    };
+    private static string SystemsText(TenantSystems s) => SystemsChoice.Text(s);
 
     private void Save(TenantHub hub, TenantInfo t)
     {

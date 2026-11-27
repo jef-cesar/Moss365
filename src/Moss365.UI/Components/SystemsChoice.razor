@@ -1,16 +1,23 @@
 @using Moss365.Core.Storage
-@* The systems of a tenant (0.21.1): Active Directory, Microsoft 365 or both. What the tenant does not have is left out of
-   the menu, the screens and the connections. *@
+@* The systems of a tenant (0.21.1; G0: any combination of three): Active Directory, Microsoft 365 and Google Workspace.
+   What the tenant does not have is left out of the menu, the screens and the connections. At least one stays chosen. *@
 
 <fieldset class="kb-systemen">
     <legend>@Legend</legend>
-    @foreach (var (value, text, explanation) in Options)
+    <div class="kb-keuzes">
+        @foreach (var (value, text, explanation) in Options)
+        {
+            var on = Value.HasFlag(value);
+            <label class="kb-keuze @(on ? "kb-actief" : null)">
+                <input type="checkbox" checked="@on" disabled="@(on && Only(value))" @onchange="e => Toggle(value, e.Value is true)" />
+                <strong>@text</strong>
+                <span class="kb-zacht">@explanation</span>
+            </label>
+        }
+    </div>
+    @if (Value.HasFlag(TenantSystems.GoogleWorkspace))
     {
-        <label class="kb-keuze @(Value == value ? "kb-actief" : null)">
-            <input type="radio" name="@name" checked="@(Value == value)" @onchange="() => ValueChanged.InvokeAsync(value)" />
-            <strong>@text</strong>
-            <span class="kb-zacht">@explanation</span>
-        </label>
+        <p class="kb-zacht">@T["systems.google.prepared"]</p>
     }
 </fieldset>
 
@@ -19,20 +26,35 @@
     [Parameter] public EventCallback<TenantSystems> ValueChanged { get; set; }
     [Parameter] public string Legend { get; set; } = T["systems.legend"];
 
-    private readonly string name = "systemen-" + Guid.NewGuid().ToString("N");
-
     private static (TenantSystems, string, string)[] Options => new[]
     {
-        (TenantSystems.Both, T["systems.both"], T["systems.both.help"]),
-        (TenantSystems.Microsoft365, T["systems.cloud"], T["systems.cloud.help"]),
-        (TenantSystems.ActiveDirectory, T["systems.ad"], T["systems.ad.help"]),
+        (TenantSystems.ActiveDirectory, T["systems.ad.name"], T["systems.ad.about"]),
+        (TenantSystems.Microsoft365, T["systems.m365.name"], T["systems.m365.about"]),
+        (TenantSystems.GoogleWorkspace, T["systems.google.name"], T["systems.google.about"]),
     };
 
-    /// <summary>The words for a choice, for in a sentence.</summary>
-    public static string Text(TenantSystems s) => s switch
+    /// <summary>The last system that is on cannot be turned off: a tenant has at least one.</summary>
+    private bool Only(TenantSystems value) => (Value.Effective() & ~value) == TenantSystems.None;
+
+    private Task Toggle(TenantSystems value, bool on)
     {
-        TenantSystems.ActiveDirectory => T["systems.text.ad"],
-        TenantSystems.Microsoft365 => T["systems.text.cloud"],
-        _ => T["code.tenants.active-directory-and-microsoft-365"],
+        var next = on ? Value.Effective() | value : Value.Effective() & ~value;
+        return next == TenantSystems.None ? Task.CompletedTask : ValueChanged.InvokeAsync(next);
+    }
+
+    /// <summary>The systems in a sentence: "Active Directory, Microsoft 365 and Google Workspace".</summary>
+    public static string Text(TenantSystems s)
+    {
+        var names = TenantSystemsInfo.Each.Where(x => s.Effective().HasFlag(x)).Select(Name).ToList();
+        return names.Count == 1 ? names[0] : T.Format("systems.list", string.Join(", ", names.Take(names.Count - 1)), names[^1]);
+    }
+
+    /// <summary>The name of one system.</summary>
+    public static string Name(TenantSystems s) => s switch
+    {
+        TenantSystems.ActiveDirectory => T["systems.ad.name"],
+        TenantSystems.Microsoft365 => T["systems.m365.name"],
+        TenantSystems.GoogleWorkspace => T["systems.google.name"],
+        _ => Text(s),
     };
 }

@@ -74,7 +74,7 @@ public sealed partial class PlanScreenTests
         var connections = ctx.RenderComponent<Moss365.UI.Pages.Connections>();
         Assert.Contains("Wat heeft deze tenant?", connections.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("On-prem AD", connections.Markup, StringComparison.Ordinal);
-        connections.FindAll("label.kb-keuze").First(l => l.TextContent.Contains("AD en Microsoft 365", StringComparison.Ordinal)).QuerySelector("input")!.Change(true);
+        connections.FindAll("label.kb-keuze").First(l => l.TextContent.Contains("Active Directory", StringComparison.Ordinal)).QuerySelector("input")!.Change(true);
         connections.FindAll("button").First(b => b.TextContent == "Bewaren").Click();
         Assert.Equal(TenantSystems.Both, hub.CurrentTenant.Systems);
         Assert.NotEmpty(s.Data.AdUsers);
@@ -94,7 +94,7 @@ public sealed partial class PlanScreenTests
         Assert.Contains(cut.FindAll("button"), b => b.TextContent == "Aanpassen");
 
         cut.Find("input[placeholder='bv. Contoso']").Change("Fabrikam");
-        cut.FindAll("label.kb-keuze").First(l => l.TextContent.Contains("Enkel Microsoft 365", StringComparison.Ordinal)).QuerySelector("input")!.Change(true);
+        cut.FindAll("label.kb-keuze").First(l => l.TextContent.Contains("Active Directory", StringComparison.Ordinal)).QuerySelector("input")!.Change(false);
         cut.FindAll("button").First(b => b.TextContent == "Toevoegen").Click();
         Assert.Equal(TenantSystems.Microsoft365, hub.Tenants.Single(t => t.Name == "Fabrikam").Systems);
     }

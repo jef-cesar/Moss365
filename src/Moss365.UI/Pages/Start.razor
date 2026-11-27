@@ -122,12 +122,17 @@
 
 @code {
     /// <summary>The systems of this tenant, in words (0.21.1).</summary>
-    private string Systems => (State.HasAd, State.HasMicrosoft365) switch
+    private string Systems
     {
-        (true, true) => T["start.systems.both"],
-        (true, false) => T["start.systems.ad"],
-        _ => T["start.systems.cloud"],
-    };
+        get
+        {
+            var parts = new List<string>();
+            if (State.HasAd) parts.Add(T["start.systems.ad"]);
+            if (State.HasMicrosoft365) parts.Add(T["start.systems.cloud"]);
+            if (State.HasGoogle) parts.Add(T["start.systems.google"]);
+            return parts.Count == 1 ? parts[0] : T.Format("systems.list", string.Join(", ", parts.Take(parts.Count - 1)), parts[^1]);
+        }
+    }
 
     // The overview (R19): the tiles once per data and period, not at every redraw
     private int days = 30;
