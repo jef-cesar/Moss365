@@ -4002,5 +4002,6 @@
   "computer.managed-by": "Beheerd door",
   "computer.nobody": "Niemand",
   "computer.plan.details": "{0} gegeven(s) van de computer wijzigen in AD",
-  "computer.no-domain": "Het domein is nog niet bekend: laad eerst AD."
+  "computer.no-domain": "Het domein is nog niet bekend: laad eerst AD.",
+  "computer.ou": "OU"
 }

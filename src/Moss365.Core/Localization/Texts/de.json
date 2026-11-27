@@ -4002,5 +4002,6 @@
   "computer.managed-by": "Verwaltet von",
   "computer.nobody": "Niemand",
   "computer.plan.details": "{0} Angabe(n) des Computers in AD ändern",
-  "computer.no-domain": "Die Domäne ist noch nicht bekannt: laden Sie zuerst AD."
+  "computer.no-domain": "Die Domäne ist noch nicht bekannt: laden Sie zuerst AD.",
+  "computer.ou": "OU"
 }

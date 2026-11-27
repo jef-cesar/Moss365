@@ -29,11 +29,11 @@
             }
             else { @Shown(ComputerPlans.NameOf(State.Data, Computer.ManagedBy)) }
         </dd>
-        <dt>OU</dt>
+        <dt>@T["computer.ou"]</dt>
         <dd>
             @if (editing)
             {
-                <select class="kb-invoer" value="@ou" @onchange="e => ou = e.Value?.ToString()" aria-label="OU">
+                <select class="kb-invoer" value="@ou" @onchange="e => ou = e.Value?.ToString()" aria-label="@T["computer.ou"]">
                     @foreach (var o in Ous) { <option value="@o">@o</option> }
                 </select>
             }

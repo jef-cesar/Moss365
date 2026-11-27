@@ -4002,5 +4002,6 @@
   "computer.managed-by": "Géré par",
   "computer.nobody": "Personne",
   "computer.plan.details": "Modifier {0} donnée(s) de l'ordinateur dans AD",
-  "computer.no-domain": "Le domaine n'est pas encore connu : chargez d'abord AD."
+  "computer.no-domain": "Le domaine n'est pas encore connu : chargez d'abord AD.",
+  "computer.ou": "OU"
 }

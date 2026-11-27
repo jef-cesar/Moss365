@@ -4002,5 +4002,6 @@
   "computer.managed-by": "Managed by",
   "computer.nobody": "Nobody",
   "computer.plan.details": "Change {0} detail(s) of the computer in AD",
-  "computer.no-domain": "The domain is not known yet: load AD first."
+  "computer.no-domain": "The domain is not known yet: load AD first.",
+  "computer.ou": "OU"
 }
