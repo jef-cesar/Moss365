@@ -201,6 +201,9 @@ public interface IGraphConnection
     /// <summary>Devices in Intune (0.36); null where that cannot be read (licence, permission).</summary>
     Task<IReadOnlyList<Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Devices.IntuneDevice>?>(null);
 
+    /// <summary>Who sent mail with SMTP AUTH in the last 30 days (the usage report; R16); null where that cannot be read.</summary>
+    Task<Security.SmtpAuthUsage?> ReadSmtpAuthUsageAsync(CancellationToken cancel) => Task.FromResult<Security.SmtpAuthUsage?>(null);
+
     /// <summary>The settings of the tenant the advice for Microsoft 365 reads (R16); null where that cannot be read.</summary>
     Task<Security.TenantSettingsReading?> ReadTenantSettingsAsync(CancellationToken cancel) => Task.FromResult<Security.TenantSettingsReading?>(null);
 
@@ -297,6 +300,10 @@ public interface IExchangeConnection
     /// <summary>Message trace (0.33): what was received by and/or sent from an address in the last days (at most 10).</summary>
     Task<IReadOnlyList<Helpdesk.MessageTraceRow>> MessageTraceAsync(string? sender, string? recipient, int days, CancellationToken cancel)
         => throw new NotSupportedException(Texts.T["code.connections.a-message-trace-is-not"]);
+
+    /// <summary>The organisation settings the advice reads, with SPF, DKIM and DMARC per domain (R16); null where that
+    /// cannot be read.</summary>
+    Task<Security.ExchangeOrganisationReading?> ReadOrganisationAsync(CancellationToken cancel) => Task.FromResult<Security.ExchangeOrganisationReading?>(null);
 
     /// <summary>Read a few rooms, mailboxes or groups again (by address), in one Exchange session.</summary>
     Task<ExchangeObjects> ReadObjectsAsync(IReadOnlyList<string> addresses, CancellationToken cancel);

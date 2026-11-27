@@ -727,7 +727,7 @@ public sealed partial class ManagementState
         // personal device
         var results = await new PlanExecutor(executors, ChangeLog, () => User,
                 w => PermissionTable.Refusal(roles, w, data) ?? CaSafety.Refusal(w, data, config, user) ?? Core.Devices.DeviceSafety.Refusal(w)
-                     ?? Core.Setup.PermissionParts.Refusal(w, config.PermissionParts) ?? Core.Security.TenantAdvice.Refusal(w))
+                     ?? Core.Setup.PermissionParts.Refusal(w, config.PermissionParts) ?? Core.Security.TenantAdvice.Refusal(w) ?? Core.Security.ExchangeAdvice.Refusal(w))
             .ExecuteAsync(plan, context, progress, cancel);
         // No context: it often contains a name ("Uitstroom ..."); only counts and kinds of actions
         Log.Information("Plan uitgevoerd: {Gelukt} gelukt, {Mislukt} mislukt, {Overgeslagen} overgeslagen; acties {Acties}",

@@ -95,6 +95,17 @@ public static class SecurityAdvice
             "https://learn.microsoft.com/entra/identity/enterprise-apps/configure-admin-consent-workflow",
             "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-methods-manage",
         }),
+        new("exchange-instellingen", 2, "T1114.003", new[]
+        {
+            "https://learn.microsoft.com/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission",
+            "https://learn.microsoft.com/defender-office-365/preset-security-policies",
+            "https://learn.microsoft.com/purview/audit-log-enable-disable",
+        }),
+        new("maildomeinen", 2, "T1566", new[]
+        {
+            "https://learn.microsoft.com/defender-office-365/email-authentication-about",
+            "https://learn.microsoft.com/defender-office-365/email-authentication-dkim-configure",
+        }),
         new("gedeelde-postvakken", 1, "T1078.004", new[] { "https://learn.microsoft.com/exchange/collaboration-exo/shared-mailboxes" }),
         new("noodaccounts", 1, "T1078.004", new[] { "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access" }),
         new("ad-groepen", 3, "T1078.002", new[]
@@ -122,11 +133,11 @@ public static class SecurityAdvice
     /// <summary>A line can be solved as a plan: it has a fix this version knows, and is not OK or accepted.</summary>
     private static bool CanSolve(CheckRow r)
         => r.Fix is { } f && (AccountFlags.ContainsKey(f) || f is AdHardening.Protect or AdHardening.RemoveMember or AdHardening.AesOnly
-                                  or AdHardening.AdminCount or AdHardening.Quota or AdHardening.RecycleBin || TenantAdvice.Fixes.Contains(f))
+                                  or AdHardening.AdminCount or AdHardening.Quota or AdHardening.RecycleBin || TenantAdvice.Fixes.Contains(f) || ExchangeAdvice.Fixes.Contains(f))
            && r.AcceptedUntil is null && r.Status != CheckStatus.Ok;
 
     /// <summary>Guided (U16): one line per plan, with what it affects first.</summary>
-    private static bool Guided(string? fix) => AdHardening.Guided(fix) || fix == TenantAdvice.WeakMethods;
+    private static bool Guided(string? fix) => AdHardening.Guided(fix) || fix is TenantAdvice.WeakMethods or ExchangeAdvice.SmtpAuth;
 
     /// <summary>The lines of a check that are solved together in one plan: with a fix that is not guided.</summary>
     public static IReadOnlyList<CheckRow> Solvable(SecurityCheck check)
@@ -158,7 +169,7 @@ public static class SecurityAdvice
     /// <summary>The plan for one line: an account flag, or a fix of <see cref="AdHardening"/>.</summary>
     public static PlanOutcome SolveRow(InventoryData data, CheckRow r, AdviceContext? context = null)
     {
-        if ((AdHardening.Plan(r, data) ?? TenantAdvice.Plan(r, data, context)) is { } solved)
+        if ((AdHardening.Plan(r, data) ?? TenantAdvice.Plan(r, data, context) ?? ExchangeAdvice.Plan(r)) is { } solved)
         {
             return solved;
         }

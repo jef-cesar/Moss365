@@ -345,6 +345,33 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
     }
 
     /// <summary>
+    /// Who sent mail with SMTP AUTH in the last 30 days (R16), from the usage report of the mail apps. When the report
+    /// hides the names (a setting in the Microsoft 365 admin center), the users are hashes: said as such.
+    /// </summary>
+    public async Task<Core.Security.SmtpAuthUsage?> ReadSmtpAuthUsageAsync(CancellationToken cancel)
+    {
+        static bool Used(JsonElement e) => e.TryGetProperty("smtpApp", out var v) && v.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.Array => v.EnumerateArray().Any(x => x.ValueKind == JsonValueKind.String && x.GetString() is { Length: > 0 }),
+            JsonValueKind.String => v.GetString() is { Length: > 0 } t && !t.Equals("No", StringComparison.OrdinalIgnoreCase) && !t.Equals("False", StringComparison.OrdinalIgnoreCase),
+            _ => false,
+        };
+
+        try
+        {
+            var users = (await _client.GetAllAsync("https://graph.microsoft.com/beta/reports/getEmailAppUsageUserDetail(period='D30')?$format=application/json", cancel))
+                .Where(Used).Select(e => S(e, "userPrincipalName")).Where(u => u.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(u => u, StringComparer.OrdinalIgnoreCase).ToList();
+            return new Core.Security.SmtpAuthUsage(users, users.Any(u => !u.Contains('@', StringComparison.Ordinal)));
+        }
+        catch (GraphError)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// A permanent admin role made eligible through PIM (R16), or back (undo): first the new schedule, then the old one
     /// removed, so that the role is never gone in between.
     /// </summary>

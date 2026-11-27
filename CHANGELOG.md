@@ -69,6 +69,13 @@ The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
   RoleAssignmentSchedule.ReadWrite.Directory) and *Delen in SharePoint* (SharePointTenantSettings.ReadWrite.All).
   `Register-App.ps1 -Onderdelen` takes the same. Only the policies of the advice can be changed: the engine refuses any
   other.
+- **Advice for Exchange Online as plans** (R16): the new check *Instellingen van Exchange Online* finds SMTP AUTH on,
+  automatic forwarding to outside, no External tag in Outlook, the audit log off and no preset security policy (and says
+  when Defender for Office 365 is not in the licence). Turning off SMTP AUTH is guided: whoever sent with it in the last
+  30 days (the usage report) keeps an exception per mailbox, and the organisation follows only when those worked; the
+  rest is one plan with undo. The new check *SPF, DKIM en DMARC* looks at every own domain through DNS (from the
+  Exchange process, without anything extra); turning on DKIM is a plan, with the two CNAME records it needs. Every change
+  goes through one fixed command of `Exchange.ps1` that only knows these settings and their values.
 - Two scripts in the library: *krbtgt-wachtwoord vernieuwen* (two rounds, a replication check before each, and round 2
   only after the waiting time of the Kerberos policy; with a preview) and *Domeincontrollers controleren* (LDAP signing
   and channel binding, NTLMv1, SMBv1 and the print spooler; reads only). The krbtgt advice leads to the first.

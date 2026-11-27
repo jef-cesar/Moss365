@@ -82,8 +82,16 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   day. `SecurityCheckResults` applies the accepted risks; an unknown result never replaces a real one kept earlier. A compromised account:
   `Security/CompromisedAccount.cs` (block in AD, a cloud account in Entra, new random password in `Secret`, revoke
   sessions, out of privileged AD groups; never deletes), shown by `CompromisedCard` on the user page.
-  Solving advice (R16): a `CheckRow.Fix` names the flag; `SecurityAdvice.Solve` makes `AdSetAccountFlag` changes
-  (only the flags in `SecurityAdvice.AccountFlags`; the engine refuses others), undone through `Previous`. Licences (0.35): `Licences/LicenceAnalysis.cs`
+  Solving advice (R16): a `CheckRow.Fix` (with `FixData` from the reading) names what solves it: an account flag of
+  `SecurityAdvice.AccountFlags` (`AdSetAccountFlag`), a kind of `Security/AdHardening.cs` (`AdHardening`, only
+  `AdHardening.Kinds`; also the check of the privileged AD groups, found by well-known SID), of `Security/TenantAdvice.cs`
+  (`GraphUpdatePolicy` only for `TenantAdvice.PolicyTargets`, `GraphRoleEligibility` for PIM) or of
+  `Security/ExchangeAdvice.cs` (`ExchangeOrganisationSetting` through the fixed `OrganisatieInstellen` of Exchange.ps1,
+  only `ExchangeAdvice.Settings`; SPF and DMARC read with Resolve-DnsName in that process), or a library script
+  (`script:Name`, e.g. `scripts/Security/Reset-KrbtgtPassword.ps1`). `SecurityAdvice.Solve` makes one plan of what is not
+  guided; a guided fix (U16: delegation, Protected Users, SMS and voice, SMTP AUTH) is `SolveRow`, one line per plan.
+  Every write permission belongs to a part (`PermissionParts`, U25), refused by the planner and the engine when off;
+  `TenantAdvice.Refusal` and `ExchangeAdvice.Refusal` are in the refuse chain. Everything is undone through `Previous`. Licences (0.35): `Licences/LicenceAnalysis.cs`
   (waste, costs with `OrganisationConfig.LicencePrices`, against job profiles); `GraphRemoveLicences` takes optional `skuIds`.
   Devices, Teams and SharePoint (0.36): `Devices/DeviceAnalysis.cs` (stale computers, systems, Intune, groups without
   owner/with guests/unused, sites); reads `IAdConnection.ReadComputersAsync`, `IGraphConnection.ReadIntuneDevicesAsync`/

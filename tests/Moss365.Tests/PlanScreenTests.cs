@@ -679,6 +679,10 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public SecurityData? Security { get; set; }
 
+        /// <summary>The organisation settings of Exchange and who used SMTP AUTH, for the advice of R16 (null: not readable).</summary>
+        public Core.Security.ExchangeOrganisationReading? ExchangeOrganisation { get; set; }
+        public Core.Security.SmtpAuthUsage? SmtpUsage { get; set; }
+
         /// <summary>The settings of the tenant for the advice of R16 (null: not readable).</summary>
         public Core.Security.TenantSettingsReading? TenantSettings { get; set; }
 
@@ -834,6 +838,8 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public Task<Core.Security.TenantSettingsReading?> ReadTenantSettingsAsync(CancellationToken cancel) => Task.FromResult(f.TenantSettings);
 
+        public Task<Core.Security.SmtpAuthUsage?> ReadSmtpAuthUsageAsync(CancellationToken cancel) => Task.FromResult(f.SmtpUsage);
+
         public Task<IReadOnlyList<Core.Devices.DeviceComplianceState>?> ReadDeviceComplianceAsync(string managedDeviceId, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Devices.DeviceComplianceState>?>(new[]
             {
@@ -955,6 +961,12 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
     private sealed class FakeExchange(FakeFactory f) : IExchangeConnection, IExecutor
     {
         public TargetSystem TargetSystem => TargetSystem.Exchange;
+
+        public Task<Core.Security.ExchangeOrganisationReading?> ReadOrganisationAsync(CancellationToken cancel)
+        {
+            f.Read("exchange-organisatie");
+            return Task.FromResult(f.ExchangeOrganisation);
+        }
 
         public Task<IReadOnlyList<Core.Security.ForwardingRule>> ReadForwardingAsync(bool includeRules, IProgress<string>? progress, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Security.ForwardingRule>>(new[]

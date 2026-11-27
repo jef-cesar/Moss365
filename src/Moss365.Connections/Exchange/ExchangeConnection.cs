@@ -180,6 +180,22 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
                 p["Identity"] = w.Target;
                 Take(w, p, "Recht", "Trustee");
                 break;
+            case ChangeAction.ExchangeOrganisationSetting:
+                // Only the settings of the advice (R16); Exchange.ps1 checks the setting and its value again
+                if (!Core.Security.ExchangeAdvice.Settings.Contains(w.P("instelling")))
+                {
+                    throw new InvalidOperationException(Texts.T["advice.policy.not-allowed"]);
+                }
+
+                op = "OrganisatieInstellen";
+                p["Instelling"] = w.P("instelling");
+                p["Waarde"] = w.P("waarde");
+                if (w.P("identity").Length > 0)
+                {
+                    p["Identity"] = w.P("identity");
+                }
+
+                break;
             case ChangeAction.ExchangeCreateSharedMailbox:
             case ChangeAction.ExchangeCreateGroup:
                 op = w.ChangeAction == ChangeAction.ExchangeCreateSharedMailbox ? "PostvakAanmaken" : "GroepAanmaken";
@@ -254,6 +270,42 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
         return r.Data is { ValueKind: JsonValueKind.Array } rows
             ? rows.EnumerateArray().Select(e => new Core.Security.ForwardingRule(S(e, "Mailbox"), S(e, "Kind"), S(e, "Name"), S(e, "Target"))).ToList()
             : Array.Empty<Core.Security.ForwardingRule>();
+    }
+
+    /// <summary>The organisation settings for the advice of R16, with SPF, DKIM and DMARC per domain; read only.</summary>
+    public async Task<Core.Security.ExchangeOrganisationReading?> ReadOrganisationAsync(CancellationToken cancel)
+    {
+        var r = (await RunScriptAsync(new[] { new Command("organisatie", "LeesOrganisatie", new()) }, cancel)).Single();
+        if (r.Status != "Gelukt")
+        {
+            throw new InvalidOperationException(r.Message);
+        }
+
+        if (r.Data is not { ValueKind: JsonValueKind.Object } d)
+        {
+            return null;
+        }
+
+        static IReadOnlyList<string> Strings(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Array
+            ? v.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToList()
+            : e.TryGetProperty(name, out var one) && one.ValueKind == JsonValueKind.String ? new[] { one.GetString()! } : Array.Empty<string>();
+        static bool? Bool(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False ? v.GetBoolean() : null;
+        static IEnumerable<JsonElement> Items(JsonElement e, string name) => e.TryGetProperty(name, out var v)
+            ? v.ValueKind == JsonValueKind.Array ? v.EnumerateArray() : v.ValueKind == JsonValueKind.Object ? new[] { v } : Enumerable.Empty<JsonElement>()
+            : Enumerable.Empty<JsonElement>();
+        static IReadOnlyList<Core.Security.PresetRule> Rules(JsonElement e, string name) => Items(e, name).Select(x => new Core.Security.PresetRule(S(x, "Name"), S(x, "State"))).ToList();
+
+        Core.Security.PresetReading? presets = d.TryGetProperty("Preset", out var p) && p.ValueKind == JsonValueKind.Object
+            ? new Core.Security.PresetReading(Rules(p, "Eop"), Rules(p, "Atp"), Bool(p, "AtpBeschikbaar") ?? false)
+            : null;
+        return new Core.Security.ExchangeOrganisationReading(
+            Bool(d, "SmtpAuthUit") ?? false,
+            Strings(d, "SmtpAuthPostvakken"),
+            Items(d, "Doorsturen").Select(x => new Core.Security.ForwardingPolicy(S(x, "Name"), S(x, "Mode"), Bool(x, "Default") ?? false)).ToList(),
+            Bool(d, "ExternLabel"),
+            Bool(d, "Auditlog"),
+            Items(d, "Domeinen").Select(x => new Core.Security.MailDomain(S(x, "Domain"), Strings(x, "Spf"), Strings(x, "Dmarc"), Bool(x, "DkimEnabled"), S(x, "Selector1"), S(x, "Selector2"))).ToList(),
+            presets);
     }
 
     /// <summary>Message trace (0.33): read only, the last days (at most 10).</summary>

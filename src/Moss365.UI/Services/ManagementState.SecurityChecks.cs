@@ -118,7 +118,8 @@ public sealed partial class ManagementState
             {
                 ("doorsturen", Texts.T["code.management-state-security-checks.forwarding-outside"]), ("app-geheimen", Texts.T["code.management-state-security-checks.secrets-and-certificates-of-apps"]), ("app-rechten", Texts.T["code.management-state-security-checks.broad-app-permissions-and-consents"]),
                 ("secure-score", "Microsoft Secure Score"), ("rollen", Texts.T["code.management-state-security-checks.admin-roles-and-pim"]), ("zwakke-mfa", Texts.T["security.check.weak-mfa-methods"]), ("risico", Texts.T["security.check.risky-users"]),
-                ("m365-instellingen", Texts.T["security.check.tenant-settings"]), ("gedeelde-postvakken", Texts.T["security.check.shared-sign-in"]), ("noodaccounts", Texts.T["security.check.emergency"]),
+                ("m365-instellingen", Texts.T["security.check.tenant-settings"]), ("exchange-instellingen", Texts.T["security.check.exchange"]), ("maildomeinen", Texts.T["security.check.mail-domains"]),
+                ("gedeelde-postvakken", Texts.T["security.check.shared-sign-in"]), ("noodaccounts", Texts.T["security.check.emergency"]),
             });
         }
 
@@ -149,6 +150,8 @@ public sealed partial class ManagementState
                 "secure-score" => SecurityChecks.SecureScore(Graph() is { } g3 ? await g3.ReadSecureScoreAsync(cancel) : null),
                 "rollen" => SecurityChecks.Roles(Graph() is { } g4 ? await g4.ReadRoleAssignmentsAsync(cancel) : null, Data, Config, User),
                 "m365-instellingen" => TenantAdvice.Check(Graph() is { } g6 ? await g6.ReadTenantSettingsAsync(cancel) : null, Data),
+                "exchange-instellingen" => ExchangeAdvice.Check(await ExchangeOrganisationAsync(round, cancel), Graph() is { } g7 ? await g7.ReadSmtpAuthUsageAsync(cancel) : null),
+                "maildomeinen" => ExchangeAdvice.Domains(await ExchangeOrganisationAsync(round, cancel)),
                 "gedeelde-postvakken" => TenantAdvice.SharedMailboxes(Data),
                 "noodaccounts" => TenantAdvice.Emergency(Config, KeptSignIns(now.AddDays(-30), now.AddMinutes(1)), now),
                 "zwakke-mfa" => SecurityChecks.WeakMfa(Data),
@@ -182,6 +185,17 @@ public sealed partial class ManagementState
         return round is null ? graph.ReadAppsAsync(cancel) : (round.Apps ??= graph.ReadAppsAsync(cancel));
     }
 
+    /// <summary>The organisation settings of Exchange: read once per round (two checks use them).</summary>
+    private Task<ExchangeOrganisationReading?> ExchangeOrganisationAsync(SecurityCheckRound? round, CancellationToken cancel)
+    {
+        if (!HasMicrosoft365 || _factory?.Exchange(EffectiveSettings) is not { } exchange)
+        {
+            return Task.FromResult<ExchangeOrganisationReading?>(null);
+        }
+
+        return round is null ? exchange.ReadOrganisationAsync(cancel) : (round.Exchange ??= exchange.ReadOrganisationAsync(cancel));
+    }
+
     /// <summary>The security reading of AD: read once per round (two checks use it), or fresh for a check on its own.</summary>
     private Task<AdSecurityReading?> AdSecurityAsync(SecurityCheckRound? round, CancellationToken cancel)
     {
@@ -211,4 +225,6 @@ public sealed class SecurityCheckRound
     internal Task<AppsReading?>? Apps { get; set; }
 
     internal Task<AdSecurityReading?>? AdSecurity { get; set; }
+
+    internal Task<ExchangeOrganisationReading?>? Exchange { get; set; }
 }

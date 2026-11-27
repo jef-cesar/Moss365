@@ -484,8 +484,12 @@ Advice for **Microsoft 365**:
 | SharePoint: links for everyone without sign-in | Plan with undo |
 
 Started in 0.39.0: the explanation (ⓘ), accepted risks, the kept results, the hardening score, the compromised-account
-plan, and the first advice solved as a plan ("password not required" and reversible encryption off, with undo). Still
-to come in R16: the other advice as plans (guided for high risk), and the write permissions per part.
+plan, and the first advice solved as a plan ("password not required" and reversible encryption off, with undo). The rest
+in 0.40.0: every advice of the two tables as a plan (guided for unconstrained delegation, Protected Users, SMS and voice
+and SMTP AUTH; krbtgt and the checks on the domain controllers as library scripts with a preview), new checks for the
+privileged AD groups, the settings of Microsoft 365 and Exchange Online, SPF, DKIM and DMARC, shared mailboxes with
+sign-in and the sign-ins of emergency accounts, and the write permissions per part (U25). With that, R16 is complete;
+what remains is the test in a test tenant (issue 19).
 
 Carrying out advice needs the Administrator role; the Auditor sees everything, read only. Advice that needs a licence
 the tenant does not have (Entra ID P2, Defender for Office) says so instead of "problem".

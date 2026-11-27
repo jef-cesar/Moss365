@@ -101,6 +101,7 @@ public enum ChangeAction
     AdHardening,                  // Target = DN; wat (AdHardening.Kinds), waarde (encryptionTypes, machineAccountQuota), beschermd (adminCount); Previous
     GraphUpdatePolicy,            // Target = a policy of TenantAdvice.PolicyTargets; json = the fields that change; Previous json
     GraphRoleEligibility,         // Target = principal id; rolId, rol, naar (eligible/active); Previous naar
+    ExchangeOrganisationSetting,  // Target = setting or object; instelling (ExchangeAdvice.Settings), waarde, identity; Previous waarde
 }
 
 /// <summary>

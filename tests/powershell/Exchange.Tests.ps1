@@ -232,6 +232,88 @@ Describe 'Exchange.ps1' {
         @($r[0].data.Groepen).Count | Should -Be 0
     }
 
+    It 'reads the organisation settings with SPF, DKIM and DMARC per domain (R16)' {
+        function global:Get-TransportConfig { param($ErrorAction) [pscustomobject]@{ SmtpClientAuthenticationDisabled = $false } }
+        function global:Get-CASMailbox { param($ResultSize, $Filter, $ErrorAction) $global:CasFilter = $Filter; @([pscustomobject]@{ PrimarySmtpAddress = 'scanner@test.be' }) }
+        function global:Get-HostedOutboundSpamFilterPolicy { param($ErrorAction) @([pscustomobject]@{ Name = 'Default'; AutoForwardingMode = 'On'; IsDefault = $true }) }
+        function global:Get-ExternalInOutlook { param($ErrorAction) [pscustomobject]@{ Enabled = $false } }
+        function global:Get-AdminAuditLogConfig { param($ErrorAction) [pscustomobject]@{ UnifiedAuditLogIngestionEnabled = $true } }
+        function global:Get-DkimSigningConfig { param($Identity, $ErrorAction)
+            @([pscustomobject]@{ Domain = 'test.be'; Enabled = $false; Selector1CNAME = 'selector1-test-be._domainkey.test.onmicrosoft.com'; Selector2CNAME = 'selector2-test-be._domainkey.test.onmicrosoft.com' }) }
+        function global:Get-AcceptedDomain { param($ErrorAction) @([pscustomobject]@{ DomainName = 'test.be' }, [pscustomobject]@{ DomainName = 'test.onmicrosoft.com' }) }
+        function global:Resolve-DnsName { param($Name, $Type, [switch]$DnsOnly, $ErrorAction)
+            $global:DnsGevraagd.Add("$Name")
+            if ($Name -eq 'test.be') { return @([pscustomobject]@{ Strings = @('v=spf1 include:spf.protection.outlook.com', ' -all') }, [pscustomobject]@{ Strings = @('google-site-verification=x') }) }
+            throw 'DNS name does not exist' }
+        function global:Get-EOPProtectionPolicyRule { param($Identity, $ErrorAction) @([pscustomobject]@{ Name = 'Standard Preset Security Policy'; State = 'Disabled' }) }
+        function global:Get-ATPProtectionPolicyRule { param($Identity, $ErrorAction) throw 'not licensed' }
+        $global:DnsGevraagd = [System.Collections.Generic.List[string]]::new()
+
+        $r = Voer @(@{ id = '1'; op = 'LeesOrganisatie'; params = @{} })
+
+        $r[0].status | Should -Be 'Gelukt'
+        $d = $r[0].data
+        $d.SmtpAuthUit | Should -BeFalse
+        @($d.SmtpAuthPostvakken) | Should -Be @('scanner@test.be')
+        $global:CasFilter | Should -Be 'SmtpClientAuthenticationDisabled -eq $false'
+        $d.Doorsturen[0].Mode | Should -Be 'On'
+        $d.ExternLabel | Should -BeFalse
+        $d.Auditlog | Should -BeTrue
+        $be = @($d.Domeinen | Where-Object { $_.Domain -eq 'test.be' })[0]
+        @($be.Spf) | Should -Be @('v=spf1 include:spf.protection.outlook.com -all')
+        @($be.Dmarc).Count | Should -Be 0
+        $be.DkimEnabled | Should -BeFalse
+        $be.Selector1 | Should -Be 'selector1-test-be._domainkey.test.onmicrosoft.com'
+        @(@($d.Domeinen | Where-Object { $_.Domain -eq 'test.onmicrosoft.com' })[0].Spf).Count | Should -Be 0
+        $global:DnsGevraagd | Should -Not -Contain 'test.onmicrosoft.com'
+        $d.Preset.AtpBeschikbaar | Should -BeFalse
+        $d.Preset.Eop[0].State | Should -Be 'Disabled'
+    }
+
+    It 'changes only the organisation settings it knows, with checked values (R16)' {
+        function global:Set-TransportConfig { param($SmtpClientAuthenticationDisabled, $ErrorAction) $global:ExoAanroepen.Add("Transport SmtpOff=$SmtpClientAuthenticationDisabled") }
+        function global:Set-CASMailbox { param($Identity, $SmtpClientAuthenticationDisabled, $ErrorAction)
+            $v = if ($null -eq $SmtpClientAuthenticationDisabled) { 'NULL' } else { "$SmtpClientAuthenticationDisabled" }
+            $global:ExoAanroepen.Add("Cas $Identity SmtpOff=$v") }
+        function global:Set-HostedOutboundSpamFilterPolicy { param($Identity, $AutoForwardingMode, $ErrorAction) $global:ExoAanroepen.Add("Fwd $Identity $AutoForwardingMode") }
+        function global:Set-ExternalInOutlook { param($Enabled, $ErrorAction) $global:ExoAanroepen.Add("Extern $Enabled") }
+        function global:Set-AdminAuditLogConfig { param($UnifiedAuditLogIngestionEnabled, $ErrorAction) $global:ExoAanroepen.Add("Audit $UnifiedAuditLogIngestionEnabled") }
+        function global:Get-DkimSigningConfig { param($Identity, $ErrorAction) if ($Identity -eq 'test.be') { [pscustomobject]@{ Domain = 'test.be'; Enabled = $false } } }
+        function global:Set-DkimSigningConfig { param($Identity, $Enabled, $ErrorAction) $global:ExoAanroepen.Add("Dkim $Identity $Enabled") }
+        function global:New-DkimSigningConfig { param($DomainName, $Enabled, $ErrorAction) $global:ExoAanroepen.Add("NewDkim $DomainName $Enabled") }
+        function global:Get-AcceptedDomain { param($ErrorAction) @([pscustomobject]@{ DomainName = 'test.be' }) }
+        function global:Get-ATPProtectionPolicyRule { param($Identity, $ErrorAction) $null }
+        function global:Set-EOPProtectionPolicyRule { param($Identity, $RecipientDomainIs, $ErrorAction) $global:ExoAanroepen.Add("Eop $Identity $($RecipientDomainIs -join ',')") }
+        function global:Enable-EOPProtectionPolicyRule { param($Identity, $Confirm, $ErrorAction) $global:ExoAanroepen.Add("EopOn $Identity") }
+
+        $r = Voer @(
+            @{ id = '1'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'SmtpAuth'; Waarde = 'False' } }
+            @{ id = '2'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'SmtpAuthPostvak'; Waarde = 'True'; Identity = 'scanner@test.be' } }
+            @{ id = '3'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'SmtpAuthPostvak'; Waarde = ''; Identity = 'scanner@test.be' } }
+            @{ id = '4'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'Doorsturen'; Waarde = 'Off'; Identity = 'Default' } }
+            @{ id = '5'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'Doorsturen'; Waarde = 'Iedereen'; Identity = 'Default' } }
+            @{ id = '6'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'ExternLabel'; Waarde = 'True' } }
+            @{ id = '7'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'Auditlog'; Waarde = 'True' } }
+            @{ id = '8'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'Dkim'; Waarde = 'True'; Identity = 'test.be' } }
+            @{ id = '9'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'Dkim'; Waarde = 'True'; Identity = 'nieuw.be' } }
+            @{ id = '10'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'Preset'; Waarde = 'True'; Identity = 'Standard Preset Security Policy' } }
+            @{ id = '11'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'Preset'; Waarde = 'True'; Identity = 'Mijn beleid' } }
+            @{ id = '12'; op = 'OrganisatieInstellen'; params = @{ Instelling = 'Iets'; Waarde = 'True' } })
+
+        @($r | ForEach-Object { $_.status }) | Should -Be @('Gelukt', 'Gelukt', 'Gelukt', 'Gelukt', 'Mislukt', 'Gelukt', 'Gelukt', 'Gelukt', 'Gelukt', 'Gelukt', 'Mislukt', 'Mislukt')
+        $global:ExoAanroepen | Should -Contain 'Transport SmtpOff=True'
+        $global:ExoAanroepen | Should -Contain 'Cas scanner@test.be SmtpOff=False'
+        $global:ExoAanroepen | Should -Contain 'Cas scanner@test.be SmtpOff=NULL'
+        $global:ExoAanroepen | Should -Contain 'Fwd Default Off'
+        $global:ExoAanroepen | Should -Not -Contain 'Fwd Default Iedereen'
+        $global:ExoAanroepen | Should -Contain 'Extern True'
+        $global:ExoAanroepen | Should -Contain 'Audit True'
+        $global:ExoAanroepen | Should -Contain 'Dkim test.be True'
+        $global:ExoAanroepen | Should -Contain 'NewDkim nieuw.be True'
+        $global:ExoAanroepen | Should -Contain 'Eop Standard Preset Security Policy test.be'
+        $global:ExoAanroepen | Should -Contain 'EopOn Standard Preset Security Policy'
+    }
+
     Context 'Aanmelden' {
         BeforeAll {
             # Load only the function, without running the script

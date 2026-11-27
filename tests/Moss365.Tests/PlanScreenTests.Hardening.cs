@@ -85,4 +85,26 @@ public sealed partial class PlanScreenTests
         cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, c => c.ChangeAction == ChangeAction.GraphUpdatePolicy && c.Target == "admin/sharepoint/settings"), TimeSpan.FromSeconds(5));
         Assert.Contains(_factory.Executed, c => c.Target == "policies/identitySecurityDefaultsEnforcementPolicy");
     }
+
+    [Fact]
+    public void TheAdviceForExchangeIsGuidedForSmtpAuthAndReadsExchangeOncePerRound()
+    {
+        EntraFilled();
+        _factory.ExchangeOrganisation = ExchangeAdviceTests.Open();
+        _factory.SmtpUsage = new Moss365.Core.Security.SmtpAuthUsage(new[] { "printer@test.be" }, false);
+        var cut = RenderComponent<SecurityChecksPage>();
+        cut.FindAll("button").First(b => b.TextContent == "Alles nakijken").Click();
+        cut.WaitForAssertion(() => Assert.Equal(State.SecurityCheckList().Count, State.SecurityCheckResults.Count), TimeSpan.FromSeconds(5));
+        Assert.Single(_factory.WasRead, w => w == "exchange-organisatie"); // two checks, one read
+        Assert.Equal(CheckStatus.Problem, State.SecurityCheckResults["exchange-instellingen"].Status);
+        Assert.Equal(CheckStatus.Problem, State.SecurityCheckResults["maildomeinen"].Status);
+
+        AngleSharp.Dom.IElement CheckRow() => cut.FindAll("tr").First(tr => tr.TextContent.Contains("Instellingen van Exchange Online", StringComparison.Ordinal) && tr.QuerySelector("button[aria-label='Uitleg']") is not null);
+        CheckRow().QuerySelectorAll("button").First(b => b.TextContent.StartsWith("Details", StringComparison.Ordinal)).Click();
+        cut.Find("button[aria-label='Begeleid oplossen voor SMTP AUTH']").Click();
+        Assert.Contains("SMTP AUTH behouden voor printer@test.be", cut.Markup, StringComparison.Ordinal);
+        cut.FindAll("section.kb-plan button").First(b => b.TextContent.StartsWith("Uitvoeren (", StringComparison.Ordinal)).Click();
+        cut.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).Click();
+        cut.WaitForAssertion(() => Assert.Equal(new[] { "SmtpAuthPostvak", "SmtpAuth" }, _factory.Executed.Select(c => c.P("instelling"))), TimeSpan.FromSeconds(5));
+    }
 }
