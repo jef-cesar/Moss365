@@ -333,7 +333,7 @@ Done in 0.32 (R9 is complete): the Logonscripts screen with all of the above; ve
 ## 10. Proposals: what AD and Microsoft 365 administrators want
 
 What administrators often miss in practice. All of them are in the steps to 1.0 (chapter 13); each heading names its
-step (R10 to R20; R16 to R20 were added on 26 November 2026, U15). Everything that changes something goes through a
+step (R10 to R22; R16 to R20 were added on 26 November 2026, U15, and R21 and R22 on 27 November 2026, U27). Everything that changes something goes through a
 plan as always; everything that shows sensitive data (recovery keys, passwords, message traces) is written to the access
 log and requires the right role.
 
@@ -558,6 +558,41 @@ the decisions in the change log and the removals as plans (admin roles in Entra 
 change roles). In 0.40.0: Entra groups that hold an admin role and the app permissions (removed in Entra itself), and the
 reviews in the period report and with the standards.
 
+### Edit every object (R21)
+
+Added on 27 November 2026 (U27). Today a few fields per kind can be changed: for a user the names, job title,
+department, office, city, phones, manager and logon script; for a room its place and booking; for a shared mailbox its
+name, visibility, forwarding, automatic reply and permissions; for a group its name, description, owners and members.
+The rest of an object is only visible, or not even that.
+
+| Proposal | Why |
+| --- | --- |
+| **Every field of every kind**: users (also company, employee id and type, address, country and usage location, other phones, UPN and logon name, primary address and aliases, extension attributes, account expiry), guests (name, company, sponsors, invite again, member or guest), rooms and equipment (name, address, capacity, place, features such as screen and camera, accessibility, booking window, working hours, delegates, who may book), shared mailboxes (addresses, sent items copy, Send on behalf), groups of every kind (addresses, who may mail them, hidden, approval for members, private or public for a Microsoft 365 group), mail contacts, and computers in AD (description, location, managed by, OU) | One screen per object instead of the admin centers of Microsoft and the AD tools |
+| **One way of editing for every kind**: the page of an object in sections (identity, contact, organisation, mail, access, membership), each section edited in place with the current value next to the new one, checked per field while typing (format, uniqueness of an address or logon name, the choice lists of Organisatie), and saved as one plan with the difference shown first | Intuitive and the same everywhere: whoever can edit a user, can edit a room |
+| **Where a field lives**: a synchronised account is edited in AD (Entra follows after the next synchronisation, and the screen says so), a cloud account in Entra, mail settings in Exchange; fields a tenant does not have (no AD, no Exchange) are not shown | Nothing written where it is overwritten again |
+| **Fields with consequences** get their explanation (ⓘ) and, where needed, a confirmation: a new UPN or primary address (sign-in; the old address stays as an alias), a logon name, a group made public | Nobody changes what they do not understand |
+| **Several objects at once**: the same field for a selection (department, office, manager, who may book) as one plan | Daily work after a reorganisation |
+| **History per field**: from the snapshots, who changed what and when, also outside Moss365 | Answers "since when is this so?" |
+| **Design**: the same components for every field type (text, choice list, person, date, number, yes/no, list of addresses), clear labels from the dictionaries, keyboard and screen reader, a narrow window works too | Intuitive screens, in five languages |
+
+Rules: every change is a plan with undo through `Previous`; roles per section (the Helpdesk the contact fields, the
+Administrator everything, privileged accounts only the Administrator); on a date in the past only reading.
+
+### The mailbox as PST at offboarding (R22)
+
+Added on 27 November 2026 (U27). Offboarding converts the mailbox to a shared one and never deletes; often the
+organisation also wants a copy outside Microsoft 365 for its archive.
+
+| Proposal | Why |
+| --- | --- |
+| **Export the mailbox as PST** as an optional step of offboarding, and on the page of a mailbox: through the export of Microsoft Purview eDiscovery (Graph: a case of Moss365, a search on the mailbox, an export in PST format), which runs in Microsoft 365 and can take hours | A copy for the archive before the licence goes |
+| **Downloading is a follow-up item**, not something that runs by itself: once the export is ready, the follow-up list shows it, and the administrator downloads it to a folder of their choice. The change log keeps who, when, where and the SHA-256 of the file; the access log keeps the download | Personal data of a leaver: traceable, under own control |
+| **The permission as a part** (U25): eDiscovery.ReadWrite.All only for a tenant that turns the part on; the signed-in administrator needs the role eDiscovery Manager in Purview, and the screen says so when the role or the licence is missing | Least privilege |
+
+To decide at the start of R22, interactively: the route (Purview eDiscovery export, recommended; or the beta mailbox
+export API of Graph with a PST written by Moss365; or only a guide for an export with Outlook), where the PST may go
+(a folder of choice, or the export folder of the tenant), and how long the case and the export stay in Purview.
+
 ## 11. Open source, with room for paid support
 
 Moss365 is **open source**: anyone can read, use, change and improve the code. Later it must be possible to ask for
@@ -594,7 +629,7 @@ Further:
 ## 12. Decisions
 
 U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interactively the same day); U13 on 23 November 2026;
-U14 to U24 interactively on 26 November 2026.
+U14 to U26 interactively on 26 November 2026; U27 on 27 November 2026.
 
 | # | Decision | Outcome |
 | --- | --- | --- |
@@ -624,6 +659,7 @@ U14 to U24 interactively on 26 November 2026.
 | U24 | **Encryption by default** | **A new tenant is encrypted with the Windows account (A) by default**; changes U7. Backups (issue 22) and the roles mode (Transition) stay as they are for now |
 | U25 | **Clean-up of devices in Entra** (26 November 2026) | Disabling and deleting old devices in Entra needs Directory.AccessAsUser.All (the app may then do everything in the directory the administrator may): **only for a tenant that turns the part "clean up old devices in Entra" on**; without it, Moss365 cleans up Intune and shows the list for Entra |
 | U26 | **Compliance policies** (26 November 2026) | **Reading** compliance per policy (DeviceManagementConfiguration.Read.All) for every tenant; **making** baseline compliance policies from templates (ReadWrite.All) only for a tenant that turns that part on. Together with U25 this is the start of "write permissions per part" (R16) |
+| U27 | **Edit every object, and the mailbox as PST** (27 November 2026) | **On the roadmap as R21 and R22, for the next run**, before the review of the translations and 1.0: every field of every kind of object editable in the same intuitive way (sections, edited in place, checked while typing, one plan with undo), and at offboarding the option to export the mailbox as PST. The route for the PST is decided at the start of R22 |
 
 ## 13. The steps to 1.0
 
@@ -651,14 +687,17 @@ U14 to U24 interactively on 26 November 2026.
 | **R18 Own data** | Everything from chapter 10, Own data: sign-in and audit logs kept locally (on by default), reading without a window at an hour you choose, since your last visit | A read at night makes a snapshot without the app being open and never writes; the logs follow the retention |
 | **R19 The overview** | Everything from chapter 10, The overview: the start screen per tenant in four blocks, comparison with a period, a layout per role, All tenants (U20), the board summary | Every tile shows its trend and clicks through to the list behind it; a test proves that All tenants stores nothing and shows no names |
 | **R20 Access reviews** | Everything from chapter 10, Access reviews | Every decision is in the change log; asking and removing are plans |
+| **R21 Edit every object** | Everything from chapter 10, Edit every object (U27): every field of users, guests, rooms, shared mailboxes, groups, contacts and computers; one way of editing in sections, checked while typing; several objects at once; history per field | Every field a tenant has can be changed from the page of its object, as a plan with undo; a test proves that a synchronised field is written to AD, never to Entra, and that the wrong role or a date in the past cannot change anything |
+| **R22 Mailbox as PST** | Everything from chapter 10, The mailbox as PST at offboarding (U27): the export as an optional step of offboarding and on the mailbox, the download as a follow-up item, the permission as a part | A mailbox of a test tenant comes out as a PST that opens in Outlook; the change log keeps the SHA-256; nothing runs by itself |
 | **1.0 Desktop** | Code signing certificate for app, updates and scripts (U8); guide per role, installation guide, migration guide, privacy information (what the app stores and where, including the sign-in and audit logs of R18), a DPIA template | An organisation that does not know Moss365 installs and uses it with the documentation alone |
 
 Order: R0 and R1 first. R2 and R3 belong together (one database per tenant). R4 builds on them, and R11 and R14 build
 on R4. The other steps can be done in a different order if that works better; every step is a release of its own
 (0.10, 0.11, ...). First the move to .NET 10 (U22); then R16 to R20 (U15), in that order; R19 builds on R16 to R18; the
 tests in a test tenant (issue 19) run alongside R16. 0.39.0 brings the first version of R16 to R20; decided on
-26 November 2026: next the rest of R16, R17, R19 and R20, and only then the tests in a test tenant. The review of the
-translations by native speakers (the rest of R15) comes after R20, so that it covers every new text. Then the web
+26 November 2026: next the rest of R16, R17, R19 and R20 (done for 0.40.0), and only then the tests in a test tenant.
+Decided on 27 November 2026 (U27): in the next run R21 and R22. The review of the translations by native speakers (the
+rest of R15) comes after R22, so that it covers every new text. Then the web
 version: [roadmap-web.md](roadmap-web.md), and Google Workspace (chapter 15).
 
 ## 14. Risks
