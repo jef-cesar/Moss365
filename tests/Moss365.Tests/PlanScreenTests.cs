@@ -416,9 +416,17 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
         var text = new System.Text.StringBuilder();
         foreach (var path in new[] { State.Database.FilePath, State.Database.FilePath + "-wal" }.Where(File.Exists))
         {
-            using var f = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            using var r = new StreamReader(f, System.Text.Encoding.Latin1);
-            text.Append(r.ReadToEnd());
+            try
+            {
+                using var f = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var r = new StreamReader(f, System.Text.Encoding.Latin1);
+                text.Append(r.ReadToEnd());
+            }
+            catch (FileNotFoundException)
+            {
+                // A write-ahead log that SQLite removed between the check and the read (a checkpoint): its content is
+                // in the database, which is read too
+            }
         }
 
         return text.ToString();
