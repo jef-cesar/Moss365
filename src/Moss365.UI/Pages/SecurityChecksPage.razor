@@ -163,7 +163,7 @@
                                         }
                                     </td>
                                     <td>@r.Object</td>
-                                    <td>@if (r.Href is { Length: > 0 } href) { <a href="@href" target="_blank" rel="noopener">@r.Detail</a> } else { @r.Detail }</td>
+                                    <td>@if (r.Href is { Length: > 0 } href) { @if (href.StartsWith("http", StringComparison.OrdinalIgnoreCase)) { <a href="@href" target="_blank" rel="noopener">@r.Detail</a> } else { <a href="@href">@r.Detail</a> } } else { @r.Detail }</td>
                                     <td>
                                         @if (MayAccept && SecurityAdvice.SolvableAlone(c, r))
                                         {
@@ -225,10 +225,12 @@
     // Solving advice as a plan (R16, U16): the lines with a fix of one check; shown, confirmed and run as every plan
     private (string Key, Moss365.Core.Changes.PlanOutcome Outcome)? solving;
 
-    private void Solve(SecurityCheck check) => solving = (check.Key, SecurityAdvice.Solve(State.Data, check));
+    private AdviceContext Context => new(State.Config, State.User);
+
+    private void Solve(SecurityCheck check) => solving = (check.Key, SecurityAdvice.Solve(State.Data, check, Context));
 
     // Guided (U16): one account per plan; the plan says what it affects before anything is confirmed
-    private void SolveOne(SecurityCheck check, CheckRow row) => solving = (check.Key, SecurityAdvice.SolveRow(State.Data, row));
+    private void SolveOne(SecurityCheck check, CheckRow row) => solving = (check.Key, SecurityAdvice.SolveRow(State.Data, row, Context));
 
     // Advice carried out with a library script (krbtgt): the script page, with its preview (-WhatIf); only when the
     // library has the script and the role may run scripts

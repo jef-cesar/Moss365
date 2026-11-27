@@ -679,6 +679,9 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
 
         public SecurityData? Security { get; set; }
 
+        /// <summary>The settings of the tenant for the advice of R16 (null: not readable).</summary>
+        public Core.Security.TenantSettingsReading? TenantSettings { get; set; }
+
         /// <summary>The security reading of AD with what the advice of R16 needs (null: the small one of 0.34).</summary>
         public Core.Security.AdSecurityReading? AdSecurity { get; set; }
 
@@ -828,6 +831,8 @@ public sealed partial class PlanScreenTests : TestContext, IDisposable
             }.Concat(f.ExtraEntraDevices).ToList());
 
         public Task<Core.Devices.ComplianceReading?> ReadComplianceAsync(CancellationToken cancel) => Task.FromResult(f.Compliance);
+
+        public Task<Core.Security.TenantSettingsReading?> ReadTenantSettingsAsync(CancellationToken cancel) => Task.FromResult(f.TenantSettings);
 
         public Task<IReadOnlyList<Core.Devices.DeviceComplianceState>?> ReadDeviceComplianceAsync(string managedDeviceId, CancellationToken cancel)
             => Task.FromResult<IReadOnlyList<Core.Devices.DeviceComplianceState>?>(new[]

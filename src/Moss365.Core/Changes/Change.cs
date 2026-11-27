@@ -99,6 +99,8 @@ public enum ChangeAction
     IntuneDeleteDevice,           // Target = managed device id; toestel, eigendom
     IntuneSetComplianceSettings,  // Target = deviceManagement; json = the compliance settings (all of them, as read, one changed); Previous json
     AdHardening,                  // Target = DN; wat (AdHardening.Kinds), waarde (encryptionTypes, machineAccountQuota), beschermd (adminCount); Previous
+    GraphUpdatePolicy,            // Target = a policy of TenantAdvice.PolicyTargets; json = the fields that change; Previous json
+    GraphRoleEligibility,         // Target = principal id; rolId, rol, naar (eligible/active); Previous naar
 }
 
 /// <summary>

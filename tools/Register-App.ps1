@@ -39,8 +39,11 @@
 
 .PARAMETER Onderdelen
     Parts with a permission of their own, only for a tenant that uses them: entra-device-cleanup (disable and delete
-    old devices in Entra; Directory.AccessAsUser.All) and compliance-policies (baseline compliance policies;
-    DeviceManagementConfiguration.ReadWrite.All). The wizard in the app does the same per tenant.
+    old devices in Entra; Directory.AccessAsUser.All), compliance-policies (baseline compliance policies;
+    DeviceManagementConfiguration.ReadWrite.All), tenant-policies (apps, consent and guests; Policy.ReadWrite.Authorization
+    and Policy.ReadWrite.ConsentRequest), authentication-methods (Policy.ReadWrite.AuthenticationMethod), pim (admin
+    roles made eligible; RoleEligibilitySchedule.ReadWrite.Directory and RoleAssignmentSchedule.ReadWrite.Directory) and
+    sharepoint-settings (SharePointTenantSettings.ReadWrite.All). The wizard in the app does the same per tenant.
 
 .PARAMETER Naam
     Name of the app registration. Default "Moss365".
@@ -59,7 +62,7 @@ param(
     [string[]]$Beheerders,
     [string]$Naam = 'Moss365',
     [switch]$GroepenMaken,
-    [ValidateSet('entra-device-cleanup', 'compliance-policies')]
+    [ValidateSet('entra-device-cleanup', 'compliance-policies', 'tenant-policies', 'authentication-methods', 'pim', 'sharepoint-settings')]
     [string[]]$Onderdelen = @()
 )
 
@@ -84,6 +87,10 @@ $Rechten = @(
 $OnderdeelRechten = @{
     'entra-device-cleanup' = @('Directory.AccessAsUser.All')
     'compliance-policies' = @('DeviceManagementConfiguration.ReadWrite.All')
+    'tenant-policies' = @('Policy.ReadWrite.Authorization', 'Policy.ReadWrite.ConsentRequest')
+    'authentication-methods' = @('Policy.ReadWrite.AuthenticationMethod')
+    'pim' = @('RoleEligibilitySchedule.ReadWrite.Directory', 'RoleAssignmentSchedule.ReadWrite.Directory')
+    'sharepoint-settings' = @('SharePointTenantSettings.ReadWrite.All')
 }
 foreach ($onderdeel in $Onderdelen) { $Rechten += $OnderdeelRechten[$onderdeel] }
 $ExchangeRechten = @('Exchange.Manage')

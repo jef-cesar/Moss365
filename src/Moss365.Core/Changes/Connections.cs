@@ -201,6 +201,9 @@ public interface IGraphConnection
     /// <summary>Devices in Intune (0.36); null where that cannot be read (licence, permission).</summary>
     Task<IReadOnlyList<Devices.IntuneDevice>?> ReadIntuneDevicesAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<Devices.IntuneDevice>?>(null);
 
+    /// <summary>The settings of the tenant the advice for Microsoft 365 reads (R16); null where that cannot be read.</summary>
+    Task<Security.TenantSettingsReading?> ReadTenantSettingsAsync(CancellationToken cancel) => Task.FromResult<Security.TenantSettingsReading?>(null);
+
     /// <summary>Compliance per policy (R17, U26); null where that cannot be read.</summary>
     Task<Devices.ComplianceReading?> ReadComplianceAsync(CancellationToken cancel) => Task.FromResult<Devices.ComplianceReading?>(null);
 

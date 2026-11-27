@@ -89,6 +89,14 @@ public static class SecurityAdvice
             "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/forest-recovery-guide/ad-forest-recovery-reset-the-krbtgt-password",
         }),
         new("gpo", 1, "T1484.001", Array.Empty<string>()),
+        new("m365-instellingen", 3, "T1556", new[]
+        {
+            "https://learn.microsoft.com/entra/fundamentals/security-defaults",
+            "https://learn.microsoft.com/entra/identity/enterprise-apps/configure-admin-consent-workflow",
+            "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-methods-manage",
+        }),
+        new("gedeelde-postvakken", 1, "T1078.004", new[] { "https://learn.microsoft.com/exchange/collaboration-exo/shared-mailboxes" }),
+        new("noodaccounts", 1, "T1078.004", new[] { "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access" }),
         new("ad-groepen", 3, "T1078.002", new[]
         {
             "https://learn.microsoft.com/windows-server/security/credentials-protection-and-management/protected-users-security-group",
@@ -114,29 +122,32 @@ public static class SecurityAdvice
     /// <summary>A line can be solved as a plan: it has a fix this version knows, and is not OK or accepted.</summary>
     private static bool CanSolve(CheckRow r)
         => r.Fix is { } f && (AccountFlags.ContainsKey(f) || f is AdHardening.Protect or AdHardening.RemoveMember or AdHardening.AesOnly
-                                  or AdHardening.AdminCount or AdHardening.Quota or AdHardening.RecycleBin)
+                                  or AdHardening.AdminCount or AdHardening.Quota or AdHardening.RecycleBin || TenantAdvice.Fixes.Contains(f))
            && r.AcceptedUntil is null && r.Status != CheckStatus.Ok;
+
+    /// <summary>Guided (U16): one line per plan, with what it affects first.</summary>
+    private static bool Guided(string? fix) => AdHardening.Guided(fix) || fix == TenantAdvice.WeakMethods;
 
     /// <summary>The lines of a check that are solved together in one plan: with a fix that is not guided.</summary>
     public static IReadOnlyList<CheckRow> Solvable(SecurityCheck check)
         => check.AcceptedUntil is not null
             ? Array.Empty<CheckRow>()
-            : check.Rows.Where(r => CanSolve(r) && !AdHardening.Guided(r.Fix)).ToList();
+            : check.Rows.Where(r => CanSolve(r) && !Guided(r.Fix)).ToList();
 
     /// <summary>A line that is solved on its own (U16, guided: one account per plan, with what it affects first).</summary>
-    public static bool SolvableAlone(SecurityCheck check, CheckRow row) => check.AcceptedUntil is null && CanSolve(row) && AdHardening.Guided(row.Fix);
+    public static bool SolvableAlone(SecurityCheck check, CheckRow row) => check.AcceptedUntil is null && CanSolve(row) && Guided(row.Fix);
 
     /// <summary>
     /// The plan that solves the lines of a check that are not guided (U16: low risk with undo, so a plan right away),
     /// each with its previous value for undo. A line whose account is not in the data read gives a message.
     /// </summary>
-    public static PlanOutcome Solve(InventoryData data, SecurityCheck check)
+    public static PlanOutcome Solve(InventoryData data, SecurityCheck check, AdviceContext? context = null)
     {
         var plan = new List<Change>();
         var errors = new List<string>();
         foreach (var r in Solvable(check))
         {
-            var outcome = SolveRow(data, r);
+            var outcome = SolveRow(data, r, context);
             plan.AddRange(outcome.Plan);
             errors.AddRange(outcome.Errors);
         }
@@ -145,11 +156,11 @@ public static class SecurityAdvice
     }
 
     /// <summary>The plan for one line: an account flag, or a fix of <see cref="AdHardening"/>.</summary>
-    public static PlanOutcome SolveRow(InventoryData data, CheckRow r)
+    public static PlanOutcome SolveRow(InventoryData data, CheckRow r, AdviceContext? context = null)
     {
-        if (AdHardening.Plan(r, data) is { } hardening)
+        if ((AdHardening.Plan(r, data) ?? TenantAdvice.Plan(r, data, context)) is { } solved)
         {
-            return hardening;
+            return solved;
         }
 
         var fix = r.Fix ?? string.Empty;

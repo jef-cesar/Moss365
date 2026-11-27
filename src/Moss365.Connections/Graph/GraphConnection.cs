@@ -344,6 +344,115 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
+    /// <summary>
+    /// A permanent admin role made eligible through PIM (R16), or back (undo): first the new schedule, then the old one
+    /// removed, so that the role is never gone in between.
+    /// </summary>
+    private async Task<ChangeResult> RoleEligibilityAsync(Change w, CancellationToken cancel)
+    {
+        var why = Texts.T.Format("advice.roles.justification", w.P("rol"));
+        object Request(string action, bool withSchedule) => withSchedule
+            ? new { action, justification = why, roleDefinitionId = w.P("rolId"), directoryScopeId = "/", principalId = w.Target,
+                    scheduleInfo = new { startDateTime = DateTimeOffset.UtcNow.ToString("o", CultureInfo.InvariantCulture), expiration = new { type = "noExpiration" } } }
+            : new { action, justification = why, roleDefinitionId = w.P("rolId"), directoryScopeId = "/", principalId = w.Target };
+        const string eligibility = "/roleManagement/directory/roleEligibilityScheduleRequests";
+        const string assignment = "/roleManagement/directory/roleAssignmentScheduleRequests";
+        if (w.P("naar") == "eligible")
+        {
+            await _client.PostAsync(eligibility, Request("adminAssign", true), cancel);
+            await _client.PostAsync(assignment, Request("adminRemove", false), cancel);
+        }
+        else
+        {
+            await _client.PostAsync(assignment, Request("adminAssign", true), cancel);
+            await _client.PostAsync(eligibility, Request("adminRemove", false), cancel);
+        }
+
+        return ChangeResult.Ok(w);
+    }
+
+    /// <summary>
+    /// The settings of the tenant for the advice of R16: Security Defaults, the authorization policy (apps, tenants,
+    /// consent, guests), the admin consent workflow, the authentication methods, sharing in SharePoint and the licences
+    /// (Entra ID P1 and P2). What cannot be read is named in the notes and stays null.
+    /// </summary>
+    public async Task<Core.Security.TenantSettingsReading?> ReadTenantSettingsAsync(CancellationToken cancel)
+    {
+        var notes = new List<string>();
+        async Task<JsonElement?> Get(string path, string what)
+        {
+            try
+            {
+                return await _client.GetAsync(path, cancel);
+            }
+            catch (GraphError ex)
+            {
+                notes.Add($"{what}: {ex.Message}");
+                return null;
+            }
+        }
+
+        var defaults = await Get("/policies/identitySecurityDefaultsEnforcementPolicy", "Security Defaults");
+        var authorization = await Get("/policies/authorizationPolicy", "authorizationPolicy");
+        var workflow = await Get("/policies/adminConsentRequestPolicy", "adminConsentRequestPolicy");
+        var methods = await Get("/policies/authenticationMethodsPolicy", "authenticationMethodsPolicy");
+        var sharepoint = await Get("/admin/sharepoint/settings", "SharePoint");
+        if (defaults is null && authorization is null && methods is null)
+        {
+            return null;
+        }
+
+        static bool? Bool(JsonElement? e, string name) => e is { } v && v.TryGetProperty(name, out var b) && b.ValueKind is JsonValueKind.True or JsonValueKind.False ? b.GetBoolean() : null;
+        JsonElement? user = authorization is { } a && a.TryGetProperty("defaultUserRolePermissions", out var u) && u.ValueKind == JsonValueKind.Object ? u : null;
+        var consent = user is { } du && du.TryGetProperty("permissionGrantPoliciesAssigned", out var pg) && pg.ValueKind == JsonValueKind.Array
+            ? pg.EnumerateArray().Select(x => x.GetString()).OfType<string>().ToList() : new List<string>();
+        var states = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (methods is { } m && m.TryGetProperty("authenticationMethodConfigurations", out var list) && list.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var c in list.EnumerateArray())
+            {
+                states[S(c, "id").ToLowerInvariant()] = S(c, "state");
+            }
+        }
+
+        var (p1, p2) = (false, false);
+        try
+        {
+            foreach (var sku in await _client.GetAllAsync("/subscribedSkus", cancel))
+            {
+                if (sku.TryGetProperty("servicePlans", out var plans) && plans.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var plan in plans.EnumerateArray().Where(x => S(x, "provisioningStatus") is not ("Disabled" or "PendingActivation")))
+                    {
+                        p1 |= S(plan, "servicePlanName") is "AAD_PREMIUM" or "AAD_PREMIUM_P2";
+                        p2 |= S(plan, "servicePlanName") == "AAD_PREMIUM_P2";
+                    }
+                }
+            }
+        }
+        catch (GraphError ex)
+        {
+            notes.Add($"subscribedSkus: {ex.Message}");
+        }
+
+        return new Core.Security.TenantSettingsReading
+        {
+            SecurityDefaults = Bool(defaults, "isEnabled"),
+            UsersCreateApps = Bool(user, "allowedToCreateApps"),
+            UsersCreateTenants = Bool(user, "allowedToCreateTenants"),
+            ConsentPolicies = consent,
+            GuestRoleId = authorization is { } g ? S(g, "guestUserRoleId") : null,
+            AllowInvitesFrom = authorization is { } i ? S(i, "allowInvitesFrom") : null,
+            ConsentWorkflow = Bool(workflow, "isEnabled"),
+            ConsentWorkflowJson = workflow?.GetRawText(),
+            Methods = states,
+            Sharing = sharepoint is { } sp ? S(sp, "sharingCapability") : null,
+            HasP1 = p1,
+            HasP2 = p2,
+            Notes = notes,
+        };
+    }
+
     /// <summary>Why a device in Entra may not be disabled or deleted, asked again just before (R17, U18): hybrid joined
     /// (cleaned up in AD), Autopilot (can no longer be provisioned), or still enabled (delete only after disabling).</summary>
     private async Task<string?> DeviceCleanupRefusalAsync(string objectId, bool deleting, CancellationToken cancel)
@@ -774,18 +883,22 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
         static string Principal(JsonElement e) => e.TryGetProperty("principal", out var p) && p.ValueKind == JsonValueKind.Object
             ? (S(p, "userPrincipalName") is { Length: > 0 } u ? u : S(p, "displayName")) : S(e, "principalId");
         static string RoleName(JsonElement e) => e.TryGetProperty("roleDefinition", out var r) && r.ValueKind == JsonValueKind.Object ? S(r, "displayName") : S(e, "roleDefinitionId");
+        static string Kind(JsonElement e) => e.TryGetProperty("principal", out var p) && p.ValueKind == JsonValueKind.Object
+            ? S(p, "@odata.type").Replace("#microsoft.graph.", string.Empty, StringComparison.Ordinal) : string.Empty;
+        static Core.Security.RoleAssignmentInfo Info(JsonElement a, string kind, DateTimeOffset? end, bool pim)
+            => new(RoleName(a), Principal(a), kind, end) { RoleId = S(a, "roleDefinitionId"), PrincipalId = S(a, "principalId"), PrincipalType = Kind(a), ViaPim = pim };
         try
         {
             // With PIM (P2): active assignments with their end, and the eligible ones
             foreach (var a in await _client.GetAllAsync("/roleManagement/directory/roleAssignmentScheduleInstances?$expand=principal,roleDefinition", cancel))
             {
                 var end = Date(a, "endDateTime");
-                output.Add(new Core.Security.RoleAssignmentInfo(RoleName(a), Principal(a), S(a, "assignmentType") == "Activated" ? "actief (PIM)" : end is null ? "permanent" : "tijdelijk", end));
+                output.Add(Info(a, S(a, "assignmentType") == "Activated" ? "actief (PIM)" : end is null ? "permanent" : "tijdelijk", end, true));
             }
 
             foreach (var a in await _client.GetAllAsync("/roleManagement/directory/roleEligibilityScheduleInstances?$expand=principal,roleDefinition", cancel))
             {
-                output.Add(new Core.Security.RoleAssignmentInfo(RoleName(a), Principal(a), "in aanmerking", Date(a, "endDateTime")));
+                output.Add(Info(a, "in aanmerking", Date(a, "endDateTime"), true));
             }
         }
         catch (GraphError ex) when (ex.Status is HttpStatusCode.Forbidden or HttpStatusCode.BadRequest)
@@ -794,7 +907,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             output.Clear();
             foreach (var a in await _client.GetAllAsync("/roleManagement/directory/roleAssignments?$expand=principal,roleDefinition", cancel))
             {
-                output.Add(new Core.Security.RoleAssignmentInfo(RoleName(a), Principal(a), "permanent", null));
+                output.Add(Info(a, "permanent", null, false));
             }
         }
 
@@ -1554,6 +1667,30 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
                 case ChangeAction.IntuneDeleteDevice:
                     await _client.DeleteAsync($"/deviceManagement/managedDevices/{Uri.EscapeDataString(w.Target)}", cancel);
                     return ChangeResult.Ok(w);
+                case ChangeAction.GraphUpdatePolicy:
+                {
+                    // Only the policies of the advice (R16); the admin consent workflow is replaced whole (PUT)
+                    if (!Core.Security.TenantAdvice.PolicyTargets.ContainsKey(w.Target))
+                    {
+                        return ChangeResult.Error(w, Texts.T["advice.policy.not-allowed"]);
+                    }
+
+                    var body = JsonNode.Parse(w.P("json"))!;
+                    if (string.Equals(w.Target, "policies/adminConsentRequestPolicy", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _client.PutAsync("/" + w.Target, body, cancel);
+                    }
+                    else
+                    {
+                        await _client.PatchAsync("/" + w.Target, body, cancel);
+                    }
+
+                    return ChangeResult.Ok(w);
+                }
+
+                case ChangeAction.GraphRoleEligibility:
+                    return await RoleEligibilityAsync(w, cancel);
+
                 case ChangeAction.IntuneSetComplianceSettings:
                     // All the settings as read, with one changed: a complex property is sent whole
                     await _client.PatchAsync("/deviceManagement", new JsonObject { ["settings"] = JsonNode.Parse(w.P("json")) }, cancel);

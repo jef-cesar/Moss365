@@ -98,7 +98,19 @@ public sealed record GpoInfo(string Id, string Name, bool UserDisabled, bool Com
 
 public sealed record SecureScoreReading(IReadOnlyList<(DateTimeOffset Date, double Score, double Max)> History, IReadOnlyList<(string Title, double MaxScore, string Url)> Actions);
 
-public sealed record RoleAssignmentInfo(string Role, string Principal, string Kind, DateTimeOffset? End);
+public sealed record RoleAssignmentInfo(string Role, string Principal, string Kind, DateTimeOffset? End)
+{
+    // R16: what making a role eligible needs
+    public string RoleId { get; init; } = string.Empty;
+
+    public string PrincipalId { get; init; } = string.Empty;
+
+    /// <summary>user, group or servicePrincipal.</summary>
+    public string PrincipalType { get; init; } = string.Empty;
+
+    /// <summary>Read through PIM (the tenant has Entra ID P2).</summary>
+    public bool ViaPim { get; init; }
+}
 
 public sealed record RiskyUser(string Upn, string Level, string State, DateTimeOffset? Updated);
 
@@ -354,6 +366,20 @@ public static class SecurityChecks
         return new SecurityCheck("rollen", title, status,
             Texts.T.Format("security.roles", roles.Count, permanent, roles.Count(r => r.Kind == "in aanmerking"), globals > 5 ? Texts.T.Format("security.roles.globals", globals) : string.Empty),
             rows);
+    }
+
+    /// <summary>The check of admin roles with the lines about the accounts themselves (R16): synchronised from AD, the
+    /// daily account with a mailbox, and a permanent critical role that can become eligible.</summary>
+    public static SecurityCheck Roles(IReadOnlyList<RoleAssignmentInfo>? roles, InventoryData d, Configuration.OrganisationConfig c, string? ownUpn)
+    {
+        var check = Roles(roles);
+        if (roles is null)
+        {
+            return check;
+        }
+
+        var extra = TenantAdvice.RoleRows(roles, d, c, ownUpn);
+        return extra.Count == 0 ? check : check with { Rows = check.Rows.Concat(extra).ToList(), Status = new[] { check.Status, Worst(extra) }.Max() };
     }
 
     /// <summary>Who only has weak MFA methods (SMS, phone call, e-mail) or none at all.</summary>

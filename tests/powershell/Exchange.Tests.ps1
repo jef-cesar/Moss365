@@ -294,6 +294,10 @@ Describe 'Register-App.ps1' {
     It 'asks the permission of a part only when it is turned on, the same as the app (U25, U26)' {
         $OnderdeelRechten['entra-device-cleanup'] | Should -Be @('Directory.AccessAsUser.All')
         $OnderdeelRechten['compliance-policies'] | Should -Be @('DeviceManagementConfiguration.ReadWrite.All')
+        $OnderdeelRechten['tenant-policies'] | Should -Be @('Policy.ReadWrite.Authorization', 'Policy.ReadWrite.ConsentRequest')
+        $OnderdeelRechten['authentication-methods'] | Should -Be @('Policy.ReadWrite.AuthenticationMethod')
+        $OnderdeelRechten['pim'] | Should -Be @('RoleEligibilitySchedule.ReadWrite.Directory', 'RoleAssignmentSchedule.ReadWrite.Directory')
+        $OnderdeelRechten['sharepoint-settings'] | Should -Be @('SharePointTenantSettings.ReadWrite.All')
         $code = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\..\src\Moss365.Core\Setup\PermissionParts.cs') -Raw
         foreach ($k in $OnderdeelRechten.Keys) {
             $code | Should -Match ([regex]::Escape("`"$k`""))

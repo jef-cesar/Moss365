@@ -118,6 +118,7 @@ public sealed partial class ManagementState
             {
                 ("doorsturen", Texts.T["code.management-state-security-checks.forwarding-outside"]), ("app-geheimen", Texts.T["code.management-state-security-checks.secrets-and-certificates-of-apps"]), ("app-rechten", Texts.T["code.management-state-security-checks.broad-app-permissions-and-consents"]),
                 ("secure-score", "Microsoft Secure Score"), ("rollen", Texts.T["code.management-state-security-checks.admin-roles-and-pim"]), ("zwakke-mfa", Texts.T["security.check.weak-mfa-methods"]), ("risico", Texts.T["security.check.risky-users"]),
+                ("m365-instellingen", Texts.T["security.check.tenant-settings"]), ("gedeelde-postvakken", Texts.T["security.check.shared-sign-in"]), ("noodaccounts", Texts.T["security.check.emergency"]),
             });
         }
 
@@ -146,7 +147,10 @@ public sealed partial class ManagementState
                 "app-geheimen" => SecurityChecks.AppCredentials(await AppsAsync(round, cancel), now),
                 "app-rechten" => SecurityChecks.AppPermissions(await AppsAsync(round, cancel)),
                 "secure-score" => SecurityChecks.SecureScore(Graph() is { } g3 ? await g3.ReadSecureScoreAsync(cancel) : null),
-                "rollen" => SecurityChecks.Roles(Graph() is { } g4 ? await g4.ReadRoleAssignmentsAsync(cancel) : null),
+                "rollen" => SecurityChecks.Roles(Graph() is { } g4 ? await g4.ReadRoleAssignmentsAsync(cancel) : null, Data, Config, User),
+                "m365-instellingen" => TenantAdvice.Check(Graph() is { } g6 ? await g6.ReadTenantSettingsAsync(cancel) : null, Data),
+                "gedeelde-postvakken" => TenantAdvice.SharedMailboxes(Data),
+                "noodaccounts" => TenantAdvice.Emergency(Config, KeptSignIns(now.AddDays(-30), now.AddMinutes(1)), now),
                 "zwakke-mfa" => SecurityChecks.WeakMfa(Data),
                 "risico" => SecurityChecks.Risky(Graph() is { } g5 ? await g5.ReadRiskyUsersAsync(cancel) : null),
                 "ad-beveiliging" => SecurityChecks.AdSecurity(await AdSecurityAsync(round, cancel), now),

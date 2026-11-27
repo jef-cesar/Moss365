@@ -56,4 +56,33 @@ public sealed partial class PlanScreenTests
         Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.StartsWith("Oplossen als plan", StringComparison.Ordinal) || b.TextContent == "Begeleid");
         Assert.NotEmpty(State.SecurityCheckResults["ad-groepen"].Rows);
     }
+
+    [Fact]
+    public void TheAdviceForMicrosoft365IsAPlanPerPart()
+    {
+        EntraFilled();
+        _factory.TenantSettings = TenantAdviceTests.Open() with { HasP1 = false };
+        var cut = RenderComponent<SecurityChecksPage>();
+        cut.FindAll("button").First(b => b.TextContent == "Alles nakijken").Click();
+        cut.WaitForAssertion(() => Assert.Equal(State.SecurityCheckList().Count, State.SecurityCheckResults.Count), TimeSpan.FromSeconds(5));
+        var check = State.SecurityCheckResults["m365-instellingen"];
+        Assert.Equal(CheckStatus.Problem, check.Status);
+
+        // Without the parts only Security Defaults becomes a plan; the rest says which part it needs
+        AngleSharp.Dom.IElement CheckRow() => cut.FindAll("tr").First(tr => tr.TextContent.Contains("Instellingen van Microsoft 365", StringComparison.Ordinal) && tr.QuerySelector("button[aria-label='Uitleg']") is not null);
+        CheckRow().QuerySelectorAll("button").First(b => b.TextContent.StartsWith("Oplossen als plan", StringComparison.Ordinal)).Click();
+        Assert.Contains("Security Defaults aanzetten", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Beleid van de tenant", cut.Markup, StringComparison.Ordinal);
+
+        // With the parts on: one plan for all of it (the SMS advice stays guided)
+        State.Config.PermissionParts.AddRange(new[] { Moss365.Core.Setup.PermissionParts.TenantPolicies, Moss365.Core.Setup.PermissionParts.AuthenticationMethods, Moss365.Core.Setup.PermissionParts.SharePointSettings });
+        CheckRow().QuerySelectorAll("button").First(b => b.TextContent.StartsWith("Oplossen als plan", StringComparison.Ordinal)).Click();
+        Assert.Contains("Gebruikers geven zelf geen toestemming meer aan apps", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Geen links voor iedereen in SharePoint", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("uitzetten als tweede factor", cut.Markup, StringComparison.Ordinal);
+        cut.FindAll("section.kb-plan button").First(b => b.TextContent.StartsWith("Uitvoeren (", StringComparison.Ordinal)).Click();
+        cut.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).Click();
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, c => c.ChangeAction == ChangeAction.GraphUpdatePolicy && c.Target == "admin/sharepoint/settings"), TimeSpan.FromSeconds(5));
+        Assert.Contains(_factory.Executed, c => c.Target == "policies/identitySecurityDefaultsEnforcementPolicy");
+    }
 }

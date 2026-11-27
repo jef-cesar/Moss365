@@ -39,6 +39,7 @@ public static class Undo
         ChangeAction.ExchangeUpdateGroup, ChangeAction.ExchangeUpdateMailbox, ChangeAction.ExchangeAutoReply, ChangeAction.GraphSetManager,
         ChangeAction.GraphUpdateCaPolicy, ChangeAction.GraphUpdateCaLocation, ChangeAction.AdSetAccountFlag, ChangeAction.IntuneDeviceAction,
         ChangeAction.GraphSetDeviceEnabled, ChangeAction.IntuneSetComplianceSettings, ChangeAction.AdHardening,
+        ChangeAction.GraphUpdatePolicy, ChangeAction.GraphRoleEligibility,
     };
 
     /// <summary>Can this entry be undone? If not, why not.</summary>

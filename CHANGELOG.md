@@ -50,6 +50,25 @@ The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
   members of Account, Server, Print and Backup Operators, and Schema or Enterprise Admins that are not empty (removing
   them is a plan with undo). The groups are found by their well-known SID, so also on a domain controller in another
   language. A round of checks reads AD once for both AD checks.
+- **Advice for Microsoft 365 as plans** (R16): the new check *Instellingen van Microsoft 365* finds MFA for nobody
+  (neither Security Defaults nor Conditional Access), apps and tenants made by users, consent to apps without the admin
+  consent workflow, guests who see the directory and members who invite them, SMS and voice as second factor, no
+  passkeys or Authenticator, and links for everyone in SharePoint. Each becomes a plan with undo: Security Defaults on
+  (without Entra ID P1) or the baseline of Conditional Access in report-only (with P1, `CaSafety` as always), users no
+  longer register apps or consent themselves (team owners keep theirs) with the workflow on and you as reviewer,
+  restricted guests, passkeys and Authenticator on, no links for everyone. Turning off SMS and voice is guided: the plan
+  refuses while someone has nothing else, and names them.
+- **Admin roles** (R16): the check of admin roles also names a role on an account synchronised from AD or on the daily
+  account with a mailbox, and makes a permanent critical role eligible through PIM as a plan (with Entra ID P2; never an
+  emergency account or your own; undo makes it active again); without P2 it says so.
+- New checks **Gedeelde postvakken met aanmelding** (a plan blocks signing in, in AD for a synchronised one, with undo)
+  and **Aanmeldingen van noodaccounts** (every sign-in of an emergency account in 30 days, from the kept sign-ins).
+- **Write permissions per part** (R16, U25): four new parts on *Tenant inrichten*, each asked only when turned on and
+  refused by the engine when off: *Beleid van de tenant* (Policy.ReadWrite.Authorization, Policy.ReadWrite.ConsentRequest),
+  *Verificatiemethoden* (Policy.ReadWrite.AuthenticationMethod), *PIM* (RoleEligibilitySchedule.ReadWrite.Directory,
+  RoleAssignmentSchedule.ReadWrite.Directory) and *Delen in SharePoint* (SharePointTenantSettings.ReadWrite.All).
+  `Register-App.ps1 -Onderdelen` takes the same. Only the policies of the advice can be changed: the engine refuses any
+  other.
 - Two scripts in the library: *krbtgt-wachtwoord vernieuwen* (two rounds, a replication check before each, and round 2
   only after the waiting time of the Kerberos policy; with a preview) and *Domeincontrollers controleren* (LDAP signing
   and channel binding, NTLMv1, SMBv1 and the print spooler; reads only). The krbtgt advice leads to the first.

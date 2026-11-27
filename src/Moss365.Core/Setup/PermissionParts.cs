@@ -24,10 +24,27 @@ public static class PermissionParts
     /// <summary>Making baseline compliance policies from templates (U26).</summary>
     public const string CompliancePolicies = "compliance-policies";
 
+    /// <summary>The policies of the tenant (R16): apps and tenants made by users, consent and the admin consent
+    /// workflow, the access of guests and who invites them.</summary>
+    public const string TenantPolicies = "tenant-policies";
+
+    /// <summary>The authentication methods of the tenant (R16): passkeys and Authenticator on, SMS and voice off.</summary>
+    public const string AuthenticationMethods = "authentication-methods";
+
+    /// <summary>Making permanent admin roles eligible (R16, PIM; needs Entra ID P2).</summary>
+    public const string Pim = "pim";
+
+    /// <summary>The sharing settings of SharePoint and OneDrive (R16: no links for everyone).</summary>
+    public const string SharePointSettings = "sharepoint-settings";
+
     public static IReadOnlyList<PermissionPart> All { get; } = new PermissionPart[]
     {
         new(EntraDeviceCleanup, new[] { "Directory.AccessAsUser.All" }),
         new(CompliancePolicies, new[] { "DeviceManagementConfiguration.ReadWrite.All" }),
+        new(TenantPolicies, new[] { "Policy.ReadWrite.Authorization", "Policy.ReadWrite.ConsentRequest" }),
+        new(AuthenticationMethods, new[] { "Policy.ReadWrite.AuthenticationMethod" }),
+        new(Pim, new[] { "RoleEligibilitySchedule.ReadWrite.Directory", "RoleAssignmentSchedule.ReadWrite.Directory" }),
+        new(SharePointSettings, new[] { "SharePointTenantSettings.ReadWrite.All" }),
     };
 
     public static bool IsOn(IEnumerable<string>? on, string part) => on?.Contains(part, StringComparer.OrdinalIgnoreCase) == true;
@@ -41,6 +58,9 @@ public static class PermissionParts
     {
         Changes.ChangeAction.IntuneCreateCompliancePolicy or Changes.ChangeAction.IntuneSetComplianceSettings when !IsOn(on, CompliancePolicies) => Texts.T["compliance.template.part-off"],
         Changes.ChangeAction.GraphSetDeviceEnabled or Changes.ChangeAction.GraphDeleteDevice when !IsOn(on, EntraDeviceCleanup) => Texts.T["device.cleanup.part-off"],
+        Changes.ChangeAction.GraphRoleEligibility when !IsOn(on, Pim) => Texts.T.Format("advice.part-off", Texts.T[$"setup.part.{Pim}"]),
+        Changes.ChangeAction.GraphUpdatePolicy when Security.TenantAdvice.PolicyTargets.GetValueOrDefault(w.Target) is { Length: > 0 } part && !IsOn(on, part)
+            => Texts.T.Format("advice.part-off", Texts.T[$"setup.part.{part}"]),
         _ => null,
     };
 
