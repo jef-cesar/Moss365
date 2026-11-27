@@ -4,6 +4,21 @@ Every version becomes a release on GitHub; the section under the version is the 
 
 ## 0.40.0
 
+**0.39.0 does not start**: on every PC it stops with an empty window "Moss365 - onverwachte fout". This version repairs
+that. Because 0.39.0 cannot open its screens, it cannot update itself: download `Moss365.Desktop-stable-Setup.exe`
+below and run it (no administrator rights; your tenants and data stay where they are). If Moss365 still runs in the
+background after the error, Setup closes it.
+
+- **The start** (fix): the screens of .NET 10 (BlazorWebView with `WebView2CompositionControl`) need the Windows SDK
+  projection, and 0.39.0 did not ship it (the target framework had no Windows version). Moss365 now targets
+  `net10.0-windows10.0.17763.0`, Windows 10 1809 or later, like WebView2 itself.
+- **The window of an unexpected error** is never empty any more: it shows the message (or that the error has none), the
+  kind of error and where it happened; Ctrl+C copies it, for an issue. The technical log keeps the kind and the place.
+- **The build starts the app** (`tools/Test-AppStart.ps1`): on every pull request and before every release, the real
+  `Moss365.exe` is started on Windows, and the build fails when the main window does not open or an error window appears.
+- **Releases no longer wait for the maintainer's approval** (U23 reverted on 27 November 2026): a new version on `main` is
+  published right away.
+
 The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
 
 - **The overview** (R19): every tile also draws a small line of its counts in the chosen period, and the work block
