@@ -3847,5 +3847,6 @@
   "advice.maildomeinen.what": "Per eigen domein: SPF (welke servers mogen verzenden), DKIM (mail ondertekend door Exchange) en DMARC (wat een ontvanger doet met mail die beide niet haalt).",
   "advice.maildomeinen.why": "Zonder deze kan iedereen mail versturen als je domein (een factuur van 'de directeur'), en grote mailproviders leveren je eigen mail minder vaak af.",
   "advice.maildomeinen.fix": "SPF met include:spf.protection.outlook.com en -all; DKIM aan in Exchange (hier een plan, na de twee CNAME-records); DMARC eerst met p=none en rapporten, daarna quarantine of reject. De DNS-records maak je bij je DNS-provider.",
-  "advice.maildomeinen.risk": "Een strenge SPF of DMARC houdt mail tegen van een dienst die in jouw naam verzendt en niet in SPF staat (een nieuwsbrief, een ticketsysteem): voeg die eerst toe, en begin DMARC met p=none."
+  "advice.maildomeinen.risk": "Een strenge SPF of DMARC houdt mail tegen van een dienst die in jouw naam verzendt en niet in SPF staat (een nieuwsbrief, een ticketsysteem): voeg die eerst toe, en begin DMARC met p=none.",
+  "advice.history.shown": "De resultaten zoals ze waren op {0}: per controle de status en samenvatting van die dag. Nakijken en oplossen gebeurt op vandaag."
 }

@@ -1,4 +1,7 @@
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
+using Moss365.Core.Security;
+using Moss365.UI.Services;
 using Moss365.Core.Changes;
 using Moss365.UI.Pages;
 using CheckStatus = Moss365.Core.Security.CheckStatus;
@@ -106,5 +109,31 @@ public sealed partial class PlanScreenTests
         cut.FindAll("section.kb-plan button").First(b => b.TextContent.StartsWith("Uitvoeren (", StringComparison.Ordinal)).Click();
         cut.FindAll("button").First(b => b.TextContent.StartsWith("Ja, uitvoeren", StringComparison.Ordinal)).Click();
         cut.WaitForAssertion(() => Assert.Equal(new[] { "SmtpAuthPostvak", "SmtpAuth" }, _factory.Executed.Select(c => c.P("instelling"))), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void OnADateInThePastTheChecksShowWhatWasOpenThen()
+    {
+        EntraFilled();
+        State.ReadDevicesAsync().GetAwaiter().GetResult(); // a snapshot to show
+        var snapshot = State.Database.SnapshotList().Last();
+        var day = DateOnly.FromDateTime(snapshot.Time.LocalDateTime);
+        var results = new SecurityResults
+        {
+            History = new[] { new CheckDay(day, "app-geheimen", CheckStatus.Ok, 0, "Op die dag in orde.") },
+            Scores = new[] { new ScorePoint(day, 77) },
+        };
+        State.Database.SaveDocument(SecurityAdvice.Document, SecurityAdvice.Write(results));
+
+        using var then = ActivatorUtilities.CreateInstance<ManagementState>(Services);
+        Assert.Null(then.ShowAsOf(snapshot.Time));
+        var shown = Assert.Single(then.SecurityCheckResults);
+        Assert.Equal(("app-geheimen", CheckStatus.Ok, "Op die dag in orde."), (shown.Key, shown.Value.Status, shown.Value.Summary));
+        Assert.Equal(77, then.HardeningScore);
+
+        Assert.Null(State.ShowAsOf(snapshot.Time));
+        var cut = RenderComponent<SecurityChecksPage>();
+        Assert.Contains("zoals ze waren op", cut.Find("#op-datum").TextContent, StringComparison.Ordinal);
+        Assert.True(cut.FindAll("button").First(b => b.TextContent == "Alles nakijken").HasAttribute("disabled"));
     }
 }

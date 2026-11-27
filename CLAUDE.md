@@ -78,8 +78,8 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   `Security/SecurityChecks.cs` computes OK/attention/problem/unknown from readings (`IGraphConnection.ReadAppsAsync`, ...,
   `IAdConnection.ReadSecurityAsync`/`ReadGpoAsync`, `IExchangeConnection.ReadForwardingAsync`); run by `ManagementState.SecurityChecks.cs`. Advice (R16): `Security/SecurityAdvice.cs` (the explanation per check in
   `advice.<key>.what/why/fix/risk`, weights, MITRE and Learn links, accepted risks as change log lines `AcceptRisk`,
-  the hardening score); document `beveiligingscontroles` keeps the last results, the accepted risks and the score per
-  day. `SecurityCheckResults` applies the accepted risks; an unknown result never replaces a real one kept earlier. A compromised account:
+  the hardening score); document `beveiligingscontroles` keeps the last results, the accepted risks, the score per
+  day and the result of every check per day (`SecurityResults.History`, 400 days: what was open on a date in the past). `SecurityCheckResults` applies the accepted risks; an unknown result never replaces a real one kept earlier. A compromised account:
   `Security/CompromisedAccount.cs` (block in AD, a cloud account in Entra, new random password in `Secret`, revoke
   sessions, out of privileged AD groups; never deletes), shown by `CompromisedCard` on the user page.
   Solving advice (R16): a `CheckRow.Fix` (with `FixData` from the reading) names what solves it: an account flag of

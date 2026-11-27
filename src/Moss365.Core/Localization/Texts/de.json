@@ -3847,5 +3847,6 @@
   "advice.maildomeinen.what": "Pro eigener Domäne: SPF (welche Server senden dürfen), DKIM (von Exchange signierte Mail) und DMARC (was ein Empfänger mit Mail tut, die beides nicht besteht).",
   "advice.maildomeinen.why": "Ohne sie kann jeder Mail als Ihre Domäne senden (eine Rechnung vom 'Direktor'), und große Mailanbieter stellen Ihre eigene Mail seltener zu.",
   "advice.maildomeinen.fix": "SPF mit include:spf.protection.outlook.com und -all; DKIM in Exchange an (hier ein Plan, nach den zwei CNAME-Einträgen); DMARC zuerst mit p=none und Berichten, dann quarantine oder reject. Die DNS-Einträge erstellen Sie bei Ihrem DNS-Anbieter.",
-  "advice.maildomeinen.risk": "Ein strenges SPF oder DMARC hält Mail eines Dienstes auf, der in Ihrem Namen sendet und nicht im SPF steht (ein Newsletter, ein Ticketsystem): Fügen Sie diese zuerst hinzu und beginnen Sie DMARC mit p=none."
+  "advice.maildomeinen.risk": "Ein strenges SPF oder DMARC hält Mail eines Dienstes auf, der in Ihrem Namen sendet und nicht im SPF steht (ein Newsletter, ein Ticketsystem): Fügen Sie diese zuerst hinzu und beginnen Sie DMARC mit p=none.",
+  "advice.history.shown": "Die Ergebnisse, wie sie am {0} waren: pro Prüfung Status und Zusammenfassung dieses Tages. Prüfen und Lösen geschieht auf heute."
 }

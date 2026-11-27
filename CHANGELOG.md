@@ -76,6 +76,9 @@ The rest of R16, R17, R19 and R20 (decided on 26 November 2026), in parts.
   rest is one plan with undo. The new check *SPF, DKIM en DMARC* looks at every own domain through DNS (from the
   Exchange process, without anything extra); turning on DKIM is a plan, with the two CNAME records it needs. Every change
   goes through one fixed command of `Exchange.ps1` that only knows these settings and their values.
+- **The checks on a date in the past** (R16): the result of every check is kept per day (400 days), so that *Controles*
+  on a date in the past shows what was open then, with the hardening score of that day; checking and solving stay on
+  today.
 - Two scripts in the library: *krbtgt-wachtwoord vernieuwen* (two rounds, a replication check before each, and round 2
   only after the waiting time of the Kerberos policy; with a preview) and *Domeincontrollers controleren* (LDAP signing
   and channel binding, NTLMv1, SMBv1 and the print spooler; reads only). The krbtgt advice leads to the first.

@@ -3847,5 +3847,6 @@
   "advice.maildomeinen.what": "Per own domain: SPF (which servers may send), DKIM (mail signed by Exchange) and DMARC (what a receiver does with mail that fails both).",
   "advice.maildomeinen.why": "Without them anyone can send mail as your domain (an invoice from 'the director'), and big mail providers deliver your own mail less often.",
   "advice.maildomeinen.fix": "SPF with include:spf.protection.outlook.com and -all; DKIM on in Exchange (a plan here, after the two CNAME records); DMARC first with p=none and reports, then quarantine or reject. The DNS records are made at your DNS provider.",
-  "advice.maildomeinen.risk": "A strict SPF or DMARC stops mail of a service that sends in your name and is not in SPF (a newsletter, a ticket system): add those first, and start DMARC with p=none."
+  "advice.maildomeinen.risk": "A strict SPF or DMARC stops mail of a service that sends in your name and is not in SPF (a newsletter, a ticket system): add those first, and start DMARC with p=none.",
+  "advice.history.shown": "The results as they were on {0}: per check its status and summary of that day. Checking and solving happen on today."
 }

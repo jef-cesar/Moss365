@@ -36,6 +36,9 @@ public sealed record AdviceException(string CheckKey, string Object, string Reas
 /// <summary>One point of the hardening score (one per day).</summary>
 public sealed record ScorePoint(DateOnly Date, int Score);
 
+/// <summary>The result of one check on one day (R16): what was open on a date in the past (without the lines).</summary>
+public sealed record CheckDay(DateOnly Date, string Key, CheckStatus Status, int Open, string Summary);
+
 /// <summary>The last result of every check and the score per day, kept in the tenant database (document <see cref="SecurityAdvice.Document"/>).</summary>
 public sealed record SecurityResults
 {
@@ -44,6 +47,9 @@ public sealed record SecurityResults
     public IReadOnlyList<AdviceException> Exceptions { get; init; } = Array.Empty<AdviceException>();
 
     public IReadOnlyList<ScorePoint> Scores { get; init; } = Array.Empty<ScorePoint>();
+
+    /// <summary>The result of every check per day (the last of that day), for a date in the past.</summary>
+    public IReadOnlyList<CheckDay> History { get; init; } = Array.Empty<CheckDay>();
 }
 
 /// <summary>
@@ -61,6 +67,9 @@ public static class SecurityAdvice
     public const int MaxStoredRows = 500;
 
     private const int MaxScorePoints = 800;
+
+    /// <summary>How long the result per check per day is kept.</summary>
+    public const int HistoryDays = 400;
 
     private static readonly JsonSerializerOptions Json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = false }.WithLegacyNames();
 
@@ -294,8 +303,18 @@ public static class SecurityAdvice
     {
         var kept = check with { Rows = check.Rows.Take(MaxStoredRows).ToList(), Time = now };
         var last = results.Last.Where(c => !string.Equals(c.Key, check.Key, StringComparison.OrdinalIgnoreCase)).Append(kept).ToList();
-        return WithScore(results with { Last = last }, now);
+        var today = DateOnly.FromDateTime(now.LocalDateTime);
+        var history = results.History
+            .Where(h => h.Date >= today.AddDays(-HistoryDays) && !(h.Date == today && string.Equals(h.Key, check.Key, StringComparison.OrdinalIgnoreCase)))
+            .Append(new CheckDay(today, check.Key, check.Status, check.Rows.Count(r => r.Status is CheckStatus.Attention or CheckStatus.Problem), check.Summary))
+            .OrderBy(h => h.Date).ThenBy(h => h.Key, StringComparer.Ordinal).ToList();
+        return WithScore(results with { Last = last, History = history }, now);
     }
+
+    /// <summary>The result of every check as it was on a date: per check the last day at or before it.</summary>
+    public static IReadOnlyDictionary<string, CheckDay> At(SecurityResults results, DateOnly date)
+        => results.History.Where(h => h.Date <= date).GroupBy(h => h.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.OrderBy(h => h.Date).Last(), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The results with an accepted risk added, or (<paramref name="add"/> false) lifted, and today's score.</summary>
     public static SecurityResults WithException(SecurityResults results, AdviceException exception, bool add, DateTimeOffset now)

@@ -25,6 +25,18 @@ public sealed partial class ManagementState
         {
             var now = DateTimeOffset.Now;
             var stored = StoredSecurity;
+            if (IsHistoric && AsOf is { } shown)
+            {
+                // On a date in the past (R16): what was open then, per check; the lines themselves are not kept per day
+                var date = DateOnly.FromDateTime(shown.Time.LocalDateTime);
+                var keys = SecurityCheckList().Select(c => c.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                return SecurityAdvice.At(stored, date).Where(d => keys.Contains(d.Key)).ToDictionary(d => d.Key,
+                    d => SecurityAdvice.Apply(new SecurityCheck(d.Key, CheckTitle(d.Key), d.Value.Status, d.Value.Summary, Array.Empty<CheckRow>())
+                    {
+                        Time = new DateTimeOffset(d.Value.Date.ToDateTime(TimeOnly.MinValue)),
+                    }, stored.Exceptions.Where(e => e.Since <= shown.Time), shown.Time), StringComparer.OrdinalIgnoreCase);
+            }
+
             var all = new Dictionary<string, SecurityCheck>(StringComparer.OrdinalIgnoreCase);
             foreach (var c in stored.Last)
             {
@@ -42,7 +54,9 @@ public sealed partial class ManagementState
     }
 
     /// <summary>The hardening score (0 to 100) of the checks of this tenant, or null when nothing was checked yet.</summary>
-    public int? HardeningScore => SecurityAdvice.Score(SecurityCheckResults.Values);
+    public int? HardeningScore => IsHistoric && AsOf is { } shown
+        ? StoredSecurity.Scores.LastOrDefault(p => p.Date <= DateOnly.FromDateTime(shown.Time.LocalDateTime))?.Score
+        : SecurityAdvice.Score(SecurityCheckResults.Values);
 
     /// <summary>The hardening score per day, as kept.</summary>
     public IReadOnlyList<ScorePoint> HardeningScores => StoredSecurity.Scores;

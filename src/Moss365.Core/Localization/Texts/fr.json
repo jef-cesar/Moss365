@@ -3847,5 +3847,6 @@
   "advice.maildomeinen.what": "Par domaine propre : SPF (quels serveurs peuvent envoyer), DKIM (courrier signé par Exchange) et DMARC (ce qu'un destinataire fait d'un courrier qui échoue aux deux).",
   "advice.maildomeinen.why": "Sans eux, n'importe qui peut envoyer du courrier au nom de votre domaine (une facture du « directeur »), et les grands fournisseurs délivrent moins souvent votre propre courrier.",
   "advice.maildomeinen.fix": "SPF avec include:spf.protection.outlook.com et -all ; DKIM activé dans Exchange (ici un plan, après les deux CNAME) ; DMARC d'abord avec p=none et des rapports, puis quarantine ou reject. Les enregistrements DNS se créent chez votre fournisseur DNS.",
-  "advice.maildomeinen.risk": "Un SPF ou un DMARC strict bloque le courrier d'un service qui envoie en votre nom et n'est pas dans le SPF (une lettre d'information, un système de tickets) : ajoutez-les d'abord, et commencez DMARC avec p=none."
+  "advice.maildomeinen.risk": "Un SPF ou un DMARC strict bloque le courrier d'un service qui envoie en votre nom et n'est pas dans le SPF (une lettre d'information, un système de tickets) : ajoutez-les d'abord, et commencez DMARC avec p=none.",
+  "advice.history.shown": "Les résultats tels qu'ils étaient le {0} : par contrôle, l'état et le résumé de ce jour. Vérifier et résoudre se font sur aujourd'hui."
 }
