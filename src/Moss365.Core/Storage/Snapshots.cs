@@ -18,7 +18,9 @@ public sealed record SnapshotChange(string Table, string Key, IReadOnlyDictionar
 
     /// <summary>The columns that changed (all columns for a new or vanished object).</summary>
     public IReadOnlyList<string> Columns => (Before?.Keys ?? Enumerable.Empty<string>()).Union(After?.Keys ?? Enumerable.Empty<string>())
-        .Where(k => Before?.GetValueOrDefault(k) != After?.GetValueOrDefault(k)).ToList();
+        .Where(k => Before is null || After is null
+            ? Before?.GetValueOrDefault(k) != After?.GetValueOrDefault(k)
+            : Before.ContainsKey(k) && (Before.GetValueOrDefault(k) ?? string.Empty) != (After.GetValueOrDefault(k) ?? string.Empty)).ToList();
 }
 
 /// <summary>One version of an object: its content, and from which snapshot until which one it was valid.</summary>
@@ -71,6 +73,21 @@ public static class Snapshots
         => JsonSerializer.Serialize(new SortedDictionary<string, string>(row.ToDictionary(k => k.Key, k => k.Value), StringComparer.Ordinal));
 
     internal static string Fingerprint(string content) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content)));
+
+    /// <summary>
+    /// Two versions of a row say the same: every column has the same value, and a column that one of them does not have
+    /// counts as empty (R21). So a column that a newer version of Moss365 reads for the first time is no change.
+    /// </summary>
+    public static bool SameRow(IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b)
+        => a.Keys.Union(b.Keys).All(k => (a.GetValueOrDefault(k) ?? string.Empty) == (b.GetValueOrDefault(k) ?? string.Empty));
+
+    /// <summary>
+    /// The newer version changed nothing that the older one had: a column the older version did not have yet (read for
+    /// the first time by a newer Moss365) is not a change of the object, so the differences and "since your last visit"
+    /// do not list every account when Moss365 starts reading a field.
+    /// </summary>
+    public static bool SameAsBefore(IReadOnlyDictionary<string, string> before, IReadOnlyDictionary<string, string> after)
+        => before.Keys.All(k => (before.GetValueOrDefault(k) ?? string.Empty) == (after.GetValueOrDefault(k) ?? string.Empty));
 
     /// <summary>
     /// The tables of an inventory in the form the snapshot keeps: the CSV files read as the loader reads them, and the
@@ -158,9 +175,10 @@ public sealed partial class Database
 
                     var content = Snapshots.Content(row);
                     var fingerprint = Snapshots.Fingerprint(content);
-                    if (open.TryGetValue(key, out var current) && current.Fingerprint == fingerprint)
+                    if (open.TryGetValue(key, out var current)
+                        && (current.Fingerprint == fingerprint || Snapshots.SameRow(StoredRow(c, t, current.VersionId), row)))
                     {
-                        continue; // unchanged: nothing to store
+                        continue; // unchanged (also when only a new, empty column came): nothing to store
                     }
 
                     var objectId = open.TryGetValue(key, out var existing) ? existing.ObjectId : ObjectId(c, t, table, key);
@@ -189,6 +207,15 @@ public sealed partial class Database
             t.Commit();
             return id;
         }
+    }
+
+    private static Dictionary<string, string> StoredRow(SqliteConnection c, SqliteTransaction t, long versionId)
+    {
+        using var cmd = c.CreateCommand();
+        cmd.Transaction = t;
+        cmd.CommandText = "SELECT Content FROM Version WHERE Id = $v;";
+        cmd.Parameters.AddWithValue("$v", versionId);
+        return cmd.ExecuteScalar() is string json ? JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new() : new();
     }
 
     private static long ObjectId(SqliteConnection c, SqliteTransaction t, string kind, string key)
@@ -288,7 +315,7 @@ public sealed partial class Database
             {
                 var x = b.GetValueOrDefault(key);
                 var y = a.GetValueOrDefault(key);
-                if (x is null || y is null || Snapshots.Content(x) != Snapshots.Content(y))
+                if (x is null || y is null || !Snapshots.SameAsBefore(x, y))
                 {
                     output.Add(new SnapshotChange(table, key, x, y));
                 }

@@ -20,6 +20,7 @@ public static class AdLdapMapper
         "physicalDeliveryOfficeName", "l", "description", "mail", "userAccountControl", "distinguishedName", "whenCreated",
         "lastLogonTimestamp", "pwdLastSet", "scriptPath", "memberOf", "telephoneNumber", "mobile", "manager",
         "msDS-User-Account-Control-Computed", "lockoutTime",
+        "employeeID", "employeeType", "streetAddress", "postalCode", "st", "co",
     };
 
     public static readonly string[] GroupAttributes = { "name", "sAMAccountName", "distinguishedName", "groupType", "description", "member", "displayName", "mail", "managedBy" };
@@ -55,6 +56,12 @@ public static class AdLdapMapper
             Phone = Text(k, "telephoneNumber"),
             Mobile = Text(k, "mobile"),
             Manager = Text(k, "manager"),
+            EmployeeId = Text(k, "employeeID"),
+            EmployeeType = Text(k, "employeeType"),
+            StreetAddress = Text(k, "streetAddress"),
+            PostalCode = Text(k, "postalCode"),
+            State = Text(k, "st"),
+            Country = Text(k, "co"),
         };
     }
 

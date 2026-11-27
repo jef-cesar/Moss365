@@ -69,6 +69,8 @@ public static class InventoryWriter
                 ["PasswordLastSet"] = u.PasswordLastSet, ["PasswordNeverExpires"] = B(u.PasswordNeverExpires), ["LockedOut"] = B(u.LockedOut), ["ScriptPath"] = u.ScriptPath,
                 ["OfficePhone"] = u.Phone, ["MobilePhone"] = u.Mobile, ["Manager"] = u.Manager,
                 ["MemberOf"] = string.Join('|', u.MemberOr),
+                ["EmployeeID"] = u.EmployeeId, ["EmployeeType"] = u.EmployeeType, ["StreetAddress"] = u.StreetAddress,
+                ["PostalCode"] = u.PostalCode, ["State"] = u.State, ["Country"] = u.Country,
             }));
             Write(InventoryLoader.AdGroups, d.AdGroupsByDn.Values.Select(g => new Dictionary<string, string?>
             {
@@ -94,6 +96,8 @@ public static class InventoryWriter
                 ["OnPremisesSyncEnabled"] = B(e.OnPremisesSyncEnabled), ["OnPremisesSamAccountName"] = e.OnPremisesSamAccountName,
                 ["OnPremisesDistinguishedName"] = e.OnPremisesDistinguishedName, ["Licenties"] = string.Join('|', e.Licences),
                 ["LaatsteAanmelding"] = e.LastSignIn,
+                ["EmployeeId"] = e.EmployeeId, ["EmployeeType"] = e.EmployeeType, ["StreetAddress"] = e.StreetAddress,
+                ["PostalCode"] = e.PostalCode, ["State"] = e.State, ["Country"] = e.Country,
             }));
             Write(InventoryLoader.EntraGroups, d.CloudGroups.Values.Select(g => new Dictionary<string, string?>
             {

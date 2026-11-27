@@ -91,6 +91,30 @@ public sealed class SnapshotTests : IDisposable
     }
 
     [Fact]
+    public void AColumnReadForTheFirstTimeIsNoChange()
+    {
+        // R21: a newer Moss365 reads more fields; an empty new column stores nothing, and a filled one is no difference
+        var db = Db();
+        Dictionary<string, List<Dictionary<string, string>>> Table(params Dictionary<string, string>[] rows) => new() { ["ad-gebruikers.csv"] = rows.ToList() };
+        var a = db.SaveSnapshot(DateTimeOffset.Now.AddDays(-3), "a", Table(new() { ["SamAccountName"] = "an", ["Department"] = "Verkoop" }, new() { ["SamAccountName"] = "bo", ["Department"] = "ICT" }));
+        db.SaveSnapshot(DateTimeOffset.Now.AddDays(-2), "b", Table(new() { ["SamAccountName"] = "an", ["Department"] = "Verkoop", ["Company"] = "" }, new() { ["SamAccountName"] = "bo", ["Department"] = "ICT", ["Company"] = "" }));
+        var c = db.SaveSnapshot(DateTimeOffset.Now.AddDays(-1), "c", Table(new() { ["SamAccountName"] = "an", ["Department"] = "Verkoop", ["Company"] = "Contoso" }, new() { ["SamAccountName"] = "bo", ["Department"] = "Boekhouding", ["Company"] = "" }));
+
+        using (var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={db.FilePath}"))
+        {
+            con.Open();
+            using var cmd = con.CreateCommand();
+            cmd.CommandText = "SELECT count(*) FROM Version;";
+            // 2 at the start, none for the empty column, 2 when an got a company and bo changed department
+            Assert.Equal(4, Convert.ToInt32(cmd.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        var change = Assert.Single(db.Differences(a, c));
+        Assert.Equal("bo", change.Key);
+        Assert.Equal(new[] { "Department" }, change.Columns);
+    }
+
+    [Fact]
     public void APartialReadKeepsTheOtherTables()
     {
         var db = Db();

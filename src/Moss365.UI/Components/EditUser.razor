@@ -1,76 +1,67 @@
-@* Editing attributes of a user (0.8): the app chooses the route (AD for synchronised accounts, otherwise Graph),
-   shows the plan with now and to be, and puts the previous values in the change log (can be undone). *@
+@* Editing a user (0.8; R21 in sections): identity, organisation, contact and access, each with its current values and
+   edited in place. The app chooses the route from the source of truth (AD for a synchronised account, Entra follows;
+   otherwise Graph; the usage location always in Entra), checks while typing, and makes one plan with the previous
+   values in the change log (can be undone). *@
 @inject ManagementState State
 
-<section class="kb-kaart">
-    <h2>@T["edit-user.edit-details"]</h2>
-    @if (!open)
-    {
-        <p class="kb-zacht">
-            @T.Format("edit-user.0-you-do-not-change", AttributePlans.ViaAd(Person) ? T["code.edit-user.this-account-comes-from-ad"] : T["code.edit-user.cloud-account-the-app-changes"])
-        </p>
-        <button class="kb-knop" @onclick="Open">@T["edit-user.edit"]</button>
-    }
-    else
-    {
-        <div class="kb-raster">
-            <label>@T["edit-user.display-name"] <input class="kb-invoer" @bind="desired.DisplayName" /></label>
-            <label>@T["edit-user.first-name"] <input class="kb-invoer" @bind="desired.GivenName" /></label>
-            <label>@T["edit-user.last-name"] <input class="kb-invoer" @bind="desired.Surname" /></label>
-            <label>@T["bulk-tasks.job-title"] <input class="kb-invoer" @bind="desired.JobTitle" /></label>
-            <label>
-                @T["service-health-card.service"]
-                <select class="kb-invoer" @bind="desired.Department">
-                    <option value="">@T["edit-user.empty"]</option>
-                    @foreach (var d in Choices(State.Config.Departments.Select(d => d.Department), desired.Department))
-                    {
-                        <option value="@d">@d</option>
-                    }
-                </select>
-                @if (State.Config.DivisionFor(desired.Department) is { } a) { <span class="kb-zacht">@T.Format("edit-user.division-0", a.Name)</span> }
-            </label>
-            <label>
-                @T["bulk-tasks.office"]
-                <select class="kb-invoer" @bind="desired.Office">
-                    <option value="">@T["edit-user.empty"]</option>
-                    @foreach (var k in Choices(State.Config.Offices, desired.Office))
-                    {
-                        <option value="@k">@k</option>
-                    }
-                </select>
-            </label>
-            <label>@T["bulk-tasks.city"] <input class="kb-invoer" @bind="desired.City" /></label>
-            <label>@T["edit-user.phone"] <input class="kb-invoer" type="tel" @bind="desired.Phone" /></label>
-            <label>@T["edit-user.mobile"] <input class="kb-invoer" type="tel" @bind="desired.Mobile" /></label>
-            @if (AttributePlans.ViaAd(Person))
-            {
-                <label>@T["edit-user.description"] <input class="kb-invoer" @bind="desired.Description" /></label>
-                <label>
-                    @T["edit-user.logon-script"]
-                    <select class="kb-invoer" @bind="desired.LogonScript">
-                        <option value="">@T["edit-user.none"]</option>
-                        @foreach (var s in Choices(State.Config.LogonScripts, desired.LogonScript))
-                        {
-                            <option value="@s">@s</option>
-                        }
-                    </select>
-                </label>
-            }
-        </div>
-        <PersonPicker Label="@T["reports.manager"]" Selected="@(string.IsNullOrEmpty(desired.Manager) ? null : State.Data.SearchPerson(desired.Manager))" SelectedChanged="ChooseManager" />
-        @if (!string.IsNullOrEmpty(desired.Manager))
+<section class="kb-kaart kb-bewerken">
+    <h2>
+        @T["edit-user.edit-details"]
+        <PlatformLabel Platform="@(viaAd ? Platform.ActiveDirectory : Platform.EntraId)" />
+        @if (viaAd && Person.Entra is not null) { <span class="kb-zacht kb-klein-tekst">@T["edit-user.entra-follows"]</span> }
+    </h2>
+    <p class="kb-zacht">@T.Format("edit-user.0-you-do-not-change", viaAd ? T["code.edit-user.this-account-comes-from-ad"] : T["code.edit-user.cloud-account-the-app-changes"])</p>
+
+    <div class="kb-secties">
+        @foreach (var section in Sections.Where(s => s.Fields.Any(Visible)))
         {
-            <button class="kb-knop kb-klein" @onclick="() => desired.Manager = string.Empty">@T["edit-user.no-manager"]</button>
+            var editing = open.Contains(section.Key);
+            <div class="kb-sectie">
+                <div class="kb-sectie-kop">
+                    <h3>@T["edit-user.section." + section.Key]</h3>
+                    @if (!editing && CanEdit)
+                    {
+                        <button class="kb-knop kb-klein" @onclick="() => Open(section.Key)">@T["edit-user.edit"]</button>
+                    }
+                </div>
+                <dl class="kb-velden">
+                    @foreach (var field in section.Fields.Where(Visible))
+                    {
+                        var current = CurrentText(field);
+                        <dt>
+                            @Label(field)
+                            @if (field == nameof(UserDesired.UsageLocation) && viaAd) { <PlatformLabel Platform="Platform.EntraId" /> }
+                        </dt>
+                        <dd>
+                            @if (!editing)
+                            {
+                                <span>@(current.Length > 0 ? current : T["edit-user.empty"])</span>
+                            }
+                            else
+                            {
+                                @Input(field)
+                                @if (Changed(field)) { <div class="kb-zacht kb-klein-tekst">@T.Format("edit-user.now", current.Length > 0 ? current : T["edit-user.empty"])</div> }
+                                @if (Problem(field) is { } problem) { <div class="kb-waarschuwing">@problem</div> }
+                            }
+                        </dd>
+                    }
+                </dl>
+            </div>
         }
+    </div>
+
+    @if (open.Count > 0)
+    {
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+            <button class="kb-knop kb-primair" disabled="@(Problems > 0)" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
             <button class="kb-knop" @onclick="Empty">@T["edit-user.reset"]</button>
-            <button class="kb-knop" @onclick="() => open = false">@T["edit-user.close"]</button>
+            <button class="kb-knop" @onclick="Close">@T["edit-user.close"]</button>
+            @if (ChangedCount > 0) { <span class="kb-label">@T.Format("edit-user.changed", ChangedCount)</span> }
         </div>
-        @foreach (var f in errors)
-        {
-            <div class="kb-melding">@f</div>
-        }
+    }
+    @foreach (var f in errors)
+    {
+        <div class="kb-melding">@f</div>
     }
 </section>
 
@@ -82,35 +73,76 @@
 @code {
     [Parameter, EditorRequired] public Person Person { get; set; } = default!;
 
-    private bool open;
+    private sealed record Section(string Key, string[] Fields);
+
+    /// <summary>The sections of a user (R21), in the order of the page.</summary>
+    private static readonly Section[] Sections =
+    {
+        new("identity", new[] { nameof(UserDesired.DisplayName), nameof(UserDesired.GivenName), nameof(UserDesired.Surname), nameof(UserDesired.EmployeeId), nameof(UserDesired.EmployeeType) }),
+        new("organisation", new[] { nameof(UserDesired.JobTitle), nameof(UserDesired.Department), nameof(UserDesired.Company), nameof(UserDesired.Office), nameof(UserDesired.Manager), nameof(UserDesired.Description) }),
+        new("contact", new[] { nameof(UserDesired.Phone), nameof(UserDesired.Mobile), nameof(UserDesired.StreetAddress), nameof(UserDesired.PostalCode), nameof(UserDesired.City), nameof(UserDesired.State), nameof(UserDesired.Country), nameof(UserDesired.UsageLocation) }),
+        new("access", new[] { nameof(UserDesired.LogonScript) }),
+    };
+
+    private readonly HashSet<string> open = new();
     private UserDesired desired = new();
+    private UserDesired current = new();
     private IReadOnlyList<Change>? plan;
     private IReadOnlyList<string> errors = Array.Empty<string>();
     private string? loaded;
+    private bool viaAd;
 
     private string Form => $"gebruiker/{Person.Key}/bewerken";
+
+    private bool CanEdit => !State.IsHistoric && State.Can(Moss365.Core.Permissions.Permission.Manage);
 
     protected override void OnParametersSet()
     {
         if (loaded != Person.Key)
         {
             loaded = Person.Key;
-            open = State.PageState.Has(Form);
-            desired = open ? Saved() : new();
+            viaAd = AttributePlans.ViaAd(Person);
+            current = UserDesired.Of(Person, State.Data);
+            open.Clear();
+            if (State.PageState.Has(Form))
+            {
+                desired = Saved();
+                foreach (var s in Sections) open.Add(s.Key);
+            }
+            else
+            {
+                desired = UserDesired.Of(Person, State.Data);
+            }
+
             plan = null;
             errors = Array.Empty<string>();
         }
     }
 
+    /// <summary>A field the account has: AD-only fields for an account from AD, the usage location with Entra.</summary>
+    private bool Visible(string field)
+    {
+        var (_, inAd, inEntra) = field == nameof(UserDesired.Manager) ? (field, true, true) : AttributePlans.UserFields.First(f => f.Field == field);
+        return (viaAd && inAd) || (Person.Entra is not null && inEntra);
+    }
+
     // What you filled in is kept until the plan has run (Back, Forward, menu)
     private UserDesired Saved() => State.PageState.Form(Form, "gebruiker/" + Person.Key, $"Gegevens {Person.Name}", () => UserDesired.Of(Person, State.Data));
 
-    private void ChooseManager(Person? p) => desired.Manager = p?.Key ?? string.Empty;
-
-    private void Open()
+    private void Open(string section)
     {
-        desired = Saved();
-        open = true;
+        if (open.Count == 0)
+        {
+            desired = Saved();
+        }
+
+        open.Add(section);
+    }
+
+    private void Close()
+    {
+        open.Clear();
+        desired = UserDesired.Of(Person, State.Data);
     }
 
     private void Empty()
@@ -120,6 +152,69 @@
         plan = null;
         errors = Array.Empty<string>();
     }
+
+    private static string? Get(UserDesired d, string field) => (string?)typeof(UserDesired).GetProperty(field)!.GetValue(d);
+
+    private void Set(string field, string? value) => typeof(UserDesired).GetProperty(field)!.SetValue(desired, value);
+
+    private string Label(string field) => field == nameof(UserDesired.Manager) ? T["reports.manager"] : T["attribute." + field.ToLowerInvariant()];
+
+    private string CurrentText(string field) => field == nameof(UserDesired.Manager)
+        ? (string.IsNullOrEmpty(current.Manager) ? string.Empty : State.Data.SearchPerson(current.Manager)?.Name ?? string.Empty)
+        : Get(current, field) ?? string.Empty;
+
+    private bool Changed(string field) => !string.Equals((Get(desired, field) ?? string.Empty).Trim(), (Get(current, field) ?? string.Empty).Trim(), StringComparison.Ordinal);
+
+    private int ChangedCount => Sections.SelectMany(s => s.Fields).Count(f => Visible(f) && Changed(f));
+
+    private int Problems => Sections.SelectMany(s => s.Fields).Count(f => Visible(f) && Problem(f) is not null && !Warning(f));
+
+    /// <summary>Only a warning: a duplicate employee id may be right (two accounts of one person).</summary>
+    private bool Warning(string field) => field == nameof(UserDesired.EmployeeId) && AttributePlans.ValidValue(field, (Get(desired, field) ?? string.Empty).Trim());
+
+    /// <summary>What is wrong with a value, while typing (R21).</summary>
+    private string? Problem(string field)
+    {
+        if (field == nameof(UserDesired.Manager) || !Changed(field))
+        {
+            return null;
+        }
+
+        var value = (Get(desired, field) ?? string.Empty).Trim();
+        if (!AttributePlans.ValidValue(field, value))
+        {
+            return T["attribute.invalid.hint." + field.ToLowerInvariant()] is var hint && !hint.StartsWith("attribute.", StringComparison.Ordinal) ? hint : T.Format("attribute.invalid", Label(field));
+        }
+
+        return field == nameof(UserDesired.EmployeeId) && AttributePlans.SameEmployeeId(State.Data, Person, value) is { } other
+            ? T.Format("edit-user.duplicate-employee", other.Name)
+            : null;
+    }
+
+    private RenderFragment Input(string field) => field switch
+    {
+        nameof(UserDesired.Department) => @<select class="kb-invoer" value="@desired.Department" @onchange="e => desired.Department = e.Value?.ToString()" aria-label="@Label(field)">
+                                              <option value="">@T["edit-user.empty"]</option>
+                                              @foreach (var d in Choices(State.Config.Departments.Select(d => d.Department), desired.Department)) { <option value="@d">@d</option> }
+                                          </select>,
+        nameof(UserDesired.Office) => @<select class="kb-invoer" value="@desired.Office" @onchange="e => desired.Office = e.Value?.ToString()" aria-label="@Label(field)">
+                                          <option value="">@T["edit-user.empty"]</option>
+                                          @foreach (var k in Choices(State.Config.Offices, desired.Office)) { <option value="@k">@k</option> }
+                                      </select>,
+        nameof(UserDesired.LogonScript) => @<select class="kb-invoer" value="@desired.LogonScript" @onchange="e => desired.LogonScript = e.Value?.ToString()" aria-label="@Label(field)">
+                                               <option value="">@T["edit-user.none"]</option>
+                                               @foreach (var s in Choices(State.Config.LogonScripts, desired.LogonScript)) { <option value="@s">@s</option> }
+                                           </select>,
+        nameof(UserDesired.Manager) => @<div>
+                                           <PersonPicker Label="@T["reports.manager"]" Selected="@(string.IsNullOrEmpty(desired.Manager) ? null : State.Data.SearchPerson(desired.Manager))" SelectedChanged="ChooseManager" />
+                                           @if (!string.IsNullOrEmpty(desired.Manager)) { <button class="kb-knop kb-klein" @onclick="() => desired.Manager = string.Empty">@T["edit-user.no-manager"]</button> }
+                                       </div>,
+        nameof(UserDesired.UsageLocation) => @<input class="kb-invoer kb-smal" maxlength="2" value="@desired.UsageLocation" @oninput="e => desired.UsageLocation = e.Value?.ToString()?.ToUpperInvariant()" aria-label="@Label(field)" placeholder="BE" />,
+        nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) => @<input class="kb-invoer" type="tel" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" />,
+        _ => @<input class="kb-invoer" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" />,
+    };
+
+    private void ChooseManager(Person? p) => desired.Manager = p?.Key ?? string.Empty;
 
     /// <summary>The choice list, with the current value added when it is not (yet) in it.</summary>
     private static IEnumerable<string> Choices(IEnumerable<string> list, string? current)
@@ -145,7 +240,7 @@
         if (results.Any(r => r.Status == ResultStatus.Succeeded))
         {
             State.PageState.Forget(Form);
-            open = false;
+            open.Clear();
         }
     }
 }

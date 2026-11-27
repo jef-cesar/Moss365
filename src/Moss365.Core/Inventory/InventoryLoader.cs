@@ -283,6 +283,12 @@ public static class InventoryLoader
             Phone = W(r, "OfficePhone"),
             Mobile = W(r, "MobilePhone"),
             Manager = W(r, "Manager"),
+            EmployeeId = W(r, "EmployeeID"),
+            EmployeeType = W(r, "EmployeeType"),
+            StreetAddress = W(r, "StreetAddress"),
+            PostalCode = W(r, "PostalCode"),
+            State = W(r, "State"),
+            Country = W(r, "Country"),
         };
     }
 
@@ -335,6 +341,12 @@ public static class InventoryLoader
         OnPremisesDistinguishedName = W(r, "OnPremisesDistinguishedName"),
         Licences = Items(r, "Licenties"),
         LastSignIn = W(r, "LaatsteAanmelding"),
+        EmployeeId = W(r, "EmployeeId"),
+        EmployeeType = W(r, "EmployeeType"),
+        StreetAddress = W(r, "StreetAddress"),
+        PostalCode = W(r, "PostalCode"),
+        State = W(r, "State"),
+        Country = W(r, "Country"),
     };
 
     private static CloudGroup MakeCloudGroup(Dictionary<string, string> r) => new()
