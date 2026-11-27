@@ -2,7 +2,7 @@
 @inherits RefreshingPage
 @inject NavigationManager Nav
 
-<h1>@T["nav.part.Rooms"]</h1>
+<h1>@T["nav.part.Rooms"] <PlatformLabel Platform="Platform.ExchangeOnline" /></h1>
 
 <p class="kb-zacht">
     @Html("rooms.intro", State.Data.Rooms.Count, State.Data.Sources.FirstOrDefault(b => b.File.Contains("rooms", StringComparison.OrdinalIgnoreCase))?.Folder is { } m ? System.IO.Path.GetFileName(m) : T["rooms.nosource"])

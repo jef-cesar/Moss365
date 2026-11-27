@@ -11,7 +11,7 @@
     protected override void OnInitialized()
     {
         var first = MenuModel.Settings.SelectMany(g => g.Items)
-            .FirstOrDefault(i => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.HasAd, State.HasMicrosoft365));
+            .FirstOrDefault(i => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.Systems));
         if (first is not null)
         {
             Nav.NavigateTo(first.Href, replace: true);

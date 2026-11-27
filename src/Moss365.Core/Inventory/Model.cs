@@ -3,6 +3,9 @@ namespace Moss365.Core.Inventory;
 public sealed record AdUser
 {
     public string SamAccountName { get; init; } = string.Empty;
+
+    /// <summary>The employee id (employeeID), for linking persons (G0, U32); empty until a reader fills it.</summary>
+    public string EmployeeId { get; init; } = string.Empty;
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
@@ -44,6 +47,9 @@ public sealed record AdUser
 public sealed record EntraUser
 {
     public string Id { get; init; } = string.Empty;
+
+    /// <summary>The employee id (employeeId), for linking persons (G0, U32); empty until a reader fills it.</summary>
+    public string EmployeeId { get; init; } = string.Empty;
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
@@ -195,29 +201,62 @@ public sealed record Licence(string SkuId, string SkuPartNumber, int Assigned, i
     public int Free => Math.Max(0, Total - Assigned);
 }
 
-/// <summary>A person or account: the link of an AD account and an Entra account (either can be missing).</summary>
+/// <summary>
+/// A person or account: the link of an AD account and an Entra account (by the synchronisation anchor), and since G0 a
+/// Google Workspace account (linked by <see cref="Linking.PersonLinks"/>). Any of them can be missing.
+/// </summary>
 public sealed class Person
 {
     public required string Key { get; init; }
     public AdUser? Ad { get; init; }
     public EntraUser? Entra { get; init; }
 
-    public string Name => FirstNonEmpty(Entra?.DisplayName, Ad?.DisplayName, Ad?.SamAccountName, Entra?.UserPrincipalName);
-    public string Upn => FirstNonEmpty(Ad?.UserPrincipalName, Entra?.UserPrincipalName);
-    public string Department => FirstNonEmpty(Ad?.Department, Entra?.Department).Trim();
-    public bool IsGuest => Entra?.IsGuest == true && Ad is null;
-    public bool Enabled => Ad?.Enabled ?? Entra?.AccountEnabled ?? false;
+    /// <summary>The Google Workspace account of the person (G0; read from G1 on).</summary>
+    public GoogleUser? Google { get; init; }
 
-    public string Source => (Ad, Entra) switch
-    {
-        (not null, not null) => "AD + Entra",
-        (not null, null) => "Alleen AD",
-        (null, not null) => Entra.IsGuest ? "Gast" : "Alleen Entra",
-        _ => "?",
-    };
+    /// <summary>How the Google account was linked (G0, U32), when there is one.</summary>
+    public Linking.LinkRule? GoogleLink { get; init; }
+
+    public string Name => FirstNonEmpty(Entra?.DisplayName, Ad?.DisplayName, Google?.Name, Ad?.SamAccountName, Entra?.UserPrincipalName, Google?.PrimaryEmail);
+    public string Upn => FirstNonEmpty(Ad?.UserPrincipalName, Entra?.UserPrincipalName, Google?.PrimaryEmail);
+    public string Department => FirstNonEmpty(Ad?.Department, Entra?.Department, Google?.Department).Trim();
+    public bool IsGuest => Entra?.IsGuest == true && Ad is null && Google is null;
+    public bool Enabled => Ad?.Enabled ?? Entra?.AccountEnabled ?? (Google is { } g ? !g.Suspended : false);
+
+    public string Source => Google is null
+        ? (Ad, Entra) switch
+        {
+            (not null, not null) => "AD + Entra",
+            (not null, null) => "Alleen AD",
+            (null, not null) => Entra.IsGuest ? "Gast" : "Alleen Entra",
+            _ => "?",
+        }
+        : (Ad, Entra) switch
+        {
+            (not null, not null) => "AD + Entra + Google",
+            (not null, null) => "AD + Google",
+            (null, not null) => "Entra + Google",
+            _ => "Alleen Google",
+        };
 
     private static string FirstNonEmpty(params string?[] values)
         => values.FirstOrDefault(w => !string.IsNullOrWhiteSpace(w)) ?? string.Empty;
+}
+
+/// <summary>A user of Google Workspace (G0: the model; G1 reads it with the Directory API of Google).</summary>
+public sealed record GoogleUser
+{
+    public string Id { get; init; } = string.Empty;
+    public string PrimaryEmail { get; init; } = string.Empty;
+    public IReadOnlyList<string> Aliases { get; init; } = Array.Empty<string>();
+    public string Name { get; init; } = string.Empty;
+    public string GivenName { get; init; } = string.Empty;
+    public string FamilyName { get; init; } = string.Empty;
+    public string Department { get; init; } = string.Empty;
+    public string OrgUnitPath { get; init; } = "/";
+    public bool Suspended { get; init; }
+    public string EmployeeId { get; init; } = string.Empty;
+    public string LastLogin { get; init; } = string.Empty;
 }
 
 /// <summary>Where each source file came from (the app chooses the newest inventory folder per file).</summary>
@@ -227,6 +266,9 @@ public sealed record InventoryData
 {
     public IReadOnlyList<AdUser> AdUsers { get; init; } = Array.Empty<AdUser>();
     public IReadOnlyList<EntraUser> EntraUsers { get; init; } = Array.Empty<EntraUser>();
+
+    /// <summary>The users of Google Workspace (G0; read from G1 on).</summary>
+    public IReadOnlyList<GoogleUser> GoogleUsers { get; init; } = Array.Empty<GoogleUser>();
     public IReadOnlyDictionary<string, AdGroup> AdGroupsByDn { get; init; } = new Dictionary<string, AdGroup>();
     public IReadOnlyDictionary<string, CloudGroup> CloudGroups { get; init; } = new Dictionary<string, CloudGroup>();
 
@@ -302,6 +344,47 @@ public sealed record InventoryData
             };
 
     private static bool IsAdSource(SourceFile f) => f.File.StartsWith("ad-", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The data without anything of Microsoft 365 (G0): for a tenant that does not have it, whatever was imported. Entra
+    /// ID and Exchange Online: users, groups and their members, rooms, licences, mailboxes, the security readings and
+    /// Conditional Access.
+    /// </summary>
+    public InventoryData WithoutMicrosoft365()
+        => EntraUsers.Count == 0 && CloudGroups.Count == 0 && CloudMembership.Count == 0 && Rooms.Count == 0 && Licences.Count == 0
+           && ExoGroups.Count == 0 && Mailboxes.Count == 0 && MailboxPermissions.Count == 0 && Security is null && ConditionalAccess is null
+           && !Sources.Any(IsMicrosoft365Source)
+            ? this
+            : this with
+            {
+                EntraUsers = Array.Empty<EntraUser>(),
+                CloudGroups = new Dictionary<string, CloudGroup>(StringComparer.OrdinalIgnoreCase),
+                CloudMembership = new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase),
+                CloudMemberNames = new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase),
+                Rooms = Array.Empty<Room>(),
+                Licences = Array.Empty<Licence>(),
+                ExoGroups = Array.Empty<ExoGroup>(),
+                Mailboxes = Array.Empty<Mailbox>(),
+                MailboxPermissions = Array.Empty<MailboxPermission>(),
+                Security = null,
+                ConditionalAccess = null,
+                Persons = InventoryLoader.LinkPersons(AdUsers, Array.Empty<EntraUser>()),
+                Sources = Sources.Where(f => !IsMicrosoft365Source(f)).ToList(),
+            };
+
+    /// <summary>The data without anything of Google Workspace (G0): for a tenant that does not have it.</summary>
+    public InventoryData WithoutGoogle()
+        => GoogleUsers.Count == 0 && !Persons.Any(p => p.Google is not null)
+            ? this
+            : this with
+            {
+                GoogleUsers = Array.Empty<GoogleUser>(),
+                Persons = InventoryLoader.LinkPersons(AdUsers, EntraUsers),
+                Sources = Sources.Where(f => !f.File.StartsWith("google-", StringComparison.OrdinalIgnoreCase)).ToList(),
+            };
+
+    private static bool IsMicrosoft365Source(SourceFile f)
+        => f.File.StartsWith("entra-", StringComparison.OrdinalIgnoreCase) || f.File.StartsWith("exo-", StringComparison.OrdinalIgnoreCase);
 
     public Person? SearchPerson(string key)
         => Persons.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase));

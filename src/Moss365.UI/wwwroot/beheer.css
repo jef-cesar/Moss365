@@ -604,3 +604,9 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 .kb-controle-problem { background: var(--kb-rood); color: #fff; }
 .kb-controle-unknown { background: var(--kb-lijn); color: var(--kb-tekst); }
 .kb-smal { width: 7rem; }
+
+/* G0, U30: the label of a platform, a name on a fixed colour (never the colour alone) */
+.kb-platform { display: inline-block; padding: 0 0.45em; border-radius: 0.6em; font-size: 0.78em; font-weight: 600; line-height: 1.6; color: #fff; background: var(--kb-platform-kleur, #5b5b5b); white-space: nowrap; vertical-align: middle; }
+h1 .kb-platform, h2 .kb-platform, h3 .kb-platform { margin-left: 0.4em; font-size: 0.55em; }
+.kb-platformen { display: inline-flex; flex-wrap: wrap; gap: 0.25em; }
+.kb-bron-keten { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3em; margin: 0.3em 0; }

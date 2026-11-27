@@ -3,7 +3,7 @@
 @inject NavigationManager Nav
 
 <div class="kb-titelbalk">
-    <h1>@T["menu.postvakken"]</h1>
+    <h1>@T["menu.postvakken"] <PlatformLabel Platform="Platform.ExchangeOnline" /></h1>
     @if (State.Can(Permission.Manage)) { <a class="kb-knop kb-primair" href="postvakken/nieuw">@T["mailboxes.new-shared-mailbox"]</a> }
 </div>
 

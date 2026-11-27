@@ -21,7 +21,7 @@
     <h2>@T["connections.what-does-this-tenant-have"]</h2>
     @if (Hub is { } hub && State.Can(Permission.Settings) && !State.IsHistoric)
     {
-        <SystemsChoice @bind-Value="systems" Legend="@($"Systemen van {State.Tenant.Name}")" />
+        <SystemsChoice @bind-Value="systems" Legend="@T.Format("connections.systems-of", State.Tenant.Name)" />
         <div class="kb-rij">
             <button class="kb-knop kb-primair" disabled="@(systems == Current)" @onclick="() => SaveSystems(hub)">@T["action.save"]</button>
             @if (systems != Current) { <span class="kb-label">@T["connections.not-saved"]</span> }
@@ -96,10 +96,21 @@
 </section>
 }
 
+@if (State.HasGoogle)
+{
+<section class="kb-kaart">
+    <h2>@T["systems.google.name"]</h2>
+    <p>@T["connections.google.later"]</p>
+</section>
+}
+
 <div class="kb-filters">
     <button class="kb-knop" @onclick="Save">@T["connections.save-settings"]</button>
-    <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Everything)">@T["set-up-tenant.load-everything-live"]</button>
-    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">@T.Format("connections.load-live-0", State.HasAd && State.HasMicrosoft365 ? T["code.connections.ad-and-entra"] : State.HasAd ? "AD" : "Entra")</button>
+    @if (State.HasAd || State.HasMicrosoft365)
+    {
+        <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Everything)">@T["set-up-tenant.load-everything-live"]</button>
+        <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.AdAndEntra)">@T.Format("connections.load-live-0", State.HasAd && State.HasMicrosoft365 ? T["code.connections.ad-and-entra"] : State.HasAd ? "AD" : "Entra")</button>
+    }
     @if (State.HasMicrosoft365)
     {
         <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="() => Load(LoadKind.Rooms)">@T["connections.load-rooms-from-exchange"]</button>
@@ -151,7 +162,7 @@
     [Inject] private NavigationManager Nav { get; set; } = default!;
 
     private TenantHub? Hub => Services.GetService(typeof(TenantHub)) as TenantHub;
-    private Moss365.Core.Storage.TenantSystems Current => State.Tenant.Systems == Moss365.Core.Storage.TenantSystems.None ? Moss365.Core.Storage.TenantSystems.Both : State.Tenant.Systems;
+    private Moss365.Core.Storage.TenantSystems Current => State.Systems;
     private Moss365.Core.Storage.TenantSystems? _systems;
     private Moss365.Core.Storage.TenantSystems systems { get => _systems ?? Current; set => _systems = value; }
 

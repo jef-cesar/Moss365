@@ -38,5 +38,5 @@
 </div>
 
 @code {
-    private bool Visible(MenuItem i) => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.HasAd, State.HasMicrosoft365);
+    private bool Visible(MenuItem i) => (Access.ForPath(i.Href) is not { } r || State.Can(r)) && Access.FitsTenant(i.Href, State.Systems);
 }

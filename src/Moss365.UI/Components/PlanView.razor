@@ -50,7 +50,7 @@
                                 <input type="checkbox" aria-label="@w.Description" checked="@w.Selected" @onchange="e => Set(w, e)" disabled="@(busy || Refused(w) is not null)" />
                             }
                         </td>
-                        <td>@w.SystemText</td>
+                        <td><PlatformLabel Platform="@Platforms.Of(w)" /></td>
                         <td>
                             @w.Description
                             @if (w.Warning is not null) { <div class="kb-waarschuwing">@w.Warning</div> }

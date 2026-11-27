@@ -113,7 +113,7 @@
         }
     }
 
-    private bool Allowed(string href) => (Access.ForPath(href) is not { } r || State.Can(r)) && Access.FitsTenant(href, State.HasAd, State.HasMicrosoft365);
+    private bool Allowed(string href) => (Access.ForPath(href) is not { } r || State.Can(r)) && Access.FitsTenant(href, State.Systems);
 
     private IEnumerable<Result> Search(string q)
     {

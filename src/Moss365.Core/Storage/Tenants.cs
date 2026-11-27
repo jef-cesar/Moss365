@@ -22,13 +22,18 @@ public sealed record TenantInfo
     /// <summary>A domain of the tenant, e.g. contoso.com, when known.</summary>
     public string? Domain { get; init; }
 
-    /// <summary>What this organisation has: AD, Microsoft 365, or both (default). What it does not have, the app leaves out.</summary>
+    /// <summary>What this organisation has: AD, Microsoft 365 and Google Workspace, in any combination (default AD and
+    /// Microsoft 365). What it does not have, the app leaves out.</summary>
     public TenantSystems Systems { get; init; } = TenantSystems.Both;
 
     public DateTimeOffset Created { get; init; } = DateTimeOffset.Now;
 }
 
-/// <summary>The systems an organisation has: on-premises Active Directory, Microsoft 365 (Entra ID and Exchange Online), or both.</summary>
+/// <summary>
+/// The systems an organisation has, in any combination: on-premises Active Directory, Microsoft 365 (Entra ID and
+/// Exchange Online) and Google Workspace (G0, U28). Stored as a number; <see cref="Both"/> is AD and Microsoft 365, the
+/// default of every tenant made before Google Workspace came.
+/// </summary>
 [Flags]
 public enum TenantSystems
 {
@@ -36,6 +41,34 @@ public enum TenantSystems
     ActiveDirectory = 1,
     Microsoft365 = 2,
     Both = ActiveDirectory | Microsoft365,
+    GoogleWorkspace = 4,
+}
+
+/// <summary>Helpers for the systems of a tenant (G0).</summary>
+public static class TenantSystemsInfo
+{
+    /// <summary>The three systems, in the order the screens show them.</summary>
+    public static IReadOnlyList<TenantSystems> Each { get; } = new[] { TenantSystems.ActiveDirectory, TenantSystems.Microsoft365, TenantSystems.GoogleWorkspace };
+
+    /// <summary>The seven combinations a tenant can have.</summary>
+    public static IReadOnlyList<TenantSystems> Combinations { get; } = Enumerable.Range(1, 7).Select(i => (TenantSystems)i).ToList();
+
+    /// <summary>What a tenant really has: nothing chosen (older data) counts as AD and Microsoft 365, and unknown bits
+    /// are left out.</summary>
+    public static TenantSystems Effective(this TenantSystems systems)
+    {
+        var known = systems & (TenantSystems.Both | TenantSystems.GoogleWorkspace);
+        return known == TenantSystems.None ? TenantSystems.Both : known;
+    }
+
+    public static bool HasAd(this TenantSystems systems) => systems.Effective().HasFlag(TenantSystems.ActiveDirectory);
+
+    public static bool HasMicrosoft365(this TenantSystems systems) => systems.Effective().HasFlag(TenantSystems.Microsoft365);
+
+    public static bool HasGoogle(this TenantSystems systems) => systems.Effective().HasFlag(TenantSystems.GoogleWorkspace);
+
+    /// <summary>How many of the three systems a tenant has.</summary>
+    public static int Count(this TenantSystems systems) => Each.Count(s => systems.Effective().HasFlag(s));
 }
 
 public static class TenantColours

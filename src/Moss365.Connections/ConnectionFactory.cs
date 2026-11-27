@@ -30,6 +30,9 @@ public sealed class ConnectionFactory : IConnectionFactory
 
     public ISystemCheck? Check { get; } = new Check.SystemCheck();
 
+    /// <summary>The MX check of where the mail lives (G0): DNS of this PC.</summary>
+    public Moss365.Core.Mail.IMxLookup? Dns { get; } = new Dns.MxLookup();
+
     private IUpdateCheck? _updates;
 
     public IUpdateCheck? Updates => _updates ??= new Updates.GitHubUpdates(_http);

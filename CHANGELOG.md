@@ -2,6 +2,29 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.41.0
+
+G0, the platform basis for Google Workspace next to AD and Microsoft 365 (decided on 27 November 2026, U28 to U36).
+Moss365 does not read or write Google Workspace yet: that comes with G1 and G2. This version prepares every tenant.
+
+- **Google Workspace as a third system** (U28): on *Tenants* and *Verbindingen* three checkboxes choose any combination
+  of Active Directory, Microsoft 365 and Google Workspace. The menu, the settings and Ctrl+K show only what the tenant
+  has, and the data of a system the tenant does not have is left out (now also Microsoft 365, as AD before).
+- **Platform labels** (U30): every plan step, every line of the change log, the tables of the differences between
+  snapshots and the sections of the pages (user, group, mailbox, room, guests, devices) show the platform with its name
+  on a fixed colour: AD, Entra ID, Exchange Online, Exchange on-premises, Intune, Google Workspace and Gmail. No logos.
+- **Where the mail lives** (U31), a new settings page: a default per tenant (proposed from the main domain), per person a
+  different system where needed, and an MX check per domain through the DNS of this PC that warns when the mail of a
+  domain arrives elsewhere. The page of a person says where the mail is, and offers automatic reply and message trace
+  only for mail in Exchange Online.
+- **Linking persons** (U32), a new settings page: AD and Entra stay linked by the synchronisation; a Google account is
+  linked by its address, then the employee id, then an alias, and a link by hand wins. Doubtful cases are listed, and
+  already now also an AD account that is not synchronised while a cloud account has its address (two accounts for one
+  person, or a synchronisation that broke).
+- **The source of truth** (U33), a new settings page: per kind of object the chain from the source to what follows it
+  (AD to Entra ID when Entra Connect synchronises), and where Google gets its accounts (itself, from Entra ID, from AD).
+  A change goes to the source; the page of a synchronised person shows "follows from AD".
+
 ## 0.40.0
 
 **0.39.0 does not start**: on every PC it stops with an empty window "Moss365 - onverwachte fout". This version repairs

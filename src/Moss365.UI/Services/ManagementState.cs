@@ -174,27 +174,39 @@ public sealed partial class ManagementState
 
     public IAppEnvironment AppEnvironment => _environment;
     private InventoryData _data = new();
-    private (InventoryData Of, InventoryData Without)? _withoutAd;
+    private (InventoryData Of, TenantSystems Systems, Core.Linking.LinkSettings? Links, InventoryData Shown)? _shown;
 
-    /// <summary>The data shown; for a tenant without AD everything of AD is left out (0.21.1), whatever was read or
-    /// imported, also right after the systems of the tenant change. What was read stays in <see cref="_data"/>.</summary>
+    /// <summary>The data shown: everything of a system the tenant does not have is left out (AD since 0.21.1, Microsoft
+    /// 365 and Google Workspace since G0), whatever was read or imported, also right after the systems of the tenant
+    /// change; Google accounts are linked to the persons (G0, U32). What was read stays in <see cref="_data"/>.</summary>
     public InventoryData Data
     {
         get
         {
-            if (HasAd)
-            {
-                return _data;
-            }
-
+            var systems = Tenant.Systems.Effective();
             var data = _data;
-            if (_withoutAd is not { } w || !ReferenceEquals(w.Of, data))
+            var links = systems.HasGoogle() && data.GoogleUsers.Count > 0 ? LinkSettings : null;
+            if (_shown is { } w && ReferenceEquals(w.Of, data) && w.Systems == systems && ReferenceEquals(w.Links, links))
             {
-                w = (data, data.WithoutAd());
-                _withoutAd = w;
+                return w.Shown;
             }
 
-            return w.Without;
+            var shown = systems.HasAd() ? data : data.WithoutAd();
+            shown = systems.HasMicrosoft365() ? shown : shown.WithoutMicrosoft365();
+            if (!systems.HasGoogle())
+            {
+                shown = shown.WithoutGoogle();
+                _googleDoubts = Array.Empty<Core.Linking.LinkDoubt>();
+            }
+            else if (links is not null)
+            {
+                var (persons, doubts) = Core.Linking.PersonLinks.Attach(shown.Persons, shown.GoogleUsers, links);
+                shown = shown with { Persons = persons };
+                _googleDoubts = doubts;
+            }
+
+            _shown = (data, systems, links, shown);
+            return shown;
         }
         private set => _data = value;
     }
@@ -332,10 +344,16 @@ public sealed partial class ManagementState
     public bool CanConnect => _factory is not null;
 
     /// <summary>This tenant has on-premises AD (chosen per tenant, Settings > Tenants).</summary>
-    public bool HasAd => Tenant.Systems.HasFlag(TenantSystems.ActiveDirectory);
+    public bool HasAd => Tenant.Systems.HasAd();
 
     /// <summary>This tenant has Microsoft 365: Entra ID and Exchange Online.</summary>
-    public bool HasMicrosoft365 => Tenant.Systems.HasFlag(TenantSystems.Microsoft365);
+    public bool HasMicrosoft365 => Tenant.Systems.HasMicrosoft365();
+
+    /// <summary>This tenant has Google Workspace (G0). Reading and writing it come with G1 and G2.</summary>
+    public bool HasGoogle => Tenant.Systems.HasGoogle();
+
+    /// <summary>The systems of this tenant as they count (nothing chosen is AD and Microsoft 365).</summary>
+    public TenantSystems Systems => Tenant.Systems.Effective();
 
     /// <summary>The connection settings as the connections use them: without AD for a tenant that has no AD, without
     /// Microsoft 365 for one that has no Microsoft 365, so that nothing reads or writes there.</summary>
