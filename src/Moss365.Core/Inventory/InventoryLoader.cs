@@ -428,6 +428,8 @@ public static class InventoryLoader
         AutoReply = K(r, "AutoAntwoord"),
         AutoReplyInternal = W(r, "AutoAntwoordIntern"),
         AutoReplyExternal = W(r, "AutoAntwoordExtern"),
+        SentItemsCopy = K(r, "KopieVerzonden").Length > 0 ? B(r, "KopieVerzonden") : null,
+        SendOnBehalf = Items(r, "NamensVan"),
     };
 
     private static Licence MakeLicence(Dictionary<string, string> r)

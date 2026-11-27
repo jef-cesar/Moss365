@@ -139,6 +139,8 @@ else
             <label>@T["bulk-tasks.hide-in-the-address-list"] <YesNo @bind-Value="desired.Hidden" /></label>
             <label>@T["mailbox-detail.forward-to-empty-off"] <input class="kb-invoer" placeholder="@(mailbox.ForwardingTo.Length > 0 ? mailbox.ForwardingTo : "(niet wijzigen)")" @bind="extra.Forwarding" /></label>
             <label>@T["mailbox-detail.also-keep-when-forwarding"] <YesNo @bind-Value="desired.SaveForwardingAnd" /></label>
+            <label>@T["mailbox.sent-copy"] <YesNo @bind-Value="desired.SentItemsCopy" /> <span class="kb-zacht kb-klein-tekst">@T.Format("mailbox.now", mailbox.SentItemsCopy is null ? T["word.unknown"] : mailbox.SentItemsCopy.Value ? T["word.yes"] : T["word.no"])</span></label>
+            <label>@T["mailbox.on-behalf"] <input class="kb-invoer" placeholder="@T["mailbox.on-behalf.placeholder"]" @bind="extra.OnBehalf" /> <span class="kb-zacht kb-klein-tekst">@T.Format("mailbox.now", mailbox.SendOnBehalf.Count == 0 ? T["plan.none"] : string.Join(", ", mailbox.SendOnBehalf))</span></label>
             <label>@T["absence-card.automatic-reply"]
                 <select class="kb-invoer" @bind="extra.AutoReply">
                     <option value="">@T["yesno.nochange"]</option>
@@ -183,7 +185,7 @@ else
     private IReadOnlyList<PermissionRule> permissions = Array.Empty<PermissionRule>();
     private MailboxDesired desired = new();
     // What you filled in is kept per mailbox until the plan has run (Back, Forward, menu)
-    private sealed class Extra { public string? Forwarding { get; set; } public bool DisableForwarding { get; set; } public string AutoReply { get; set; } = string.Empty; }
+    private sealed class Extra { public string? Forwarding { get; set; } public bool DisableForwarding { get; set; } public string AutoReply { get; set; } = string.Empty; public string? OnBehalf { get; set; } }
     private Extra extra = new();
     private string Form => $"postvakken/{loaded}/wijzigen";
     private IReadOnlyList<Change>? plan;
@@ -232,6 +234,10 @@ else
     {
         desired.ForwardingTo = extra.DisableForwarding ? string.Empty : string.IsNullOrWhiteSpace(extra.Forwarding) ? null : extra.Forwarding;
         desired.AutoReply = extra.AutoReply.Length == 0 ? null : extra.AutoReply;
+        // R21: who sends on behalf: the whole list, separated by commas or semicolons ("-" = nobody)
+        desired.SendOnBehalf = extra.OnBehalf is null || extra.OnBehalf.Trim().Length == 0 ? null
+            : extra.OnBehalf.Trim() == "-" ? Array.Empty<string>()
+            : extra.OnBehalf.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         Plan(MailboxPlans.Settings(mailbox!, desired), T["code.mailbox-detail.settings-of-the-mailbox"]);
     }
 

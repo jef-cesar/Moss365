@@ -179,3 +179,29 @@ public sealed partial class PlanScreenTests
         Assert.Contains("Verborgen in het adresboek: ja", cut.Find("section.kb-plan").TextContent, StringComparison.Ordinal);
     }
 }
+
+/// <summary>R21: the copy of sent items and who sends on behalf of a shared mailbox.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void TheCopyOfSentItemsAndSendOnBehalfArePlansWithUndo()
+    {
+        var mailbox = new Moss365.Core.Inventory.Mailbox { Type = "SharedMailbox", DisplayName = "Info", Smtp = "info@contoso.com", SentItemsCopy = false, SendOnBehalf = new[] { "an@contoso.com" } };
+        var outcome = MailboxPlans.Settings(mailbox, new MailboxDesired { SentItemsCopy = true, SendOnBehalf = new[] { "an@contoso.com", "bo@contoso.com" } });
+        var step = Assert.Single(outcome.Plan);
+        Assert.Equal(ChangeAction.ExchangeUpdateMailbox, step.ChangeAction);
+        Assert.Equal("True", step.P("MessageCopyForSentAsEnabled"));
+        Assert.Equal("True", step.P("MessageCopyForSendOnBehalfEnabled"));
+        Assert.Equal("an@contoso.com|bo@contoso.com", step.P("GrantSendOnBehalfTo"));
+        Assert.Equal("an@contoso.com", step.Previous!["GrantSendOnBehalfTo"]);
+        Assert.Equal("False", step.Previous["MessageCopyForSentAsEnabled"]);
+
+        // Nobody: an empty list; a name that is not an address is refused
+        Assert.Equal(string.Empty, Assert.Single(MailboxPlans.Settings(mailbox, new MailboxDesired { SendOnBehalf = Array.Empty<string>() }).Plan).P("GrantSendOnBehalfTo"));
+        Assert.NotEmpty(MailboxPlans.Settings(mailbox, new MailboxDesired { SendOnBehalf = new[] { "Jan" } }).Errors);
+
+        // A list as Exchange names it (names, not addresses) cannot be put back: no previous value then
+        var named = mailbox with { SendOnBehalf = new[] { "An Peeters" } };
+        Assert.False(Assert.Single(MailboxPlans.Settings(named, new MailboxDesired { SendOnBehalf = new[] { "bo@contoso.com" } }).Plan).Previous!.ContainsKey("GrantSendOnBehalfTo"));
+    }
+}

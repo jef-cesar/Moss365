@@ -61,6 +61,12 @@ public sealed record Mailbox
     public string AutoReplyInternal { get; init; } = string.Empty;
     public string AutoReplyExternal { get; init; } = string.Empty;
 
+    /// <summary>R21: a copy of what is sent as or on behalf of the mailbox stays in its own Sent Items; null when not read.</summary>
+    public bool? SentItemsCopy { get; init; }
+
+    /// <summary>R21: who may send on behalf of the mailbox (GrantSendOnBehalfTo), as Exchange names them.</summary>
+    public IReadOnlyList<string> SendOnBehalf { get; init; } = Array.Empty<string>();
+
     public bool IsShared => string.Equals(Type, "SharedMailbox", StringComparison.OrdinalIgnoreCase);
 
     public string TypeText => Type switch

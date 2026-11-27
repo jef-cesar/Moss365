@@ -18,8 +18,11 @@ BeforeAll {
     function global:Set-MailboxFolderPermission { param($Identity, $User, $AccessRights, $ErrorAction)
         if ($Identity -like '*:\Calendar') { throw 'map niet gevonden' }
         $global:ExoAanroepen.Add("Perm $Identity $User $AccessRights") }
-    function global:Set-Mailbox { param($Identity, $Type, $DisplayName, $HiddenFromAddressListsEnabled, $ForwardingSmtpAddress, $DeliverToMailboxAndForward, $ErrorAction)
+    function global:Set-Mailbox { param($Identity, $Type, $DisplayName, $HiddenFromAddressListsEnabled, $ForwardingSmtpAddress, $DeliverToMailboxAndForward, $MessageCopyForSentAsEnabled, $MessageCopyForSendOnBehalfEnabled, $GrantSendOnBehalfTo, $ErrorAction)
         if ($Type) { $global:ExoAanroepen.Add("Mbx $Identity $Type"); return }
+        if ($null -ne $MessageCopyForSentAsEnabled -or $null -ne $GrantSendOnBehalfTo) {
+            $global:ExoAanroepen.Add("SetMbxR21 $Identity Copy=$MessageCopyForSentAsEnabled/$($MessageCopyForSentAsEnabled.GetType().Name) OnBehalf=$($GrantSendOnBehalfTo -join ',')/$(@($GrantSendOnBehalfTo).Count)"); return
+        }
         $fwd = if ($PSBoundParameters.ContainsKey('ForwardingSmtpAddress')) { if ($null -eq $ForwardingSmtpAddress) { 'NULL' } else { $ForwardingSmtpAddress } } else { '-' }
         $global:ExoAanroepen.Add("SetMbx $Identity Fwd=$fwd Hidden=$HiddenFromAddressListsEnabled") }
     function global:Get-EXOMailbox { param($Identity, $RecipientTypeDetails, $ResultSize, $Properties)
@@ -209,6 +212,19 @@ Describe 'Exchange.ps1' {
         ($r | Where-Object id -eq 'b').status | Should -Not -Be 'Gelukt'
         ($r | Where-Object id -eq 'c').status | Should -Not -Be 'Gelukt'
         $global:ExoAanroepen | Should -Contain 'SetDgOpt sg@test.be Hidden=True/Boolean Auth=False Join=ApprovalRequired'
+        $r2 = Voer @(@{ id = 'd'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; HiddenFromAddressListsEnabled = 'False' } })
+        $r2[0].status | Should -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'SetDgOpt sg@test.be Hidden=False/Boolean Auth= Join='
+    }
+
+    It 'sets the copy of sent items and who sends on behalf of a mailbox (R21)' {
+        $r = Voer @(
+            @{ id = 'a'; op = 'PostvakInstellen'; params = @{ Identity = 'info@test.be'; MessageCopyForSentAsEnabled = 'True'; GrantSendOnBehalfTo = 'an@test.be|bo@test.be' } }
+            @{ id = 'b'; op = 'PostvakInstellen'; params = @{ Identity = 'info@test.be'; MessageCopyForSentAsEnabled = 'Misschien' } }
+        )
+        ($r | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
+        ($r | Where-Object id -eq 'b').status | Should -Not -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'SetMbxR21 info@test.be Copy=True/Boolean OnBehalf=an@test.be,bo@test.be/2'
     }
 
     It 'reads shared mailboxes with permissions and groups' {

@@ -18,6 +18,12 @@ public sealed class MailboxDesired
 
     public string? AutoReplyInternal { get; set; }
     public string? AutoReplyExternal { get; set; }
+
+    /// <summary>R21: keep a copy of what is sent as or on behalf of the mailbox in its Sent Items.</summary>
+    public bool? SentItemsCopy { get; set; }
+
+    /// <summary>R21: the whole list of who may send on behalf (addresses); null = do not change.</summary>
+    public IReadOnlyList<string>? SendOnBehalf { get; set; }
 }
 
 /// <summary>A new shared mailbox with its access group.</summary>
@@ -135,6 +141,40 @@ public static class MailboxPlans
 
         Set("DeliverToMailboxAndForward", p.SaveForwardingAnd is null ? string.Empty : p.SaveForwardingAnd.Value ? "True" : "False",
             g.SaveForwardingAnd is null ? null : g.SaveForwardingAnd.Value ? "True" : "False");
+
+        // R21: the copy of sent items (both ways of sending at once) and who sends on behalf
+        if (g.SentItemsCopy is { } copy)
+        {
+            var current = p.SentItemsCopy is null ? string.Empty : p.SentItemsCopy.Value ? "True" : "False";
+            Set("MessageCopyForSentAsEnabled", current, copy ? "True" : "False");
+            Set("MessageCopyForSendOnBehalfEnabled", current, copy ? "True" : "False");
+        }
+
+        if (g.SendOnBehalf is { } onBehalf)
+        {
+            var list = onBehalf.Select(a => a.Trim()).Where(a => a.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (list.FirstOrDefault(a => !a.Contains('@')) is { } bad)
+            {
+                errors.Add(Texts.T.Format("code.mailbox-plans.is-not-an-e-mail", bad));
+            }
+            else
+            {
+                var before = string.Join('|', p.SendOnBehalf);
+                var after = string.Join('|', list);
+                if (!string.Equals(before, after, StringComparison.OrdinalIgnoreCase))
+                {
+                    configure["GrantSendOnBehalfTo"] = after;
+                    // The names Exchange gave can be names, not addresses: undone only when they are all addresses
+                    if (p.SendOnBehalf.All(a => a.Contains('@')))
+                    {
+                        previous["GrantSendOnBehalfTo"] = before;
+                    }
+
+                    old.Add($"GrantSendOnBehalfTo={(before.Length == 0 ? "(leeg)" : before.Replace("|", ", "))}");
+                    newValue.Add($"GrantSendOnBehalfTo={(after.Length == 0 ? "(leeg)" : after.Replace("|", ", "))}");
+                }
+            }
+        }
 
         if (configure.Count > 0)
         {

@@ -4031,5 +4031,9 @@
   "group.settings.join.approval": "a pedido, com aprovação de um gerente",
   "group.settings.join.open": "todos podem entrar",
   "group.settings.mail.plan": "Alterar {0} configuração(ões) do grupo de e-mail no Exchange Online",
-  "group.settings.no-mail": "Só um grupo de e-mail do Exchange Online que não é sincronizado do AD tem estas configurações aqui; um sincronizado as altera no AD."
+  "group.settings.no-mail": "Só um grupo de e-mail do Exchange Online que não é sincronizado do AD tem estas configurações aqui; um sincronizado as altera no AD.",
+  "mailbox.sent-copy": "Manter nos itens enviados uma cópia do que outros enviam dela",
+  "mailbox.on-behalf": "Enviar em nome de (endereços)",
+  "mailbox.on-behalf.placeholder": "(não alterar; - é ninguém)",
+  "mailbox.now": "agora: {0}"
 }

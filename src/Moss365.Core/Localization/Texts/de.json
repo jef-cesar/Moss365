@@ -4031,5 +4031,9 @@
   "group.settings.join.approval": "auf Anfrage, mit Genehmigung eines Verwalters",
   "group.settings.join.open": "alle können beitreten",
   "group.settings.mail.plan": "{0} Einstellung(en) der Mailgruppe in Exchange Online ändern",
-  "group.settings.no-mail": "Nur eine nicht aus AD synchronisierte Mailgruppe von Exchange Online hat diese Einstellungen hier; eine synchronisierte ändert sie in AD."
+  "group.settings.no-mail": "Nur eine nicht aus AD synchronisierte Mailgruppe von Exchange Online hat diese Einstellungen hier; eine synchronisierte ändert sie in AD.",
+  "mailbox.sent-copy": "Kopie dessen, was andere daraus senden, in Gesendete Elemente behalten",
+  "mailbox.on-behalf": "Senden im Auftrag von (Adressen)",
+  "mailbox.on-behalf.placeholder": "(nicht ändern; - ist niemand)",
+  "mailbox.now": "jetzt: {0}"
 }

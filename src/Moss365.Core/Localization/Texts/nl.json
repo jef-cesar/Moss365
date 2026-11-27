@@ -4031,5 +4031,9 @@
   "group.settings.join.approval": "op aanvraag, met goedkeuring van een beheerder",
   "group.settings.join.open": "iedereen kan lid worden",
   "group.settings.mail.plan": "{0} instelling(en) van de mailgroep wijzigen in Exchange Online",
-  "group.settings.no-mail": "Enkel een mailgroep van Exchange Online die niet uit AD gesynchroniseerd wordt, heeft deze instellingen hier; een gesynchroniseerde wijzigt ze in AD."
+  "group.settings.no-mail": "Enkel een mailgroep van Exchange Online die niet uit AD gesynchroniseerd wordt, heeft deze instellingen hier; een gesynchroniseerde wijzigt ze in AD.",
+  "mailbox.sent-copy": "Kopie van wat anderen ervan verzenden in Verzonden items bewaren",
+  "mailbox.on-behalf": "Verzenden namens (adressen)",
+  "mailbox.on-behalf.placeholder": "(niet wijzigen; - is niemand)",
+  "mailbox.now": "nu: {0}"
 }

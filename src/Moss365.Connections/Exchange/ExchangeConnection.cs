@@ -167,7 +167,8 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             case ChangeAction.ExchangeUpdateMailbox:
                 op = "PostvakInstellen";
                 p["Identity"] = w.Target;
-                Take(w, p, "DisplayName", "HiddenFromAddressListsEnabled", "ForwardingSmtpAddress", "DeliverToMailboxAndForward");
+                Take(w, p, "DisplayName", "HiddenFromAddressListsEnabled", "ForwardingSmtpAddress", "DeliverToMailboxAndForward",
+                    "MessageCopyForSentAsEnabled", "MessageCopyForSendOnBehalfEnabled", "GrantSendOnBehalfTo");
                 break;
             case ChangeAction.ExchangeAutoReply:
                 op = "AutoAntwoord";
@@ -419,6 +420,8 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             AutoReply = S(e, "AutoAntwoord"),
             AutoReplyInternal = S(e, "AutoAntwoordIntern"),
             AutoReplyExternal = S(e, "AutoAntwoordExtern"),
+            SentItemsCopy = S(e, "KopieVerzonden").Length > 0 ? B(e, "KopieVerzonden") : null,
+            SendOnBehalf = S(e, "NamensVan").Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
         }).Where(p => p.Smtp.Length > 0).ToList();
         var permissions = Items(d, "Rechten")
             .SelectMany(e => S(e, "Recht").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

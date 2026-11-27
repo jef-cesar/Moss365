@@ -187,6 +187,7 @@ public static class InventoryWriter
                 ["Hidden"] = B(p.Hidden), ["IsDirSynced"] = B(p.IsDirSynced), ["WhenCreated"] = p.WhenCreated, ["Doorsturen"] = p.Forwarding,
                 ["DoorsturenNaar"] = p.ForwardingTo, ["DoorsturenEnBewaren"] = p.SaveForwardingAnd is null ? string.Empty : B(p.SaveForwardingAnd.Value),
                 ["AutoAntwoord"] = p.AutoReply, ["AutoAntwoordIntern"] = p.AutoReplyInternal, ["AutoAntwoordExtern"] = p.AutoReplyExternal,
+                ["KopieVerzonden"] = p.SentItemsCopy is null ? string.Empty : B(p.SentItemsCopy.Value), ["NamensVan"] = string.Join('|', p.SendOnBehalf),
             }));
             Write(InventoryLoader.ExoMailboxPermissions, d.MailboxPermissions.Select(r => new Dictionary<string, string?>
             {

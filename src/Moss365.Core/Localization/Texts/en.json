@@ -4031,5 +4031,9 @@
   "group.settings.join.approval": "on request, with approval of a manager",
   "group.settings.join.open": "everyone can join",
   "group.settings.mail.plan": "Change {0} setting(s) of the mail group in Exchange Online",
-  "group.settings.no-mail": "Only a mail group of Exchange Online that is not synchronised from AD has these settings here; a synchronised one changes them in AD."
+  "group.settings.no-mail": "Only a mail group of Exchange Online that is not synchronised from AD has these settings here; a synchronised one changes them in AD.",
+  "mailbox.sent-copy": "Keep a copy of what others send from it in its Sent Items",
+  "mailbox.on-behalf": "Send on behalf of (addresses)",
+  "mailbox.on-behalf.placeholder": "(do not change; - is nobody)",
+  "mailbox.now": "now: {0}"
 }
