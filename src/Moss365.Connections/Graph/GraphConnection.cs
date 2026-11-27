@@ -1604,13 +1604,21 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
             if (w.ChangeAction == ChangeAction.GraphInviteGuest)
             {
-                var invitation = await _client.PostWithResponseAsync("/invitations", new Dictionary<string, object>
+                var body = new Dictionary<string, object>
                 {
                     ["invitedUserEmailAddress"] = w.Target,
                     ["invitedUserDisplayName"] = w.P("naam"),
                     ["inviteRedirectUrl"] = "https://myapps.microsoft.com",
                     ["sendInvitationMessage"] = string.Equals(w.P("bericht"), "True", StringComparison.OrdinalIgnoreCase),
-                }, cancel);
+                };
+                // R21: invite an existing guest again (its redemption reset; the account and its groups stay)
+                if (string.Equals(w.P("opnieuw"), "True", StringComparison.OrdinalIgnoreCase) && w.P("id").Length > 0)
+                {
+                    body["resetRedemption"] = true;
+                    body["invitedUser"] = new Dictionary<string, string> { ["id"] = w.P("id") };
+                }
+
+                var invitation = await _client.PostWithResponseAsync("/invitations", body, cancel);
                 var id = invitation.TryGetProperty("invitedUser", out var iu) ? S(iu, "id") : string.Empty;
                 if (id.Length > 0)
                 {

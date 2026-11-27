@@ -4003,5 +4003,16 @@
   "computer.nobody": "Niemand",
   "computer.plan.details": "{0} Angabe(n) des Computers in AD ändern",
   "computer.no-domain": "Die Domäne ist noch nicht bekannt: laden Sie zuerst AD.",
-  "computer.ou": "OU"
+  "computer.ou": "OU",
+  "guest.edit.title": "Angaben des Gasts",
+  "guest.edit.kind": "Gilt als",
+  "guest.edit.guest": "Gast",
+  "guest.edit.member": "Mitglied",
+  "guest.edit.member-warning": "Ein Mitglied sieht das Verzeichnis wie ein Mitarbeiter: Namen, Gruppen und die Organisation. Nur für jemanden, der täglich mit Ihnen arbeitet.",
+  "guest.edit.plan": "{0} Angabe(n) des Gasts in Entra ID ändern",
+  "guest.edit.not-in-entra": "Dieser Gast ist nicht in Entra ID.",
+  "guest.again": "Erneut einladen",
+  "guest.again.help": "Für einen Gast, der nicht mehr hineinkommt oder ein anderes Konto derselben Adresse nutzt: das Konto und seine Gruppen bleiben.",
+  "guest.again.plan": "Gast erneut einladen (die Annahme wird zurückgesetzt; Konto und Gruppen bleiben)",
+  "guest.again.no-address": "Nur ein Gast mit E-Mail-Adresse kann erneut eingeladen werden."
 }

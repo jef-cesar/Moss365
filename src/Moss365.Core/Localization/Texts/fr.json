@@ -4003,5 +4003,16 @@
   "computer.nobody": "Personne",
   "computer.plan.details": "Modifier {0} donnée(s) de l'ordinateur dans AD",
   "computer.no-domain": "Le domaine n'est pas encore connu : chargez d'abord AD.",
-  "computer.ou": "OU"
+  "computer.ou": "OU",
+  "guest.edit.title": "Données de l'invité",
+  "guest.edit.kind": "Compte comme",
+  "guest.edit.guest": "invité",
+  "guest.edit.member": "membre",
+  "guest.edit.member-warning": "Un membre voit l'annuaire comme un employé : noms, groupes et organisation. Uniquement pour quelqu'un qui travaille avec vous au quotidien.",
+  "guest.edit.plan": "Modifier {0} donnée(s) de l'invité dans Entra ID",
+  "guest.edit.not-in-entra": "Cet invité n'est pas dans Entra ID.",
+  "guest.again": "Inviter à nouveau",
+  "guest.again.help": "Pour un invité qui n'arrive plus à entrer, ou qui utilise un autre compte de la même adresse : le compte et ses groupes restent.",
+  "guest.again.plan": "Inviter l'invité à nouveau (l'acceptation est réinitialisée ; compte et groupes restent)",
+  "guest.again.no-address": "Seul un invité avec une adresse e-mail peut être invité à nouveau."
 }

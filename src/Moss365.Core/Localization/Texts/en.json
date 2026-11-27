@@ -4003,5 +4003,16 @@
   "computer.nobody": "Nobody",
   "computer.plan.details": "Change {0} detail(s) of the computer in AD",
   "computer.no-domain": "The domain is not known yet: load AD first.",
-  "computer.ou": "OU"
+  "computer.ou": "OU",
+  "guest.edit.title": "Details of the guest",
+  "guest.edit.kind": "Counts as",
+  "guest.edit.guest": "guest",
+  "guest.edit.member": "member",
+  "guest.edit.member-warning": "A member sees the directory as an employee does: names, groups and the organisation. Only for someone who works with you every day.",
+  "guest.edit.plan": "Change {0} detail(s) of the guest in Entra ID",
+  "guest.edit.not-in-entra": "This guest is not in Entra ID.",
+  "guest.again": "Invite again",
+  "guest.again.help": "For a guest who cannot get in any more, or uses another account of the same address: the account and its groups stay.",
+  "guest.again.plan": "Invite the guest again (the acceptance is reset; account and groups stay)",
+  "guest.again.no-address": "Only a guest with an e-mail address can be invited again."
 }

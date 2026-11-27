@@ -67,6 +67,10 @@ else
     {
         <EditUser Person="person" />
     }
+    @if (person.IsGuest && !State.IsHistoric && (State.Can(Permission.Manage) || State.Can(Permission.InviteGuests)))
+    {
+        <GuestEditor Person="person" />
+    }
 
     @if (State.Can(Permission.GroupMembers) && !State.IsHistoric)
     {

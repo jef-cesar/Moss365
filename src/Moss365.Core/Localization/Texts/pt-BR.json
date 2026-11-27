@@ -4003,5 +4003,16 @@
   "computer.nobody": "Ninguém",
   "computer.plan.details": "Alterar {0} dado(s) do computador no AD",
   "computer.no-domain": "O domínio ainda não é conhecido: carregue primeiro o AD.",
-  "computer.ou": "OU"
+  "computer.ou": "OU",
+  "guest.edit.title": "Dados do convidado",
+  "guest.edit.kind": "Conta como",
+  "guest.edit.guest": "convidado",
+  "guest.edit.member": "membro",
+  "guest.edit.member-warning": "Um membro vê o diretório como um funcionário: nomes, grupos e a organização. Só para quem trabalha com vocês todos os dias.",
+  "guest.edit.plan": "Alterar {0} dado(s) do convidado no Entra ID",
+  "guest.edit.not-in-entra": "Este convidado não está no Entra ID.",
+  "guest.again": "Convidar novamente",
+  "guest.again.help": "Para um convidado que não consegue mais entrar, ou usa outra conta do mesmo endereço: a conta e seus grupos permanecem.",
+  "guest.again.plan": "Convidar o convidado novamente (a aceitação é redefinida; conta e grupos permanecem)",
+  "guest.again.no-address": "Só um convidado com endereço de e-mail pode ser convidado novamente."
 }

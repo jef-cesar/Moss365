@@ -4003,5 +4003,16 @@
   "computer.nobody": "Niemand",
   "computer.plan.details": "{0} gegeven(s) van de computer wijzigen in AD",
   "computer.no-domain": "Het domein is nog niet bekend: laad eerst AD.",
-  "computer.ou": "OU"
+  "computer.ou": "OU",
+  "guest.edit.title": "Gegevens van de gast",
+  "guest.edit.kind": "Telt als",
+  "guest.edit.guest": "gast",
+  "guest.edit.member": "lid",
+  "guest.edit.member-warning": "Een lid ziet de directory zoals een medewerker: namen, groepen en de organisatie. Enkel voor iemand die elke dag met jullie werkt.",
+  "guest.edit.plan": "{0} gegeven(s) van de gast wijzigen in Entra ID",
+  "guest.edit.not-in-entra": "Deze gast staat niet in Entra ID.",
+  "guest.again": "Opnieuw uitnodigen",
+  "guest.again.help": "Voor een gast die er niet meer in raakt, of een ander account van hetzelfde adres gebruikt: het account en zijn groepen blijven.",
+  "guest.again.plan": "Gast opnieuw uitnodigen (de aanvaarding wordt teruggezet; account en groepen blijven)",
+  "guest.again.no-address": "Enkel een gast met een e-mailadres kan opnieuw uitgenodigd worden."
 }

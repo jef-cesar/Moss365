@@ -100,3 +100,36 @@ public sealed partial class PlanScreenTests
         Assert.Contains("niets gewijzigd", Assert.Single(Moss365.Core.Devices.ComputerPlans.Edit(State.Data, State.Config, pc, new Moss365.Core.Devices.ComputerDesired(Description: "Oud toestel")).Errors), StringComparison.OrdinalIgnoreCase);
     }
 }
+
+/// <summary>R21: a guest, edited on its page and invited again.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void AGuestIsEditedAndInvitedAgain()
+    {
+        var guest = State.Data.Persons.First(p => p.IsGuest);
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, guest.Key));
+        Assert.Contains("Gegevens van de gast", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Contact en adres", cut.Markup, StringComparison.Ordinal); // a guest has no user editor
+
+        cut.Find("#gast").QuerySelectorAll("button").First(b => b.TextContent == "Bewerken").Click();
+        cut.Find("input[aria-label='Bedrijf']").Input("Fabrikam");
+        cut.Find("#gast").QuerySelectorAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.GraphSetAttributes && w.Target == guest.Entra!.Id));
+        var set = _factory.Executed.Single(w => w.Target == guest.Entra!.Id);
+        Assert.Equal("Fabrikam", set.P("companyName"));
+        Assert.True(set.Previous!.ContainsKey("companyName"));
+
+        // Made member: with a warning on the plan
+        var member = GuestPlans.Edit(guest, null, null, member: true);
+        Assert.Equal("Member", Assert.Single(member.Plan).P("userType"));
+        Assert.NotNull(member.Plan[0].Warning);
+
+        // Invited again: the redemption is reset for the same account
+        var again = Assert.Single(GuestPlans.InviteAgain(guest, message: false).Plan);
+        Assert.Equal(ChangeAction.GraphInviteGuest, again.ChangeAction);
+        Assert.Equal("True", again.P("opnieuw"));
+        Assert.Equal(guest.Entra!.Id, again.P("id"));
+    }
+}
