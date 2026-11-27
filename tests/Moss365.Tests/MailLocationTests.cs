@@ -43,7 +43,7 @@ public class MailLocationTests
     {
         var data = new InventoryData
         {
-            Persons = new[] { P("a", "a@contoso.com"), P("b", "b@contoso.com"), P("c", "c@fabrikam.com"), P("d", "d@contoso.onmicrosoft.com"), new Person { Key = "e", Entra = new EntraUser { Id = "e", Mail = "x@guest.example", UserType = "Guest" } } },
+            Persons = new[] { P("a", "a@contoso.com"), P("b", "b@contoso.com"), P("c", "c@fabrikam.com"), P("d", "d@contoso.onmicrosoft.com"), new Person { Key = "e", Entra = new EntraUser { Id = "e", Mail = "x@example.net", UserType = "Guest" } } },
         };
 
         Assert.Equal(new[] { "contoso.com", "fabrikam.com" }, MailLocations.Domains(data, null));
