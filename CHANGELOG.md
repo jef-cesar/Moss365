@@ -38,9 +38,19 @@ R21, editing every object, first part (decided on 27 November 2026, U27):
 - **A computer in AD**, on the panel of the device: description, location, managed by and the OU.
 - **Groups**: Public or Private for a Microsoft 365 group; for a mail group of Exchange Online hidden from the address
   book, only senders inside the organisation, and how to become a member.
-- **A shared mailbox**: a copy of what others send from it in its Sent Items, and who sends on behalf of it.
+- **The sign-in name (UPN)**, in the section access: refused while typing when another account has it, a warning for a
+  domain no account uses yet, and a confirmation that the person signs in with the new name afterwards. The logon name
+  in AD (sAMAccountName) is not changed: it is the key of a person in the app (snapshots, history, documents).
+- **Other phones** (home, fax, IP phone; the fax also for a cloud account) and **the last day an account works** in AD
+  (accountExpires: the start of the next day, local time; never is 0), with a warning for a day in the past. A sign-in
+  name and a display name can no longer be emptied.
+- **A shared mailbox**: a copy of what others send from it in its Sent Items, who sends on behalf of it, and a new
+  primary address (confirmed; the old address stays as an alias, so mail keeps arriving; a mailbox from AD is changed
+  there). A group, a mailbox or a person cannot get an address another recipient has.
+- **A room**: the address (street, postal code, city, country) and the equipment (audio, video, screen, wheelchair
+  access), with undo.
 - **Several users at once**: the new fields (company, kind of employee, address, country, usage location, logon
-  script) for a selection, as one plan.
+  script, the last day the account works) for a selection, as one plan.
 - **The history of one field** on the page of a person, from the snapshots and the change log.
 - Reading more fields lists no account as changed: a column read for the first time is no change in the snapshots, the
   differences or "since your last visit".

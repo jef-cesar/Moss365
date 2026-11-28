@@ -14,6 +14,13 @@ public sealed record AdUser
     public string PostalCode { get; init; } = string.Empty;
     public string State { get; init; } = string.Empty;
     public string Country { get; init; } = string.Empty;
+
+    /// <summary>R21: other phones (homePhone, facsimileTelephoneNumber, ipPhone) and when the account expires
+    /// (accountExpires, local time "yyyy-MM-dd HH:mm:ss"; empty = never); empty in data read before.</summary>
+    public string HomePhone { get; init; } = string.Empty;
+    public string Fax { get; init; } = string.Empty;
+    public string IpPhone { get; init; } = string.Empty;
+    public string AccountExpires { get; init; } = string.Empty;
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
@@ -66,6 +73,9 @@ public sealed record EntraUser
     public string PostalCode { get; init; } = string.Empty;
     public string State { get; init; } = string.Empty;
     public string Country { get; init; } = string.Empty;
+
+    /// <summary>R21: the fax number (faxNumber).</summary>
+    public string Fax { get; init; } = string.Empty;
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
@@ -179,6 +189,16 @@ public sealed record Room
     public string Floor { get; init; } = string.Empty;
     public string FloorLabel { get; init; } = string.Empty;
     public int? Capacity { get; init; }
+
+    // R21: the address and the equipment of the room (Get-Place); empty when not read
+    public string City { get; init; } = string.Empty;
+    public string Street { get; init; } = string.Empty;
+    public string PostalCode { get; init; } = string.Empty;
+    public string Country { get; init; } = string.Empty;
+    public string AudioDevice { get; init; } = string.Empty;
+    public string VideoDevice { get; init; } = string.Empty;
+    public string DisplayDevice { get; init; } = string.Empty;
+    public bool? WheelchairAccessible { get; init; }
     public bool Hidden { get; init; }
     public string AutomateProcessing { get; init; } = string.Empty;
     public bool AllBookInPolicy { get; init; }

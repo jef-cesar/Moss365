@@ -45,7 +45,8 @@ $Toegestaan = @{
     'LidVerwijderen'   = @('Identity', 'Member')
     'Agendaverwerking' = @('Identity', 'AutomateProcessing', 'BookingWindowInDays', 'MaximumDurationInMinutes', 'AllowConflicts',
         'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject')
-    'Place'            = @('Identity', 'Building', 'Floor', 'FloorLabel', 'Capacity')
+    'Place'            = @('Identity', 'Building', 'Floor', 'FloorLabel', 'Capacity', 'City', 'Street', 'PostalCode', 'CountryOrRegion',
+                           'AudioDeviceName', 'VideoDeviceName', 'DisplayDeviceName', 'IsWheelChairAccessible')
     'AgendaRecht'      = @('Identity', 'User', 'AccessRights')
     'NaarGedeeld'      = @('Identity')
     'LeesRooms'        = @()
@@ -53,7 +54,7 @@ $Toegestaan = @{
     'LeesObjecten'     = @('Adressen')
     'GroepInstellen'   = @('Identity', 'DisplayName', 'PrimarySmtpAddress', 'HiddenFromAddressListsEnabled', 'RequireSenderAuthenticationEnabled', 'MemberJoinRestriction')
     'Beheerder'        = @('Identity', 'Toevoegen', 'Verwijderen')
-    'PostvakInstellen' = @('Identity', 'DisplayName', 'HiddenFromAddressListsEnabled', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled', 'GrantSendOnBehalfTo')
+    'PostvakInstellen' = @('Identity', 'DisplayName', 'HiddenFromAddressListsEnabled', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled', 'GrantSendOnBehalfTo', 'WindowsEmailAddress')
     'AutoAntwoord'     = @('Identity', 'AutoReplyState', 'InternalMessage', 'ExternalMessage', 'StartTime', 'EndTime')
     'Berichtspoor'     = @('SenderAddress', 'RecipientAddress', 'Dagen')
     'Doorsturen'       = @('MetRegels')
@@ -66,7 +67,7 @@ $Toegestaan = @{
 }
 $Getallen = @('BookingWindowInDays', 'MaximumDurationInMinutes', 'Floor', 'Capacity')
 $JaNee = @('AllowConflicts', 'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward',
-    'RequireSenderAuthenticationEnabled', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled')
+    'RequireSenderAuthenticationEnabled', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled', 'IsWheelChairAccessible')
 $PostvakRechten = @('FullAccess', 'SendAs')
 $AutoAntwoordStanden = @('Enabled', 'Disabled', 'Scheduled')
 $AgendaRechten = @('None', 'AvailabilityOnly', 'LimitedDetails', 'Reviewer', 'Author', 'Editor', 'PublishingEditor', 'Owner')
@@ -132,6 +133,14 @@ function Get-RoomsVoorApp {
             Verdieping               = "$($place.Floor)"
             VerdiepingLabel          = "$($place.FloorLabel)"
             Capaciteit               = "$($place.Capacity)"
+            Stad                     = "$($place.City)"
+            Straat                   = "$($place.Street)"
+            Postcode                 = "$($place.PostalCode)"
+            Land                     = "$($place.CountryOrRegion)"
+            Audio                    = "$($place.AudioDeviceName)"
+            Video                    = "$($place.VideoDeviceName)"
+            Scherm                   = "$($place.DisplayDeviceName)"
+            Rolstoel                 = "$($place.IsWheelChairAccessible)"
             Hidden                   = "$($r.HiddenFromAddressListsEnabled)"
             AutomateProcessing       = "$($cal.AutomateProcessing)"
             AllBookInPolicy          = "$($cal.AllBookInPolicy)"
@@ -317,6 +326,11 @@ function Invoke-Opdracht {
             # R21: who may send on behalf of the mailbox: the whole list, addresses separated by | (empty = nobody)
             if ($P.ContainsKey('GrantSendOnBehalfTo')) {
                 $instellen['GrantSendOnBehalfTo'] = @($P.GrantSendOnBehalfTo -split '\|' | Where-Object { $_ })
+            }
+            # R21: a new primary address (the old one stays as an alias in Exchange Online); never empty
+            if ($P.ContainsKey('WindowsEmailAddress')) {
+                if (-not $P.WindowsEmailAddress) { throw 'No primary address given.' }
+                $instellen['WindowsEmailAddress'] = $P.WindowsEmailAddress
             }
             if ($P.ContainsKey('ForwardingSmtpAddress')) {
                 # Empty = turn forwarding off

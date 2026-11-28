@@ -71,6 +71,7 @@ public static class InventoryWriter
                 ["MemberOf"] = string.Join('|', u.MemberOr),
                 ["EmployeeID"] = u.EmployeeId, ["EmployeeType"] = u.EmployeeType, ["StreetAddress"] = u.StreetAddress,
                 ["PostalCode"] = u.PostalCode, ["State"] = u.State, ["Country"] = u.Country,
+                ["HomePhone"] = u.HomePhone, ["Fax"] = u.Fax, ["IpPhone"] = u.IpPhone, ["AccountExpirationDate"] = u.AccountExpires,
             }));
             Write(InventoryLoader.AdGroups, d.AdGroupsByDn.Values.Select(g => new Dictionary<string, string?>
             {
@@ -97,7 +98,7 @@ public static class InventoryWriter
                 ["OnPremisesDistinguishedName"] = e.OnPremisesDistinguishedName, ["Licenties"] = string.Join('|', e.Licences),
                 ["LaatsteAanmelding"] = e.LastSignIn,
                 ["EmployeeId"] = e.EmployeeId, ["EmployeeType"] = e.EmployeeType, ["StreetAddress"] = e.StreetAddress,
-                ["PostalCode"] = e.PostalCode, ["State"] = e.State, ["Country"] = e.Country,
+                ["PostalCode"] = e.PostalCode, ["State"] = e.State, ["Country"] = e.Country, ["FaxNumber"] = e.Fax,
             }));
             Write(InventoryLoader.EntraGroups, d.CloudGroups.Values.Select(g => new Dictionary<string, string?>
             {
@@ -160,6 +161,9 @@ public static class InventoryWriter
             {
                 ["Smtp"] = r.Smtp, ["DisplayName"] = r.DisplayName, ["Alias"] = r.Alias, ["Gebouw"] = r.Building, ["Verdieping"] = r.Floor,
                 ["VerdiepingLabel"] = r.FloorLabel, ["Capaciteit"] = N(r.Capacity), ["Hidden"] = B(r.Hidden),
+                ["Stad"] = r.City, ["Straat"] = r.Street, ["Postcode"] = r.PostalCode, ["Land"] = r.Country,
+                ["Audio"] = r.AudioDevice, ["Video"] = r.VideoDevice, ["Scherm"] = r.DisplayDevice,
+                ["Rolstoel"] = r.WheelchairAccessible is null ? string.Empty : B(r.WheelchairAccessible.Value),
                 ["AutomateProcessing"] = r.AutomateProcessing, ["AllBookInPolicy"] = B(r.AllBookInPolicy), ["AllRequestInPolicy"] = B(r.AllRequestInPolicy),
                 ["BookInPolicy"] = r.BookInPolicy, ["ResourceDelegates"] = r.ResourceDelegates, ["BookingWindowInDays"] = N(r.BookingWindowInDays),
                 ["MaximumDurationInMinutes"] = N(r.MaximumDurationInMinutes), ["AllowConflicts"] = B(r.AllowConflicts),

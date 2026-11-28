@@ -220,6 +220,11 @@ public sealed partial class PlanScreenTests
         var location = BulkPlans.Attribute(State.Data, State.Config, two.Where(p => p.Entra is not null), nameof(UserDesired.UsageLocation), "BE");
         Assert.All(location.Plan, c => Assert.Equal(ChangeAction.GraphSetAttributes, c.ChangeAction));
         Assert.Empty(BulkPlans.Attribute(State.Data, State.Config, two, nameof(UserDesired.UsageLocation), "Belgie").Plan);
+
+        // The last day for several (interns): the same file time for each, and a day as typed elsewhere is refused
+        var expiry = BulkPlans.Attribute(State.Data, State.Config, two, nameof(UserDesired.AccountExpires), "2027-06-30");
+        Assert.Equal(2, expiry.Plan.Count(c => c.P("accountExpires") == AttributePlans.ExpiryValue("2027-06-30")));
+        Assert.Empty(BulkPlans.Attribute(State.Data, State.Config, two, nameof(UserDesired.AccountExpires), "30/06/2027").Plan);
     }
 
     [Fact]
@@ -245,5 +250,150 @@ public sealed partial class PlanScreenTests
         cut.FindAll("button").First(b => b.TextContent == "Tijdlijn tonen").Click();
         cut.Find("select[aria-label='Veld']").Change("Department");
         Assert.Contains("Department: Verkoop → Boekhouding", cut.Markup, StringComparison.Ordinal);
+    }
+}
+
+/// <summary>R21: the address and the equipment of a room, with undo.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void TheAddressAndEquipmentOfARoomAreAPlanWithUndo()
+    {
+        var room = new Moss365.Core.Inventory.Room { Smtp = "rm-onthaal@contoso.com", DisplayName = "Onthaal", Capacity = 6, City = "Gent", WheelchairAccessible = null };
+        var plan = PlanBuilder.Room(room, new RoomDesired { City = "Brugge", Street = "Markt 1", VideoDevice = "Camera", WheelchairAccessible = true });
+        var place = Assert.Single(plan, c => c.ChangeAction == ChangeAction.ExchangeRoomPlace);
+        Assert.Equal("Brugge", place.P("City"));
+        Assert.Equal("Markt 1", place.P("Street"));
+        Assert.Equal("True", place.P("IsWheelChairAccessible"));
+        Assert.Equal("Gent", place.Previous!["City"]);
+        Assert.Equal(string.Empty, place.Previous["Street"]);
+        Assert.False(place.Previous.ContainsKey("IsWheelChairAccessible")); // unknown before: cannot be put back
+        var entry = new Moss365.Core.Changes.LogEntry(DateTimeOffset.Now, "admin", "test", "Exchange", nameof(ChangeAction.ExchangeRoomPlace), room.Smtp, room.DisplayName, "x",
+            place.Parameters, nameof(ResultStatus.Succeeded), string.Empty, Previous: place.Previous);
+        Assert.Null(Undo.WhyNot(entry));
+    }
+}
+
+/// <summary>R21: the sign-in name (UPN), checked while typing and confirmed, as a plan with undo.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void ANewSignInNameIsCheckedConfirmedAndCanBeUndone()
+    {
+        var an = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        var other = State.Data.Persons.First(p => p.Key != an.Key && p.Ad?.UserPrincipalName is { Length: > 0 });
+        var domain = an.Ad!.UserPrincipalName[(an.Ad.UserPrincipalName.IndexOf('@') + 1)..];
+        Assert.False(AttributePlans.ValidValue(nameof(UserDesired.Upn), "cas vos@" + domain));
+        Assert.False(AttributePlans.ValidValue(nameof(UserDesired.Upn), "cas.vos@"));
+        Assert.True(AttributePlans.ValidValue(nameof(UserDesired.Upn), "c.vos@" + domain));
+        Assert.Equal(other.Name, AttributePlans.Taken(State.Data, an, nameof(UserDesired.Upn), other.Ad!.UserPrincipalName.ToUpperInvariant()));
+        Assert.Contains(domain, AttributePlans.UpnDomains(State.Data));
+
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, an.Key));
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Toegang").QuerySelector("button")!.Click();
+        Button MakePlan() => new(cut.FindAll("button").First(b => b.TextContent == "Plan maken").HasAttribute("disabled"));
+
+        // Taken by another person: refused while typing
+        cut.Find("input[aria-label='Aanmeldnaam (UPN)']").Input(other.Ad.UserPrincipalName);
+        Assert.Contains("heeft dit al", cut.Markup, StringComparison.Ordinal);
+        Assert.True(MakePlan().Disabled);
+
+        // A domain no account uses yet: only a warning, but the change of sign-in needs the confirmation first
+        cut.Find("input[aria-label='Aanmeldnaam (UPN)']").Input("c.vos@nieuw.example.com");
+        Assert.Contains("nieuw.example.com", cut.Markup, StringComparison.Ordinal);
+        Assert.True(MakePlan().Disabled);
+        cut.Find("input[aria-label='Aanmeldnaam (UPN)']").Input("c.vos@" + domain);
+        Assert.True(MakePlan().Disabled);
+        cut.Find("section.kb-bewerken input[type='checkbox']").Change(true);
+        Assert.False(MakePlan().Disabled);
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+
+        var plan = cut.Find("section.kb-plan").TextContent;
+        Assert.Contains("meldt zich daarna aan met de nieuwe naam", plan, StringComparison.Ordinal);
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetAttributes));
+        var ad = Assert.Single(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetAttributes);
+        Assert.Equal("c.vos@" + domain, ad.P("userPrincipalName"));
+        Assert.Equal(an.Ad.UserPrincipalName, ad.Previous!["userPrincipalName"]); // can be undone
+    }
+
+    private readonly record struct Button(bool Disabled);
+}
+
+/// <summary>R21: the expiry date of an account and the other phones, on the page of the user.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void TheExpiryDateIsAFileTimeInAdAndCanBeUndone()
+    {
+        var an = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, an.Key));
+        Assert.Contains("vervalt nooit", cut.Markup, StringComparison.Ordinal);
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Toegang").QuerySelector("button")!.Click();
+
+        // A day in the past: a warning, not a block
+        var yesterday = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        cut.Find("input[aria-label='Account werkt tot en met']").Change(yesterday);
+        Assert.Contains("ligt voor vandaag", cut.Markup, StringComparison.Ordinal);
+        Assert.False(cut.FindAll("button").First(b => b.TextContent == "Plan maken").HasAttribute("disabled"));
+
+        var day = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        cut.Find("input[aria-label='Account werkt tot en met']").Change(day);
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Contact en adres").QuerySelector("button")!.Click();
+        cut.Find("input[aria-label='Telefoon thuis']").Input("03 000 00 09");
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Assert.Contains("Account werkt tot en met: " + day, cut.Find("section.kb-plan").TextContent, StringComparison.Ordinal);
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetAttributes));
+        var ad = Assert.Single(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetAttributes);
+        Assert.Equal(AttributePlans.ExpiryValue(day), ad.P("accountExpires"));
+        Assert.Equal("0", ad.Previous!["accountExpires"]); // undo: never again
+        Assert.Equal("03 000 00 09", ad.P("homePhone"));
+    }
+
+    [Fact]
+    public void ACloudAccountHasTheFaxButNotTheFieldsOnlyAdHas()
+    {
+        var cloud = State.Data.Persons.First(p => p.Ad is null && p.Entra is { IsGuest: false });
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, cloud.Key));
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Contact en adres").QuerySelector("button")!.Click();
+        Assert.Empty(cut.FindAll("input[aria-label='Telefoon thuis']"));
+        Assert.Empty(cut.FindAll("input[aria-label='Account werkt tot en met']"));
+        cut.Find("input[aria-label='Fax']").Input("03 000 00 08");
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.GraphSetAttributes && w.P("faxNumber") == "03 000 00 08"));
+    }
+}
+
+/// <summary>R21: the primary address of a shared mailbox, checked and confirmed, with the old one kept as an alias.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void ANewPrimaryAddressIsCheckedConfirmedAndCanBeUndone()
+    {
+        var info = State.Data.Index.Mailbox("info@test.be")!;
+        var taken = State.Data.Persons.First(p => p.Entra?.Mail is { Length: > 0 }).Entra!.Mail;
+        Assert.NotNull(MailboxPlans.PrimaryAddressProblem(info, taken, State.Data));
+        Assert.NotNull(MailboxPlans.PrimaryAddressProblem(info, "onthaal test.be", State.Data));
+        Assert.NotNull(MailboxPlans.PrimaryAddressProblem(info with { IsDirSynced = true }, "onthaal@test.be", State.Data)); // from AD: changed there
+        Assert.Null(MailboxPlans.PrimaryAddressProblem(info, "onthaal@test.be", State.Data));
+
+        var cut = RenderComponent<MailboxDetail>(p => p.Add(x => x.Smtp, "info@test.be"));
+        bool Disabled() => cut.FindAll("button").First(b => b.TextContent == "Plan maken").HasAttribute("disabled");
+        cut.Find("input[aria-label='Primair adres']").Input(taken);
+        Assert.Contains("heeft het adres", cut.Markup, StringComparison.Ordinal);
+        cut.Find("input[aria-label='Primair adres']").Input("onthaal@test.be");
+        Assert.True(Disabled()); // a new primary address needs the confirmation first
+        cut.FindAll("input[type='checkbox']").First(c => c.ParentElement!.TextContent.Contains("blijft als alias", StringComparison.Ordinal)).Change(true);
+        Assert.False(Disabled());
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Assert.Contains("mail daarnaartoe komt nog aan", cut.Find("section.kb-plan").TextContent, StringComparison.Ordinal);
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.ExchangeUpdateMailbox));
+        var step = Assert.Single(_factory.Executed, w => w.ChangeAction == ChangeAction.ExchangeUpdateMailbox);
+        Assert.Equal("onthaal@test.be", step.P("WindowsEmailAddress"));
+        Assert.Equal("info@test.be", step.Target); // found by the old address, which stays as an alias
+        Assert.Equal("info@test.be", step.Previous!["WindowsEmailAddress"]);
     }
 }

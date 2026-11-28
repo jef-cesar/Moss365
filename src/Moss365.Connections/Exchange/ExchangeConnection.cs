@@ -168,7 +168,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
                 op = "PostvakInstellen";
                 p["Identity"] = w.Target;
                 Take(w, p, "DisplayName", "HiddenFromAddressListsEnabled", "ForwardingSmtpAddress", "DeliverToMailboxAndForward",
-                    "MessageCopyForSentAsEnabled", "MessageCopyForSendOnBehalfEnabled", "GrantSendOnBehalfTo");
+                    "MessageCopyForSentAsEnabled", "MessageCopyForSendOnBehalfEnabled", "GrantSendOnBehalfTo", "WindowsEmailAddress");
                 break;
             case ChangeAction.ExchangeAutoReply:
                 op = "AutoAntwoord";
@@ -518,6 +518,14 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
         Floor = S(e, "Verdieping"),
         FloorLabel = S(e, "VerdiepingLabel"),
         Capacity = I(e, "Capaciteit"),
+        City = S(e, "Stad"),
+        Street = S(e, "Straat"),
+        PostalCode = S(e, "Postcode"),
+        Country = S(e, "Land"),
+        AudioDevice = S(e, "Audio"),
+        VideoDevice = S(e, "Video"),
+        DisplayDevice = S(e, "Scherm"),
+        WheelchairAccessible = S(e, "Rolstoel").Length > 0 ? B(e, "Rolstoel") : null,
         Hidden = B(e, "Hidden"),
         AutomateProcessing = S(e, "AutomateProcessing"),
         AllBookInPolicy = B(e, "AllBookInPolicy"),

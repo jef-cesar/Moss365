@@ -16,6 +16,15 @@
     <label>@T["room-form.floor"] <input class="kb-invoer" @bind="Desired.Floor" /></label>
     <label>@T["room-form.floor-label"] <input class="kb-invoer" @bind="Desired.FloorLabel" /></label>
     <label>@T["room-form.capacity"] <input class="kb-invoer" type="number" @bind="Desired.Capacity" /></label>
+    @* R21: the address and the equipment of the room *@
+    <label>@T["attribute.streetaddress"] <input class="kb-invoer" @bind="Desired.Street" /></label>
+    <label>@T["attribute.postalcode"] <input class="kb-invoer" @bind="Desired.PostalCode" /></label>
+    <label>@T["attribute.city"] <input class="kb-invoer" @bind="Desired.City" /></label>
+    <label>@T["attribute.country"] <input class="kb-invoer" @bind="Desired.Country" /></label>
+    <label>@T["room-form.audio"] <input class="kb-invoer" @bind="Desired.AudioDevice" /></label>
+    <label>@T["room-form.video"] <input class="kb-invoer" @bind="Desired.VideoDevice" /></label>
+    <label>@T["room-form.display"] <input class="kb-invoer" @bind="Desired.DisplayDevice" /></label>
+    <label>@T["room-form.wheelchair"] <YesNo @bind-Value="Desired.WheelchairAccessible" /></label>
 </div>
 
 @code {
@@ -36,6 +45,14 @@
         Floor = Empty(g.Floor),
         FloorLabel = Empty(g.FloorLabel),
         Capacity = g.Capacity,
+        City = Empty(g.City),
+        Street = Empty(g.Street),
+        PostalCode = Empty(g.PostalCode),
+        Country = Empty(g.Country),
+        AudioDevice = Empty(g.AudioDevice),
+        VideoDevice = Empty(g.VideoDevice),
+        DisplayDevice = Empty(g.DisplayDevice),
+        WheelchairAccessible = g.WheelchairAccessible,
     };
 
     private static string? Empty(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();

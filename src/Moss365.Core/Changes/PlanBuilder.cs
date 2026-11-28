@@ -61,6 +61,16 @@ public sealed class RoomDesired
     public int? Capacity { get; set; }
     public string? DefaultCalendarPermission { get; set; }
 
+    // R21: the address and the equipment of the room
+    public string? City { get; set; }
+    public string? Street { get; set; }
+    public string? PostalCode { get; set; }
+    public string? Country { get; set; }
+    public string? AudioDevice { get; set; }
+    public string? VideoDevice { get; set; }
+    public string? DisplayDevice { get; set; }
+    public bool? WheelchairAccessible { get; set; }
+
     public static RoomDesired FromDefault(RoomDefault s) => new()
     {
         AutomateProcessing = s.AutomateProcessing,
@@ -178,11 +188,14 @@ public static class PlanBuilder
         var place = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         old = new List<string>();
         newValue = new List<string>();
+        var placePrevious = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         void ComparePlace(string name, string current, string? targetValue)
         {
             if (targetValue is not null && !string.Equals(current.Trim(), targetValue.Trim(), StringComparison.Ordinal))
             {
                 place[name] = targetValue.Trim();
+                // R21: the value before, to undo (Get-Place gives every field, so an empty one is a real value)
+                placePrevious[name] = current.Trim();
                 old.Add($"{name}={current}");
                 newValue.Add($"{name}={targetValue.Trim()}");
             }
@@ -192,6 +205,20 @@ public static class PlanBuilder
         ComparePlace("Floor", room.Floor, desired.Floor);
         ComparePlace("FloorLabel", room.FloorLabel, desired.FloorLabel);
         ComparePlace("Capacity", room.Capacity?.ToString() ?? string.Empty, desired.Capacity?.ToString());
+        ComparePlace("City", room.City, desired.City);
+        ComparePlace("Street", room.Street, desired.Street);
+        ComparePlace("PostalCode", room.PostalCode, desired.PostalCode);
+        ComparePlace("CountryOrRegion", room.Country, desired.Country);
+        ComparePlace("AudioDeviceName", room.AudioDevice, desired.AudioDevice);
+        ComparePlace("VideoDeviceName", room.VideoDevice, desired.VideoDevice);
+        ComparePlace("DisplayDeviceName", room.DisplayDevice, desired.DisplayDevice);
+        ComparePlace("IsWheelChairAccessible", room.WheelchairAccessible is null ? string.Empty : room.WheelchairAccessible.Value ? "True" : "False",
+            desired.WheelchairAccessible is null ? null : desired.WheelchairAccessible.Value ? "True" : "False");
+        // A capacity or yes/no that was not known cannot be put back with an empty value
+        foreach (var key in placePrevious.Where(kv => kv.Value.Length == 0 && kv.Key is "Capacity" or "IsWheelChairAccessible").Select(kv => kv.Key).ToList())
+        {
+            placePrevious.Remove(key);
+        }
         if (place.Count > 0)
         {
             plan.Add(new Change
@@ -201,6 +228,7 @@ public static class PlanBuilder
                 Target = room.Smtp,
                 TargetName = room.DisplayName,
                 Parameters = place,
+                Previous = placePrevious,
                 Description = Texts.T.Format("code.plan-builder.change-the-building-floor-or", room.DisplayName),
                 CurrentValue = string.Join(", ", old),
                 NewValue = string.Join(", ", newValue),
