@@ -30,6 +30,14 @@ public static class Undo
         [ChangeAction.ExchangeRemoveMailboxPermission] = ChangeAction.ExchangeAddMailboxPermission,
         [ChangeAction.AdDisableAccount] = ChangeAction.AdEnableAccount,
         [ChangeAction.AdEnableAccount] = ChangeAction.AdDisableAccount,
+        [ChangeAction.GoogleAddAlias] = ChangeAction.GoogleRemoveAlias,
+        [ChangeAction.GoogleRemoveAlias] = ChangeAction.GoogleAddAlias,
+        [ChangeAction.GoogleAddGroupMember] = ChangeAction.GoogleRemoveGroupMember,
+        [ChangeAction.GoogleRemoveGroupMember] = ChangeAction.GoogleAddGroupMember,
+        [ChangeAction.GoogleAssignLicence] = ChangeAction.GoogleRemoveLicence,
+        [ChangeAction.GoogleRemoveLicence] = ChangeAction.GoogleAssignLicence,
+        [ChangeAction.GmailAddDelegate] = ChangeAction.GmailRemoveDelegate,
+        [ChangeAction.GmailRemoveDelegate] = ChangeAction.GmailAddDelegate,
     };
 
     /// <summary>Attributes that can be restored with their previous value.</summary>
@@ -41,6 +49,8 @@ public static class Undo
         ChangeAction.GraphSetDeviceEnabled, ChangeAction.IntuneSetComplianceSettings, ChangeAction.AdHardening,
         ChangeAction.GraphUpdatePolicy, ChangeAction.GraphRoleEligibility, ChangeAction.ExchangeOrganisationSetting, ChangeAction.ExchangeRoomPlace,
         ChangeAction.AdSetProxyAddresses, ChangeAction.ExchangeUpdateContact, ChangeAction.ExchangeRoomWorkingHours,
+        ChangeAction.GoogleUpdateUser, ChangeAction.GoogleUpdateGroup, ChangeAction.GoogleUpdateGroupSettings, ChangeAction.GoogleUpdateResource,
+        ChangeAction.GmailSetForwarding, ChangeAction.GmailSetVacation, ChangeAction.GmailSetSignature,
     };
 
     /// <summary>Can this entry be undone? If not, why not.</summary>
@@ -105,6 +115,11 @@ public static class Undo
             ChangeAction.ExchangeConvertToSharedMailbox => Texts.T["code.undo.convert-the-mailbox-back-yourself"],
             ChangeAction.GraphAssignLicence or ChangeAction.GraphRemoveLicences => Texts.T["code.undo.you-change-licences-through-the"],
             ChangeAction.AdUnlockAccount => Texts.T["code.undo.you-do-not-lock-an"],
+            ChangeAction.GoogleCreateUser => Texts.T["code.undo.the-app-does-not-delete-2"],
+            ChangeAction.GoogleSetPassword => Texts.T["code.undo.a-previous-password-cannot-come"],
+            ChangeAction.GoogleSignOut or ChangeAction.GoogleRevokeTokens => Texts.T["code.undo.revoked-sessions-cannot-come-back"],
+            ChangeAction.GmailRemoveFilter => r.Previous?.ContainsKey("json") == true ? null : Texts.T["code.undo.the-previous-values-are-not"],
+            ChangeAction.GmailAddFilter => Texts.T["gmail.filter.undo"],
             _ => Texts.T["code.undo.the-app-cannot-undo-this"],
         };
     }
@@ -187,6 +202,11 @@ public static class Undo
                 w = New(r, action, target, new() { ["inhoud"] = before }, Texts.T.Format("code.undo.restore-logon-script-to-the", target),
                     previousValues: new(StringComparer.OrdinalIgnoreCase) { ["inhoud"] = r.Parameters.GetValueOrDefault("inhoud") ?? string.Empty });
             }
+            else if (action == ChangeAction.GmailRemoveFilter && r.Previous?.GetValueOrDefault("json") is { } filter)
+            {
+                // A removed filter comes back as it was (Gmail gives it a new id)
+                w = New(r, ChangeAction.GmailAddFilter, target, new() { ["json"] = filter }, Texts.T.Format("undo.reverse", r.Description));
+            }
             else if (Attributes.Contains(action))
             {
                 var previous = new Dictionary<string, string>(r.Previous!, StringComparer.OrdinalIgnoreCase);
@@ -261,6 +281,7 @@ public static class Undo
     {
         var t when t.StartsWith("Ad", StringComparison.Ordinal) => TargetSystem.ActiveDirectory,
         var t when t.StartsWith("Graph", StringComparison.Ordinal) || t.StartsWith("Intune", StringComparison.Ordinal) => TargetSystem.Graph,
+        var t when t.StartsWith("Google", StringComparison.Ordinal) || t.StartsWith("Gmail", StringComparison.Ordinal) => TargetSystem.Google,
         _ => TargetSystem.Exchange,
     };
 
@@ -279,6 +300,8 @@ public static class Undo
             ChangeAction.ExchangeRemoveMailboxPermission => Texts.T.Format("undo.permission.remove", r.Parameters.GetValueOrDefault("Recht"), r.Parameters.GetValueOrDefault("Trustee")),
             ChangeAction.AdEnableAccount => Texts.T["code.undo.enable-the-ad-account-again"],
             ChangeAction.AdDisableAccount => Texts.T["code.undo.disable-the-ad-account-again"],
+            ChangeAction.GoogleAddGroupMember => Texts.T.Format("code.undo.make-member-of-again", groupValue),
+            ChangeAction.GoogleRemoveGroupMember => Texts.T.Format("code.undo.remove-from-again", groupValue),
             _ => Texts.T.Format("undo.reverse", r.Description),
         };
     }

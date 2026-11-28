@@ -4183,5 +4183,16 @@
   "google.stat.anyone-can-join": "Groepen waar iedereen lid kan worden",
   "google.stat.anyone-can-post": "Groepen waar iedereen van buiten naar kan sturen",
   "google.stat.external-members": "Groepen met externe leden toegestaan",
-  "google.stat.open-alerts": "Open meldingen (30 dagen)"
+  "google.stat.open-alerts": "Open meldingen (30 dagen)",
+  "google.password.missing": "Geen nieuw wachtwoord in het plan (het wordt nooit bewaard): maak het plan opnieuw.",
+  "google.tokens.revoked": "{0} app-tokens ingetrokken.",
+  "google.alias.already": "Was al een alias.",
+  "google.alias.already-gone": "Was al geen alias.",
+  "google.member.already-gone": "Was al geen lid.",
+  "google.licence.already": "Had deze licentie al.",
+  "google.licence.already-gone": "Had deze licentie al niet.",
+  "gmail.no-service-account": "Het onderdeel Gmail-instellingen heeft nog geen serviceaccount: voeg de sleutel toe op Verbindingen.",
+  "gmail.filter.undo": "Verwijder de filter op de pagina van de persoon: het is een nieuwe filter met een eigen id.",
+  "setup.part.gmail-settings": "Gmail-instellingen",
+  "setup.part.gmail-settings.help": "Doorsturen, automatisch antwoord, delegatie, filters en handtekening van iemand anders. Google laat dat alleen toe via een serviceaccount met domeinbrede delegatie (U34); de sleutel wordt versleuteld bewaard in de tenantdatabank en nooit getoond of gelogd."
 }

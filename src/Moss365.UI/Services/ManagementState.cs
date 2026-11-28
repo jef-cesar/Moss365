@@ -692,6 +692,7 @@ public sealed partial class ManagementState
         {
             TargetSystem.ActiveDirectory => _factory is null || !EffectiveSettings.AdFilled,
             TargetSystem.Graph => _factory is null || !EffectiveSettings.GraphFilled,
+            TargetSystem.Google => _factory is null || !EffectiveSettings.GoogleFilled,
             _ => _factory is null || !HasMicrosoft365,
         }).ToList();
     }
@@ -724,6 +725,12 @@ public sealed partial class ManagementState
             executors.Add(exchange);
         }
 
+        // G2: Google Workspace, only for a tenant with Google (EffectiveSettings leaves its settings out otherwise)
+        if (_factory.Google(EffectiveSettings) is IExecutor google)
+        {
+            executors.Add(google);
+        }
+
         // Sign in first, so that the profile is known; after that the engine checks every change against that profile
         if (Config.RolesModeEffective == RolesMode.Required && Graph() is { AppRoles: null } g)
         {
@@ -752,7 +759,8 @@ public sealed partial class ManagementState
         // personal device
         var results = await new PlanExecutor(executors, ChangeLog, () => User,
                 w => PermissionTable.Refusal(roles, w, data) ?? CaSafety.Refusal(w, data, config, user) ?? Core.Devices.DeviceSafety.Refusal(w)
-                     ?? Core.Setup.PermissionParts.Refusal(w, config.PermissionParts) ?? Core.Security.TenantAdvice.Refusal(w) ?? Core.Security.ExchangeAdvice.Refusal(w))
+                     ?? Core.Setup.PermissionParts.Refusal(w, config.PermissionParts) ?? Core.Setup.GoogleParts.Refusal(w, config.PermissionParts)
+                     ?? Core.Security.TenantAdvice.Refusal(w) ?? Core.Security.ExchangeAdvice.Refusal(w))
             .ExecuteAsync(plan, context, progress, cancel);
         // No context: it often contains a name ("Uitstroom ..."); only counts and kinds of actions
         Log.Information("Plan uitgevoerd: {Gelukt} gelukt, {Mislukt} mislukt, {Overgeslagen} overgeslagen; acties {Acties}",

@@ -170,9 +170,12 @@ public class PlatformLabelTests
             var platform = Moss365.Core.Changes.Platforms.Of(action);
             var name = action.ToString();
             Assert.True(name.StartsWith("Ad", StringComparison.Ordinal) || name.StartsWith("Graph", StringComparison.Ordinal)
-                        || name.StartsWith("Exchange", StringComparison.Ordinal) || name.StartsWith("Intune", StringComparison.Ordinal), name);
-            Assert.Equal(name.StartsWith("Ad", StringComparison.Ordinal) ? TenantSystems.ActiveDirectory : TenantSystems.Microsoft365,
-                Moss365.Core.Changes.Platforms.System(platform));
+                        || name.StartsWith("Exchange", StringComparison.Ordinal) || name.StartsWith("Intune", StringComparison.Ordinal)
+                        || name.StartsWith("Google", StringComparison.Ordinal) || name.StartsWith("Gmail", StringComparison.Ordinal), name);
+            var system = name.StartsWith("Ad", StringComparison.Ordinal) ? TenantSystems.ActiveDirectory
+                : name.StartsWith("Google", StringComparison.Ordinal) || name.StartsWith("Gmail", StringComparison.Ordinal) ? TenantSystems.GoogleWorkspace
+                : TenantSystems.Microsoft365;
+            Assert.Equal(system, Moss365.Core.Changes.Platforms.System(platform));
         }
 
         Assert.Equal(Moss365.Core.Changes.Platform.Intune, Moss365.Core.Changes.Platforms.Of(Moss365.Core.Changes.ChangeAction.IntuneDeviceAction));

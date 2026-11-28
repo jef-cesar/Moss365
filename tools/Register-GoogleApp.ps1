@@ -9,8 +9,8 @@
       2. turns on the APIs Moss365 reads with: the Admin SDK (admin.googleapis.com: users, groups, organisational
          units, resources, admin roles, the logs), and for the parts of Google (U40) the Enterprise License Manager
          (licensing.googleapis.com), the Groups Settings API (groupssettings.googleapis.com) and the Alert Center
-         (alertcenter.googleapis.com). Turning an API on gives no right by itself: a part only asks its scope when it is
-         on in Moss365.
+         (alertcenter.googleapis.com), and the Gmail API (gmail.googleapis.com) for the part Gmail settings. Turning an
+         API on gives no right by itself: a part only asks its scope when it is on in Moss365.
     Two steps stay by hand in the console, because Google has no command for them; the script shows the links:
       3. the OAuth consent screen, of the type Internal (only accounts of the organisation);
       4. an OAuth client of the type Desktop app. Fill in its client ID and secret in Moss365, on Connections, with the
@@ -68,7 +68,7 @@ else {
 }
 
 # 2. The APIs
-$apis = @('admin.googleapis.com', 'licensing.googleapis.com', 'groupssettings.googleapis.com', 'alertcenter.googleapis.com')
+$apis = @('admin.googleapis.com', 'licensing.googleapis.com', 'groupssettings.googleapis.com', 'alertcenter.googleapis.com', 'gmail.googleapis.com')
 Invoke-Gcloud (@('services', 'enable') + $apis + @("--project=$ProjectId")) | Out-Null
 Write-Host "APIs turned on: $($apis -join ', ')."
 

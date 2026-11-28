@@ -24,7 +24,7 @@ Describe 'Register-GoogleApp' {
     It 'creates the project and turns on the APIs' {
         & $script:Script -ProjectId 'moss365-contoso' 6>$null
         $global:GcloudAanroepen | Should -Contain 'projects create moss365-contoso --name=Moss365'
-        $global:GcloudAanroepen | Should -Contain 'services enable admin.googleapis.com licensing.googleapis.com groupssettings.googleapis.com alertcenter.googleapis.com --project=moss365-contoso'
+        $global:GcloudAanroepen | Should -Contain 'services enable admin.googleapis.com licensing.googleapis.com groupssettings.googleapis.com alertcenter.googleapis.com gmail.googleapis.com --project=moss365-contoso'
     }
 
     It 'does not create a project that exists already' {

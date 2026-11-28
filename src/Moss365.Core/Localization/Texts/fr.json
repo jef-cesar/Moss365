@@ -4183,5 +4183,16 @@
   "google.stat.anyone-can-join": "Groupes que tout le monde peut rejoindre",
   "google.stat.anyone-can-post": "Groupes où tout le monde de l'extérieur peut publier",
   "google.stat.external-members": "Groupes acceptant des membres externes",
-  "google.stat.open-alerts": "Alertes ouvertes (30 jours)"
+  "google.stat.open-alerts": "Alertes ouvertes (30 jours)",
+  "google.password.missing": "Pas de nouveau mot de passe dans le plan (il n'est jamais conservé) : refaites le plan.",
+  "google.tokens.revoked": "{0} jetons d'application révoqués.",
+  "google.alias.already": "Était déjà un alias.",
+  "google.alias.already-gone": "N'était déjà plus un alias.",
+  "google.member.already-gone": "N'était déjà plus membre.",
+  "google.licence.already": "Avait déjà cette licence.",
+  "google.licence.already-gone": "N'avait déjà plus cette licence.",
+  "gmail.no-service-account": "La partie Paramètres Gmail n'a pas encore de compte de service : ajoutez sa clé dans Connexions.",
+  "gmail.filter.undo": "Supprimez le filtre sur la page de la personne : c'est un nouveau filtre avec son propre id.",
+  "setup.part.gmail-settings": "Paramètres Gmail",
+  "setup.part.gmail-settings.help": "Transfert, réponse automatique, délégation, filtres et signature de quelqu'un d'autre. Google ne le permet que via un compte de service avec délégation au niveau du domaine (U34) ; sa clé est conservée chiffrée dans la base du tenant et n'est jamais affichée ni journalisée."
 }

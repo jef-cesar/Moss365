@@ -126,6 +126,11 @@ public sealed class ConnectionFactory : IConnectionFactory
             output.Add(exchange);
         }
 
+        if (Google(settings) is IExecutor google)
+        {
+            output.Add(google);
+        }
+
         return output;
     }
 

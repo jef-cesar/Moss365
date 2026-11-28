@@ -4183,5 +4183,16 @@
   "google.stat.anyone-can-join": "Gruppen, denen jeder beitreten kann",
   "google.stat.anyone-can-post": "Gruppen, an die jeder von außen posten kann",
   "google.stat.external-members": "Gruppen mit erlaubten externen Mitgliedern",
-  "google.stat.open-alerts": "Offene Warnungen (30 Tage)"
+  "google.stat.open-alerts": "Offene Warnungen (30 Tage)",
+  "google.password.missing": "Kein neues Passwort im Plan (es wird nie aufbewahrt): Erstellen Sie den Plan erneut.",
+  "google.tokens.revoked": "{0} App-Token widerrufen.",
+  "google.alias.already": "War bereits ein Alias.",
+  "google.alias.already-gone": "War bereits kein Alias.",
+  "google.member.already-gone": "War bereits kein Mitglied.",
+  "google.licence.already": "Hatte diese Lizenz bereits.",
+  "google.licence.already-gone": "Hatte diese Lizenz bereits nicht.",
+  "gmail.no-service-account": "Der Teil Gmail-Einstellungen hat noch kein Dienstkonto: Fügen Sie den Schlüssel unter Verbindungen hinzu.",
+  "gmail.filter.undo": "Entfernen Sie den Filter auf der Seite der Person: Es ist ein neuer Filter mit eigener ID.",
+  "setup.part.gmail-settings": "Gmail-Einstellungen",
+  "setup.part.gmail-settings.help": "Weiterleitung, automatische Antwort, Delegierung, Filter und Signatur von jemand anderem. Google erlaubt dies nur über ein Dienstkonto mit domänenweiter Delegierung (U34); der Schlüssel wird verschlüsselt in der Tenant-Datenbank aufbewahrt und nie angezeigt oder protokolliert."
 }

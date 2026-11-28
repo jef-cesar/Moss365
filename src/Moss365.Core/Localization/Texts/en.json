@@ -4183,5 +4183,16 @@
   "google.stat.anyone-can-join": "Groups anyone may join",
   "google.stat.anyone-can-post": "Groups anyone outside may post to",
   "google.stat.external-members": "Groups with external members allowed",
-  "google.stat.open-alerts": "Open alerts (30 days)"
+  "google.stat.open-alerts": "Open alerts (30 days)",
+  "google.password.missing": "No new password in the plan (it is never kept): make the plan again.",
+  "google.tokens.revoked": "{0} app tokens revoked.",
+  "google.alias.already": "Already an alias.",
+  "google.alias.already-gone": "Was no alias.",
+  "google.member.already-gone": "Was not a member.",
+  "google.licence.already": "Already had this licence.",
+  "google.licence.already-gone": "Did not have this licence.",
+  "gmail.no-service-account": "The part Gmail settings has no service account yet: add its key on Connections.",
+  "gmail.filter.undo": "Remove the filter on the page of the person: it is a new filter with its own id.",
+  "setup.part.gmail-settings": "Gmail settings",
+  "setup.part.gmail-settings.help": "Forwarding, automatic reply, delegation, filters and signature of someone else. Google only allows it through a service account with domain-wide delegation (U34); its key is kept encrypted in the tenant database and never shown or logged."
 }

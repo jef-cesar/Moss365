@@ -4183,5 +4183,16 @@
   "google.stat.anyone-can-join": "Grupos em que qualquer pessoa pode entrar",
   "google.stat.anyone-can-post": "Grupos para os quais qualquer pessoa de fora pode enviar",
   "google.stat.external-members": "Grupos que permitem membros externos",
-  "google.stat.open-alerts": "Alertas abertos (30 dias)"
+  "google.stat.open-alerts": "Alertas abertos (30 dias)",
+  "google.password.missing": "Sem nova palavra-passe no plano (nunca é guardada): faça o plano de novo.",
+  "google.tokens.revoked": "{0} tokens de aplicações revogados.",
+  "google.alias.already": "Já era um alias.",
+  "google.alias.already-gone": "Já não era um alias.",
+  "google.member.already-gone": "Já não era membro.",
+  "google.licence.already": "Já tinha esta licença.",
+  "google.licence.already-gone": "Já não tinha esta licença.",
+  "gmail.no-service-account": "A parte Definições do Gmail ainda não tem conta de serviço: adicione a chave em Ligações.",
+  "gmail.filter.undo": "Remova o filtro na página da pessoa: é um filtro novo com o seu próprio id.",
+  "setup.part.gmail-settings": "Definições do Gmail",
+  "setup.part.gmail-settings.help": "Reencaminhamento, resposta automática, delegação, filtros e assinatura de outra pessoa. O Google só o permite através de uma conta de serviço com delegação em todo o domínio (U34); a chave é guardada cifrada na base de dados do tenant e nunca mostrada nem registada."
 }
