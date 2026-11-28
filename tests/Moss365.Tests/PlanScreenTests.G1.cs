@@ -12,9 +12,16 @@ namespace Moss365.Tests;
 /// <summary>G1: Google Workspace is read in its own lane, becomes a snapshot and is linked to the persons.</summary>
 public sealed partial class PlanScreenTests
 {
-    private sealed class FakeGoogleConnection(GoogleData data) : IGoogleConnection
+    private sealed class FakeGoogleConnection(GoogleData data) : IGoogleConnection, IExecutor
     {
         public int Reads { get; private set; }
+
+        /// <summary>G2: the factory that records what is written in Google.</summary>
+        public FakeFactory? Writer { get; set; }
+
+        public TargetSystem TargetSystem => TargetSystem.Google;
+
+        public Task<IReadOnlyList<ChangeResult>> ExecuteAsync(IReadOnlyList<Change> changes, CancellationToken cancel) => Writer!.Run(changes);
 
         public Task<GoogleData> ReadAsync(IProgress<string>? progress, CancellationToken cancel)
         {

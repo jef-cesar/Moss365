@@ -23,7 +23,7 @@ public static class Access
             "bewaarde-logboeken" => Permission.SignIns,
             "toegangsreviews" => Permission.Security,
             "spiegel" or "functieprofielen" => Permission.CompareMirror,
-            "nieuw" or "uitstroom" or "gepland" or "opvolging" => Permission.Actions,
+            "nieuw" or "google-nieuw" or "uitstroom" or "gepland" or "opvolging" => Permission.Actions,
             "opkuis" => Permission.Manage,
             "logonscripts" or "toestellen" or "samenwerking" or "rapporten" or "aanvragen" => Permission.View,
             "gastenverlenging" => Permission.InviteGuests,
@@ -66,6 +66,7 @@ public static class Access
             "logonscripts" or "wachtwoorden" => hasAd,
             "licenties" or "samenwerking" or "gastenverlenging" => hasMicrosoft365,
             "nieuw" => hasAd || hasMicrosoft365, // in AD, or in the cloud (0.31)
+            "google-nieuw" => systems.HasFlag(TenantSystems.GoogleWorkspace), // G2
             _ => true,
         };
     }

@@ -174,10 +174,12 @@ public static class PermissionTable
     public static Permission ForAction(ChangeAction action) => action switch
     {
         ChangeAction.AdSetPassword or ChangeAction.AdUnlockAccount or ChangeAction.AdEnableAccount
-            or ChangeAction.GraphCreateTemporaryAccessPass or ChangeAction.GraphSendMail => Permission.Helpdesk,
+            or ChangeAction.GraphCreateTemporaryAccessPass or ChangeAction.GraphSendMail
+            or ChangeAction.GoogleSetPassword or ChangeAction.GoogleSignOut => Permission.Helpdesk,
         ChangeAction.AdAddGroupMember or ChangeAction.AdRemoveGroupMember
             or ChangeAction.GraphAddGroupMember or ChangeAction.GraphRemoveGroupMember
-            or ChangeAction.ExchangeAddGroupMember or ChangeAction.ExchangeRemoveGroupMember => Permission.GroupMembers,
+            or ChangeAction.ExchangeAddGroupMember or ChangeAction.ExchangeRemoveGroupMember
+            or ChangeAction.GoogleAddGroupMember or ChangeAction.GoogleRemoveGroupMember => Permission.GroupMembers,
         ChangeAction.GraphInviteGuest => Permission.InviteGuests,
         ChangeAction.GraphCreateApplication or ChangeAction.GraphUpdateApplication or ChangeAction.GraphCreateServicePrincipal
             or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole => Permission.Settings,
@@ -215,6 +217,13 @@ public static class PermissionTable
             && MirrorUser.IsPrivileged(groupValue))
         {
             return Texts.T.Format("permission.the-group", groupValue.Name);
+        }
+
+        // G2: an administrator of Google Workspace is privileged too
+        if (w.TargetSystem == TargetSystem.Google
+            && data.GoogleUsers.FirstOrDefault(u => u.IsAdmin && (u.Id == w.Target || string.Equals(u.PrimaryEmail, w.Target, StringComparison.OrdinalIgnoreCase))) is { } admin)
+        {
+            return Texts.T.Format("permission.the-account", admin.PrimaryEmail);
         }
 
         if (w.TargetSystem == TargetSystem.ActiveDirectory

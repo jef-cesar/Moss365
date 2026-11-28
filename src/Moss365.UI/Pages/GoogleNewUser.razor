@@ -1,0 +1,109 @@
+@page "/google-nieuw"
+@using Moss365.Core.Google
+@* A new user in Google Workspace (G2): the address by the naming rules of the organisation, the organisational unit, the
+   department and the employee id; the first password only in the plan. One plan over all platforms comes with G3. *@
+@inject ManagementState State
+
+<h1>@T["menu.google-nieuw"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></h1>
+<p class="kb-zacht">@T["google.new.intro"]</p>
+
+@if (Source.FollowsFrom is { } from)
+{
+    <div class="kb-melding">@T.Format("google.new.follows", Platforms.Name(from))</div>
+}
+
+@if (State.Data.GoogleUsers.Count == 0)
+{
+    <div class="kb-melding">@T["google.new.read-first"] <a href="verbindingen">@T["menu.verbindingen"]</a></div>
+}
+
+<div class="kb-raster">
+    <label class="kb-veld"><span>@GooglePlans.FieldName(GooglePlans.GivenName)</span><input class="kb-invoer" value="@request.GivenName" @oninput="e => Set(() => request.GivenName = e.Value?.ToString() ?? string.Empty)" /></label>
+    <label class="kb-veld"><span>@GooglePlans.FieldName(GooglePlans.FamilyName)</span><input class="kb-invoer" value="@request.FamilyName" @oninput="e => Set(() => request.FamilyName = e.Value?.ToString() ?? string.Empty)" /></label>
+    <label class="kb-veld">
+        <span>@T["google.new.domain"]</span>
+        <select class="kb-invoer" value="@DomainValue" @onchange="e => Set(() => request.Domain = e.Value?.ToString() ?? string.Empty)">
+            @foreach (var d in Domains) { <option value="@d">@d</option> }
+        </select>
+    </label>
+    <label class="kb-veld">
+        <span>@GooglePlans.FieldName(GooglePlans.OrgUnitPath)</span>
+        <select class="kb-invoer" value="@request.OrgUnitPath" @onchange="e => Set(() => request.OrgUnitPath = e.Value?.ToString() ?? string.Empty)">
+            @foreach (var o in GooglePlans.OrgUnits(State.Data)) { <option value="@o">@o</option> }
+        </select>
+    </label>
+    <label class="kb-veld"><span>@GooglePlans.FieldName(GooglePlans.Department)</span><input class="kb-invoer" value="@request.Department" @oninput="e => Set(() => request.Department = e.Value?.ToString() ?? string.Empty)" /></label>
+    <label class="kb-veld"><span>@GooglePlans.FieldName(GooglePlans.EmployeeId)</span><input class="kb-invoer" value="@request.EmployeeId" @oninput="e => Set(() => request.EmployeeId = e.Value?.ToString() ?? string.Empty)" /></label>
+</div>
+
+<div class="kb-filters">
+    <button class="kb-knop kb-primair" disabled="@(State.IsHistoric || !State.Can(Permission.Actions))" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+</div>
+
+@if (proposal is not null)
+{
+    @foreach (var e in proposal.Errors) { <div class="kb-melding kb-fout">@e</div> }
+    @foreach (var w in proposal.Warnings) { <div class="kb-melding">@w</div> }
+    @if (proposal.CanBeExecuted)
+    {
+        @if (made is null)
+        {
+        <section class="kb-kaart">
+            <h2>@proposal.Email</h2>
+            <div class="kb-veld">
+                <span>@T["helpdesk.suggested-password"]</span>
+                <CopyField Value="@proposal.Password" Label="@T["helpdesk.suggested-password"]" Secret="true" />
+            </div>
+            <p class="kb-zacht">@T["google.new.password"]</p>
+        </section>
+        }
+        <PlanView Plan="proposal.Plan" Context="@($"Google {proposal.Email}")" Title="@T["systems.google.name"]" Executed="AfterExecute" />
+    }
+}
+
+@if (made is not null)
+{
+    <section class="kb-kaart kb-geheim">
+        <h3>@T.Format("helpdesk.0-for-1", T["tenants.new-password"], made.Value.Email)</h3>
+        <CopyField Value="@made.Value.Password" Label="@T["tenants.new-password"]" Secret="true" />
+    </section>
+}
+
+@code {
+    private GoogleNewUserRequest request = new();
+    private GoogleNewUserProposal? proposal;
+    private (string Email, string Password)? made;
+
+    private GoogleSource Source => GooglePlans.Source(State.Systems, State.Data, State.SourceSettings);
+
+    private IReadOnlyList<string> Domains => GooglePlans.Domains(State.Data, State.EffectiveSettings.GoogleDomain);
+
+    private string DomainValue => request.Domain.Length > 0 ? request.Domain : Domains.FirstOrDefault() ?? string.Empty;
+
+    private void Set(Action change)
+    {
+        change();
+        proposal = null;
+    }
+
+    private void MakePlan()
+    {
+        made = null;
+        proposal = GooglePlans.NewUser(State.Data, State.Config, request, Domains, Source);
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (proposal is { } p && p.Plan.Count > 0 && results.Any(r => r.ChangeId == p.Plan[0].Id && r.Status == ResultStatus.Succeeded))
+        {
+            made = (p.Email, p.Password);
+            request = new GoogleNewUserRequest();
+        }
+
+        // Do not leave the secret in the plan longer than needed
+        foreach (var w in proposal?.Plan ?? Array.Empty<Change>())
+        {
+            w.Secret = null;
+        }
+    }
+}

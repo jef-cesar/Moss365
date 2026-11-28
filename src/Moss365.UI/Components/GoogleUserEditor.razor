@@ -1,0 +1,232 @@
+@using Moss365.Core.Google
+@using Moss365.Core.Permissions
+@* A user of Google Workspace (G2): the fields, aliases, a new password, signing out and revoking app access, each as a
+   plan with the previous values. What follows from another platform (the source of truth) is shown, not edited. *@
+@inject ManagementState State
+
+<div class="kb-sectie" id="google-velden">
+    <div class="kb-sectie-kop">
+        <h3>@T["google.edit.fields"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></h3>
+        @if (!editing && CanManage) { <button class="kb-knop kb-klein" @onclick="Open">@T["edit-user.edit"]</button> }
+    </div>
+    @if (Source.FollowsFrom is { } from)
+    {
+        <p class="kb-zacht">@T.Format("google.edit.follows", Platforms.Name(from), string.Join(", ", Followed.Select(GooglePlans.FieldName)))</p>
+    }
+    <dl class="kb-velden">
+        @foreach (var f in GooglePlans.Fields)
+        {
+            var field = f;
+            <dt>@GooglePlans.FieldName(field)</dt>
+            <dd>
+                @if (editing && !Followed.Contains(field))
+                {
+                    @if (field == GooglePlans.OrgUnitPath)
+                    {
+                        <select class="kb-invoer" value="@values[field]" @onchange="e => values[field] = e.Value?.ToString() ?? string.Empty" aria-label="@GooglePlans.FieldName(field)">
+                            @foreach (var o in GooglePlans.OrgUnits(State.Data)) { <option value="@o">@o</option> }
+                        </select>
+                    }
+                    else if (field == GooglePlans.Suspended)
+                    {
+                        <label><input type="checkbox" checked="@(values[field] == "True")" @onchange="e => values[field] = (e.Value is true).ToString()" /> @T["google.user.suspended"]</label>
+                    }
+                    else
+                    {
+                        <input class="kb-invoer" value="@values[field]" @oninput="e => values[field] = e.Value?.ToString() ?? string.Empty" aria-label="@GooglePlans.FieldName(field)" />
+                    }
+                }
+                else
+                {
+                    @Shown(field)
+                    @if (editing) { <span class="kb-zacht"> @T.Format("source.follows-from", Platforms.Name(Source.FollowsFrom!.Value))</span> }
+                }
+            </dd>
+        }
+    </dl>
+    @if (editing)
+    {
+        <div class="kb-filters">
+            <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+            <button class="kb-knop" @onclick="() => editing = false">@T["edit-user.close"]</button>
+        </div>
+    }
+</div>
+
+<div class="kb-sectie" id="google-aliassen">
+    <h3>@T["google.user.aliases"]</h3>
+    @if (User.Aliases.Count == 0) { <p class="kb-zacht">@T["google.edit.no-aliases"]</p> }
+    <ul class="kb-lijst">
+        @foreach (var a in User.Aliases)
+        {
+            var alias = a;
+            <li>@alias @if (CanManage) { <button class="kb-knop kb-klein" @onclick="() => Show(PlanOutcome.Of(new[] { GooglePlans.RemoveAlias(User, alias) }))">@T["google.edit.remove"]</button> }</li>
+        }
+    </ul>
+    @if (CanManage)
+    {
+        <div class="kb-filters">
+            <input class="kb-invoer" value="@newAlias" @oninput="e => newAlias = e.Value?.ToString() ?? string.Empty" placeholder="@AliasExample" aria-label="@T["google.edit.new-alias"]" />
+            <button class="kb-knop" @onclick="AddAlias">@T["google.edit.add-alias"]</button>
+        </div>
+    }
+</div>
+
+@if (CanHelp)
+{
+    <div class="kb-sectie" id="google-acties">
+        <h3>@T["google.edit.actions"]</h3>
+        <div class="kb-filters">
+            @if (!Source.PasswordFollows) { <button class="kb-knop" @onclick="NewPassword">@T["helpdesk.reset-password"]</button> }
+            <button class="kb-knop" @onclick="() => Show(PlanOutcome.Of(new[] { GooglePlans.SignOut(User) }))">@T["google.edit.sign-out"]</button>
+            @if (CanManage) { <button class="kb-knop" @onclick="() => Show(PlanOutcome.Of(new[] { GooglePlans.RevokeTokens(User) }))">@T["google.edit.revoke-tokens"]</button> }
+        </div>
+        @if (passwordForm)
+        {
+            <div class="kb-raster kb-helpdesk-velden">
+                <div class="kb-veld">
+                    <span>@T["helpdesk.suggested-password"]</span>
+                    <CopyField Value="@password" Label="@T["helpdesk.suggested-password"]" Secret="true" />
+                </div>
+                <label class="kb-veld">
+                    <span>@T["google.edit.own-password"]</span>
+                    <input class="kb-invoer" type="password" autocomplete="new-password" @bind="own" @bind:event="oninput" />
+                </label>
+            </div>
+            <label><input type="checkbox" @bind="changeAtNextLogin" /> @T["helpdesk.the-user-must-change-it"]</label>
+            <div class="kb-filters">
+                <button class="kb-knop" @onclick="() => { password = NameRules.InitialPassword(); plan = null; }">@T["helpdesk.another-password"]</button>
+                <button class="kb-knop kb-primair" @onclick="MakePasswordPlan">@T["bulk-tasks.make-plan"]</button>
+            </div>
+        }
+    </div>
+}
+
+@foreach (var e in errors) { <div class="kb-melding kb-fout">@e</div> }
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@($"Google {User.PrimaryEmail}")" Title="@T["systems.google.name"]" Executed="AfterExecute" />
+}
+
+@if (pass is not null)
+{
+    <section class="kb-kaart kb-geheim">
+        <h3>@T.Format("helpdesk.0-for-1", T["tenants.new-password"], User.PrimaryEmail)</h3>
+        <CopyField Value="@pass" Label="@T["tenants.new-password"]" Secret="true" />
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public GoogleUser User { get; set; } = default!;
+
+    private bool editing;
+    private Dictionary<string, string> values = new();
+    private string newAlias = string.Empty;
+    private bool passwordForm;
+    private string password = string.Empty;
+    private string own = string.Empty;
+    private bool changeAtNextLogin = true;
+    private string? pass;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private string? loaded;
+
+    private bool CanManage => !State.IsHistoric && State.Can(Permission.Manage);
+
+    private bool CanHelp => !State.IsHistoric && State.Can(Permission.Helpdesk);
+
+    private GoogleSource Source => GooglePlans.Source(State.Systems, State.Data, State.SourceSettings);
+
+    private IReadOnlyCollection<string> Followed => GooglePlans.Followed(Source);
+
+    private IReadOnlyList<string> Domains => GooglePlans.Domains(State.Data, State.EffectiveSettings.GoogleDomain);
+
+    private string AliasExample => "alias@" + (Domains.FirstOrDefault() ?? "example.com");
+
+    private string Current(string field) => field switch
+    {
+        GooglePlans.GivenName => User.GivenName,
+        GooglePlans.FamilyName => User.FamilyName,
+        GooglePlans.Department => User.Department,
+        GooglePlans.EmployeeId => User.EmployeeId,
+        GooglePlans.OrgUnitPath => User.OrgUnitPath,
+        _ => User.Suspended.ToString(),
+    };
+
+    private string Shown(string field) => field == GooglePlans.Suspended
+        ? T[User.Suspended ? "google.user.suspended" : "google.user.active"]
+        : Current(field) is { Length: > 0 } v ? v : T["edit-user.empty"];
+
+    protected override void OnParametersSet()
+    {
+        // Another user: take nothing along from the previous one (certainly no password)
+        if (loaded != User.Id)
+        {
+            loaded = User.Id;
+            editing = passwordForm = false;
+            password = own = newAlias = string.Empty;
+            plan = null;
+            pass = null;
+            errors = Array.Empty<string>();
+        }
+    }
+
+    private void Open()
+    {
+        values = GooglePlans.Fields.ToDictionary(f => f, Current);
+        errors = Array.Empty<string>();
+        editing = true;
+    }
+
+    private void MakePlan()
+    {
+        string? Wanted(string f) => Followed.Contains(f) ? null : values[f];
+        var desired = new GoogleUserDesired(Wanted(GooglePlans.GivenName), Wanted(GooglePlans.FamilyName), Wanted(GooglePlans.OrgUnitPath),
+            Wanted(GooglePlans.Department), Wanted(GooglePlans.EmployeeId), Wanted(GooglePlans.Suspended) is { } s ? s == "True" : null);
+        Show(GooglePlans.Edit(State.Data, User, desired, Source));
+    }
+
+    private void AddAlias() => Show(GooglePlans.AddAlias(State.Data, User, newAlias, Domains));
+
+    private void NewPassword()
+    {
+        passwordForm = true;
+        password = NameRules.InitialPassword();
+        own = string.Empty;
+        plan = null;
+        pass = null;
+    }
+
+    private void MakePasswordPlan() => Show(GooglePlans.Password(User, own.Length > 0 ? own : password, changeAtNextLogin, Source));
+
+    private void Show(PlanOutcome outcome)
+    {
+        errors = outcome.Errors;
+        plan = outcome.Plan.Count > 0 ? outcome.Plan : null;
+        pass = null;
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        var set = plan?.FirstOrDefault(w => w.ChangeAction == ChangeAction.GoogleSetPassword);
+        if (set is not null && results.Any(r => r.ChangeId == set.Id && r.Status == ResultStatus.Succeeded))
+        {
+            pass = set.Secret;
+            passwordForm = false;
+        }
+
+        // Do not leave the secret in the plan longer than needed
+        foreach (var w in plan ?? Array.Empty<Change>())
+        {
+            w.Secret = null;
+        }
+
+        password = own = string.Empty;
+        editing = false;
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            newAlias = string.Empty;
+        }
+    }
+}

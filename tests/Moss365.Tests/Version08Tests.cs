@@ -47,7 +47,8 @@ public sealed class Version08Tests : IDisposable
         var helpdesk = action is ChangeAction.AdSetPassword or ChangeAction.AdUnlockAccount or ChangeAction.AdEnableAccount
             or ChangeAction.AdAddGroupMember or ChangeAction.AdRemoveGroupMember or ChangeAction.GraphAddGroupMember or ChangeAction.GraphRemoveGroupMember
             or ChangeAction.ExchangeAddGroupMember or ChangeAction.ExchangeRemoveGroupMember or ChangeAction.GraphInviteGuest
-            or ChangeAction.GraphCreateTemporaryAccessPass or ChangeAction.GraphSendMail; // 0.33
+            or ChangeAction.GraphCreateTemporaryAccessPass or ChangeAction.GraphSendMail // 0.33
+            or ChangeAction.GoogleSetPassword or ChangeAction.GoogleSignOut or ChangeAction.GoogleAddGroupMember or ChangeAction.GoogleRemoveGroupMember; // G2
         Assert.Equal(helpdesk, PermissionTable.Refusal(Role.Helpdesk, W(action)) is null);
     }
 
