@@ -283,6 +283,12 @@ public static class InventoryLoader
             Phone = W(r, "OfficePhone"),
             Mobile = W(r, "MobilePhone"),
             Manager = W(r, "Manager"),
+            EmployeeId = W(r, "EmployeeID"),
+            EmployeeType = W(r, "EmployeeType"),
+            StreetAddress = W(r, "StreetAddress"),
+            PostalCode = W(r, "PostalCode"),
+            State = W(r, "State"),
+            Country = W(r, "Country"),
         };
     }
 
@@ -335,6 +341,12 @@ public static class InventoryLoader
         OnPremisesDistinguishedName = W(r, "OnPremisesDistinguishedName"),
         Licences = Items(r, "Licenties"),
         LastSignIn = W(r, "LaatsteAanmelding"),
+        EmployeeId = W(r, "EmployeeId"),
+        EmployeeType = W(r, "EmployeeType"),
+        StreetAddress = W(r, "StreetAddress"),
+        PostalCode = W(r, "PostalCode"),
+        State = W(r, "State"),
+        Country = W(r, "Country"),
     };
 
     private static CloudGroup MakeCloudGroup(Dictionary<string, string> r) => new()
@@ -357,6 +369,7 @@ public static class InventoryLoader
         MembershipRule = W(r, "Lidmaatschapsregel"),
         GroupLicence = B(r, "GroepLicentie"),
         CountMembers = int.TryParse(K(r, "AantalLeden"), out var n) ? n : null,
+        Visibility = K(r, "Visibility"),
     };
 
     /// <summary>Raw value, not trimmed: spelling variants such as a trailing space must stay visible.</summary>
@@ -393,6 +406,8 @@ public static class InventoryLoader
         Smtp = K(r, "PrimarySmtpAddress"),
         IsDirSynced = B(r, "IsDirSynced"),
         MemberJoinRestriction = K(r, "MemberJoinRestriction"),
+        Hidden = K(r, "Hidden") is { Length: > 0 } h ? string.Equals(h, "True", StringComparison.OrdinalIgnoreCase) : null,
+        OnlyInternalSenders = K(r, "OnlyInternalSenders") is { Length: > 0 } o ? string.Equals(o, "True", StringComparison.OrdinalIgnoreCase) : null,
         ManagedBy = K(r, "ManagedBy") is "ja" or "nee" ? Array.Empty<string>() : Items(r, "ManagedBy"),
         CountMembers = I(r, "AantalLeden"),
         Members = members.GetValueOrDefault(W(r, "DisplayName").Trim()) ?? Array.Empty<ExoMember>(),
@@ -413,6 +428,8 @@ public static class InventoryLoader
         AutoReply = K(r, "AutoAntwoord"),
         AutoReplyInternal = W(r, "AutoAntwoordIntern"),
         AutoReplyExternal = W(r, "AutoAntwoordExtern"),
+        SentItemsCopy = K(r, "KopieVerzonden").Length > 0 ? B(r, "KopieVerzonden") : null,
+        SendOnBehalf = Items(r, "NamensVan"),
     };
 
     private static Licence MakeLicence(Dictionary<string, string> r)

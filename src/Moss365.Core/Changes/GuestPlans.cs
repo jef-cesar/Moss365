@@ -113,4 +113,93 @@ public static class GuestPlans
 
         return PlanOutcome.Of(plan, errors);
     }
+
+    /// <summary>
+    /// The details of a guest (R21): its name and company, and whether it counts as a member or a guest, as one change
+    /// with the previous values (can be undone). A guest made member sees the directory as an employee does.
+    /// </summary>
+    public static PlanOutcome Edit(Person guest, string? name, string? company, bool? member)
+    {
+        if (guest.Entra is not { } e)
+        {
+            return PlanOutcome.Error(Texts.T["guest.edit.not-in-entra"]);
+        }
+
+        var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var previous = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var now = new List<string>();
+        var becomes = new List<string>();
+        void Field(string property, string label, string current, string? wanted)
+        {
+            if (wanted is null || string.Equals(current, wanted.Trim(), StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            parameters[property] = wanted.Trim();
+            previous[property] = current;
+            now.Add(label + ": " + (current.Length > 0 ? current : Texts.T["undo.empty"]));
+            becomes.Add(label + ": " + (wanted.Trim().Length > 0 ? wanted.Trim() : Texts.T["undo.empty"]));
+        }
+
+        if (name is not null && name.Trim().Length == 0)
+        {
+            return PlanOutcome.Error(Texts.T["code.guest-plans.enter-a-name"]);
+        }
+
+        Field("displayName", Texts.T["attribute.displayname"], e.DisplayName, name);
+        Field("companyName", Texts.T["attribute.company"], e.CompanyName, company);
+        if (member is { } m)
+        {
+            Field("userType", Texts.T["guest.edit.kind"], e.UserType, m ? "Member" : "Guest");
+        }
+
+        if (parameters.Count == 0)
+        {
+            return PlanOutcome.Error(Texts.T["plan.nothing-changed"]);
+        }
+
+        return PlanOutcome.Of(new[]
+        {
+            new Change
+            {
+                TargetSystem = TargetSystem.Graph,
+                ChangeAction = ChangeAction.GraphSetAttributes,
+                Target = e.Id,
+                TargetName = guest.Name,
+                Parameters = parameters,
+                Previous = previous,
+                Description = Texts.T.Format("guest.edit.plan", parameters.Count),
+                CurrentValue = string.Join("; ", now),
+                NewValue = string.Join("; ", becomes),
+                Warning = parameters.TryGetValue("userType", out var t) && t == "Member" ? Texts.T["guest.edit.member-warning"] : null,
+            },
+        });
+    }
+
+    /// <summary>
+    /// Invites a guest again (R21): the redemption is reset, so the guest accepts a new invitation, for example with
+    /// another account of the same address. The account and its groups stay; this cannot be undone.
+    /// </summary>
+    public static PlanOutcome InviteAgain(Person guest, bool message)
+    {
+        if (guest.Entra is not { IsGuest: true } e || e.Mail.Length == 0)
+        {
+            return PlanOutcome.Error(Texts.T["guest.again.no-address"]);
+        }
+
+        return PlanOutcome.Of(new[]
+        {
+            new Change
+            {
+                TargetSystem = TargetSystem.Graph,
+                ChangeAction = ChangeAction.GraphInviteGuest,
+                Target = e.Mail,
+                TargetName = guest.Name,
+                Parameters = GroupPlans.P(("naam", e.DisplayName), ("bericht", message ? "True" : "False"), ("opnieuw", "True"), ("id", e.Id)),
+                Description = Texts.T["guest.again.plan"],
+                NewValue = e.Mail,
+            },
+        });
+    }
 }

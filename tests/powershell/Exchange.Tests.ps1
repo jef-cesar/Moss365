@@ -18,8 +18,11 @@ BeforeAll {
     function global:Set-MailboxFolderPermission { param($Identity, $User, $AccessRights, $ErrorAction)
         if ($Identity -like '*:\Calendar') { throw 'map niet gevonden' }
         $global:ExoAanroepen.Add("Perm $Identity $User $AccessRights") }
-    function global:Set-Mailbox { param($Identity, $Type, $DisplayName, $HiddenFromAddressListsEnabled, $ForwardingSmtpAddress, $DeliverToMailboxAndForward, $ErrorAction)
+    function global:Set-Mailbox { param($Identity, $Type, $DisplayName, $HiddenFromAddressListsEnabled, $ForwardingSmtpAddress, $DeliverToMailboxAndForward, $MessageCopyForSentAsEnabled, $MessageCopyForSendOnBehalfEnabled, $GrantSendOnBehalfTo, $ErrorAction)
         if ($Type) { $global:ExoAanroepen.Add("Mbx $Identity $Type"); return }
+        if ($null -ne $MessageCopyForSentAsEnabled -or $null -ne $GrantSendOnBehalfTo) {
+            $global:ExoAanroepen.Add("SetMbxR21 $Identity Copy=$MessageCopyForSentAsEnabled/$($MessageCopyForSentAsEnabled.GetType().Name) OnBehalf=$($GrantSendOnBehalfTo -join ',')/$(@($GrantSendOnBehalfTo).Count)"); return
+        }
         $fwd = if ($PSBoundParameters.ContainsKey('ForwardingSmtpAddress')) { if ($null -eq $ForwardingSmtpAddress) { 'NULL' } else { $ForwardingSmtpAddress } } else { '-' }
         $global:ExoAanroepen.Add("SetMbx $Identity Fwd=$fwd Hidden=$HiddenFromAddressListsEnabled") }
     function global:Get-EXOMailbox { param($Identity, $RecipientTypeDetails, $ResultSize, $Properties)
@@ -41,8 +44,11 @@ BeforeAll {
     function global:Get-DistributionGroup { param($Identity, $ResultSize)
         [pscustomobject]@{ Identity = 'sg'; RecipientTypeDetails = 'MailUniversalSecurityGroup'; DisplayName = 'SG'; Alias = 'sg'; PrimarySmtpAddress = 'sg@test.be'; IsDirSynced = $false; MemberJoinRestriction = 'Closed'; ManagedBy = @('an', 'bo') } }
     function global:Get-DistributionGroupMember { param($Identity, $ResultSize, $ErrorAction) [pscustomobject]@{ PrimarySmtpAddress = 'an@test.be'; DisplayName = 'An' } }
-    function global:Set-DistributionGroup { param($Identity, $DisplayName, $PrimarySmtpAddress, $ManagedBy, [switch]$BypassSecurityGroupManagerCheck, $ErrorAction)
+    function global:Set-DistributionGroup { param($Identity, $DisplayName, $PrimarySmtpAddress, $ManagedBy, $HiddenFromAddressListsEnabled, $RequireSenderAuthenticationEnabled, $MemberJoinRestriction, [switch]$BypassSecurityGroupManagerCheck, $ErrorAction)
         if ($ManagedBy) { $global:ExoAanroepen.Add("Beheer $Identity " + (($ManagedBy.Keys | Sort-Object | ForEach-Object { "$_=$($ManagedBy[$_])" }) -join ' ')); return }
+        if ($null -ne $HiddenFromAddressListsEnabled -or $null -ne $RequireSenderAuthenticationEnabled -or $MemberJoinRestriction) {
+            $global:ExoAanroepen.Add("SetDgOpt $Identity Hidden=$HiddenFromAddressListsEnabled/$($HiddenFromAddressListsEnabled.GetType().Name) Auth=$RequireSenderAuthenticationEnabled Join=$MemberJoinRestriction"); return
+        }
         $global:ExoAanroepen.Add("SetDg $Identity $DisplayName $PrimarySmtpAddress") }
     function global:Set-MailboxAutoReplyConfiguration { param($Identity, $AutoReplyState, $InternalMessage, $ExternalMessage, $ErrorAction)
         $global:ExoAanroepen.Add("Auto $Identity $AutoReplyState $InternalMessage") }
@@ -194,6 +200,31 @@ Describe 'Exchange.ps1' {
         $global:ExoAanroepen | Should -Contain 'Auto info@test.be Enabled Afwezig'
         $global:ExoAanroepen | Should -Contain 'SetDg sg@test.be SG nieuw '
         $global:ExoAanroepen | Should -Contain 'Beheer sg@test.be Add=an@test.be'
+    }
+
+    It 'sets the mail settings of a group with booleans and only the known ways to join (R21)' {
+        $r = Voer @(
+            @{ id = 'a'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; HiddenFromAddressListsEnabled = 'True'; RequireSenderAuthenticationEnabled = 'False'; MemberJoinRestriction = 'ApprovalRequired' } }
+            @{ id = 'b'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; MemberJoinRestriction = 'IedereenMag' } }
+            @{ id = 'c'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; HiddenFromAddressListsEnabled = 'Misschien' } }
+        )
+        ($r | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
+        ($r | Where-Object id -eq 'b').status | Should -Not -Be 'Gelukt'
+        ($r | Where-Object id -eq 'c').status | Should -Not -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'SetDgOpt sg@test.be Hidden=True/Boolean Auth=False Join=ApprovalRequired'
+        $r2 = Voer @(@{ id = 'd'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; HiddenFromAddressListsEnabled = 'False' } })
+        $r2[0].status | Should -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'SetDgOpt sg@test.be Hidden=False/Boolean Auth= Join='
+    }
+
+    It 'sets the copy of sent items and who sends on behalf of a mailbox (R21)' {
+        $r = Voer @(
+            @{ id = 'a'; op = 'PostvakInstellen'; params = @{ Identity = 'info@test.be'; MessageCopyForSentAsEnabled = 'True'; GrantSendOnBehalfTo = 'an@test.be|bo@test.be' } }
+            @{ id = 'b'; op = 'PostvakInstellen'; params = @{ Identity = 'info@test.be'; MessageCopyForSentAsEnabled = 'Misschien' } }
+        )
+        ($r | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
+        ($r | Where-Object id -eq 'b').status | Should -Not -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'SetMbxR21 info@test.be Copy=True/Boolean OnBehalf=an@test.be,bo@test.be/2'
     }
 
     It 'reads shared mailboxes with permissions and groups' {

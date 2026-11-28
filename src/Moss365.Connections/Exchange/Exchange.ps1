@@ -51,9 +51,9 @@ $Toegestaan = @{
     'LeesRooms'        = @()
     'LeesPostvakken'   = @()
     'LeesObjecten'     = @('Adressen')
-    'GroepInstellen'   = @('Identity', 'DisplayName', 'PrimarySmtpAddress')
+    'GroepInstellen'   = @('Identity', 'DisplayName', 'PrimarySmtpAddress', 'HiddenFromAddressListsEnabled', 'RequireSenderAuthenticationEnabled', 'MemberJoinRestriction')
     'Beheerder'        = @('Identity', 'Toevoegen', 'Verwijderen')
-    'PostvakInstellen' = @('Identity', 'DisplayName', 'HiddenFromAddressListsEnabled', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward')
+    'PostvakInstellen' = @('Identity', 'DisplayName', 'HiddenFromAddressListsEnabled', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled', 'GrantSendOnBehalfTo')
     'AutoAntwoord'     = @('Identity', 'AutoReplyState', 'InternalMessage', 'ExternalMessage', 'StartTime', 'EndTime')
     'Berichtspoor'     = @('SenderAddress', 'RecipientAddress', 'Dagen')
     'Doorsturen'       = @('MetRegels')
@@ -65,7 +65,8 @@ $Toegestaan = @{
     'OrganisatieInstellen' = @('Instelling', 'Waarde', 'Identity')
 }
 $Getallen = @('BookingWindowInDays', 'MaximumDurationInMinutes', 'Floor', 'Capacity')
-$JaNee = @('AllowConflicts', 'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward')
+$JaNee = @('AllowConflicts', 'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward',
+    'RequireSenderAuthenticationEnabled', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled')
 $PostvakRechten = @('FullAccess', 'SendAs')
 $AutoAntwoordStanden = @('Enabled', 'Disabled', 'Scheduled')
 $AgendaRechten = @('None', 'AvailabilityOnly', 'LimitedDetails', 'Reviewer', 'Author', 'Editor', 'PublishingEditor', 'Owner')
@@ -155,7 +156,7 @@ function Get-PostvakkenVoorApp {
     $enkele = $PSBoundParameters.ContainsKey('Postvakken')
     $postvakken = if ($enkele) { @($Postvakken) } else {
         @(Get-EXOMailbox -RecipientTypeDetails SharedMailbox, SchedulingMailbox -ResultSize Unlimited `
-            -Properties DisplayName, Alias, PrimarySmtpAddress, HiddenFromAddressListsEnabled, IsDirSynced, WhenCreated, ForwardingSmtpAddress, ForwardingAddress, DeliverToMailboxAndForward) }
+            -Properties DisplayName, Alias, PrimarySmtpAddress, HiddenFromAddressListsEnabled, IsDirSynced, WhenCreated, ForwardingSmtpAddress, ForwardingAddress, DeliverToMailboxAndForward, MessageCopyForSentAsEnabled, MessageCopyForSendOnBehalfEnabled, GrantSendOnBehalfTo) }
     $pv = foreach ($m in $postvakken) {
         $smtp = "$($m.PrimarySmtpAddress)"
         $auto = $null
@@ -166,6 +167,7 @@ function Get-PostvakkenVoorApp {
             DoorsturenNaar = (("$($m.ForwardingSmtpAddress)" -replace '(?i)^smtp:', ''), "$($m.ForwardingAddress)" | Where-Object { $_ } | Select-Object -First 1)
             DoorsturenEnBewaren = "$($m.DeliverToMailboxAndForward)"
             AutoAntwoord = "$($auto.AutoReplyState)"; AutoAntwoordIntern = "$($auto.InternalMessage)"; AutoAntwoordExtern = "$($auto.ExternalMessage)"
+            KopieVerzonden = "$($m.MessageCopyForSentAsEnabled)"; KopieNamens = "$($m.MessageCopyForSendOnBehalfEnabled)"; NamensVan = (Join-Tekst $m.GrantSendOnBehalfTo)
         }
     }
     # Trustees sometimes come back as the internal name (Name); convert those to an address
@@ -199,6 +201,7 @@ function Get-PostvakkenVoorApp {
         [pscustomobject]@{
             Type = "$($g.RecipientTypeDetails)"; DisplayName = "$($g.DisplayName)"; Name = "$($g.Name)"; Alias = "$($g.Alias)"; Smtp = "$($g.PrimarySmtpAddress)"
             IsDirSynced = "$($g.IsDirSynced)"; MemberJoinRestriction = "$($g.MemberJoinRestriction)"; ManagedBy = (Join-Tekst $g.ManagedBy)
+            Hidden = "$($g.HiddenFromAddressListsEnabled)"; RequireSenderAuthenticationEnabled = "$($g.RequireSenderAuthenticationEnabled)"
             Leden = @($leden)
         }
     }
@@ -217,7 +220,7 @@ function Get-ObjectenVoorApp {
                 $rooms += Get-EXOMailbox -Identity $adres -Properties DisplayName, Alias, PrimarySmtpAddress, HiddenFromAddressListsEnabled
             }
             { $_ -in 'SharedMailbox', 'SchedulingMailbox' } {
-                $postvakken += Get-EXOMailbox -Identity $adres -Properties DisplayName, Alias, PrimarySmtpAddress, HiddenFromAddressListsEnabled, IsDirSynced, WhenCreated, ForwardingSmtpAddress, ForwardingAddress, DeliverToMailboxAndForward
+                $postvakken += Get-EXOMailbox -Identity $adres -Properties DisplayName, Alias, PrimarySmtpAddress, HiddenFromAddressListsEnabled, IsDirSynced, WhenCreated, ForwardingSmtpAddress, ForwardingAddress, DeliverToMailboxAndForward, MessageCopyForSentAsEnabled, MessageCopyForSendOnBehalfEnabled, GrantSendOnBehalfTo
             }
             { $_ -like 'Mail*Group' -or $_ -eq 'RoomList' } {
                 $groepen += Get-DistributionGroup -Identity $adres
@@ -291,6 +294,12 @@ function Invoke-Opdracht {
         'GroepInstellen' {
             $instellen = @{ Identity = $P.Identity }
             foreach ($k in 'DisplayName', 'PrimarySmtpAddress') { if ($P.ContainsKey($k) -and $P[$k]) { $instellen[$k] = $P[$k] } }
+            # R21: the yes/no settings (already booleans: $JaNee), and only the three known ways to join
+            foreach ($k in 'HiddenFromAddressListsEnabled', 'RequireSenderAuthenticationEnabled') { if ($P.ContainsKey($k)) { $instellen[$k] = $P[$k] } }
+            if ($P.ContainsKey('MemberJoinRestriction') -and $P['MemberJoinRestriction']) {
+                if ($P['MemberJoinRestriction'] -notin @('Open', 'Closed', 'ApprovalRequired')) { throw 'Onbekende manier om lid te worden' }
+                $instellen['MemberJoinRestriction'] = $P['MemberJoinRestriction']
+            }
             Set-DistributionGroup @instellen -BypassSecurityGroupManagerCheck -ErrorAction Stop
             return $null
         }
@@ -304,7 +313,11 @@ function Invoke-Opdracht {
         }
         'PostvakInstellen' {
             $instellen = @{ Identity = $P.Identity }
-            foreach ($k in 'DisplayName', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward') { if ($P.ContainsKey($k)) { $instellen[$k] = $P[$k] } }
+            foreach ($k in 'DisplayName', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled') { if ($P.ContainsKey($k)) { $instellen[$k] = $P[$k] } }
+            # R21: who may send on behalf of the mailbox: the whole list, addresses separated by | (empty = nobody)
+            if ($P.ContainsKey('GrantSendOnBehalfTo')) {
+                $instellen['GrantSendOnBehalfTo'] = @($P.GrantSendOnBehalfTo -split '\|' | Where-Object { $_ })
+            }
             if ($P.ContainsKey('ForwardingSmtpAddress')) {
                 # Empty = turn forwarding off
                 $instellen['ForwardingSmtpAddress'] = $(if ($P.ForwardingSmtpAddress) { $P.ForwardingSmtpAddress } else { $null })

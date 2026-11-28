@@ -1,0 +1,83 @@
+@using Moss365.Core.Permissions
+@* A guest (R21): its name, company and whether it counts as a member or a guest, shown and edited in place as one plan
+   with undo; and inviting it again (its redemption reset; the account and its groups stay). *@
+@inject ManagementState State
+
+<section class="kb-kaart kb-bewerken" id="gast">
+    <h2>@T["guest.edit.title"] <PlatformLabel Platform="Platform.EntraId" /></h2>
+    <div class="kb-sectie">
+        <div class="kb-sectie-kop">
+            <h3>@T["edit-user.section.identity"]</h3>
+            @if (!editing && State.Can(Permission.Manage)) { <button class="kb-knop kb-klein" @onclick="Open">@T["edit-user.edit"]</button> }
+        </div>
+        <dl class="kb-velden">
+            <dt>@T["attribute.displayname"]</dt>
+            <dd>@if (editing) { <input class="kb-invoer" value="@name" @oninput="e => name = e.Value?.ToString()" aria-label="@T["attribute.displayname"]" /> } else { @Person.Entra?.DisplayName }</dd>
+            <dt>@T["attribute.company"]</dt>
+            <dd>@if (editing) { <input class="kb-invoer" value="@company" @oninput="e => company = e.Value?.ToString()" aria-label="@T["attribute.company"]" /> } else { @(Person.Entra?.CompanyName is { Length: > 0 } c ? c : T["edit-user.empty"]) }</dd>
+            <dt>@T["guest.edit.kind"]</dt>
+            <dd>
+                @if (editing)
+                {
+                    <select class="kb-invoer" value="@(member ? "Member" : "Guest")" @onchange="ChooseKind" aria-label="@T["guest.edit.kind"]">
+                        <option value="Guest">@T["guest.edit.guest"]</option>
+                        <option value="Member">@T["guest.edit.member"]</option>
+                    </select>
+                    @if (member) { <div class="kb-waarschuwing">@T["guest.edit.member-warning"]</div> }
+                }
+                else { @(Person.Entra?.IsGuest == true ? T["guest.edit.guest"] : T["guest.edit.member"]) }
+            </dd>
+        </dl>
+        @if (editing)
+        {
+            <div class="kb-filters">
+                <button class="kb-knop kb-primair" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+                <button class="kb-knop" @onclick="() => editing = false">@T["edit-user.close"]</button>
+            </div>
+        }
+    </div>
+    @if (State.Can(Permission.InviteGuests))
+    {
+        <div class="kb-rij">
+            <label><input type="checkbox" @bind="message" /> @T["guests.send-invitation-by-e-mail"]</label>
+            <button class="kb-knop" @onclick="InviteAgain">@T["guest.again"]</button>
+            <span class="kb-zacht">@T["guest.again.help"]</span>
+        </div>
+    }
+    @foreach (var e in errors) { <div class="kb-melding">@e</div> }
+</section>
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@($"Gast {Person.Name}")" Title="@T["guest.edit.title"]" Executed="_ => editing = false" />
+}
+
+@code {
+    [Parameter, EditorRequired] public Person Person { get; set; } = default!;
+
+    private bool editing;
+    private string? name;
+    private string? company;
+    private bool member;
+    private bool message = true;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+
+    private void Open()
+    {
+        (name, company, member) = (Person.Entra?.DisplayName, Person.Entra?.CompanyName, Person.Entra?.IsGuest != true);
+        editing = true;
+    }
+
+    private void ChooseKind(ChangeEventArgs e) => member = string.Equals(e.Value?.ToString(), "Member", StringComparison.Ordinal);
+
+    private void MakePlan() => Show(GuestPlans.Edit(Person, name, company, member));
+
+    private void InviteAgain() => Show(GuestPlans.InviteAgain(Person, message));
+
+    private void Show(PlanOutcome outcome)
+    {
+        errors = outcome.Errors;
+        plan = outcome.Plan.Count > 0 ? outcome.Plan : null;
+    }
+}

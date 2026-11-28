@@ -67,6 +67,10 @@ else
     {
         <EditUser Person="person" />
     }
+    @if (person.IsGuest && !State.IsHistoric && (State.Can(Permission.Manage) || State.Can(Permission.InviteGuests)))
+    {
+        <GuestEditor Person="person" />
+    }
 
     @if (State.Can(Permission.GroupMembers) && !State.IsHistoric)
     {
@@ -174,10 +178,21 @@ else
         }
         else
         {
+            @* R21: the history of one field, from the snapshots and the change log *@
+            <label>
+                @T["user-detail.field"]
+                <select class="kb-invoer kb-smal-keuze" value="@field" @onchange="e => field = e.Value?.ToString() ?? string.Empty" aria-label="@T["user-detail.field"]">
+                    <option value="">@T["user-detail.all-fields"]</option>
+                    @foreach (var f in timeline.SelectMany(t => t.Fields).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+                    {
+                        <option value="@f">@f</option>
+                    }
+                </select>
+            </label>
             <table class="kb-tabel">
                 <thead><tr><th>@T["message-trace-card.when"]</th><th>@T["service-health-card.what"]</th><th>@T["organisation-history.changed"]</th><th></th></tr></thead>
                 <tbody>
-                    @foreach (var e in timeline)
+                    @foreach (var e in timeline.Where(t => field.Length == 0 || t.Fields.Contains(field, StringComparer.OrdinalIgnoreCase)))
                     {
                         <tr class="@(e.What == "Moss365" ? "kb-zacht" : null)">
                             <td>@e.Time.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</td>
@@ -243,6 +258,8 @@ else
     private IReadOnlyList<TimelineEntry> timeline = Array.Empty<TimelineEntry>();
     private IReadOnlyList<Change>? restorePlan;
     private IReadOnlyList<string> restoreErrors = Array.Empty<string>();
+
+    private string field = string.Empty;
 
     private void LoadTimeline()
     {

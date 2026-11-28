@@ -610,3 +610,15 @@ a.kb-knop { text-decoration: none; display: inline-block; }
 h1 .kb-platform, h2 .kb-platform, h3 .kb-platform { margin-left: 0.4em; font-size: 0.55em; }
 .kb-platformen { display: inline-flex; flex-wrap: wrap; gap: 0.25em; }
 .kb-bron-keten { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3em; margin: 0.3em 0; }
+
+/* R21: editing an object in sections, each with its current values, edited in place */
+.kb-secties { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 0.8rem; margin: 0.6rem 0; }
+.kb-sectie { border: 1px solid var(--kb-lijn); border-radius: 8px; padding: 0.6rem 0.8rem; background: var(--kb-vlak); }
+.kb-sectie-kop { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+.kb-sectie-kop h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.kb-velden { display: grid; grid-template-columns: minmax(7rem, 38%) 1fr; gap: 0.35rem 0.6rem; margin: 0; }
+.kb-velden dt { font-weight: 600; color: var(--kb-zacht, inherit); }
+.kb-velden dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.kb-velden .kb-invoer { width: 100%; box-sizing: border-box; }
+.kb-klein-tekst { font-size: 0.82em; }
+@media (max-width: 520px) { .kb-velden { grid-template-columns: 1fr; } .kb-velden dd { margin-bottom: 0.3rem; } }

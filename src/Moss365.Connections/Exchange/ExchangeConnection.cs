@@ -157,7 +157,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             case ChangeAction.ExchangeUpdateGroup:
                 op = "GroepInstellen";
                 p["Identity"] = w.Target;
-                Take(w, p, "DisplayName", "PrimarySmtpAddress");
+                Take(w, p, "DisplayName", "PrimarySmtpAddress", "HiddenFromAddressListsEnabled", "RequireSenderAuthenticationEnabled", "MemberJoinRestriction");
                 break;
             case ChangeAction.ExchangeGroupManager:
                 op = "Beheerder";
@@ -167,7 +167,8 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             case ChangeAction.ExchangeUpdateMailbox:
                 op = "PostvakInstellen";
                 p["Identity"] = w.Target;
-                Take(w, p, "DisplayName", "HiddenFromAddressListsEnabled", "ForwardingSmtpAddress", "DeliverToMailboxAndForward");
+                Take(w, p, "DisplayName", "HiddenFromAddressListsEnabled", "ForwardingSmtpAddress", "DeliverToMailboxAndForward",
+                    "MessageCopyForSentAsEnabled", "MessageCopyForSendOnBehalfEnabled", "GrantSendOnBehalfTo");
                 break;
             case ChangeAction.ExchangeAutoReply:
                 op = "AutoAntwoord";
@@ -419,6 +420,8 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
             AutoReply = S(e, "AutoAntwoord"),
             AutoReplyInternal = S(e, "AutoAntwoordIntern"),
             AutoReplyExternal = S(e, "AutoAntwoordExtern"),
+            SentItemsCopy = S(e, "KopieVerzonden").Length > 0 ? B(e, "KopieVerzonden") : null,
+            SendOnBehalf = S(e, "NamensVan").Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
         }).Where(p => p.Smtp.Length > 0).ToList();
         var permissions = Items(d, "Rechten")
             .SelectMany(e => S(e, "Recht").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -437,6 +440,8 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
                 Smtp = S(e, "Smtp"),
                 IsDirSynced = B(e, "IsDirSynced"),
                 MemberJoinRestriction = S(e, "MemberJoinRestriction"),
+                Hidden = S(e, "Hidden") is { Length: > 0 } hidden ? string.Equals(hidden, "True", StringComparison.OrdinalIgnoreCase) : null,
+                OnlyInternalSenders = S(e, "RequireSenderAuthenticationEnabled") is { Length: > 0 } inside ? string.Equals(inside, "True", StringComparison.OrdinalIgnoreCase) : null,
                 ManagedBy = S(e, "ManagedBy").Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 Members = members,
                 CountMembers = members.Count,

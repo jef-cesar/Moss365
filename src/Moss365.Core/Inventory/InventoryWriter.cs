@@ -69,6 +69,8 @@ public static class InventoryWriter
                 ["PasswordLastSet"] = u.PasswordLastSet, ["PasswordNeverExpires"] = B(u.PasswordNeverExpires), ["LockedOut"] = B(u.LockedOut), ["ScriptPath"] = u.ScriptPath,
                 ["OfficePhone"] = u.Phone, ["MobilePhone"] = u.Mobile, ["Manager"] = u.Manager,
                 ["MemberOf"] = string.Join('|', u.MemberOr),
+                ["EmployeeID"] = u.EmployeeId, ["EmployeeType"] = u.EmployeeType, ["StreetAddress"] = u.StreetAddress,
+                ["PostalCode"] = u.PostalCode, ["State"] = u.State, ["Country"] = u.Country,
             }));
             Write(InventoryLoader.AdGroups, d.AdGroupsByDn.Values.Select(g => new Dictionary<string, string?>
             {
@@ -94,6 +96,8 @@ public static class InventoryWriter
                 ["OnPremisesSyncEnabled"] = B(e.OnPremisesSyncEnabled), ["OnPremisesSamAccountName"] = e.OnPremisesSamAccountName,
                 ["OnPremisesDistinguishedName"] = e.OnPremisesDistinguishedName, ["Licenties"] = string.Join('|', e.Licences),
                 ["LaatsteAanmelding"] = e.LastSignIn,
+                ["EmployeeId"] = e.EmployeeId, ["EmployeeType"] = e.EmployeeType, ["StreetAddress"] = e.StreetAddress,
+                ["PostalCode"] = e.PostalCode, ["State"] = e.State, ["Country"] = e.Country,
             }));
             Write(InventoryLoader.EntraGroups, d.CloudGroups.Values.Select(g => new Dictionary<string, string?>
             {
@@ -107,7 +111,7 @@ public static class InventoryWriter
                     _ => string.Empty,
                 },
                 ["Bron"] = g.FromAd ? "AD" : "Cloud", ["Dynamisch"] = B(g.Dynamic), ["Lidmaatschapsregel"] = g.MembershipRule,
-                ["OnPremisesSamAccountName"] = g.OnPremisesSamAccountName, ["GroepLicentie"] = B(g.GroupLicence), ["AantalLeden"] = N(g.CountMembers),
+                ["OnPremisesSamAccountName"] = g.OnPremisesSamAccountName, ["GroepLicentie"] = B(g.GroupLicence), ["AantalLeden"] = N(g.CountMembers), ["Visibility"] = g.Visibility,
             }));
             var users = d.EntraUsers.Select(e => e.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
             Write(InventoryLoader.EntraGroupMembers, d.CloudMembership.SelectMany(kv => kv.Value.Select(g => new Dictionary<string, string?>
@@ -171,6 +175,7 @@ public static class InventoryWriter
                 ["Type"] = g.Type, ["DisplayName"] = g.DisplayName, ["Name"] = g.Name, ["Alias"] = g.Alias, ["PrimarySmtpAddress"] = g.Smtp,
                 ["IsDirSynced"] = B(g.IsDirSynced), ["MemberJoinRestriction"] = g.MemberJoinRestriction, ["AantalLeden"] = N(g.CountMembers),
                 ["ManagedBy"] = string.Join('|', g.ManagedBy),
+                ["Hidden"] = g.Hidden is { } h ? B(h) : string.Empty, ["OnlyInternalSenders"] = g.OnlyInternalSenders is { } o ? B(o) : string.Empty,
             }));
             Write(InventoryLoader.ExoGroupMembers, d.ExoGroups.SelectMany(g => g.Members.Select(l => new Dictionary<string, string?>
             {
@@ -182,6 +187,7 @@ public static class InventoryWriter
                 ["Hidden"] = B(p.Hidden), ["IsDirSynced"] = B(p.IsDirSynced), ["WhenCreated"] = p.WhenCreated, ["Doorsturen"] = p.Forwarding,
                 ["DoorsturenNaar"] = p.ForwardingTo, ["DoorsturenEnBewaren"] = p.SaveForwardingAnd is null ? string.Empty : B(p.SaveForwardingAnd.Value),
                 ["AutoAntwoord"] = p.AutoReply, ["AutoAntwoordIntern"] = p.AutoReplyInternal, ["AutoAntwoordExtern"] = p.AutoReplyExternal,
+                ["KopieVerzonden"] = p.SentItemsCopy is null ? string.Empty : B(p.SentItemsCopy.Value), ["NamensVan"] = string.Join('|', p.SendOnBehalf),
             }));
             Write(InventoryLoader.ExoMailboxPermissions, d.MailboxPermissions.Select(r => new Dictionary<string, string?>
             {

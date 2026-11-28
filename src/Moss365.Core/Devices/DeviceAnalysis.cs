@@ -7,6 +7,13 @@ namespace Moss365.Core.Devices;
 /// <summary>A computer in AD.</summary>
 public sealed record AdComputer(string Name, string DistinguishedName, string OperatingSystem, string Version, DateTimeOffset? LastLogon, bool Enabled, DateTimeOffset? Created)
 {
+    /// <summary>R21: the description, the location and who manages it (managedBy, a DN), to edit as a plan.</summary>
+    public string Description { get; init; } = string.Empty;
+
+    public string Location { get; init; } = string.Empty;
+
+    public string ManagedBy { get; init; } = string.Empty;
+
     public string OuPath => string.Join('/', DistinguishedName.Split(',').Skip(1).Where(p => p.StartsWith("OU=", StringComparison.OrdinalIgnoreCase)).Reverse().Select(p => p[3..]));
 }
 

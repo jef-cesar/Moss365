@@ -17,10 +17,11 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
     private const string UserFields = "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,department,"
                                            + "jobTitle,officeLocation,companyName,city,usageLocation,createdDateTime,onPremisesSyncEnabled,"
-                                           + "onPremisesSamAccountName,onPremisesDistinguishedName,assignedLicenses,businessPhones,mobilePhone";
+                                           + "onPremisesSamAccountName,onPremisesDistinguishedName,assignedLicenses,businessPhones,mobilePhone,"
+                                           + "employeeId,employeeType,streetAddress,postalCode,state,country";
 
     private const string GroupFields = "id,displayName,description,mail,mailEnabled,securityEnabled,groupTypes,membershipRule,"
-                                       + "onPremisesSyncEnabled,onPremisesSamAccountName,assignedLicenses";
+                                       + "onPremisesSyncEnabled,onPremisesSamAccountName,assignedLicenses,visibility";
 
     private readonly GraphClient _client;
 
@@ -1239,6 +1240,12 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             CompanyName = S(u, "companyName"),
             City = S(u, "city"),
             UsageLocation = S(u, "usageLocation"),
+            EmployeeId = S(u, "employeeId"),
+            EmployeeType = S(u, "employeeType"),
+            StreetAddress = S(u, "streetAddress"),
+            PostalCode = S(u, "postalCode"),
+            State = S(u, "state"),
+            Country = S(u, "country"),
             CreatedDateTime = S(u, "createdDateTime"),
             OnPremisesSyncEnabled = B(u, "onPremisesSyncEnabled"),
             OnPremisesSamAccountName = S(u, "onPremisesSamAccountName"),
@@ -1272,6 +1279,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             MembershipRule = S(g, "membershipRule"),
             GroupLicence = g.TryGetProperty("assignedLicenses", out var al) && al.ValueKind == JsonValueKind.Array && al.GetArrayLength() > 0,
             CountMembers = countMembers,
+            Visibility = S(g, "visibility"),
         };
     }
 
@@ -1597,13 +1605,21 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
 
             if (w.ChangeAction == ChangeAction.GraphInviteGuest)
             {
-                var invitation = await _client.PostWithResponseAsync("/invitations", new Dictionary<string, object>
+                var body = new Dictionary<string, object>
                 {
                     ["invitedUserEmailAddress"] = w.Target,
                     ["invitedUserDisplayName"] = w.P("naam"),
                     ["inviteRedirectUrl"] = "https://myapps.microsoft.com",
                     ["sendInvitationMessage"] = string.Equals(w.P("bericht"), "True", StringComparison.OrdinalIgnoreCase),
-                }, cancel);
+                };
+                // R21: invite an existing guest again (its redemption reset; the account and its groups stay)
+                if (string.Equals(w.P("opnieuw"), "True", StringComparison.OrdinalIgnoreCase) && w.P("id").Length > 0)
+                {
+                    body["resetRedemption"] = true;
+                    body["invitedUser"] = new Dictionary<string, string> { ["id"] = w.P("id") };
+                }
+
+                var invitation = await _client.PostWithResponseAsync("/invitations", body, cancel);
                 var id = invitation.TryGetProperty("invitedUser", out var iu) ? S(iu, "id") : string.Empty;
                 if (id.Length > 0)
                 {

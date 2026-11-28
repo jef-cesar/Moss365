@@ -4,8 +4,16 @@ public sealed record AdUser
 {
     public string SamAccountName { get; init; } = string.Empty;
 
-    /// <summary>The employee id (employeeID), for linking persons (G0, U32); empty until a reader fills it.</summary>
+    /// <summary>The employee id (employeeID), for linking persons (G0, U32) and editing (R21).</summary>
     public string EmployeeId { get; init; } = string.Empty;
+
+    /// <summary>R21: the type of employment (employeeType), the address (streetAddress, postalCode, st) and the country
+    /// (co); empty in data read before R21.</summary>
+    public string EmployeeType { get; init; } = string.Empty;
+    public string StreetAddress { get; init; } = string.Empty;
+    public string PostalCode { get; init; } = string.Empty;
+    public string State { get; init; } = string.Empty;
+    public string Country { get; init; } = string.Empty;
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
@@ -48,8 +56,16 @@ public sealed record EntraUser
 {
     public string Id { get; init; } = string.Empty;
 
-    /// <summary>The employee id (employeeId), for linking persons (G0, U32); empty until a reader fills it.</summary>
+    /// <summary>The employee id (employeeId), for linking persons (G0, U32) and editing (R21).</summary>
     public string EmployeeId { get; init; } = string.Empty;
+
+    /// <summary>R21: the type of employment (employeeType), the address (streetAddress, postalCode, state) and the country
+    /// (country); empty in data read before R21.</summary>
+    public string EmployeeType { get; init; } = string.Empty;
+    public string StreetAddress { get; init; } = string.Empty;
+    public string PostalCode { get; init; } = string.Empty;
+    public string State { get; init; } = string.Empty;
+    public string Country { get; init; } = string.Empty;
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
@@ -136,6 +152,9 @@ public sealed record CloudGroup
     public string MembershipRule { get; init; } = string.Empty;
     public bool GroupLicence { get; init; }
     public int? CountMembers { get; init; }
+
+    /// <summary>R21: a Microsoft 365 group is Public or Private (empty for other kinds or data read before R21).</summary>
+    public string Visibility { get; init; } = string.Empty;
 
     public string TypeText => TypeTextOf(Type);
 

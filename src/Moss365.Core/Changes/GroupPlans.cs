@@ -20,6 +20,9 @@ public sealed class GroupDesired
     public string? Mail { get; set; }
 }
 
+/// <summary>The settings of a group as they have to become (R21); null = do not change.</summary>
+public sealed record GroupSettingsDesired(string? Visibility = null, bool? Hidden = null, bool? OnlyInternalSenders = null, string? JoinRestriction = null);
+
 /// <summary>
 /// Plans for groups: members, name and description, managers. The route follows from the group: an AD group (also when
 /// it is synchronised to Entra) via AD, a cloud group via Graph, a mail group via Exchange. Dynamic groups are never
@@ -215,6 +218,124 @@ public static class GroupPlans
 
         return PlanOutcome.Of(plan, errors);
     }
+
+    /// <summary>The ways to become a member of a mail group (MemberJoinRestriction).</summary>
+    public static IReadOnlyList<string> JoinRestrictions { get; } = new[] { "Closed", "ApprovalRequired", "Open" };
+
+    /// <summary>The settings a group has on its page (R21): privacy for a Microsoft 365 group made in the cloud, the
+    /// mail settings for a mail group of Exchange Online that is not synchronised from AD.</summary>
+    public static (bool Privacy, bool Mail) SettingsOf(Group g)
+        => (g.Cloud is { Type: CloudGroupType.Microsoft365, FromAd: false },
+            g.Exo is { IsDirSynced: false } && g.Ad is null && g.Route == WriteRoute.Exchange);
+
+    /// <summary>
+    /// The settings of a group (R21) as one change with the previous values (can be undone): Public or Private for a
+    /// Microsoft 365 group (Graph), hidden from the address book, only senders inside the organisation and how to become
+    /// a member for a mail group (the fixed command of Exchange.ps1).
+    /// </summary>
+    public static PlanOutcome Settings(Group g, GroupSettingsDesired desired)
+    {
+        var (privacy, mail) = SettingsOf(g);
+        var plan = new List<Change>();
+        var errors = new List<string>();
+        if (desired.Visibility is { } visibility && g.Cloud is { } cloud && !string.Equals(visibility, cloud.Visibility, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!privacy || visibility is not ("Public" or "Private"))
+            {
+                errors.Add(Texts.T["group.settings.no-privacy"]);
+            }
+            else
+            {
+                plan.Add(new Change
+                {
+                    TargetSystem = TargetSystem.Graph,
+                    ChangeAction = ChangeAction.GraphSetGroupAttributes,
+                    Target = cloud.Id,
+                    TargetName = g.Name,
+                    Parameters = P(("visibility", visibility)),
+                    Previous = P(("visibility", cloud.Visibility)),
+                    Description = Texts.T["group.settings.privacy.plan"],
+                    CurrentValue = cloud.Visibility,
+                    NewValue = visibility,
+                    Warning = visibility == "Public" ? Texts.T["group.settings.public-warning"] : null,
+                });
+            }
+        }
+
+        if (desired.Hidden is not null || desired.OnlyInternalSenders is not null || desired.JoinRestriction is not null)
+        {
+            if (!mail || g.Exo is not { } exo)
+            {
+                errors.Add(Texts.T["group.settings.no-mail"]);
+            }
+            else
+            {
+                var p = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var previous = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var now = new List<string>();
+                var becomes = new List<string>();
+                void Yes(string key, string label, bool? current, bool? wanted)
+                {
+                    if (wanted is { } w && w != current)
+                    {
+                        p[key] = w ? "True" : "False";
+                        previous[key] = current is { } c ? (c ? "True" : "False") : string.Empty;
+                        now.Add(label + ": " + (current is null ? "?" : current.Value ? Texts.T["word.yes"] : Texts.T["word.no"]));
+                        becomes.Add(label + ": " + (w ? Texts.T["word.yes"] : Texts.T["word.no"]));
+                    }
+                }
+
+                Yes("HiddenFromAddressListsEnabled", Texts.T["group.settings.hidden"], exo.Hidden, desired.Hidden);
+                Yes("RequireSenderAuthenticationEnabled", Texts.T["group.settings.internal"], exo.OnlyInternalSenders, desired.OnlyInternalSenders);
+                if (desired.JoinRestriction is { } join && !string.Equals(join, exo.MemberJoinRestriction, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!JoinRestrictions.Contains(join))
+                    {
+                        errors.Add(Texts.T["group.settings.no-mail"]);
+                    }
+                    else
+                    {
+                        p["MemberJoinRestriction"] = join;
+                        previous["MemberJoinRestriction"] = exo.MemberJoinRestriction;
+                        now.Add(Texts.T["group.settings.join"] + ": " + JoinText(exo.MemberJoinRestriction));
+                        becomes.Add(Texts.T["group.settings.join"] + ": " + JoinText(join));
+                    }
+                }
+
+                if (p.Count > 0)
+                {
+                    plan.Add(new Change
+                    {
+                        TargetSystem = TargetSystem.Exchange,
+                        ChangeAction = ChangeAction.ExchangeUpdateGroup,
+                        Target = ExoIdentity(g),
+                        TargetName = g.Name,
+                        Parameters = p,
+                        Previous = previous,
+                        Description = Texts.T.Format("group.settings.mail.plan", p.Count),
+                        CurrentValue = string.Join("; ", now),
+                        NewValue = string.Join("; ", becomes),
+                    });
+                }
+            }
+        }
+
+        if (plan.Count == 0 && errors.Count == 0)
+        {
+            errors.Add(Texts.T["plan.nothing-changed"]);
+        }
+
+        return PlanOutcome.Of(plan, errors);
+    }
+
+    /// <summary>The words for a way to become a member.</summary>
+    public static string JoinText(string restriction) => restriction switch
+    {
+        "Open" => Texts.T["group.settings.join.open"],
+        "ApprovalRequired" => Texts.T["group.settings.join.approval"],
+        "Closed" => Texts.T["group.settings.join.closed"],
+        _ => restriction.Length > 0 ? restriction : "?",
+    };
 
     /// <summary>Add or remove a manager (AD managedBy, Exchange ManagedBy) or owner (cloud group).</summary>
     public static PlanOutcome Administrator(InventoryData data, Group g, ObjectRef who, bool add)

@@ -85,8 +85,9 @@ public sealed partial class PlanScreenTests
     public void EditTheDataOfAUser()
     {
         var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, "ad:cas.vos"));
-        cut.FindAll("button").First(b => b.TextContent == "Bewerken").Click();
-        cut.FindAll("label").First(l => l.TextContent.TrimStart().StartsWith("Functie", StringComparison.Ordinal)).QuerySelector("input")!.Change("Maatschappelijk werker");
+        // R21: the section Organisatie is edited in place
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Organisatie").QuerySelector("button")!.Click();
+        cut.Find("input[aria-label='Functie']").Input("Maatschappelijk werker");
         cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
         Assert.Contains("Functie: Maatschappelijk werker", cut.Find("section.kb-plan").TextContent);
         Confirm(cut);

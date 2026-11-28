@@ -28,13 +28,38 @@ public sealed class UserDesired
     /// <summary>Key of the person who is the manager; "" = no manager; null = do not change.</summary>
     public string? Manager { get; set; }
 
+    // R21: more fields of a user
+    public string? Company { get; set; }
+    public string? EmployeeId { get; set; }
+    public string? EmployeeType { get; set; }
+    public string? StreetAddress { get; set; }
+    public string? PostalCode { get; set; }
+    public string? State { get; set; }
+    public string? Country { get; set; }
+
+    /// <summary>Only in Entra (where the licences may be used: two letters); also for a synchronised account it is
+    /// written in Entra, because Entra Connect does not carry it.</summary>
+    public string? UsageLocation { get; set; }
+
     /// <summary>The current values (AD when the account comes from AD, otherwise Entra), as the start of the
     /// form.</summary>
     public static UserDesired Of(Person p, InventoryData? d = null)
     {
         var g = p.Ad is { } a
-            ? new UserDesired { DisplayName = a.DisplayName, GivenName = a.GivenName, Surname = a.Surname, JobTitle = a.Title, Department = a.Department, Office = a.Office, City = a.City, Description = a.Description, LogonScript = a.ScriptPath, Phone = a.Phone, Mobile = a.Mobile }
-            : new UserDesired { DisplayName = p.Entra?.DisplayName, GivenName = p.Entra?.GivenName, Surname = p.Entra?.Surname, JobTitle = p.Entra?.JobTitle, Department = p.Entra?.Department, Office = p.Entra?.OfficeLocation, City = p.Entra?.City, Phone = p.Entra?.Phone, Mobile = p.Entra?.Mobile };
+            ? new UserDesired
+            {
+                DisplayName = a.DisplayName, GivenName = a.GivenName, Surname = a.Surname, JobTitle = a.Title, Department = a.Department, Office = a.Office, City = a.City,
+                Description = a.Description, LogonScript = a.ScriptPath, Phone = a.Phone, Mobile = a.Mobile,
+                Company = a.Company, EmployeeId = a.EmployeeId, EmployeeType = a.EmployeeType, StreetAddress = a.StreetAddress, PostalCode = a.PostalCode, State = a.State, Country = a.Country,
+            }
+            : new UserDesired
+            {
+                DisplayName = p.Entra?.DisplayName, GivenName = p.Entra?.GivenName, Surname = p.Entra?.Surname, JobTitle = p.Entra?.JobTitle, Department = p.Entra?.Department,
+                Office = p.Entra?.OfficeLocation, City = p.Entra?.City, Phone = p.Entra?.Phone, Mobile = p.Entra?.Mobile,
+                Company = p.Entra?.CompanyName, EmployeeId = p.Entra?.EmployeeId, EmployeeType = p.Entra?.EmployeeType, StreetAddress = p.Entra?.StreetAddress,
+                PostalCode = p.Entra?.PostalCode, State = p.Entra?.State, Country = p.Entra?.Country,
+            };
+        g.UsageLocation = p.Entra?.UsageLocation;
         g.Manager = d is null ? null : AttributePlans.ManagerOf(d, p)?.Key ?? string.Empty;
         return g;
     }
@@ -47,8 +72,9 @@ public sealed class UserDesired
 /// </summary>
 public static class AttributePlans
 {
-    // Attribute in the form -> (LDAP name in AD, name in Graph or null when Entra does not know it, readable name)
-    private static readonly (string Field, string Ad, string? Graph, string Name)[] Fields =
+    // Attribute in the form -> (LDAP name in AD or null when only Entra has it, name in Graph or null when Entra does not
+    // know it, readable name)
+    private static readonly (string Field, string? Ad, string? Graph, string Name)[] Fields =
     {
         (nameof(UserDesired.DisplayName), "displayName", "displayName", "Weergavenaam"),
         (nameof(UserDesired.GivenName), "givenName", "givenName", "Voornaam"),
@@ -61,7 +87,19 @@ public static class AttributePlans
         (nameof(UserDesired.LogonScript), "scriptPath", null, "Logonscript"),
         (nameof(UserDesired.Phone), "telephoneNumber", "businessPhones", "Telefoon"),
         (nameof(UserDesired.Mobile), "mobile", "mobilePhone", "Gsm"),
+        (nameof(UserDesired.Company), "company", "companyName", "Bedrijf"),
+        (nameof(UserDesired.EmployeeId), "employeeID", "employeeId", "Personeelsnummer"),
+        (nameof(UserDesired.EmployeeType), "employeeType", "employeeType", "Soort medewerker"),
+        (nameof(UserDesired.StreetAddress), "streetAddress", "streetAddress", "Adres"),
+        (nameof(UserDesired.PostalCode), "postalCode", "postalCode", "Postcode"),
+        (nameof(UserDesired.State), "st", "state", "Provincie"),
+        (nameof(UserDesired.Country), "co", "country", "Land"),
+        (nameof(UserDesired.UsageLocation), null, "usageLocation", "Gebruikslocatie"),
     };
+
+    /// <summary>The fields a user has on the screens (R21), in the order of the form: the name of the field in
+    /// <see cref="UserDesired"/>, and where it lives (AD, Entra or both).</summary>
+    public static IReadOnlyList<(string Field, bool InAd, bool InEntra)> UserFields => Fields.Select(f => (f.Field, f.Ad is not null, f.Graph is not null)).ToList();
 
     /// <summary>The manager of a person (AD: manager DN; cloud: manager id), or null.</summary>
     public static Person? ManagerOf(InventoryData d, Person p)
@@ -88,6 +126,11 @@ public static class AttributePlans
         var viaAd = ViaAd(p);
         var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var previous = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // Fields that only Entra has, for an account that otherwise changes in AD (R21: the usage location)
+        var cloudParameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var cloudPrevious = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var cloudNow = new List<string>();
+        var cloudBecomes = new List<string>();
         var now = new List<string>();
         var becomes = new List<string>();
         var warnings = new List<string>();
@@ -113,9 +156,31 @@ public static class AttributePlans
             }
 
             var key = viaAd ? adName : graphName;
+            if (key is null && viaAd && graphName is not null && p.Entra is not null)
+            {
+                // Entra Connect does not carry it: written in Entra, also for a synchronised account
+                if (!ValidValue(field, newValue.Trim()))
+                {
+                    warnings.Add(Texts.T.Format("attribute.invalid", name));
+                    continue;
+                }
+
+                cloudParameters[graphName] = newValue.Trim();
+                cloudPrevious[graphName] = old;
+                cloudNow.Add($"{name}: {(old.Length == 0 ? Texts.T["undo.empty"] : old)}");
+                cloudBecomes.Add($"{name}: {(newValue.Trim().Length == 0 ? Texts.T["undo.empty"] : newValue.Trim())}");
+                continue;
+            }
+
             if (key is null)
             {
-                warnings.Add(Texts.T.Format("code.attribute-plans.exists-only-in-ad-this", name));
+                warnings.Add(Texts.T.Format(viaAd ? "attribute.only-in-entra" : "code.attribute-plans.exists-only-in-ad-this", name));
+                continue;
+            }
+
+            if (!ValidValue(field, newValue.Trim()))
+            {
+                warnings.Add(Texts.T.Format("attribute.invalid", name));
                 continue;
             }
 
@@ -170,7 +235,7 @@ public static class AttributePlans
             }
         }
 
-        if (parameters.Count == 0 && setManager is null)
+        if (parameters.Count == 0 && setManager is null && cloudParameters.Count == 0)
         {
             return new PlanOutcome(Array.Empty<Change>(), new[] { warnings.Count > 0 ? string.Join(" ", warnings) : Localization.Texts.T["plan.nothing-changed"] });
         }
@@ -179,6 +244,22 @@ public static class AttributePlans
         if (setManager is not null)
         {
             plan.Add(setManager);
+        }
+
+        if (cloudParameters.Count > 0)
+        {
+            plan.Add(new()
+            {
+                TargetSystem = TargetSystem.Graph,
+                ChangeAction = ChangeAction.GraphSetAttributes,
+                Target = p.Entra!.Id,
+                TargetName = p.Name,
+                Parameters = cloudParameters,
+                Previous = cloudPrevious,
+                Description = Texts.T.Format("attribute.entra-only", cloudParameters.Count),
+                CurrentValue = string.Join("; ", cloudNow),
+                NewValue = string.Join("; ", cloudBecomes),
+            });
         }
 
         if (parameters.Count > 0)
@@ -276,4 +357,22 @@ public static class AttributePlans
     }
 
     private static string? Value(UserDesired g, string field) => (string?)typeof(UserDesired).GetProperty(field)!.GetValue(g);
+
+    /// <summary>A value a field can take (R21, checked while typing too): the usage location is two letters (ISO 3166),
+    /// a phone number has only digits, spaces and + ( ) - . /, an employee id at most 16 characters (the limit of AD).</summary>
+    public static bool ValidValue(string field, string value)
+        => value.Length == 0 || field switch
+        {
+            nameof(UserDesired.UsageLocation) => value.Length == 2 && value.All(char.IsAsciiLetterUpper),
+            nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) => value.All(c => char.IsAsciiDigit(c) || c is ' ' or '+' or '(' or ')' or '-' or '.' or '/'),
+            nameof(UserDesired.EmployeeId) => value.Length <= 16,
+            nameof(UserDesired.PostalCode) => value.Length <= 40,
+            _ => value.Length <= 256,
+        };
+
+    /// <summary>Another person has the same employee id (R21): a warning while typing, before the plan.</summary>
+    public static Person? SameEmployeeId(InventoryData data, Person person, string employeeId)
+        => employeeId.Trim().Length == 0 ? null
+            : data.Persons.FirstOrDefault(o => o.Key != person.Key && (string.Equals(o.Ad?.EmployeeId, employeeId.Trim(), StringComparison.OrdinalIgnoreCase)
+                                                                       || string.Equals(o.Entra?.EmployeeId, employeeId.Trim(), StringComparison.OrdinalIgnoreCase)));
 }

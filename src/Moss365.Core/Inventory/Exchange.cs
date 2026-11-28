@@ -13,6 +13,12 @@ public sealed record ExoGroup
     public string Smtp { get; init; } = string.Empty;
     public bool IsDirSynced { get; init; }
     public string MemberJoinRestriction { get; init; } = string.Empty;
+
+    /// <summary>R21: hidden from the address book (HiddenFromAddressListsEnabled); null when not read.</summary>
+    public bool? Hidden { get; init; }
+
+    /// <summary>R21: only senders inside the organisation (RequireSenderAuthenticationEnabled); null when not read.</summary>
+    public bool? OnlyInternalSenders { get; init; }
     public IReadOnlyList<string> ManagedBy { get; init; } = Array.Empty<string>();
     public int? CountMembers { get; init; }
     public IReadOnlyList<ExoMember> Members { get; init; } = Array.Empty<ExoMember>();
@@ -54,6 +60,12 @@ public sealed record Mailbox
 
     public string AutoReplyInternal { get; init; } = string.Empty;
     public string AutoReplyExternal { get; init; } = string.Empty;
+
+    /// <summary>R21: a copy of what is sent as or on behalf of the mailbox stays in its own Sent Items; null when not read.</summary>
+    public bool? SentItemsCopy { get; init; }
+
+    /// <summary>R21: who may send on behalf of the mailbox (GrantSendOnBehalfTo), as Exchange names them.</summary>
+    public IReadOnlyList<string> SendOnBehalf { get; init; } = Array.Empty<string>();
 
     public bool IsShared => string.Equals(Type, "SharedMailbox", StringComparison.OrdinalIgnoreCase);
 
