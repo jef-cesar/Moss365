@@ -63,7 +63,26 @@ else
         }
     </section>
 
-    @if (State.Can(Permission.Manage) && !person.IsGuest)
+    @if (State.HasGoogle && person.Google is { } google)
+    {
+        <section class="kb-kaart">
+            <h2>@T["systems.google.name"] <PlatformLabel Platform="Platform.GoogleWorkspace" />@if (person.GoogleLink is { } rule) { <span class="kb-zacht"> @T.Format("google.user.linked-by", T["links.rule." + rule.ToString().ToLowerInvariant()])</span> }</h2>
+            <table class="kb-tabel kb-naast">
+                <tbody>
+                    <tr><th>@T["google.user.email"]</th><td>@google.PrimaryEmail</td></tr>
+                    @if (google.Aliases.Count > 0) { <tr><th>@T["google.user.aliases"]</th><td>@string.Join(", ", google.Aliases)</td></tr> }
+                    <tr><th>@T["google.user.org-unit"]</th><td>@google.OrgUnitPath</td></tr>
+                    <tr><th>@T["google.user.status"]</th><td>@(google.Archived ? T["google.user.archived"] : google.Suspended ? T["google.user.suspended"] : T["google.user.active"])</td></tr>
+                    <tr><th>@T["google.user.two-step"]</th><td>@(google.TwoStepEnforced ? T["google.user.two-step.enforced"] : google.TwoStepEnrolled ? T["google.user.two-step.on"] : T["google.user.two-step.off"])</td></tr>
+                    @if (google.IsAdmin) { <tr><th>@T["google.user.admin"]</th><td>@T["word.yes"]</td></tr> }
+                    <tr><th>@T["google.user.last-login"]</th><td>@(google.LastLogin.Length > 0 ? google.LastLogin : T["google.user.never"])</td></tr>
+                </tbody>
+            </table>
+        </section>
+    }
+
+    @* Editing needs an account in AD or Entra; a person with only Google is changed from G2 on *@
+    @if (State.Can(Permission.Manage) && !person.IsGuest && (person.Ad is not null || person.Entra is not null))
     {
         <EditUser Person="person" />
     }

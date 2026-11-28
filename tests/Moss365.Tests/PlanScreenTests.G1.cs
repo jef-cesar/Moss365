@@ -1,4 +1,5 @@
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
 using Moss365.Core.Changes;
 using Moss365.Core.Inventory;
 using Moss365.Core.Storage;
@@ -67,6 +68,21 @@ public sealed partial class PlanScreenTests
         // Linked to the person with the same address
         var cas = s.Data.Persons.Single(p => p.Ad?.SamAccountName == "cas.vos");
         Assert.Equal("g-cas", cas.Google?.Id);
+
+        // Shown on the page of the person and in Statistics, with this state
+        using (var ctx = new Bunit.TestContext())
+        {
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+            ctx.Services.AddSingleton(s);
+            ctx.Services.AddSingleton<IConnectionFactory>(factories[hub.CurrentTenant.Id]);
+            ctx.Services.AddSingleton<IAppEnvironment>(Services.GetRequiredService<IAppEnvironment>());
+            var page = ctx.RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key)).Markup;
+            Assert.Contains("/Zorg", page, StringComparison.Ordinal);
+            Assert.Contains("gekoppeld via het adres", page, StringComparison.Ordinal);
+            var statistics = ctx.RenderComponent<Statistics>().Markup;
+            Assert.Contains("Google-accounts", statistics, StringComparison.Ordinal);
+            Assert.Contains("Zonder verificatie in twee stappen", statistics, StringComparison.Ordinal);
+        }
 
         // A tenant without Google never reads it, also not with its settings
         hub.Update(hub.CurrentTenant with { Systems = TenantSystems.Both });

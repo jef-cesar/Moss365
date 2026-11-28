@@ -37,6 +37,10 @@ G1, reading Google Workspace, first part (U35; [docs/google.md](docs/google.md))
   administrator, 2-Step Verification, last sign-in, employee id, department), groups and organisational units, in a
   lane of its own next to AD, Entra and Exchange. Every read is a snapshot (`google-gebruikers.csv`, `google-groepen.csv`,
   `google-eenheden.csv`), and the Google users are linked to the persons (G0).
+- **Shown on the screens**: the page of a person has a section Google Workspace (address and aliases, organisational
+  unit, suspended or archived, 2-Step Verification, administrator, last sign-in, how it was linked), and Statistics a
+  block with the Google accounts, the suspended ones, the administrators, those without 2-Step Verification, the groups
+  and the accounts only in Google. A person with only a Google account is not edited until G2.
 
 R21, editing every object, first part (decided on 27 November 2026, U27):
 
