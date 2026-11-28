@@ -9,7 +9,8 @@ feature needs a server or a service of the makers.
 
 Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R14 are done (0.37.0); R16 to R20 have their first
 version in 0.39.0 and are complete in 0.40.0 (only the test in a test tenant remains, issue 19); G0, the platform basis,
-has its first version for 0.41.0 (issue 46; Google itself is read from G1 on); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
+has its first version for 0.41.0 (issue 46; Google itself is read from G1 on), and so has R21 (issue 44: users in sections,
+guests, computers, group and mailbox settings, bulk, history per field; rooms, contacts, UPN and primary address remain); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
 per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. The code targets .NET 10 (U22, in the CHANGELOG under 0.39.0: .NET 8 has no support since 10 November 2026; `bunit` stays 1.40 until a separate move to bUnit 2). Next, before 1.0 (decided 26 November 2026, U15): R16 security advice (explanation, solving as a plan, guided for high risk, exceptions, hardening score, compromised account), R17 devices and Intune (a destructive action: one device per plan, never a personal device; a device record is deleted only after 90 days disabled), R18 own data (sign-in and audit logs kept locally, reading without a window), R19 the overview (All tenants: only scores and counts, never stored together), R20 access reviews; then (27 November 2026, U27 and U28) G0 the platform basis (Google Workspace as a third system per tenant,
 platform labels, where the mail lives, linking persons, the source of truth), R21 edit every object (every field, one
 intuitive way of editing, plans with undo), R22 the mailbox as PST at offboarding, and G1 to G5 Google Workspace
@@ -87,6 +88,13 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
 - Source of truth (G0, U33): `Linking/SourceOfTruth.cs` (chains per kind, proposed from the synchronisation, asked for
   Google: itself, from Entra, from AD), document `bron`; page `bron`. A change goes to the source
   (`AttributePlans.ViaAd` for a synchronised account; a test proves it).
+- Editing every object (R21): a user through `AttributePlans` (the field table `Fields`: AD attribute, Graph property or
+  both; a Graph-only field such as `usageLocation` is written in Entra also for a synchronised account; `ValidValue`
+  checks while typing) and `EditUser` in sections; guests `GuestPlans.Edit`/`InviteAgain`; computers
+  `Devices/ComputerPlans.cs` (`ComputerEditor`); group settings `GroupPlans.Settings` (`GroupSettingsEditor`; Exchange
+  through the fixed `GroepInstellen`); mailbox settings `MailboxPlans.Settings` (`PostvakInstellen`). Every yes/no value
+  of `Exchange.ps1` goes through `$JaNee`. Reading a new field: add it to the reader, `InventoryWriter` and
+  `InventoryLoader`; `Snapshots.SameRow`/`SameAsBefore` make a column read for the first time no change.
 - Organisation settings (R9): naming in `Configuration/Naming.cs` (`OrganisationConfig.Naming`, used by
   `PlanBuilder.NewUser`), suggestions in `Setup/OrganisationSuggestions.cs` (shown by `SuggestionsPanel` on Organisatie
   and in the wizard), templates in `Configuration/OrganisationTemplates.cs` (only add what is missing). Job profiles

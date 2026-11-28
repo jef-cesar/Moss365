@@ -25,6 +25,27 @@ Moss365 does not read or write Google Workspace yet: that comes with G1 and G2. 
   (AD to Entra ID when Entra Connect synchronises), and where Google gets its accounts (itself, from Entra ID, from AD).
   A change goes to the source; the page of a synchronised person shows "follows from AD".
 
+R21, editing every object, first part (decided on 27 November 2026, U27):
+
+- **A user in sections**: identity, organisation, contact and address, access, each with its current values and edited
+  in place, with the current value next to the new one and the platform label of where it goes. New fields: company,
+  employee id and kind, address, postal code, province, country and usage location. Checked while typing (the usage
+  location is two capital letters, a phone number has only digits and + ( ) - . /, an employee id at most 16
+  characters; a duplicate employee id is a warning). A synchronised account changes in AD (Entra follows); the usage
+  location always in Entra, because Entra Connect does not carry it.
+- **A guest**: name, company, member or guest (with a warning about what a member sees), and inviting it again with the
+  same account and groups.
+- **A computer in AD**, on the panel of the device: description, location, managed by and the OU.
+- **Groups**: Public or Private for a Microsoft 365 group; for a mail group of Exchange Online hidden from the address
+  book, only senders inside the organisation, and how to become a member.
+- **A shared mailbox**: a copy of what others send from it in its Sent Items, and who sends on behalf of it.
+- **Several users at once**: the new fields (company, kind of employee, address, country, usage location, logon
+  script) for a selection, as one plan.
+- **The history of one field** on the page of a person, from the snapshots and the change log.
+- Reading more fields lists no account as changed: a column read for the first time is no change in the snapshots, the
+  differences or "since your last visit".
+- Every change is a plan with the previous values, so it can be undone.
+
 ## 0.40.0
 
 **0.39.0 does not start**: on every PC it stops with an empty window "Moss365 - onverwachte fout". This version repairs
