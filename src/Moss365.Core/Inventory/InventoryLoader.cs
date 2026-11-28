@@ -26,6 +26,8 @@ public static class InventoryLoader
     public const string GoogleUsersFile = "google-gebruikers.csv";
     public const string GoogleGroupsFile = "google-groepen.csv";
     public const string GoogleOrgUnitsFile = "google-eenheden.csv";
+    public const string GoogleResourcesFile = "google-agendabronnen.csv";
+    public const string GoogleRolesFile = "google-rollen.csv";
     public const string EntraMfa = "entra-mfa.csv";
     public const string EntraRoles = "entra-rollen.csv";
 
@@ -36,7 +38,7 @@ public static class InventoryLoader
     {
         AdUsers, AdGroups, AdGroupMembers, EntraUsers, EntraGroups, EntraGroupMembers, EntraLicences,
         ExoRooms, ExoGroups, ExoGroupMembers, ExoMailboxes, ExoMailboxPermissions, EntraMfa, EntraRoles, ExoContacts,
-        GoogleUsersFile, GoogleGroupsFile, GoogleOrgUnitsFile,
+        GoogleUsersFile, GoogleGroupsFile, GoogleOrgUnitsFile, GoogleResourcesFile, GoogleRolesFile,
     };
 
     /// <summary>All inventory folders under the base folder, newest first (the name contains yyyyMMdd-HHmm).</summary>
@@ -199,6 +201,16 @@ public static class InventoryLoader
             {
                 Path = K(r, "OrgUnitPath"), Name = W(r, "Name"), Description = W(r, "Description"), ParentPath = K(r, "ParentOrgUnitPath"),
             }).Where(o => o.Path.Length > 0).ToList(),
+            GoogleResources = T(GoogleResourcesFile).Select(r => new GoogleResource
+            {
+                Id = K(r, "Id"), Email = K(r, "Email"), Name = W(r, "Name"), Type = W(r, "Type"), Category = K(r, "Category"),
+                Capacity = int.TryParse(K(r, "Capacity"), out var capacity) ? capacity : null, Building = W(r, "Building"), Floor = W(r, "Floor"),
+                Description = W(r, "Description"),
+            }).Where(x => x.Id.Length > 0).ToList(),
+            GoogleRoles = T(GoogleRolesFile).Select(r => new GoogleRoleAssignment
+            {
+                UserId = K(r, "UserId"), Role = W(r, "Role"), SuperAdmin = B(r, "SuperAdmin"), Scope = K(r, "Scope") is { Length: > 0 } scope ? scope : "CUSTOMER",
+            }).Where(x => x.UserId.Length > 0).ToList(),
             Security = T(EntraMfa).Count + T(EntraRoles).Count == 0 ? null : new SecurityData(
                 T(EntraMfa).Select(r => new MfaRegistration(K(r, "Id"), K(r, "UserPrincipalName"), B(r, "IsMfaRegistered"), B(r, "IsMfaCapable"),
                     K(r, "Methods").Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), K(r, "DefaultMethod"), B(r, "IsAdmin")))

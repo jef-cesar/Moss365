@@ -4140,5 +4140,12 @@
   "google.stat.admins": "Administratoren",
   "google.stat.no-two-step": "Ohne Bestätigung in zwei Schritten",
   "google.stat.groups": "Google-Gruppen",
-  "google.stat.only-google": "Nur in Google"
+  "google.stat.only-google": "Nur in Google",
+  "google.read.resources": "Google: Kalenderressourcen lesen",
+  "google.read.roles": "Google: Administratorrollen lesen",
+  "google.read.part-failed": "{0} hat nicht funktioniert: {1}. Der Rest wurde gelesen.",
+  "google.user.roles": "Administratorrollen",
+  "google.role.customer": "die ganze Organisation",
+  "google.stat.super-admins": "Super-Administratoren",
+  "google.stat.resources": "Kalenderressourcen"
 }

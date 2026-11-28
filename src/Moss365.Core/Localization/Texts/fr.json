@@ -4140,5 +4140,12 @@
   "google.stat.admins": "Administrateurs",
   "google.stat.no-two-step": "Sans validation en deux étapes",
   "google.stat.groups": "Groupes Google",
-  "google.stat.only-google": "Uniquement dans Google"
+  "google.stat.only-google": "Uniquement dans Google",
+  "google.read.resources": "Google : lecture des ressources d'agenda",
+  "google.read.roles": "Google : lecture des rôles d'administrateur",
+  "google.read.part-failed": "{0} n'a pas fonctionné : {1}. Le reste est lu.",
+  "google.user.roles": "Rôles d'administrateur",
+  "google.role.customer": "toute l'organisation",
+  "google.stat.super-admins": "Super-administrateurs",
+  "google.stat.resources": "Ressources d'agenda"
 }

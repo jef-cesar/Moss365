@@ -4140,5 +4140,12 @@
   "google.stat.admins": "Beheerders",
   "google.stat.no-two-step": "Zonder verificatie in twee stappen",
   "google.stat.groups": "Google-groepen",
-  "google.stat.only-google": "Alleen in Google"
+  "google.stat.only-google": "Alleen in Google",
+  "google.read.resources": "Google: agendabronnen lezen",
+  "google.read.roles": "Google: beheerrollen lezen",
+  "google.read.part-failed": "{0} lukte niet: {1}. De rest is gelezen.",
+  "google.user.roles": "Beheerrollen",
+  "google.role.customer": "de hele organisatie",
+  "google.stat.super-admins": "Superbeheerders",
+  "google.stat.resources": "Agendabronnen"
 }

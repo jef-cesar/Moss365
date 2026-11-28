@@ -40,11 +40,40 @@ public sealed class GoogleConnection : IGoogleConnection
         var users = (await AllAsync($"{Directory}/users?customer=my_customer&projection=full&maxResults=500&orderBy=email", "users", cancel)).Select(ToUser).ToList();
         progress?.Report(Texts.T["google.read.org-units"]);
         var root = await GetAsync($"{Directory}/customer/my_customer/orgunits?type=all", cancel);
-        var units = Items(root, "organizationUnits").Select(ToOrgUnit).ToList();
+        var unitItems = Items(root, "organizationUnits").ToList();
+        var units = unitItems.Select(ToOrgUnit).ToList();
         progress?.Report(Texts.T["google.read.groups"]);
         var groups = (await AllAsync($"{Directory}/groups?customer=my_customer&maxResults=200", "groups", cancel)).Select(ToGroup).ToList();
+
+        // Resources and admin roles: each on its own, so that a missing right leaves the rest (null = not read)
+        IReadOnlyList<GoogleResource>? resources = null;
+        IReadOnlyList<GoogleRoleAssignment>? roles = null;
+        try
+        {
+            progress?.Report(Texts.T["google.read.resources"]);
+            resources = (await AllAsync($"{Directory}/customer/my_customer/resources/calendars?maxResults=500", "items", cancel)).Select(ToResource).ToList();
+        }
+        catch (GoogleError ex)
+        {
+            progress?.Report(Texts.T.Format("google.read.part-failed", Texts.T["google.read.resources"], ex.Message));
+        }
+
+        try
+        {
+            progress?.Report(Texts.T["google.read.roles"]);
+            var definitions = (await AllAsync($"{Directory}/customer/my_customer/roles?maxResults=100", "items", cancel))
+                .ToDictionary(r => S(r, "roleId"), r => (Name: S(r, "roleName"), Super: B(r, "isSuperAdminRole")));
+            var unitPaths = unitItems.Where(u => S(u, "orgUnitId").Length > 0).ToDictionary(u => S(u, "orgUnitId"), u => S(u, "orgUnitPath"));
+            roles = (await AllAsync($"{Directory}/customer/my_customer/roleassignments?maxResults=200", "items", cancel))
+                .Select(a => ToRoleAssignment(a, definitions, unitPaths)).Where(a => a is not null).Select(a => a!).ToList();
+        }
+        catch (GoogleError ex)
+        {
+            progress?.Report(Texts.T.Format("google.read.part-failed", Texts.T["google.read.roles"], ex.Message));
+        }
+
         progress?.Report(Texts.T.Format("google.read.done", users.Count, groups.Count, units.Count));
-        return new GoogleData(users, groups, units);
+        return new GoogleData(users, groups, units, resources, roles);
     }
 
     /// <summary>All items of a list across its pages.</summary>
@@ -151,6 +180,39 @@ public sealed class GoogleConnection : IGoogleConnection
         Aliases = Strings(g, "aliases"),
         AdminCreated = B(g, "adminCreated"),
     };
+
+    internal static GoogleResource ToResource(JsonElement r) => new()
+    {
+        Id = S(r, "resourceId"),
+        Email = S(r, "resourceEmail"),
+        Name = S(r, "resourceName"),
+        Type = S(r, "resourceType"),
+        Category = S(r, "resourceCategory"),
+        Capacity = r.TryGetProperty("capacity", out var c) && c.TryGetInt32(out var n) ? n : null,
+        Building = S(r, "buildingId"),
+        Floor = S(r, "floorName"),
+        Description = S(r, "resourceDescription"),
+    };
+
+    /// <summary>An assignment to a user (a role given to a group is not one person: left out here); the scope as the
+    /// path of the organisational unit.</summary>
+    internal static GoogleRoleAssignment? ToRoleAssignment(JsonElement a, IReadOnlyDictionary<string, (string Name, bool Super)> roles, IReadOnlyDictionary<string, string> unitPaths)
+    {
+        if (S(a, "assigneeType") is { Length: > 0 } type && !string.Equals(type, "user", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var role = roles.TryGetValue(S(a, "roleId"), out var r) ? r : (Name: S(a, "roleId"), Super: false);
+        var unit = S(a, "orgUnitId");
+        return new GoogleRoleAssignment
+        {
+            UserId = S(a, "assignedTo"),
+            Role = role.Name,
+            SuperAdmin = role.Super,
+            Scope = S(a, "scopeType") == "ORG_UNIT" ? (unitPaths.TryGetValue(unit, out var path) ? path : unit) : "CUSTOMER",
+        };
+    }
 
     internal static GoogleOrgUnit ToOrgUnit(JsonElement o) => new()
     {

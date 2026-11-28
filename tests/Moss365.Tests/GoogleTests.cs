@@ -171,7 +171,26 @@ public sealed class GoogleTests
 
                 if (url.Contains("/orgunits", StringComparison.Ordinal))
                 {
-                    return (HttpStatusCode.OK, """{"organizationUnits":[{"orgUnitPath":"/Sales","name":"Sales","parentOrgUnitPath":"/"}]}""");
+                    return (HttpStatusCode.OK, """{"organizationUnits":[{"orgUnitPath":"/Sales","orgUnitId":"id:03ph8","name":"Sales","parentOrgUnitPath":"/"}]}""");
+                }
+
+                if (url.Contains("/resources/calendars", StringComparison.Ordinal))
+                {
+                    return (HttpStatusCode.OK, """{"items":[{"resourceId":"r1","resourceEmail":"zaal-1@example.com","resourceName":"Zaal 1","resourceCategory":"CONFERENCE_ROOM","capacity":8,"floorName":"2"}]}""");
+                }
+
+                if (url.Contains("/roleassignments", StringComparison.Ordinal))
+                {
+                    return (HttpStatusCode.OK, """
+                        {"items":[{"roleId":"91","assignedTo":"1","assigneeType":"user","scopeType":"CUSTOMER"},
+                                  {"roleId":"92","assignedTo":"2","assigneeType":"user","scopeType":"ORG_UNIT","orgUnitId":"id:03ph8"},
+                                  {"roleId":"92","assignedTo":"g1","assigneeType":"group","scopeType":"CUSTOMER"}]}
+                        """);
+                }
+
+                if (url.Contains("/roles?", StringComparison.Ordinal))
+                {
+                    return (HttpStatusCode.OK, """{"items":[{"roleId":"91","roleName":"_SEED_ADMIN_ROLE","isSuperAdminRole":true},{"roleId":"92","roleName":"_HELP_DESK_ADMIN_ROLE"}]}""");
                 }
 
                 return url.Contains("/groups?", StringComparison.Ordinal)
@@ -191,6 +210,10 @@ public sealed class GoogleTests
         Assert.True(data.Users[1].Suspended);
         Assert.Equal(("team@example.com", 12), (data.Groups[0].Email, data.Groups[0].CountMembers));
         Assert.Equal("/Sales", Assert.Single(data.OrgUnits).Path);
+        Assert.Equal(("Zaal 1", 8, "CONFERENCE_ROOM"), (data.Resources![0].Name, data.Resources[0].Capacity, data.Resources[0].Category));
+        Assert.Equal(2, data.Roles!.Count); // the role of a group is not one person
+        Assert.True(data.Roles.Single(r => r.UserId == "1").SuperAdmin);
+        Assert.Equal("/Sales", data.Roles.Single(r => r.UserId == "2").Scope);
         Assert.All(google.Asked, a => Assert.Equal("token-1", a.Bearer));
         Assert.All(google.Asked, a => Assert.Equal(HttpMethod.Get, a.Method)); // only reading
 
@@ -200,8 +223,40 @@ public sealed class GoogleTests
         Assert.Equal(JsonSerializer.Serialize(d.GoogleUsers), JsonSerializer.Serialize(back.GoogleUsers));
         Assert.Equal(d.GoogleGroups.Select(g => (g.Id, g.Email, g.CountMembers)), back.GoogleGroups.Select(g => (g.Id, g.Email, g.CountMembers)));
         Assert.Equal(d.GoogleOrgUnits, back.GoogleOrgUnits);
+        Assert.Equal(d.GoogleResources, back.GoogleResources);
+        Assert.Equal(d.GoogleRoles, back.GoogleRoles);
         Assert.Empty(d.WithoutGoogle().GoogleGroups);
         Assert.Equal(Platform.GoogleWorkspace, Platforms.OfTable(InventoryLoader.GoogleUsersFile));
+    }
+
+    [Fact]
+    public async Task AMissingRightForResourcesOrRolesLeavesTheRest()
+    {
+        var google = new FakeGoogle
+        {
+            Answer = (r, _) => r.RequestUri!.ToString() switch
+            {
+                var u when u.Contains("/users?", StringComparison.Ordinal) => (HttpStatusCode.OK, """{"users":[{"id":"1","primaryEmail":"an@example.com"}]}"""),
+                var u when u.Contains("/orgunits", StringComparison.Ordinal) => (HttpStatusCode.OK, "{}"),
+                var u when u.Contains("/groups?", StringComparison.Ordinal) => (HttpStatusCode.OK, "{}"),
+                _ => (HttpStatusCode.Forbidden, """{"error":{"code":403,"message":"Request had insufficient authentication scopes."}}"""),
+            },
+        };
+        var notes = new List<string>();
+        var data = await new GoogleConnection(new HttpClient(google), _ => Task.FromResult("token-1")).ReadAsync(new Progress(notes), CancellationToken.None);
+        Assert.Single(data.Users);
+        Assert.Null(data.Resources);
+        Assert.Null(data.Roles);
+        Assert.Contains(notes, n => n.Contains("insufficient", StringComparison.Ordinal));
+
+        // Not read = what there was stays
+        var before = InventoryLoader.Build(TestData.Files()) with { GoogleResources = new[] { new GoogleResource { Id = "r1", Name = "Zaal" } } };
+        Assert.Single(LiveLoader.WithGoogle(before, data).GoogleResources);
+    }
+
+    private sealed class Progress(List<string> notes) : IProgress<string>
+    {
+        public void Report(string value) => notes.Add(value);
     }
 
     [Fact]

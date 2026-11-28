@@ -198,6 +198,15 @@ public static class InventoryWriter
             {
                 ["OrgUnitPath"] = o.Path, ["Name"] = o.Name, ["Description"] = o.Description, ["ParentOrgUnitPath"] = o.ParentPath,
             }));
+            Write(InventoryLoader.GoogleResourcesFile, d.GoogleResources.Select(x => new Dictionary<string, string?>
+            {
+                ["Id"] = x.Id, ["Email"] = x.Email, ["Name"] = x.Name, ["Type"] = x.Type, ["Category"] = x.Category, ["Capacity"] = N(x.Capacity),
+                ["Building"] = x.Building, ["Floor"] = x.Floor, ["Description"] = x.Description,
+            }));
+            Write(InventoryLoader.GoogleRolesFile, d.GoogleRoles.Select(x => new Dictionary<string, string?>
+            {
+                ["UserId"] = x.UserId, ["Role"] = x.Role, ["SuperAdmin"] = B(x.SuperAdmin), ["Scope"] = x.Scope,
+            }));
         }
 
         if (components.HasFlag(InventoryComponent.Mailboxes))

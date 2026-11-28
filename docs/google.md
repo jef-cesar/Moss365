@@ -53,10 +53,14 @@ Moss365 only reads. It asks for these scopes and no others:
 | `admin.directory.user.readonly` | Users: name, addresses and aliases, the organisational unit, suspended or archived, administrator, 2-Step Verification, last sign-in, the employee id and the department |
 | `admin.directory.group.readonly` | Groups: address, name, description, aliases, the number of direct members |
 | `admin.directory.orgunit.readonly` | The organisational units |
+| `admin.directory.resource.calendar.readonly` | Calendar resources: rooms and equipment, with capacity, building and floor |
+| `admin.directory.rolemanagement.readonly` | Admin roles of users, for the whole organisation or one organisational unit |
 
-Every read becomes a snapshot. The tables are `google-gebruikers.csv`, `google-groepen.csv` and `google-eenheden.csv`,
-and as with the other systems only what changed is stored. The Google users are linked to their AD and Entra
+Every read becomes a snapshot. The tables are `google-gebruikers.csv`, `google-groepen.csv`, `google-eenheden.csv`,
+`google-agendabronnen.csv` and `google-rollen.csv`, and as with the other systems only what changed is stored.
+Resources and roles are read each on their own. When the signed-in administrator lacks the right for one of them, the
+rest is still read, and what could not be read stays as it was. The Google users are linked to their AD and Entra
 accounts on the page Linking persons.
 
-Later steps of G1 add resources, licences, admin roles, the logs and the alerts. Writing comes with G2, and the
+Later steps of G1 add licences, the logs and the alerts. Writing comes with G2, and the
 Gmail settings of someone else come with the part "Gmail settings" and a service account (U34).

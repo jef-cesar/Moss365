@@ -4140,5 +4140,12 @@
   "google.stat.admins": "Administradores",
   "google.stat.no-two-step": "Sem verificação em duas etapas",
   "google.stat.groups": "Grupos Google",
-  "google.stat.only-google": "Só no Google"
+  "google.stat.only-google": "Só no Google",
+  "google.read.resources": "Google: a ler recursos de agenda",
+  "google.read.roles": "Google: a ler funções de administrador",
+  "google.read.part-failed": "{0} não funcionou: {1}. O resto foi lido.",
+  "google.user.roles": "Funções de administrador",
+  "google.role.customer": "toda a organização",
+  "google.stat.super-admins": "Superadministradores",
+  "google.stat.resources": "Recursos de agenda"
 }

@@ -75,6 +75,10 @@ else
                     <tr><th>@T["google.user.status"]</th><td>@(google.Archived ? T["google.user.archived"] : google.Suspended ? T["google.user.suspended"] : T["google.user.active"])</td></tr>
                     <tr><th>@T["google.user.two-step"]</th><td>@(google.TwoStepEnforced ? T["google.user.two-step.enforced"] : google.TwoStepEnrolled ? T["google.user.two-step.on"] : T["google.user.two-step.off"])</td></tr>
                     @if (google.IsAdmin) { <tr><th>@T["google.user.admin"]</th><td>@T["word.yes"]</td></tr> }
+                    @if (State.Data.GoogleRoles.Where(r => r.UserId == google.Id).ToList() is { Count: > 0 } roles)
+                    {
+                        <tr><th>@T["google.user.roles"]</th><td>@string.Join(", ", roles.Select(r => $"{r.Role} ({(r.Scope == "CUSTOMER" ? T["google.role.customer"] : r.Scope)})"))</td></tr>
+                    }
                     <tr><th>@T["google.user.last-login"]</th><td>@(google.LastLogin.Length > 0 ? google.LastLogin : T["google.user.never"])</td></tr>
                 </tbody>
             </table>

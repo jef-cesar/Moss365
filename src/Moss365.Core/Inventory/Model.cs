@@ -333,6 +333,31 @@ public sealed record GoogleOrgUnit
     public string ParentPath { get; init; } = string.Empty;
 }
 
+/// <summary>A calendar resource of Google Workspace (G1): a meeting room or equipment to book.</summary>
+public sealed record GoogleResource
+{
+    public string Id { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Type { get; init; } = string.Empty;
+    public string Category { get; init; } = string.Empty;
+    public int? Capacity { get; init; }
+    public string Building { get; init; } = string.Empty;
+    public string Floor { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+}
+
+/// <summary>An admin role of a user in Google Workspace (G1), for the whole customer or one organisational unit.</summary>
+public sealed record GoogleRoleAssignment
+{
+    public string UserId { get; init; } = string.Empty;
+    public string Role { get; init; } = string.Empty;
+    public bool SuperAdmin { get; init; }
+
+    /// <summary>"CUSTOMER" or the path of the organisational unit.</summary>
+    public string Scope { get; init; } = "CUSTOMER";
+}
+
 /// <summary>A group of Google Workspace (G1).</summary>
 public sealed record GoogleGroup
 {
@@ -361,6 +386,10 @@ public sealed record InventoryData
     /// <summary>The groups and organisational units of Google Workspace (G1).</summary>
     public IReadOnlyList<GoogleGroup> GoogleGroups { get; init; } = Array.Empty<GoogleGroup>();
     public IReadOnlyList<GoogleOrgUnit> GoogleOrgUnits { get; init; } = Array.Empty<GoogleOrgUnit>();
+
+    /// <summary>The calendar resources and admin roles of Google Workspace (G1).</summary>
+    public IReadOnlyList<GoogleResource> GoogleResources { get; init; } = Array.Empty<GoogleResource>();
+    public IReadOnlyList<GoogleRoleAssignment> GoogleRoles { get; init; } = Array.Empty<GoogleRoleAssignment>();
     public IReadOnlyDictionary<string, AdGroup> AdGroupsByDn { get; init; } = new Dictionary<string, AdGroup>();
     public IReadOnlyDictionary<string, CloudGroup> CloudGroups { get; init; } = new Dictionary<string, CloudGroup>();
 
@@ -470,13 +499,16 @@ public sealed record InventoryData
 
     /// <summary>The data without anything of Google Workspace (G0): for a tenant that does not have it.</summary>
     public InventoryData WithoutGoogle()
-        => GoogleUsers.Count == 0 && GoogleGroups.Count == 0 && GoogleOrgUnits.Count == 0 && !Persons.Any(p => p.Google is not null)
+        => GoogleUsers.Count == 0 && GoogleGroups.Count == 0 && GoogleOrgUnits.Count == 0 && GoogleResources.Count == 0 && GoogleRoles.Count == 0
+           && !Persons.Any(p => p.Google is not null)
             ? this
             : this with
             {
                 GoogleUsers = Array.Empty<GoogleUser>(),
                 GoogleGroups = Array.Empty<GoogleGroup>(),
                 GoogleOrgUnits = Array.Empty<GoogleOrgUnit>(),
+                GoogleResources = Array.Empty<GoogleResource>(),
+                GoogleRoles = Array.Empty<GoogleRoleAssignment>(),
                 Persons = InventoryLoader.LinkPersons(AdUsers, EntraUsers),
                 Sources = Sources.Where(f => !f.File.StartsWith("google-", StringComparison.OrdinalIgnoreCase)).ToList(),
             };

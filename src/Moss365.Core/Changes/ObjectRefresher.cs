@@ -169,6 +169,8 @@ public static class ObjectRefresher
             GoogleUsers = d.GoogleUsers,
             GoogleGroups = d.GoogleGroups,
             GoogleOrgUnits = d.GoogleOrgUnits,
+            GoogleResources = d.GoogleResources,
+            GoogleRoles = d.GoogleRoles,
             Security = d.Security,
             ConditionalAccess = d.ConditionalAccess,
         };

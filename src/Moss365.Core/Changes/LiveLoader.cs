@@ -77,6 +77,8 @@ public static class LiveLoader
             GoogleUsers = current.GoogleUsers,
             GoogleGroups = current.GoogleGroups,
             GoogleOrgUnits = current.GoogleOrgUnits,
+            GoogleResources = current.GoogleResources,
+            GoogleRoles = current.GoogleRoles,
             Security = current.Security,
             ConditionalAccess = current.ConditionalAccess,
         };
@@ -110,6 +112,9 @@ public static class LiveLoader
             GoogleUsers = google.Users.OrderBy(u => u.PrimaryEmail, StringComparer.OrdinalIgnoreCase).ToList(),
             GoogleGroups = google.Groups.OrderBy(g => g.Email, StringComparer.OrdinalIgnoreCase).ToList(),
             GoogleOrgUnits = google.OrgUnits.OrderBy(o => o.Path, StringComparer.OrdinalIgnoreCase).ToList(),
+            // Null = could not be read (another scope or an older connection): keep what there was
+            GoogleResources = google.Resources?.OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase).ToList() ?? current.GoogleResources,
+            GoogleRoles = google.Roles?.ToList() ?? current.GoogleRoles,
             Sources = sources,
         };
     }

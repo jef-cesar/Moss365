@@ -34,13 +34,16 @@ G1, reading Google Workspace, first part (U35; [docs/google.md](docs/google.md))
   PKCE and a loopback address of this PC, through the same sign-in bar as Microsoft. Only an administrator of the
   domain of the tenant (or a subdomain) is accepted; the tokens stay in memory; reading without a window never signs in.
 - **Reading** with only reading scopes: users (addresses and aliases, organisational unit, suspended or archived,
-  administrator, 2-Step Verification, last sign-in, employee id, department), groups and organisational units, in a
+  administrator, 2-Step Verification, last sign-in, employee id, department), groups, organisational units, calendar
+  resources and admin roles, in a
   lane of its own next to AD, Entra and Exchange. Every read is a snapshot (`google-gebruikers.csv`, `google-groepen.csv`,
-  `google-eenheden.csv`), and the Google users are linked to the persons (G0).
+  `google-eenheden.csv`, `google-agendabronnen.csv`, `google-rollen.csv`), and the Google users are linked to the persons
+  (G0). Calendar resources and admin roles (to a user, for the whole organisation or one organisational unit) are read
+  each on their own: a missing right leaves the rest, and what could not be read stays as it was.
 - **Shown on the screens**: the page of a person has a section Google Workspace (address and aliases, organisational
-  unit, suspended or archived, 2-Step Verification, administrator, last sign-in, how it was linked), and Statistics a
-  block with the Google accounts, the suspended ones, the administrators, those without 2-Step Verification, the groups
-  and the accounts only in Google. A person with only a Google account is not edited until G2.
+  unit, suspended or archived, 2-Step Verification, administrator and admin roles, last sign-in, how it was linked), and
+  Statistics a block with the Google accounts, the suspended ones, the administrators and super administrators, those
+  without 2-Step Verification, the groups, the calendar resources and the accounts only in Google. A person with only a Google account is not edited until G2.
 
 R21, editing every object, first part (decided on 27 November 2026, U27):
 
