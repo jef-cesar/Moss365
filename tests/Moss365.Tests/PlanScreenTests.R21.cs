@@ -268,3 +268,49 @@ public sealed partial class PlanScreenTests
         Assert.Null(Undo.WhyNot(entry));
     }
 }
+
+/// <summary>R21: the sign-in name (UPN), checked while typing and confirmed, as a plan with undo.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void ANewSignInNameIsCheckedConfirmedAndCanBeUndone()
+    {
+        var an = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        var other = State.Data.Persons.First(p => p.Key != an.Key && p.Ad?.UserPrincipalName is { Length: > 0 });
+        var domain = an.Ad!.UserPrincipalName[(an.Ad.UserPrincipalName.IndexOf('@') + 1)..];
+        Assert.False(AttributePlans.ValidValue(nameof(UserDesired.Upn), "cas vos@" + domain));
+        Assert.False(AttributePlans.ValidValue(nameof(UserDesired.Upn), "cas.vos@"));
+        Assert.True(AttributePlans.ValidValue(nameof(UserDesired.Upn), "c.vos@" + domain));
+        Assert.Equal(other.Name, AttributePlans.Taken(State.Data, an, nameof(UserDesired.Upn), other.Ad!.UserPrincipalName.ToUpperInvariant()));
+        Assert.Contains(domain, AttributePlans.UpnDomains(State.Data));
+
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, an.Key));
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Toegang").QuerySelector("button")!.Click();
+        Button MakePlan() => new(cut.FindAll("button").First(b => b.TextContent == "Plan maken").HasAttribute("disabled"));
+
+        // Taken by another person: refused while typing
+        cut.Find("input[aria-label='Aanmeldnaam (UPN)']").Input(other.Ad.UserPrincipalName);
+        Assert.Contains("heeft dit al", cut.Markup, StringComparison.Ordinal);
+        Assert.True(MakePlan().Disabled);
+
+        // A domain no account uses yet: only a warning, but the change of sign-in needs the confirmation first
+        cut.Find("input[aria-label='Aanmeldnaam (UPN)']").Input("c.vos@nieuw.example.com");
+        Assert.Contains("nieuw.example.com", cut.Markup, StringComparison.Ordinal);
+        Assert.True(MakePlan().Disabled);
+        cut.Find("input[aria-label='Aanmeldnaam (UPN)']").Input("c.vos@" + domain);
+        Assert.True(MakePlan().Disabled);
+        cut.Find("section.kb-bewerken input[type='checkbox']").Change(true);
+        Assert.False(MakePlan().Disabled);
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+
+        var plan = cut.Find("section.kb-plan").TextContent;
+        Assert.Contains("meldt zich daarna aan met de nieuwe naam", plan, StringComparison.Ordinal);
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetAttributes));
+        var ad = Assert.Single(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetAttributes);
+        Assert.Equal("c.vos@" + domain, ad.P("userPrincipalName"));
+        Assert.Equal(an.Ad.UserPrincipalName, ad.Previous!["userPrincipalName"]); // can be undone
+    }
+
+    private readonly record struct Button(bool Disabled);
+}

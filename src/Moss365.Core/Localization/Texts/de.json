@@ -4041,5 +4041,11 @@
   "room-form.audio": "Audio (Gerät)",
   "room-form.video": "Video (Kamera)",
   "room-form.display": "Bildschirm",
-  "room-form.wheelchair": "Rollstuhlgerecht"
+  "room-form.wheelchair": "Rollstuhlgerecht",
+  "attribute.upn": "Anmeldename (UPN)",
+  "attribute.taken": "{0}: {1} hat dies bereits.",
+  "attribute.sign-in-changes": "{0} wird {1}: die Person meldet sich danach mit dem neuen Namen an.",
+  "attribute.invalid.hint.upn": "Ein Name, @ und eine Domäne (name@example.com), ohne Leerzeichen.",
+  "edit-user.upn-domain": "Noch kein anderes Konto verwendet die Domäne {0}: prüfen Sie, ob es eine verifizierte Domäne des Tenants ist.",
+  "edit-user.sign-in-confirm": "Ich weiß, dass sich {0} danach mit dem neuen Namen anmeldet, und ich gebe Bescheid."
 }

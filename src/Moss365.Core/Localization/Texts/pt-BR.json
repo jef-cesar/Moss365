@@ -4041,5 +4041,11 @@
   "room-form.audio": "Áudio (dispositivo)",
   "room-form.video": "Vídeo (câmera)",
   "room-form.display": "Tela",
-  "room-form.wheelchair": "Acessível para cadeira de rodas"
+  "room-form.wheelchair": "Acessível para cadeira de rodas",
+  "attribute.upn": "Nome de entrada (UPN)",
+  "attribute.taken": "{0}: {1} já tem isto.",
+  "attribute.sign-in-changes": "{0} passa a {1}: a pessoa entra depois com o novo nome.",
+  "attribute.invalid.hint.upn": "Um nome, @ e um domínio (nome@example.com), sem espaços.",
+  "edit-user.upn-domain": "Nenhuma outra conta usa ainda o domínio {0}: verifique se é um domínio verificado do tenant.",
+  "edit-user.sign-in-confirm": "Sei que {0} entra depois com o novo nome e vou avisar."
 }

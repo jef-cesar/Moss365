@@ -4041,5 +4041,11 @@
   "room-form.audio": "Audio (toestel)",
   "room-form.video": "Video (camera)",
   "room-form.display": "Scherm",
-  "room-form.wheelchair": "Toegankelijk met rolstoel"
+  "room-form.wheelchair": "Toegankelijk met rolstoel",
+  "attribute.upn": "Aanmeldnaam (UPN)",
+  "attribute.taken": "{0}: {1} heeft dit al.",
+  "attribute.sign-in-changes": "{0} wordt {1}: de persoon meldt zich daarna aan met de nieuwe naam.",
+  "attribute.invalid.hint.upn": "Een naam, @ en een domein (naam@example.com), zonder spaties.",
+  "edit-user.upn-domain": "Nog geen ander account gebruikt het domein {0}: controleer of het een geverifieerd domein van de tenant is.",
+  "edit-user.sign-in-confirm": "Ik weet dat {0} zich daarna met de nieuwe naam aanmeldt, en ik laat het weten."
 }

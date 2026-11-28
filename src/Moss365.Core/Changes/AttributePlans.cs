@@ -41,6 +41,9 @@ public sealed class UserDesired
     /// written in Entra, because Entra Connect does not carry it.</summary>
     public string? UsageLocation { get; set; }
 
+    /// <summary>R21: the sign-in name (UPN): the person signs in with the new one afterwards (a confirmation on the page).</summary>
+    public string? Upn { get; set; }
+
     /// <summary>The current values (AD when the account comes from AD, otherwise Entra), as the start of the
     /// form.</summary>
     public static UserDesired Of(Person p, InventoryData? d = null)
@@ -60,6 +63,7 @@ public sealed class UserDesired
                 PostalCode = p.Entra?.PostalCode, State = p.Entra?.State, Country = p.Entra?.Country,
             };
         g.UsageLocation = p.Entra?.UsageLocation;
+        g.Upn = p.Ad?.UserPrincipalName is { Length: > 0 } upn ? upn : p.Entra?.UserPrincipalName;
         g.Manager = d is null ? null : AttributePlans.ManagerOf(d, p)?.Key ?? string.Empty;
         return g;
     }
@@ -95,7 +99,13 @@ public static class AttributePlans
         (nameof(UserDesired.State), "st", "state", "Provincie"),
         (nameof(UserDesired.Country), "co", "country", "Land"),
         (nameof(UserDesired.UsageLocation), null, "usageLocation", "Gebruikslocatie"),
+        (nameof(UserDesired.Upn), "userPrincipalName", "userPrincipalName", "UPN"),
     };
+
+    /// <summary>The fields that change how the person signs in (R21): a confirmation on the page, a warning on the plan.
+    /// The logon name in AD (sAMAccountName) is not among them: it is the key of a person in the app (snapshots,
+    /// history, documents), so it is not changed here (a limitation).</summary>
+    public static IReadOnlyList<string> SignInFields { get; } = new[] { nameof(UserDesired.Upn) };
 
     /// <summary>The fields a user has on the screens (R21), in the order of the form: the name of the field in
     /// <see cref="UserDesired"/>, and where it lives (AD, Entra or both).</summary>
@@ -182,6 +192,17 @@ public static class AttributePlans
             {
                 warnings.Add(Texts.T.Format("attribute.invalid", name));
                 continue;
+            }
+
+            if (Taken(data, p, field, newValue) is { } other)
+            {
+                warnings.Add(Texts.T.Format("attribute.taken", name, other));
+                continue;
+            }
+
+            if (SignInFields.Contains(field))
+            {
+                warnings.Add(Texts.T.Format("attribute.sign-in-changes", name, newValue.Trim()));
             }
 
             parameters[key] = newValue.Trim();
@@ -367,8 +388,34 @@ public static class AttributePlans
             nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) => value.All(c => char.IsAsciiDigit(c) || c is ' ' or '+' or '(' or ')' or '-' or '.' or '/'),
             nameof(UserDesired.EmployeeId) => value.Length <= 16,
             nameof(UserDesired.PostalCode) => value.Length <= 40,
+            nameof(UserDesired.Upn) => value.Length <= 113 && value.Count(c => c == '@') == 1 && value.IndexOf('@') > 0 && value.IndexOf('@') < value.Length - 1
+                                       && !value.Any(c => char.IsWhiteSpace(c) || c is '"' or '\\' or '(' or ')' or ',' or ':' or ';' or '<' or '>' or '[' or ']'),
             _ => value.Length <= 256,
         };
+
+    /// <summary>Another account has this sign-in name already (R21): the plan would fail. The name of who has it, or
+    /// null.</summary>
+    public static string? Taken(InventoryData data, Person person, string field, string value)
+    {
+        var v = value.Trim();
+        if (v.Length == 0)
+        {
+            return null;
+        }
+
+        return field switch
+        {
+            nameof(UserDesired.Upn) => data.Persons.FirstOrDefault(o => o.Key != person.Key && (string.Equals(o.Ad?.UserPrincipalName, v, StringComparison.OrdinalIgnoreCase)
+                                                                                          || string.Equals(o.Entra?.UserPrincipalName, v, StringComparison.OrdinalIgnoreCase)))?.Name,
+            _ => null,
+        };
+    }
+
+    /// <summary>The domains the UPNs of the tenant use now: a new UPN in another domain gets a warning.</summary>
+    public static IReadOnlyCollection<string> UpnDomains(InventoryData data)
+        => data.Persons.SelectMany(p => new[] { p.Ad?.UserPrincipalName, p.Entra?.IsGuest == true ? null : p.Entra?.UserPrincipalName })
+            .Where(u => u is not null && u.Contains('@')).Select(u => u![(u!.IndexOf('@') + 1)..].ToLowerInvariant())
+            .Where(d => !d.Contains("#ext#", StringComparison.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Another person has the same employee id (R21): a warning while typing, before the plan.</summary>
     public static Person? SameEmployeeId(InventoryData data, Person person, string employeeId)

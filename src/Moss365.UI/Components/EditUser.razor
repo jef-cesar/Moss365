@@ -52,8 +52,15 @@
 
     @if (open.Count > 0)
     {
+        @if (SignInChanges)
+        {
+            <p><label>
+                <input type="checkbox" checked="@signInConfirmed" @onchange="e => signInConfirmed = e.Value is true" />
+                @T.Format("edit-user.sign-in-confirm", Person.Name)
+            </label></p>
+        }
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" disabled="@(Problems > 0)" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+            <button class="kb-knop kb-primair" disabled="@(Problems > 0 || (SignInChanges && !signInConfirmed))" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
             <button class="kb-knop" @onclick="Empty">@T["edit-user.reset"]</button>
             <button class="kb-knop" @onclick="Close">@T["edit-user.close"]</button>
             @if (ChangedCount > 0) { <span class="kb-label">@T.Format("edit-user.changed", ChangedCount)</span> }
@@ -81,7 +88,7 @@
         new("identity", new[] { nameof(UserDesired.DisplayName), nameof(UserDesired.GivenName), nameof(UserDesired.Surname), nameof(UserDesired.EmployeeId), nameof(UserDesired.EmployeeType) }),
         new("organisation", new[] { nameof(UserDesired.JobTitle), nameof(UserDesired.Department), nameof(UserDesired.Company), nameof(UserDesired.Office), nameof(UserDesired.Manager), nameof(UserDesired.Description) }),
         new("contact", new[] { nameof(UserDesired.Phone), nameof(UserDesired.Mobile), nameof(UserDesired.StreetAddress), nameof(UserDesired.PostalCode), nameof(UserDesired.City), nameof(UserDesired.State), nameof(UserDesired.Country), nameof(UserDesired.UsageLocation) }),
-        new("access", new[] { nameof(UserDesired.LogonScript) }),
+        new("access", new[] { nameof(UserDesired.Upn), nameof(UserDesired.LogonScript) }),
     };
 
     private readonly HashSet<string> open = new();
@@ -91,6 +98,8 @@
     private IReadOnlyList<string> errors = Array.Empty<string>();
     private string? loaded;
     private bool viaAd;
+    private bool signInConfirmed;
+    private IReadOnlyCollection<string> upnDomains = Array.Empty<string>();
 
     private string Form => $"gebruiker/{Person.Key}/bewerken";
 
@@ -102,6 +111,8 @@
         {
             loaded = Person.Key;
             viaAd = AttributePlans.ViaAd(Person);
+            upnDomains = AttributePlans.UpnDomains(State.Data);
+            signInConfirmed = false;
             current = UserDesired.Of(Person, State.Data);
             open.Clear();
             if (State.PageState.Has(Form))
@@ -142,6 +153,7 @@
     private void Close()
     {
         open.Clear();
+        signInConfirmed = false;
         desired = UserDesired.Of(Person, State.Data);
     }
 
@@ -167,10 +179,23 @@
 
     private int ChangedCount => Sections.SelectMany(s => s.Fields).Count(f => Visible(f) && Changed(f));
 
+    /// <summary>The sign-in name or the logon name changes: the person signs in differently afterwards (R21).</summary>
+    private bool SignInChanges => AttributePlans.SignInFields.Any(f => Visible(f) && Changed(f));
+
     private int Problems => Sections.SelectMany(s => s.Fields).Count(f => Visible(f) && Problem(f) is not null && !Warning(f));
 
-    /// <summary>Only a warning: a duplicate employee id may be right (two accounts of one person).</summary>
-    private bool Warning(string field) => field == nameof(UserDesired.EmployeeId) && AttributePlans.ValidValue(field, (Get(desired, field) ?? string.Empty).Trim());
+    /// <summary>Only a warning: a duplicate employee id may be right (two accounts of one person), a new UPN domain
+    /// may be verified already.</summary>
+    private bool Warning(string field)
+    {
+        var value = (Get(desired, field) ?? string.Empty).Trim();
+        return field switch
+        {
+            nameof(UserDesired.EmployeeId) => AttributePlans.ValidValue(field, value),
+            nameof(UserDesired.Upn) => AttributePlans.ValidValue(field, value) && AttributePlans.Taken(State.Data, Person, field, value) is null,
+            _ => false,
+        };
+    }
 
     /// <summary>What is wrong with a value, while typing (R21).</summary>
     private string? Problem(string field)
@@ -184,6 +209,16 @@
         if (!AttributePlans.ValidValue(field, value))
         {
             return T["attribute.invalid.hint." + field.ToLowerInvariant()] is var hint && !hint.StartsWith("attribute.", StringComparison.Ordinal) ? hint : T.Format("attribute.invalid", Label(field));
+        }
+
+        if (AttributePlans.Taken(State.Data, Person, field, value) is { } holder)
+        {
+            return T.Format("attribute.taken", Label(field), holder);
+        }
+
+        if (field == nameof(UserDesired.Upn) && upnDomains.Count > 0 && value[(value.IndexOf('@') + 1)..] is var domain && !upnDomains.Contains(domain))
+        {
+            return T.Format("edit-user.upn-domain", domain);
         }
 
         return field == nameof(UserDesired.EmployeeId) && AttributePlans.SameEmployeeId(State.Data, Person, value) is { } other
@@ -210,6 +245,7 @@
                                            @if (!string.IsNullOrEmpty(desired.Manager)) { <button class="kb-knop kb-klein" @onclick="() => desired.Manager = string.Empty">@T["edit-user.no-manager"]</button> }
                                        </div>,
         nameof(UserDesired.UsageLocation) => @<input class="kb-invoer kb-smal" maxlength="2" value="@desired.UsageLocation" @oninput="e => desired.UsageLocation = e.Value?.ToString()?.ToUpperInvariant()" aria-label="@Label(field)" placeholder="BE" />,
+        nameof(UserDesired.Upn) => @<input class="kb-invoer" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" autocomplete="off" spellcheck="false" />,
         nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) => @<input class="kb-invoer" type="tel" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" />,
         _ => @<input class="kb-invoer" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" />,
     };

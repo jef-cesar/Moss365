@@ -4041,5 +4041,11 @@
   "room-form.audio": "Audio (appareil)",
   "room-form.video": "Vidéo (caméra)",
   "room-form.display": "Écran",
-  "room-form.wheelchair": "Accessible en fauteuil roulant"
+  "room-form.wheelchair": "Accessible en fauteuil roulant",
+  "attribute.upn": "Nom de connexion (UPN)",
+  "attribute.taken": "{0} : {1} l'a déjà.",
+  "attribute.sign-in-changes": "{0} devient {1} : la personne se connecte ensuite avec le nouveau nom.",
+  "attribute.invalid.hint.upn": "Un nom, @ et un domaine (nom@example.com), sans espaces.",
+  "edit-user.upn-domain": "Aucun autre compte n'utilise encore le domaine {0} : vérifiez qu'il s'agit d'un domaine vérifié du tenant.",
+  "edit-user.sign-in-confirm": "Je sais que {0} se connecte ensuite avec le nouveau nom, et je le lui dirai."
 }
