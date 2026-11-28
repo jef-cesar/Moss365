@@ -116,6 +116,8 @@ public static class Undo
             ChangeAction.GraphAssignLicence or ChangeAction.GraphRemoveLicences => Texts.T["code.undo.you-change-licences-through-the"],
             ChangeAction.AdUnlockAccount => Texts.T["code.undo.you-do-not-lock-an"],
             ChangeAction.GoogleCreateUser => Texts.T["code.undo.the-app-does-not-delete-2"],
+            ChangeAction.GcloudCreateProject or ChangeAction.GcloudEnableServices or ChangeAction.GcloudCreateServiceAccount
+                or ChangeAction.GcloudCreateServiceAccountKey => Texts.T["google-setup.undo"],
             ChangeAction.GoogleSetPassword => Texts.T["code.undo.a-previous-password-cannot-come"],
             ChangeAction.GoogleSignOut or ChangeAction.GoogleRevokeTokens => Texts.T["code.undo.revoked-sessions-cannot-come-back"],
             ChangeAction.GmailRemoveFilter => r.Previous?.ContainsKey("json") == true ? null : Texts.T["code.undo.the-previous-values-are-not"],

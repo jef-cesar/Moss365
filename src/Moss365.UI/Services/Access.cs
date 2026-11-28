@@ -60,7 +60,9 @@ public static class Access
 
         return first switch
         {
-            "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "contacten" or "contact" or "beveiliging" or "conditional-access" or "inrichten" => hasMicrosoft365,
+            "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "contacten" or "contact" or "beveiliging" or "conditional-access" => hasMicrosoft365,
+            // U41: the wizard sets up Microsoft 365 and Google Workspace
+            "inrichten" => hasMicrosoft365 || systems.HasFlag(TenantSystems.GoogleWorkspace),
             // G1: the logs of Google are kept too
             "bewaarde-logboeken" => hasMicrosoft365 || systems.HasFlag(TenantSystems.GoogleWorkspace),
             "vergelijk" => hasAd && hasMicrosoft365,

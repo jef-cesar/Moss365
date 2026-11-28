@@ -94,6 +94,9 @@ public sealed class ConnectionSettings
     [System.Text.Json.Serialization.JsonIgnore]
     public ITokenCacheStore? GmailKeyStore { get; set; }
 
+    /// <summary>U41: the id of the own Google Cloud project, for the wizard.</summary>
+    public string GoogleProjectId { get; set; } = string.Empty;
+
     /// <summary>G1: the primary domain of Google Workspace (e.g. example.com).</summary>
     public string GoogleDomain { get; set; } = string.Empty;
 
@@ -422,6 +425,9 @@ public interface IConnectionFactory
 
     /// <summary>Google Workspace (G1); null without its settings or where that is not possible.</summary>
     IGoogleConnection? Google(ConnectionSettings settings) => null;
+
+    /// <summary>The Google Cloud CLI on this PC for the wizard of Google (U41); null where that is not possible.</summary>
+    Setup.IGoogleSetupConnection? GoogleSetup() => null;
 
     /// <summary>The service account whose key is kept for the part Gmail settings (G2), or null; never the key itself.</summary>
     Core.Google.GmailKeyInfo? GmailKey(ConnectionSettings settings)

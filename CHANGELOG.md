@@ -2,6 +2,23 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.43.0
+
+The wizard for Google Workspace (decided on 28 November 2026, U41; [docs/google.md](docs/google.md)). Not yet tested
+with a real Workspace domain (issue 19).
+
+- **Google on *Inrichten***: for a tenant with Google the page shows a part of its own, next to (or instead of) that of
+  Microsoft 365. It reads the own Google Cloud project with the **Google Cloud CLI** on this PC (signed in once in the
+  browser, with its own client, as Graph PowerShell for Microsoft 365) and plans only what is missing: the project, its
+  APIs (the Admin SDK and those of the parts that are on), and for the part Gmail settings the service account and its
+  key. The key comes straight into the tenant database, encrypted with the Windows account, without a file to keep.
+- **The steps by hand** (Google has no command for them): the consent screen of the type Internal, the OAuth client of
+  the type Desktop app (its client ID, secret and the domain are filled in on the same page) and the domain-wide
+  delegation (with the client id and the scopes to copy). After each step *Check again* signs in at Google and says
+  whether it worked: the sign-in, the admin role, every API and the delegation.
+- Every step of the plan is in the change log and needs the profile Instellingen; gcloud only gets fixed commands with
+  checked values. `tools/Register-GoogleApp.ps1` stays for whoever prefers the script.
+
 ## 0.42.0
 
 G1, reading Google Workspace, the rest (decided on 28 November 2026, U40), and G2, writing in Google Workspace

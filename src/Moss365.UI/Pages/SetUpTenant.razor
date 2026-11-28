@@ -17,6 +17,14 @@
     return;
 }
 
+@* U41: the Google side of the tenant, with gcloud on this PC *@
+@if (State.HasGoogle)
+{
+    <GoogleSetupPanel />
+}
+
+@if (State.HasMicrosoft365)
+{
 <section class="kb-kaart">
     <h2>@T["set-up-tenant.1-tenant"]</h2>
     <div class="kb-rij">
@@ -108,7 +116,10 @@
         }
     </section>
 }
+}
 
+@if (State.HasAd)
+{
 <section class="kb-kaart">
     <h2>@T["set-up-tenant.4-active-directory"]</h2>
     @if (State.LocalDomain is { } d)
@@ -135,7 +146,10 @@
         <div class="kb-melding">@T["set-up-tenant.the-tenant-synchronises-with-ad"]</div>
     }
 </section>
+}
 
+@if (State.HasMicrosoft365)
+{
 <section class="kb-kaart">
     <h2>@T["set-up-tenant.5-exchange-online"]</h2>
     <p class="kb-zacht">
@@ -150,13 +164,17 @@
         <p>@T.Format("set-up-tenant.admin-account-0", State.Settings.ManagementUpn)</p>
     }
 </section>
+}
 
+@if (State.HasAd || State.HasMicrosoft365)
+{
 <section class="kb-kaart">
     <h2>@T["set-up-tenant.6-first-read"]</h2>
     <p class="kb-zacht">@T["set-up-tenant.reads-ad-entra-rooms-and"]</p>
     <button class="kb-knop kb-primair" disabled="@(State.TaskBusy || !State.CanConnect)" @onclick="Load">@T["set-up-tenant.load-everything-live"]</button>
     @if (!State.CanConnect) { <span class="kb-zacht">@T["set-up-tenant.fill-in-the-client-id"]</span> }
 </section>
+}
 
 @if (State.Data.Persons.Count > 0)
 {

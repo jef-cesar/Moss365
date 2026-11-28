@@ -104,6 +104,9 @@ public sealed class ConnectionFactory : IConnectionFactory
 
     private Google.GmailTokens? _gmail;
 
+    /// <summary>The wizard for Google (U41) with the Google Cloud CLI of this PC; never without a window.</summary>
+    public Core.Setup.IGoogleSetupConnection? GoogleSetup() => _withoutWindow ? null : new Moss365.Connections.Google.GcloudSetup(Moss365.Connections.Google.GcloudSetup.ProcessAsync);
+
     /// <summary>The key of the service account, encrypted with the Windows account (DPAPI) on top of the tenant database.</summary>
     private static ITokenCacheStore? GmailStore(ConnectionSettings settings)
         => settings.GmailKeyStore is { } store && OperatingSystem.IsWindows() ? new Check.ProtectedTokenStore(store) : null;

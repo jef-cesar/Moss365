@@ -182,7 +182,9 @@ public static class PermissionTable
             or ChangeAction.GoogleAddGroupMember or ChangeAction.GoogleRemoveGroupMember => Permission.GroupMembers,
         ChangeAction.GraphInviteGuest => Permission.InviteGuests,
         ChangeAction.GraphCreateApplication or ChangeAction.GraphUpdateApplication or ChangeAction.GraphCreateServicePrincipal
-            or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole => Permission.Settings,
+            or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole
+            or ChangeAction.GcloudCreateProject or ChangeAction.GcloudEnableServices or ChangeAction.GcloudCreateServiceAccount
+            or ChangeAction.GcloudCreateServiceAccountKey => Permission.Settings,
         _ => Permission.Manage,
     };
 

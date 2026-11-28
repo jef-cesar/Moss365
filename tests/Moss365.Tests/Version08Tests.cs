@@ -40,7 +40,9 @@ public sealed class Version08Tests : IDisposable
         Assert.NotNull(PermissionTable.Refusal(Role.Reader, W(action)));
         Assert.NotNull(PermissionTable.Refusal(Role.Auditor, W(action)));
         var setup = action is ChangeAction.GraphCreateApplication or ChangeAction.GraphUpdateApplication or ChangeAction.GraphCreateServicePrincipal
-            or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole;
+            or ChangeAction.GraphUpdateServicePrincipal or ChangeAction.GraphGrantConsent or ChangeAction.GraphAssignAppRole
+            or ChangeAction.GcloudCreateProject or ChangeAction.GcloudEnableServices or ChangeAction.GcloudCreateServiceAccount
+            or ChangeAction.GcloudCreateServiceAccountKey; // U41: the wizard for Google
         Assert.Equal(setup, PermissionTable.Refusal(Role.AppAdmin, W(action)) is null);
         Assert.Equal(!setup, PermissionTable.Refusal(Role.Administrator, W(action)) is null);
 
