@@ -72,6 +72,7 @@ public static class InventoryWriter
                 ["EmployeeID"] = u.EmployeeId, ["EmployeeType"] = u.EmployeeType, ["StreetAddress"] = u.StreetAddress,
                 ["PostalCode"] = u.PostalCode, ["State"] = u.State, ["Country"] = u.Country,
                 ["HomePhone"] = u.HomePhone, ["Fax"] = u.Fax, ["IpPhone"] = u.IpPhone, ["AccountExpirationDate"] = u.AccountExpires,
+                ["ProxyAddresses"] = string.Join('|', u.ProxyAddresses),
             }));
             Write(InventoryLoader.AdGroups, d.AdGroupsByDn.Values.Select(g => new Dictionary<string, string?>
             {

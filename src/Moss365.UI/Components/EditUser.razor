@@ -59,8 +59,15 @@
                 @T.Format("edit-user.sign-in-confirm", Person.Name)
             </label></p>
         }
+        @if (AddressChanges)
+        {
+            <p><label>
+                <input type="checkbox" checked="@addressConfirmed" @onchange="e => addressConfirmed = e.Value is true" />
+                @T.Format("edit-user.address-confirm", Person.Name, desired.PrimaryAddress?.Trim())
+            </label></p>
+        }
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" disabled="@(Problems > 0 || (SignInChanges && !signInConfirmed))" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+            <button class="kb-knop kb-primair" disabled="@(Problems > 0 || (SignInChanges && !signInConfirmed) || (AddressChanges && !addressConfirmed))" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
             <button class="kb-knop" @onclick="Empty">@T["edit-user.reset"]</button>
             <button class="kb-knop" @onclick="Close">@T["edit-user.close"]</button>
             @if (ChangedCount > 0) { <span class="kb-label">@T.Format("edit-user.changed", ChangedCount)</span> }
@@ -88,7 +95,7 @@
         new("identity", new[] { nameof(UserDesired.DisplayName), nameof(UserDesired.GivenName), nameof(UserDesired.Surname), nameof(UserDesired.EmployeeId), nameof(UserDesired.EmployeeType) }),
         new("organisation", new[] { nameof(UserDesired.JobTitle), nameof(UserDesired.Department), nameof(UserDesired.Company), nameof(UserDesired.Office), nameof(UserDesired.Manager), nameof(UserDesired.Description) }),
         new("contact", new[] { nameof(UserDesired.Phone), nameof(UserDesired.Mobile), nameof(UserDesired.HomePhone), nameof(UserDesired.Fax), nameof(UserDesired.IpPhone), nameof(UserDesired.StreetAddress), nameof(UserDesired.PostalCode), nameof(UserDesired.City), nameof(UserDesired.State), nameof(UserDesired.Country), nameof(UserDesired.UsageLocation) }),
-        new("access", new[] { nameof(UserDesired.Upn), nameof(UserDesired.AccountExpires), nameof(UserDesired.LogonScript) }),
+        new("access", new[] { nameof(UserDesired.Upn), nameof(UserDesired.PrimaryAddress), nameof(UserDesired.AccountExpires), nameof(UserDesired.LogonScript) }),
     };
 
     private readonly HashSet<string> open = new();
@@ -99,6 +106,7 @@
     private string? loaded;
     private bool viaAd;
     private bool signInConfirmed;
+    private bool addressConfirmed;
     private IReadOnlyCollection<string> upnDomains = Array.Empty<string>();
 
     private string Form => $"gebruiker/{Person.Key}/bewerken";
@@ -113,6 +121,7 @@
             viaAd = AttributePlans.ViaAd(Person);
             upnDomains = AttributePlans.UpnDomains(State.Data);
             signInConfirmed = false;
+            addressConfirmed = false;
             current = UserDesired.Of(Person, State.Data);
             open.Clear();
             if (State.PageState.Has(Form))
@@ -133,6 +142,11 @@
     /// <summary>A field the account has: AD-only fields for an account from AD, the usage location with Entra.</summary>
     private bool Visible(string field)
     {
+        if (field == nameof(UserDesired.PrimaryAddress))
+        {
+            return AttributePlans.HasPrimaryAddress(Person);
+        }
+
         var (_, inAd, inEntra) = field == nameof(UserDesired.Manager) ? (field, true, true) : AttributePlans.UserFields.First(f => f.Field == field);
         return (viaAd && inAd) || (Person.Entra is not null && inEntra);
     }
@@ -154,6 +168,7 @@
     {
         open.Clear();
         signInConfirmed = false;
+        addressConfirmed = false;
         desired = UserDesired.Of(Person, State.Data);
     }
 
@@ -185,6 +200,9 @@
     /// <summary>The sign-in name or the logon name changes: the person signs in differently afterwards (R21).</summary>
     private bool SignInChanges => AttributePlans.SignInFields.Any(f => Visible(f) && Changed(f));
 
+    /// <summary>The primary address changes: the person sends from the new one afterwards (R21).</summary>
+    private bool AddressChanges => Visible(nameof(UserDesired.PrimaryAddress)) && Changed(nameof(UserDesired.PrimaryAddress));
+
     private int Problems => Sections.SelectMany(s => s.Fields).Count(f => Visible(f) && Problem(f) is not null && !Warning(f));
 
     /// <summary>Only a warning: a duplicate employee id may be right (two accounts of one person), a new UPN domain
@@ -195,7 +213,7 @@
         return field switch
         {
             nameof(UserDesired.EmployeeId) => AttributePlans.ValidValue(field, value),
-            nameof(UserDesired.Upn) => AttributePlans.ValidValue(field, value) && AttributePlans.Taken(State.Data, Person, field, value) is null,
+            nameof(UserDesired.Upn) or nameof(UserDesired.PrimaryAddress) => AttributePlans.ValidValue(field, value) && AttributePlans.Taken(State.Data, Person, field, value) is null,
             nameof(UserDesired.AccountExpires) => AttributePlans.ValidValue(field, value),
             _ => false,
         };
@@ -225,7 +243,7 @@
             return T.Format("attribute.expires-past", value);
         }
 
-        if (field == nameof(UserDesired.Upn) && upnDomains.Count > 0 && value[(value.IndexOf('@') + 1)..] is var domain && !upnDomains.Contains(domain))
+        if (field is nameof(UserDesired.Upn) or nameof(UserDesired.PrimaryAddress) && upnDomains.Count > 0 && value[(value.IndexOf('@') + 1)..] is var domain && !upnDomains.Contains(domain))
         {
             return T.Format("edit-user.upn-domain", domain);
         }
@@ -254,7 +272,7 @@
                                            @if (!string.IsNullOrEmpty(desired.Manager)) { <button class="kb-knop kb-klein" @onclick="() => desired.Manager = string.Empty">@T["edit-user.no-manager"]</button> }
                                        </div>,
         nameof(UserDesired.UsageLocation) => @<input class="kb-invoer kb-smal" maxlength="2" value="@desired.UsageLocation" @oninput="e => desired.UsageLocation = e.Value?.ToString()?.ToUpperInvariant()" aria-label="@Label(field)" placeholder="BE" />,
-        nameof(UserDesired.Upn) => @<input class="kb-invoer" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" autocomplete="off" spellcheck="false" />,
+        nameof(UserDesired.Upn) or nameof(UserDesired.PrimaryAddress) => @<input class="kb-invoer" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" autocomplete="off" spellcheck="false" />,
         nameof(UserDesired.AccountExpires) => @<div>
                                                   <input class="kb-invoer kb-smal" type="date" value="@desired.AccountExpires" @onchange="e => desired.AccountExpires = e.Value?.ToString()" aria-label="@Label(field)" />
                                                   @if (!string.IsNullOrEmpty(desired.AccountExpires)) { <button class="kb-knop kb-klein" @onclick="() => desired.AccountExpires = string.Empty">@T["edit-user.never-expires"]</button> }

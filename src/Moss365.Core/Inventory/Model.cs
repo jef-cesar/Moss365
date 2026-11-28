@@ -21,6 +21,10 @@ public sealed record AdUser
     public string Fax { get; init; } = string.Empty;
     public string IpPhone { get; init; } = string.Empty;
     public string AccountExpires { get; init; } = string.Empty;
+
+    /// <summary>R21: the mail addresses (proxyAddresses: "SMTP:" is the primary one, "smtp:" an alias); empty in data
+    /// read before.</summary>
+    public IReadOnlyList<string> ProxyAddresses { get; init; } = Array.Empty<string>();
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;

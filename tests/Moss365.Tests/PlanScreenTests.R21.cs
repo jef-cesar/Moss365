@@ -397,3 +397,31 @@ public sealed partial class PlanScreenTests
         Assert.Equal("info@test.be", step.Previous!["WindowsEmailAddress"]);
     }
 }
+
+/// <summary>R21: the primary address of a person, confirmed on the page and written at the source.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void ANewPrimaryAddressOfAPersonIsConfirmedAndWrittenInAd()
+    {
+        var an = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, an.Key));
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Toegang").QuerySelector("button")!.Click();
+        bool Disabled() => cut.FindAll("button").First(b => b.TextContent == "Plan maken").HasAttribute("disabled");
+
+        cut.Find("input[aria-label='Primair e-mailadres']").Input("info@test.be"); // a shared mailbox has it
+        Assert.Contains("heeft dit al", cut.Markup, StringComparison.Ordinal);
+        Assert.True(Disabled());
+
+        cut.Find("input[aria-label='Primair e-mailadres']").Input("c.vos@test.be");
+        Assert.True(Disabled()); // the confirmation first
+        cut.FindAll("input[type='checkbox']").First(c => c.ParentElement!.TextContent.Contains("verstuurt vanaf c.vos@test.be", StringComparison.Ordinal)).Change(true);
+        Assert.False(Disabled());
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetProxyAddresses));
+        var step = Assert.Single(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetProxyAddresses);
+        Assert.Equal("c.vos@test.be", step.P("mail"));
+        Assert.Equal(an.Ad!.DistinguishedName, step.Target);
+    }
+}

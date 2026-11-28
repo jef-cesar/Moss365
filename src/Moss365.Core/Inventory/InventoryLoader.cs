@@ -293,6 +293,7 @@ public static class InventoryLoader
             Fax = W(r, "Fax"),
             IpPhone = W(r, "IpPhone"),
             AccountExpires = W(r, "AccountExpirationDate"),
+            ProxyAddresses = Items(r, "ProxyAddresses"),
         };
     }
 

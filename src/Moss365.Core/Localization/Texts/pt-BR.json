@@ -4060,5 +4060,12 @@
   "mailbox.primary.alias": "{0} continua como alias: o correio enviado para ele continua a chegar.",
   "mailbox.primary.synced": "Esta caixa de correio vem do AD: os endereços são alterados lá (proxyAddresses), não no Exchange Online.",
   "mailbox.primary.taken": "{1} já tem o endereço {0}.",
-  "mailbox.primary.confirm": "Sei que a caixa passa a enviar como {0}; {1} continua como alias."
+  "mailbox.primary.confirm": "Sei que a caixa passa a enviar como {0}; {1} continua como alias.",
+  "attribute.primaryaddress": "Endereço de e-mail principal",
+  "plan.primary.ad": "Definir o endereço principal no AD (mail e proxyAddresses)",
+  "plan.primary.ad.sync": "Definir o endereço principal no AD (mail e proxyAddresses); o Exchange Online acompanha após a sincronização",
+  "plan.primary.exchange": "Definir o endereço principal da caixa no Exchange Online",
+  "edit-user.no-mailbox": "Esta conta não tem endereço de e-mail: não há endereço principal para alterar.",
+  "edit-user.address-confirm": "Sei que {0} passa a enviar a partir de {1}; o endereço antigo continua como alias.",
+  "ad.proxy.one-primary": "A lista de endereços deve ter exatamente um endereço principal (SMTP:)."
 }

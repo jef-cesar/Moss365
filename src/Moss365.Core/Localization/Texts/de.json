@@ -4060,5 +4060,12 @@
   "mailbox.primary.alias": "{0} bleibt als Alias: E-Mails dorthin kommen weiterhin an.",
   "mailbox.primary.synced": "Dieses Postfach stammt aus dem AD: seine Adressen werden dort geändert (proxyAddresses), nicht in Exchange Online.",
   "mailbox.primary.taken": "{1} hat die Adresse {0} bereits.",
-  "mailbox.primary.confirm": "Ich weiß, dass das Postfach danach als {0} sendet; {1} bleibt als Alias."
+  "mailbox.primary.confirm": "Ich weiß, dass das Postfach danach als {0} sendet; {1} bleibt als Alias.",
+  "attribute.primaryaddress": "Primäre E-Mail-Adresse",
+  "plan.primary.ad": "Primäre Adresse im AD festlegen (mail und proxyAddresses)",
+  "plan.primary.ad.sync": "Primäre Adresse im AD festlegen (mail und proxyAddresses); Exchange Online folgt nach der Synchronisierung",
+  "plan.primary.exchange": "Primäre Adresse des Postfachs in Exchange Online festlegen",
+  "edit-user.no-mailbox": "Dieses Konto hat keine E-Mail-Adresse: Es gibt keine primäre Adresse zu ändern.",
+  "edit-user.address-confirm": "Ich weiß, dass {0} danach von {1} sendet; die alte Adresse bleibt als Alias.",
+  "ad.proxy.one-primary": "Die Adressliste muss genau eine primäre Adresse haben (SMTP:)."
 }

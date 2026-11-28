@@ -4060,5 +4060,12 @@
   "mailbox.primary.alias": "{0} blijft als alias: mail daarnaartoe komt nog aan.",
   "mailbox.primary.synced": "Dit postvak komt uit AD: de adressen worden daar gewijzigd (proxyAddresses), niet in Exchange Online.",
   "mailbox.primary.taken": "{1} heeft het adres {0} al.",
-  "mailbox.primary.confirm": "Ik weet dat het postvak daarna verstuurt als {0}; {1} blijft als alias."
+  "mailbox.primary.confirm": "Ik weet dat het postvak daarna verstuurt als {0}; {1} blijft als alias.",
+  "attribute.primaryaddress": "Primair e-mailadres",
+  "plan.primary.ad": "Primair adres instellen in AD (mail en proxyAddresses)",
+  "plan.primary.ad.sync": "Primair adres instellen in AD (mail en proxyAddresses); Exchange Online volgt na de synchronisatie",
+  "plan.primary.exchange": "Primair adres van het postvak instellen in Exchange Online",
+  "edit-user.no-mailbox": "Dit account heeft geen e-mailadres: er is geen primair adres om te wijzigen.",
+  "edit-user.address-confirm": "Ik weet dat {0} daarna verstuurt vanaf {1}; het oude adres blijft als alias.",
+  "ad.proxy.one-primary": "De lijst van adressen moet precies één primair adres hebben (SMTP:)."
 }

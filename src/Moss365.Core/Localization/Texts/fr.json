@@ -4060,5 +4060,12 @@
   "mailbox.primary.alias": "{0} reste un alias : le courrier envoyé à cette adresse continue d'arriver.",
   "mailbox.primary.synced": "Cette boîte aux lettres vient de l'AD : ses adresses se modifient là-bas (proxyAddresses), pas dans Exchange Online.",
   "mailbox.primary.taken": "{1} a déjà l'adresse {0}.",
-  "mailbox.primary.confirm": "Je sais que la boîte envoie ensuite en tant que {0} ; {1} reste un alias."
+  "mailbox.primary.confirm": "Je sais que la boîte envoie ensuite en tant que {0} ; {1} reste un alias.",
+  "attribute.primaryaddress": "Adresse e-mail principale",
+  "plan.primary.ad": "Définir l'adresse principale dans l'AD (mail et proxyAddresses)",
+  "plan.primary.ad.sync": "Définir l'adresse principale dans l'AD (mail et proxyAddresses) ; Exchange Online suit après la synchronisation",
+  "plan.primary.exchange": "Définir l'adresse principale de la boîte dans Exchange Online",
+  "edit-user.no-mailbox": "Ce compte n'a pas d'adresse e-mail : il n'y a pas d'adresse principale à modifier.",
+  "edit-user.address-confirm": "Je sais que {0} envoie ensuite depuis {1} ; l'ancienne adresse reste un alias.",
+  "ad.proxy.one-primary": "La liste des adresses doit avoir exactement une adresse principale (SMTP:)."
 }

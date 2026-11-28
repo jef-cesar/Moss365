@@ -53,6 +53,10 @@ public sealed class UserDesired
     /// <summary>R21: the last day the account works ("yyyy-MM-dd"), only in AD; "" = never.</summary>
     public string? AccountExpires { get; set; }
 
+    /// <summary>R21: the primary e-mail address: in AD (mail and proxyAddresses) for an account from AD, otherwise the
+    /// mailbox in Exchange Online. The old one stays as an alias.</summary>
+    public string? PrimaryAddress { get; set; }
+
     /// <summary>The current values (AD when the account comes from AD, otherwise Entra), as the start of the
     /// form.</summary>
     public static UserDesired Of(Person p, InventoryData? d = null)
@@ -74,6 +78,7 @@ public sealed class UserDesired
             };
         g.UsageLocation = p.Entra?.UsageLocation;
         g.Upn = p.Ad?.UserPrincipalName is { Length: > 0 } upn ? upn : p.Entra?.UserPrincipalName;
+        g.PrimaryAddress = AttributePlans.PrimaryAddressOf(p);
         g.Manager = d is null ? null : AttributePlans.ManagerOf(d, p)?.Key ?? string.Empty;
         return g;
     }
@@ -153,6 +158,36 @@ public static class AttributePlans
 
     /// <summary>Is this account changed in AD (synchronised or AD only), or via Graph (cloud)?</summary>
     public static bool ViaAd(Person p) => p.Ad is not null && (p.Entra is null || p.Entra.OnPremisesSyncEnabled);
+
+    /// <summary>The primary address of a person now (R21): for an account from AD the "SMTP:" entry of proxyAddresses,
+    /// or mail; otherwise mail in Entra.</summary>
+    public static string PrimaryAddressOf(Person p)
+        => ViaAd(p)
+            ? p.Ad!.ProxyAddresses.FirstOrDefault(a => a.StartsWith("SMTP:", StringComparison.Ordinal)) is { } primary ? primary[5..] : p.Ad.EmailAddress
+            : p.Entra?.Mail ?? string.Empty;
+
+    /// <summary>Has the person an address that can change: an account from AD, or a cloud account with mail.</summary>
+    public static bool HasPrimaryAddress(Person p) => ViaAd(p) || p.Entra?.Mail is { Length: > 0 };
+
+    /// <summary>proxyAddresses with a new primary address (R21): "SMTP:" + the new one first, every other mail address as an
+    /// alias ("smtp:", the old primary too; the new one only once), the other kinds (x500:, sip:, ...) as they are.</summary>
+    public static IReadOnlyList<string> WithPrimary(IReadOnlyList<string> proxies, string address)
+    {
+        var list = new List<string> { "SMTP:" + address };
+        foreach (var a in proxies)
+        {
+            if (!a.StartsWith("smtp:", StringComparison.OrdinalIgnoreCase))
+            {
+                list.Add(a);
+            }
+            else if (!string.Equals(a[5..], address, StringComparison.OrdinalIgnoreCase))
+            {
+                list.Add("smtp:" + a[5..]);
+            }
+        }
+
+        return list;
+    }
 
     public static PlanOutcome User(InventoryData data, OrganisationConfig config, Person p, UserDesired desired)
     {
@@ -261,6 +296,74 @@ public static class AttributePlans
             becomes.Add($"{name}: {(newValue.Trim().Length == 0 ? Texts.T["undo.empty"] : newValue.Trim())}");
         }
 
+        // R21: the primary address, at the source (AD: mail and proxyAddresses; cloud: the mailbox in Exchange Online)
+        Change? addressStep = null;
+        if (desired.PrimaryAddress is { } wantedAddress && wantedAddress.Trim() is var address
+            && !string.Equals(address, current.PrimaryAddress ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+        {
+            var name = Texts.T["attribute.primaryaddress"];
+            var old = current.PrimaryAddress ?? string.Empty;
+            if (!HasPrimaryAddress(p))
+            {
+                warnings.Add(Texts.T["edit-user.no-mailbox"]);
+            }
+            else if (!ValidValue(nameof(UserDesired.PrimaryAddress), address))
+            {
+                warnings.Add(Texts.T.Format("attribute.invalid", name));
+            }
+            else if (Taken(data, p, nameof(UserDesired.PrimaryAddress), address) is { } holder)
+            {
+                warnings.Add(Texts.T.Format("mailbox.primary.taken", address, holder));
+            }
+            else
+            {
+                var kept = old.Length > 0 && (!viaAd || p.Ad!.ProxyAddresses.Count > 0);
+                var nowText = $"{name}: {(old.Length == 0 ? Texts.T["undo.empty"] : old)}";
+                var becomesText = $"{name}: {address}";
+                var aliasWarning = kept ? Texts.T.Format("mailbox.primary.alias", old) : null;
+                if (viaAd)
+                {
+                    var adParameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["mail"] = address };
+                    var adPrevious = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["mail"] = p.Ad!.EmailAddress };
+                    if (p.Ad.ProxyAddresses.Count > 0)
+                    {
+                        adParameters["proxyAddresses"] = string.Join('|', WithPrimary(p.Ad.ProxyAddresses, address));
+                        adPrevious["proxyAddresses"] = string.Join('|', p.Ad.ProxyAddresses);
+                    }
+
+                    addressStep = new Change
+                    {
+                        TargetSystem = TargetSystem.ActiveDirectory,
+                        ChangeAction = ChangeAction.AdSetProxyAddresses,
+                        Target = p.Ad.DistinguishedName,
+                        TargetName = p.Name,
+                        Parameters = adParameters,
+                        Previous = adPrevious,
+                        Description = Texts.T[p.Entra is not null ? "plan.primary.ad.sync" : "plan.primary.ad"],
+                        CurrentValue = nowText,
+                        NewValue = becomesText,
+                        Warning = aliasWarning,
+                    };
+                }
+                else
+                {
+                    addressStep = new Change
+                    {
+                        TargetSystem = TargetSystem.Exchange,
+                        ChangeAction = ChangeAction.ExchangeUpdateMailbox,
+                        Target = old,
+                        TargetName = p.Name,
+                        Parameters = new(StringComparer.OrdinalIgnoreCase) { ["WindowsEmailAddress"] = address },
+                        Previous = new(StringComparer.OrdinalIgnoreCase) { ["WindowsEmailAddress"] = old },
+                        Description = Texts.T["plan.primary.exchange"],
+                        CurrentValue = nowText,
+                        NewValue = becomesText,
+                        Warning = aliasWarning,
+                    };
+                }
+            }
+        }
+
         // Manager: in AD an attribute (DN), in the cloud a separate command
         Change? setManager = null;
         if (desired.Manager is { } newKey && !string.Equals(newKey, current.Manager ?? string.Empty, StringComparison.OrdinalIgnoreCase))
@@ -306,7 +409,7 @@ public static class AttributePlans
             }
         }
 
-        if (parameters.Count == 0 && setManager is null && cloudParameters.Count == 0)
+        if (parameters.Count == 0 && setManager is null && cloudParameters.Count == 0 && addressStep is null)
         {
             return new PlanOutcome(Array.Empty<Change>(), new[] { warnings.Count > 0 ? string.Join(" ", warnings) : Localization.Texts.T["plan.nothing-changed"] });
         }
@@ -315,6 +418,11 @@ public static class AttributePlans
         if (setManager is not null)
         {
             plan.Add(setManager);
+        }
+
+        if (addressStep is not null)
+        {
+            plan.Add(addressStep);
         }
 
         if (cloudParameters.Count > 0)
@@ -440,13 +548,13 @@ public static class AttributePlans
             nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) or nameof(UserDesired.HomePhone) or nameof(UserDesired.Fax) => value.All(c => char.IsAsciiDigit(c) || c is ' ' or '+' or '(' or ')' or '-' or '.' or '/'),
             nameof(UserDesired.EmployeeId) => value.Length <= 16,
             nameof(UserDesired.PostalCode) => value.Length <= 40,
-            nameof(UserDesired.Upn) => value.Length <= 113 && value.Count(c => c == '@') == 1 && value.IndexOf('@') > 0 && value.IndexOf('@') < value.Length - 1
+            nameof(UserDesired.Upn) or nameof(UserDesired.PrimaryAddress) => value.Length <= 113 && value.Count(c => c == '@') == 1 && value.IndexOf('@') > 0 && value.IndexOf('@') < value.Length - 1
                                        && !value.Any(c => char.IsWhiteSpace(c) || c is '"' or '\\' or '(' or ')' or ',' or ':' or ';' or '<' or '>' or '[' or ']'),
             _ => value.Length <= 256,
         };
 
     /// <summary>Fields that cannot be emptied: an account without a sign-in name or a name does not work.</summary>
-    private static readonly string[] Required = { nameof(UserDesired.Upn), nameof(UserDesired.DisplayName) };
+    private static readonly string[] Required = { nameof(UserDesired.Upn), nameof(UserDesired.DisplayName), nameof(UserDesired.PrimaryAddress) };
 
     /// <summary>The account stops working at once: the last day is before today (R21).</summary>
     public static bool ExpiresBeforeToday(string day)
@@ -466,6 +574,7 @@ public static class AttributePlans
         {
             nameof(UserDesired.Upn) => data.Persons.FirstOrDefault(o => o.Key != person.Key && (string.Equals(o.Ad?.UserPrincipalName, v, StringComparison.OrdinalIgnoreCase)
                                                                                           || string.Equals(o.Entra?.UserPrincipalName, v, StringComparison.OrdinalIgnoreCase)))?.Name,
+            nameof(UserDesired.PrimaryAddress) => MailboxPlans.AddressHolder(data, v, PrimaryAddressOf(person), person.Key),
             _ => null,
         };
     }

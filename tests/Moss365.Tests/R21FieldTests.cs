@@ -69,4 +69,44 @@ public sealed class R21FieldTests
         Assert.Equal(("03 000 00 09", "03 000 00 08", "4711", "2027-01-01 00:00:00"), (a.HomePhone, a.Fax, a.IpPhone, a.AccountExpires));
         Assert.Equal("03 000 00 07", back.EntraUsers.Single(u => u.Id == entra.Id).Fax);
     }
+
+    [Fact]
+    public void ThePrimaryAddressChangesAtTheSourceAndTheOldOneStaysAnAlias()
+    {
+        Assert.Equal(new[] { "SMTP:an.p@test.be", "smtp:an.peeters@test.be", "smtp:an@test.be", "X500:/o=Test/cn=an" },
+            AttributePlans.WithPrimary(new[] { "SMTP:an.peeters@test.be", "smtp:an@test.be", "X500:/o=Test/cn=an" }, "an.p@test.be"));
+        Assert.Equal(new[] { "SMTP:an@test.be", "smtp:an.peeters@test.be" }, AttributePlans.WithPrimary(new[] { "SMTP:an.peeters@test.be", "smtp:AN@test.be" }, "an@test.be"));
+
+        var b = TestData.Files();
+        b[InventoryLoader.AdUsers].Single(r => r["SamAccountName"] == "an.peeters")["ProxyAddresses"] = "SMTP:an.peeters@test.be|smtp:an@test.be";
+        var d = InventoryLoader.Build(b);
+        var an = d.SearchPerson("ad:an.peeters")!;
+        Assert.Equal("an.peeters@test.be", AttributePlans.PrimaryAddressOf(an));
+
+        // From AD: mail and the whole list at once, with the list as it was to undo
+        var w = Assert.Single(AttributePlans.User(d, TestData.Config(), an, new UserDesired { PrimaryAddress = "an.p@test.be" }).Plan);
+        Assert.Equal(ChangeAction.AdSetProxyAddresses, w.ChangeAction);
+        Assert.Equal("an.p@test.be", w.P("mail"));
+        Assert.Equal("SMTP:an.p@test.be|smtp:an.peeters@test.be|smtp:an@test.be", w.P("proxyAddresses"));
+        Assert.Equal("SMTP:an.peeters@test.be|smtp:an@test.be", w.Previous!["proxyAddresses"]);
+        var log = new LogEntry(DateTimeOffset.Now, "beheerder", "test", w.TargetSystem.ToString(), w.ChangeAction.ToString(), w.Target, w.TargetName,
+            w.Description, w.Parameters, "Succeeded", string.Empty, Previous: w.Previous);
+        var back = Assert.Single(Undo.Plan(new[] { log }).Plan);
+        Assert.Equal(("an.peeters@test.be", "SMTP:an.peeters@test.be|smtp:an@test.be"), (back.P("mail"), back.P("proxyAddresses")));
+
+        // The address or alias of another person is refused; an alias of one's own becomes the primary address
+        var bo = d.SearchPerson("ad:bo.janssens")!;
+        Assert.Empty(AttributePlans.User(d, TestData.Config(), bo, new UserDesired { PrimaryAddress = "an@test.be" }).Plan);
+        Assert.Empty(AttributePlans.User(d, TestData.Config(), bo, new UserDesired { PrimaryAddress = "an.peeters@test.be" }).Plan);
+        Assert.Empty(AttributePlans.User(d, TestData.Config(), bo, new UserDesired { PrimaryAddress = string.Empty }).Plan);
+        Assert.Single(AttributePlans.User(d, TestData.Config(), an, new UserDesired { PrimaryAddress = "an@test.be" }).Plan);
+
+        // A cloud account: its mailbox in Exchange Online, found by the old address (which stays as an alias)
+        var info = d.Persons.Single(p => p.Entra?.Id == "e-info");
+        var x = Assert.Single(AttributePlans.User(d, TestData.Config(), info, new UserDesired { PrimaryAddress = "onthaal@test.be" }).Plan);
+        Assert.Equal(ChangeAction.ExchangeUpdateMailbox, x.ChangeAction);
+        Assert.Equal("info@test.onmicrosoft.com", x.Target);
+        Assert.Equal("onthaal@test.be", x.P("WindowsEmailAddress"));
+        Assert.Equal("info@test.onmicrosoft.com", x.Previous!["WindowsEmailAddress"]);
+    }
 }

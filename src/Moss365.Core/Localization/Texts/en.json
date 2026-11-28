@@ -4060,5 +4060,12 @@
   "mailbox.primary.alias": "{0} stays as an alias: mail to it keeps arriving.",
   "mailbox.primary.synced": "This mailbox comes from AD: its addresses are changed there (proxyAddresses), not in Exchange Online.",
   "mailbox.primary.taken": "{1} has the address {0} already.",
-  "mailbox.primary.confirm": "I know that the mailbox sends as {0} afterwards; {1} stays as an alias."
+  "mailbox.primary.confirm": "I know that the mailbox sends as {0} afterwards; {1} stays as an alias.",
+  "attribute.primaryaddress": "Primary e-mail address",
+  "plan.primary.ad": "Set the primary address in AD (mail and proxyAddresses)",
+  "plan.primary.ad.sync": "Set the primary address in AD (mail and proxyAddresses); Exchange Online follows after the synchronisation",
+  "plan.primary.exchange": "Set the primary address of the mailbox in Exchange Online",
+  "edit-user.no-mailbox": "This account has no mail address: there is no primary address to change.",
+  "edit-user.address-confirm": "I know that {0} sends from {1} afterwards; the old address stays as an alias.",
+  "ad.proxy.one-primary": "The list of addresses must have exactly one primary address (SMTP:)."
 }
