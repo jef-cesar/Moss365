@@ -53,6 +53,20 @@
                 <Tile Count="State.Data.Persons.Count(p => p.Google is not null && p.Ad is null && p.Entra is null)" Label="@T["google.stat.only-google"]" Link="koppelingen" />
             }
         </div>
+        @if (State.Data.GoogleGroups.Any(g => g.WhoCanJoin.Length > 0))
+        {
+            <div class="kb-tegels">
+                <Tile Count="State.Data.GoogleGroups.Count(g => g.AnyoneCanJoin)" Label="@T["google.stat.anyone-can-join"]" />
+                <Tile Count="State.Data.GoogleGroups.Count(g => g.AnyoneCanPost)" Label="@T["google.stat.anyone-can-post"]" />
+                <Tile Count="State.Data.GoogleGroups.Count(g => g.AllowExternalMembers == true)" Label="@T["google.stat.external-members"]" />
+            </div>
+        }
+        @if (Moss365.Core.Setup.GoogleParts.IsOn(State.Config.PermissionParts, Moss365.Core.Setup.GoogleParts.Alerts))
+        {
+            <div class="kb-tegels">
+                <Tile Count="OpenGoogleAlerts()" Label="@T["google.stat.open-alerts"]" Link="bewaarde-logboeken" />
+            </div>
+        }
         @if (State.Data.GoogleLicences.Count > 0)
         {
             var (edition, sku, skus) = Moss365.Core.Google.GoogleEditions.Of(State.Data.GoogleLicences);
@@ -265,6 +279,9 @@
 </section>
 
 @code {
+    /// <summary>The alerts of Google of the last 30 days that are not closed (G1).</summary>
+    private int OpenGoogleAlerts() => State.KeptGoogleAlerts(DateTimeOffset.Now.AddDays(-30), DateTimeOffset.Now.AddDays(1)).Count(a => !string.Equals(a.Result, "CLOSED", StringComparison.Ordinal));
+
     private Statistic s = Statistic.Compute(new InventoryData(), new Moss365.Core.Configuration.OrganisationConfig(), DateTime.Now);
 
     /// <summary>The division filter above the charts, kept while the app is open.</summary>

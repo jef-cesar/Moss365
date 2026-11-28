@@ -2,6 +2,31 @@
 
 Every version becomes a release on GitHub; the section under the version is the text of that release.
 
+## 0.42.0
+
+G1, reading Google Workspace, the rest (decided on 28 November 2026, U40; [docs/google.md](docs/google.md)). Not yet
+tested with a real Workspace domain (issue 19).
+
+- **Parts of Google** (U40) on *Verbindingen*: licences, group settings and the alerts have only a Google scope that
+  can also write, so each is a part, off by default. Its scope is asked only when it is on; Moss365 only reads with it.
+  `tools/Register-GoogleApp.ps1` turns on all four APIs (an API that is on gives no right by itself).
+- **Stay signed in** also for Google (the same setting as for Microsoft): the refresh token is kept in the tenant
+  database, encrypted with the Windows account, only for the same client, domain and scopes; a refused refresh forgets
+  it, and another part on asks a new sign-in.
+- **Check the project** on *Verbindingen*: signs in and asks every API one small question, and says what to do: turn an
+  API on, sign in again for a scope, or give the account an admin role.
+- **The logs of Google kept locally** (as R18): after every read the failed and suspicious logins, those of Google
+  administrators and emergency accounts, and every admin activity of the Reports API go to the tenant database, never a
+  line twice. The page of the kept logs chooses between Entra ID and Google Workspace, and is there for a tenant with
+  only Google too.
+- **Licences and the edition** (part Google licences): who has which licence per product; the edition from the
+  Workspace SKU most users have, with what it lacks of Vault, context-aware access, advanced endpoint management and the
+  security center (data in `Core/Google/GoogleEditions.cs`); the active accounts without a Workspace licence.
+- **Group settings** (part Google group settings): who may join, post and see the members, and external members;
+  Statistics counts the groups anyone may join, anyone outside may post to, and with external members.
+- **Alerts** (part Google alerts): the alerts of the Alert Center kept locally with the logs, and the open ones of the
+  last 30 days in Statistics.
+
 ## 0.41.0
 
 G0, the platform basis for Google Workspace next to AD and Microsoft 365 (decided on 27 November 2026, U28 to U36);

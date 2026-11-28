@@ -502,6 +502,10 @@ public static class InventoryLoader
         CountMembers = int.TryParse(K(r, "DirectMembersCount"), out var n) ? n : 0,
         Aliases = Items(r, "Aliases"),
         AdminCreated = B(r, "AdminCreated"),
+        WhoCanJoin = K(r, "WhoCanJoin"),
+        WhoCanPost = K(r, "WhoCanPostMessage"),
+        WhoCanViewMembership = K(r, "WhoCanViewMembership"),
+        AllowExternalMembers = K(r, "AllowExternalMembers").Length > 0 ? B(r, "AllowExternalMembers") : null,
     };
 
     private static MailContact MakeContact(Dictionary<string, string> r) => new()

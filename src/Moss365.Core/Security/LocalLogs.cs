@@ -35,6 +35,10 @@ public static class LocalLogs
     public const string GoogleSignInKind = "google-signin";
     public const string GoogleAuditKind = "google-audit";
 
+    /// <summary>The alerts of the Alert Center (G1, part "Google alerts"), as audit lines: the type as the activity, the
+    /// severity as the category, the status as the result.</summary>
+    public const string GoogleAlertKind = "google-alert";
+
     /// <summary>The last collection of the Google logs.</summary>
     public const string GoogleDocument = "lokale-logboeken-google";
 

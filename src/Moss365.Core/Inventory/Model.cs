@@ -373,6 +373,19 @@ public sealed record GoogleGroup
 
     /// <summary>Made by an administrator (not by a user in Groups).</summary>
     public bool AdminCreated { get; init; }
+
+    // G1, part "Google group settings" (Groups Settings API): who may join, post and see the members, and whether
+    // people outside the organisation may be members; empty or null when not read
+    public string WhoCanJoin { get; init; } = string.Empty;
+    public string WhoCanPost { get; init; } = string.Empty;
+    public string WhoCanViewMembership { get; init; } = string.Empty;
+    public bool? AllowExternalMembers { get; init; }
+
+    /// <summary>Anyone on the internet may join (ANYONE_CAN_JOIN).</summary>
+    public bool AnyoneCanJoin => WhoCanJoin == "ANYONE_CAN_JOIN";
+
+    /// <summary>Anyone, also outside the organisation, may post to the group (ANYONE_CAN_POST).</summary>
+    public bool AnyoneCanPost => WhoCanPost == "ANYONE_CAN_POST";
 }
 
 /// <summary>Where each source file came from (the app chooses the newest inventory folder per file).</summary>

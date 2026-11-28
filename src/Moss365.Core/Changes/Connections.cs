@@ -325,6 +325,10 @@ public interface IGoogleConnection
     Task<GoogleLogs> ReadLogsAsync(DateTimeOffset loginsSince, DateTimeOffset adminSince, int max, CancellationToken cancel)
         => Task.FromResult(new GoogleLogs(Array.Empty<SignInEvent>(), Array.Empty<Security.AuditEvent>()));
 
+    /// <summary>The alerts of the Alert Center since a time (G1, part "Google alerts"), as audit lines.</summary>
+    Task<IReadOnlyList<Security.AuditEvent>> ReadAlertsAsync(DateTimeOffset since, int max, CancellationToken cancel)
+        => Task.FromResult<IReadOnlyList<Security.AuditEvent>>(Array.Empty<Security.AuditEvent>());
+
     /// <summary>The check of the own project (G1): signing in, and every API Moss365 uses, with what is wrong.</summary>
     Task<IReadOnlyList<GoogleCheck>> CheckAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleCheck>>(Array.Empty<GoogleCheck>());
 }

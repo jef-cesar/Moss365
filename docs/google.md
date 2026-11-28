@@ -80,5 +80,12 @@ Resources and roles are read each on their own. When the signed-in administrator
 rest is still read, and what could not be read stays as it was. The Google users are linked to their AD and Entra
 accounts on the page Linking persons.
 
-Later steps of G1 add licences, the logs and the alerts. Writing comes with G2, and the
+After every read, the login and admin activities of the Reports API are kept locally, as for Entra (R18): the failed
+and suspicious logins, those of Google administrators and emergency accounts, and every admin activity. The page of the
+kept logs shows them under Google Workspace, with the alerts when that part is on.
+
+With the part **Google licences**, Statistics shows the edition (the Workspace SKU most users have), what that edition
+lacks of Vault, context-aware access, advanced endpoint management and the security center, and the active accounts
+without a Workspace licence. The editions are data in `src/Moss365.Core/Google/GoogleEditions.cs`: check them against
+Google's comparison of the editions when Google changes them. Writing comes with G2, and the
 Gmail settings of someone else come with the part "Gmail settings" and a service account (U34).

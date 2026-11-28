@@ -57,6 +57,14 @@ else
     <KbTable Id="bewaard-auditlogboek" ExportName="Bewaard-auditlogboek" Items="LocalLogs.Filter(audits, text).ToList()" Columns="auditColumns" />
 </section>
 
+@if (google && (alerts.Count > 0 || Moss365.Core.Setup.GoogleParts.IsOn(State.Config.PermissionParts, Moss365.Core.Setup.GoogleParts.Alerts)))
+{
+    <section class="kb-kaart" id="google-meldingen">
+        <h2>@T.Format("local-logs.google.alerts", alerts.Count)</h2>
+        <KbTable Id="bewaarde-google-meldingen" ExportName="Bewaarde-Google-meldingen" Items="LocalLogs.Filter(alerts, text).ToList()" Columns="auditColumns" />
+    </section>
+}
+
 @code {
     private DateTime from = DateTime.Today.AddDays(-30);
     private DateTime until = DateTime.Today;
@@ -74,6 +82,7 @@ else
     }
     private IReadOnlyList<KeptSignIn> signIns = Array.Empty<KeptSignIn>();
     private IReadOnlyList<AuditEvent> audits = Array.Empty<AuditEvent>();
+    private IReadOnlyList<AuditEvent> alerts = Array.Empty<AuditEvent>();
     private IReadOnlyList<Column<KeptSignIn>> signInColumns = Array.Empty<Column<KeptSignIn>>();
     private IReadOnlyList<Column<AuditEvent>> auditColumns = Array.Empty<Column<AuditEvent>>();
 
@@ -110,6 +119,7 @@ else
         var end = new DateTimeOffset(until.Date.AddDays(1));
         signIns = State.KeptSignIns(start, end, google);
         audits = State.KeptAudits(start, end, google);
+        alerts = google ? State.KeptGoogleAlerts(start, end) : Array.Empty<AuditEvent>();
         State.Access("Bewaarde logboeken bekeken", T.Format("local-logs.access", from.ToString("yyyy-MM-dd", T.Culture), until.ToString("yyyy-MM-dd", T.Culture), signIns.Count, audits.Count));
     }
 }

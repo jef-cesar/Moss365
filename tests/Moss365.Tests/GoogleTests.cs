@@ -298,6 +298,43 @@ public sealed class GoogleTests
     }
 
     [Fact]
+    public async Task GroupSettingsAndAlertsAreReadOnlyWithTheirParts()
+    {
+        var google = new FakeGoogle
+        {
+            Answer = (r, _) => r.RequestUri!.ToString() switch
+            {
+                var u when u.Contains("/groups/v1/groups/team%40example.com", StringComparison.Ordinal)
+                    => (HttpStatusCode.OK, """{"email":"team@example.com","whoCanJoin":"ANYONE_CAN_JOIN","whoCanPostMessage":"ANYONE_CAN_POST","whoCanViewMembership":"ALL_MEMBERS_CAN_VIEW","allowExternalMembers":"true"}"""),
+                var u when u.Contains("/groups?", StringComparison.Ordinal) => (HttpStatusCode.OK, """{"groups":[{"id":"g1","email":"team@example.com","name":"Team"}]}"""),
+                var u when u.Contains("alertcenter", StringComparison.Ordinal) => (HttpStatusCode.OK, """
+                    {"alerts":[{"alertId":"al1","createTime":"2026-11-27T12:00:00Z","type":"Suspicious login","source":"Google identity",
+                                "data":{"loginDetails":[{"email":"an@example.com"}]},"metadata":{"status":"NOT_STARTED","severity":"HIGH"}}]}
+                    """),
+                _ => (HttpStatusCode.OK, "{}"),
+            },
+        };
+        var off = await new GoogleConnection(new HttpClient(google), _ => Task.FromResult("token-1")).ReadAsync(null, CancellationToken.None);
+        Assert.Equal(string.Empty, off.Groups.Single().WhoCanJoin);
+        Assert.DoesNotContain(google.Asked, a => a.Url.Contains("/groups/v1/", StringComparison.Ordinal));
+
+        var parts = new[] { Moss365.Core.Setup.GoogleParts.GroupSettings, Moss365.Core.Setup.GoogleParts.Alerts };
+        var connection = new GoogleConnection(new HttpClient(google), _ => Task.FromResult("token-1"), null, parts, "example.com");
+        var team = (await connection.ReadAsync(null, CancellationToken.None)).Groups.Single();
+        Assert.True(team.AnyoneCanJoin && team.AnyoneCanPost);
+        Assert.True(team.AllowExternalMembers);
+
+        var alert = Assert.Single(await connection.ReadAlertsAsync(new DateTimeOffset(2026, 11, 27, 0, 0, 0, TimeSpan.Zero), 100, CancellationToken.None));
+        Assert.Equal(("Suspicious login", "HIGH", "an@example.com", "NOT_STARTED"), (alert.Activity, alert.Category, alert.TargetName, alert.Result));
+        Assert.Contains(google.Asked, a => Uri.UnescapeDataString(a.Url).Contains("filter=createTime >= \"2026-11-27T00:00:00Z\"", StringComparison.Ordinal));
+
+        // The settings are stored with the groups
+        var d = LiveLoader.WithGoogle(InventoryLoader.Build(TestData.Files()), new GoogleData(Array.Empty<GoogleUser>(), new[] { team }, Array.Empty<GoogleOrgUnit>()));
+        var back = InventoryLoader.Build(Snapshots.Tables(InventoryWriter.Files(d, InventoryComponent.Google))).GoogleGroups.Single();
+        Assert.Equal((team.WhoCanJoin, team.WhoCanPost, team.AllowExternalMembers), (back.WhoCanJoin, back.WhoCanPost, back.AllowExternalMembers));
+    }
+
+    [Fact]
     public async Task WithoutAWindowGoogleIsNeverSignedIn()
     {
         var signIn = new GoogleSignIn(new HttpClient(new FakeGoogle()), "client-1", "secret-1", "example.com", new SignInStatus(), withoutWindow: true);

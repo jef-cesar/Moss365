@@ -193,6 +193,8 @@ public static class InventoryWriter
             {
                 ["Id"] = g.Id, ["Email"] = g.Email, ["Name"] = g.Name, ["Description"] = g.Description,
                 ["DirectMembersCount"] = N(g.CountMembers), ["Aliases"] = string.Join('|', g.Aliases), ["AdminCreated"] = B(g.AdminCreated),
+                ["WhoCanJoin"] = g.WhoCanJoin, ["WhoCanPostMessage"] = g.WhoCanPost, ["WhoCanViewMembership"] = g.WhoCanViewMembership,
+                ["AllowExternalMembers"] = g.AllowExternalMembers is { } x ? B(x) : string.Empty,
             }));
             Write(InventoryLoader.GoogleOrgUnitsFile, d.GoogleOrgUnits.Select(o => new Dictionary<string, string?>
             {

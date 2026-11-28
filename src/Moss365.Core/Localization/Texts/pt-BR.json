@@ -4178,5 +4178,10 @@
   "google.feature.vault": "Vault (retenção e eDiscovery)",
   "google.feature.context-aware-access": "acesso sensível ao contexto",
   "google.feature.advanced-endpoints": "gestão avançada de dispositivos",
-  "google.feature.security-center": "o centro de segurança"
+  "google.feature.security-center": "o centro de segurança",
+  "local-logs.google.alerts": "Alertas do Alert Center ({0})",
+  "google.stat.anyone-can-join": "Grupos em que qualquer pessoa pode entrar",
+  "google.stat.anyone-can-post": "Grupos para os quais qualquer pessoa de fora pode enviar",
+  "google.stat.external-members": "Grupos que permitem membros externos",
+  "google.stat.open-alerts": "Alertas abertos (30 dias)"
 }

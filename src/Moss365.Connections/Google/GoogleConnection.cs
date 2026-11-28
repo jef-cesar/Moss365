@@ -126,6 +126,11 @@ public sealed class GoogleConnection : IGoogleConnection
         var units = unitItems.Select(ToOrgUnit).ToList();
         progress?.Report(Texts.T["google.read.groups"]);
         var groups = (await AllAsync($"{Directory}/groups?customer=my_customer&maxResults=200", "groups", cancel)).Select(ToGroup).ToList();
+        if (PartOn(Core.Setup.GoogleParts.GroupSettings))
+        {
+            progress?.Report(Texts.T["google.read.group-settings"]);
+            groups = await WithSettingsAsync(groups, progress, cancel);
+        }
 
         // Resources and admin roles: each on its own, so that a missing right leaves the rest (null = not read)
         IReadOnlyList<GoogleResource>? resources = null;
@@ -199,6 +204,59 @@ public sealed class GoogleConnection : IGoogleConnection
         }
 
         return output;
+    }
+
+    /// <summary>The settings of every group (one question per group); a group whose settings cannot be read keeps none.</summary>
+    private async Task<List<GoogleGroup>> WithSettingsAsync(List<GoogleGroup> groups, IProgress<string>? progress, CancellationToken cancel)
+    {
+        var output = new List<GoogleGroup>(groups.Count);
+        string? failed = null;
+        foreach (var g in groups)
+        {
+            try
+            {
+                output.Add(WithSettings(g, await GetAsync($"{GroupsSettings}/{Uri.EscapeDataString(g.Email)}?alt=json", cancel)));
+            }
+            catch (GoogleError ex)
+            {
+                failed ??= ex.Message;
+                output.Add(g);
+            }
+        }
+
+        if (failed is not null)
+        {
+            progress?.Report(Texts.T.Format("google.read.part-failed", Texts.T["google.read.group-settings"], failed));
+        }
+
+        return output;
+    }
+
+    internal static GoogleGroup WithSettings(GoogleGroup g, JsonElement s) => g with
+    {
+        WhoCanJoin = S(s, "whoCanJoin"),
+        WhoCanPost = S(s, "whoCanPostMessage"),
+        WhoCanViewMembership = S(s, "whoCanViewMembership"),
+        // A text "true" or "false" in this API
+        AllowExternalMembers = S(s, "allowExternalMembers") is { Length: > 0 } x ? string.Equals(x, "true", StringComparison.OrdinalIgnoreCase) : null,
+    };
+
+    public async Task<IReadOnlyList<Core.Security.AuditEvent>> ReadAlertsAsync(DateTimeOffset since, int max, CancellationToken cancel)
+    {
+        var at = since.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+        var filter = Uri.EscapeDataString($"createTime >= \"{at}\"");
+        return (await AllAsync($"{AlertCenter}/alerts?pageSize=100&filter={filter}", "alerts", cancel, max)).Select(ToAlert).ToList();
+    }
+
+    /// <summary>An alert as an audit line: the type, the severity, the source, the address it is about, the status.</summary>
+    internal static Core.Security.AuditEvent ToAlert(JsonElement a)
+    {
+        var meta = a.TryGetProperty("metadata", out var m) ? m : default;
+        var data = a.TryGetProperty("data", out var d) ? d : default;
+        var about = S(data, "email") is { Length: > 0 } email ? email
+            : Items(data, "loginDetails").Select(l => S(l, "email")).FirstOrDefault(e => e.Length > 0) ?? S(data, "actorEmail");
+        var time = DateTimeOffset.TryParse(S(a, "createTime"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var t) ? t : DateTimeOffset.MinValue;
+        return new Core.Security.AuditEvent(S(a, "alertId"), time, S(a, "type"), S(meta, "severity"), S(a, "source"), string.Empty, string.Empty, about, S(meta, "status"));
     }
 
     internal static GoogleLicence ToLicence(JsonElement l) => new(S(l, "userId"), S(l, "productId"), S(l, "skuId"), S(l, "skuName"));

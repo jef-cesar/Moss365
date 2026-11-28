@@ -49,6 +49,13 @@ public sealed partial class ManagementState
             var emergency = Config.EmergencyAccounts.Where(u => !string.IsNullOrWhiteSpace(u)).Select(u => u.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
             signIns = Database.KeepSignIns(LocalLogs.ToKeep(read.Logins, admins, emergency), LocalLogs.GoogleSignInKind);
             audits = Database.KeepAudits(read.Admin, LocalLogs.GoogleAuditKind);
+
+            // The alerts only with their part (U40)
+            if (Core.Setup.GoogleParts.IsOn(Config.PermissionParts, Core.Setup.GoogleParts.Alerts))
+            {
+                audits += Database.KeepAudits(await google.ReadAlertsAsync(LocalLogs.Since(Database.LastLocal(LocalLogs.GoogleAlertKind), now), LocalLogs.MaxPerRun, cancel),
+                    LocalLogs.GoogleAlertKind);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException and not InvalidOperationException)
         {
@@ -108,4 +115,7 @@ public sealed partial class ManagementState
     /// <summary>The audit lines kept between two times, newest first.</summary>
     public IReadOnlyList<AuditEvent> KeptAudits(DateTimeOffset from, DateTimeOffset until, bool google = false)
         => Database.ReadAudits(from, until, kind: google ? LocalLogs.GoogleAuditKind : LocalLogs.AuditKind);
+
+    /// <summary>The alerts of Google kept between two times, newest first (G1).</summary>
+    public IReadOnlyList<AuditEvent> KeptGoogleAlerts(DateTimeOffset from, DateTimeOffset until) => Database.ReadAudits(from, until, kind: LocalLogs.GoogleAlertKind);
 }
