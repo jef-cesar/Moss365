@@ -38,6 +38,11 @@ BeforeAll {
     function global:Get-EXOMailboxPermission { param($Identity, $ErrorAction)
         @([pscustomobject]@{ User = 'sg@test.be'; AccessRights = @('FullAccess'); IsInherited = $false }, [pscustomobject]@{ User = 'NT AUTHORITY\SELF'; AccessRights = @('FullAccess'); IsInherited = $false }
             [pscustomobject]@{ User = 'Interne Naam2'; AccessRights = @('FullAccess'); IsInherited = $false }) }
+    # R21: the working hours of a room
+    function global:Get-MailboxCalendarConfiguration { param($Identity, $ErrorAction)
+        [pscustomobject]@{ WorkDays = 'Weekdays'; WorkingHoursStartTime = [timespan]'08:30:00'; WorkingHoursEndTime = [timespan]'17:00:00'; WorkingHoursTimeZone = 'W. Europe Standard Time' } }
+    function global:Set-MailboxCalendarConfiguration { param($Identity, $WorkDays, $WorkingHoursStartTime, $WorkingHoursEndTime, $WorkingHoursTimeZone, $ErrorAction)
+        $global:ExoAanroepen.Add("Werkuren $Identity $WorkDays $WorkingHoursStartTime/$($WorkingHoursStartTime.GetType().Name) $WorkingHoursEndTime $WorkingHoursTimeZone") }
     # R21: mail contacts
     function global:Get-MailContact { param($Identity, $ResultSize, $ErrorAction)
         [pscustomobject]@{ Guid = [guid]'11111111-1111-1111-1111-111111111111'; DisplayName = 'Jan Extern'; Name = 'Jan Extern'; Alias = 'jan.extern'
@@ -231,6 +236,21 @@ Describe 'Exchange.ps1' {
         $r2 = Voer @(@{ id = 'd'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; HiddenFromAddressListsEnabled = 'False' } })
         $r2[0].status | Should -Be 'Gelukt'
         $global:ExoAanroepen | Should -Contain 'SetDgOpt sg@test.be Hidden=False/Boolean Auth= Join='
+    }
+
+    It 'reads and sets the working hours of a room, only known days and times (R21)' {
+        $r = Voer @(@{ id = 'r'; op = 'LeesRooms'; params = @{} })
+        $room = @($r[0].data)[0]
+        ($room.WerkDagen, $room.WerkBegin, $room.WerkEinde, $room.WerkTijdzone) | Should -Be @('Weekdays', '08:30', '17:00', 'W. Europe Standard Time')
+        $w = Voer @(
+            @{ id = 'a'; op = 'Werkuren'; params = @{ Identity = 'rm-a@test.be'; WorkDays = 'Monday,Tuesday'; WorkingHoursStartTime = '07:45'; WorkingHoursEndTime = '16:00' } }
+            @{ id = 'b'; op = 'Werkuren'; params = @{ Identity = 'rm-a@test.be'; WorkDays = 'Maandag' } }
+            @{ id = 'c'; op = 'Werkuren'; params = @{ Identity = 'rm-a@test.be'; WorkingHoursStartTime = '7u45' } }
+        )
+        ($w | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
+        ($w | Where-Object id -eq 'b').status | Should -Not -Be 'Gelukt'
+        ($w | Where-Object id -eq 'c').status | Should -Not -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'Werkuren rm-a@test.be Monday,Tuesday 07:45:00/TimeSpan 16:00:00 '
     }
 
     It 'sets the address and the equipment of a room (R21)' {

@@ -359,6 +359,7 @@ public sealed partial class PlanScreenTests
         cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Contact en adres").QuerySelector("button")!.Click();
         Assert.Empty(cut.FindAll("input[aria-label='Telefoon thuis']"));
         Assert.Empty(cut.FindAll("input[aria-label='Account werkt tot en met']"));
+        Assert.Contains("Geen extensieattribuut ingevuld.", cut.Markup, StringComparison.Ordinal); // a cloud account always has them
         cut.Find("input[aria-label='Fax']").Input("03 000 00 08");
         cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
         Confirm(cut);
@@ -473,5 +474,66 @@ public sealed partial class PlanScreenTests
         Assert.Contains("komt uit AD", page.Markup, StringComparison.Ordinal);
         Assert.Empty(page.FindAll("button").Where(b => b.TextContent == "Plan maken"));
         Assert.NotEmpty(ContactPlans.Edit(State.Data, ad, new ContactDesired { Company = "X" }).Errors);
+    }
+}
+
+/// <summary>R21: the working hours of a room, as a plan with undo, checked in the form.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void TheWorkingHoursOfARoomAreAPlanWithUndo()
+    {
+        Assert.Equal("Weekdays", PlanBuilder.WorkDaysText("Friday, Monday,Tuesday,Wednesday,Thursday"));
+        Assert.Equal("Monday,Wednesday", PlanBuilder.WorkDaysText("wednesday,Monday"));
+        Assert.Equal("AllDays", PlanBuilder.WorkDaysText("Weekdays,WeekendDays"));
+        Assert.True(PlanBuilder.ValidWorkingHours("08:00", "17:00"));
+        Assert.False(PlanBuilder.ValidWorkingHours("17:00", "08:00"));
+        Assert.False(PlanBuilder.ValidWorkingHours("8u", string.Empty));
+
+        var room = new Moss365.Core.Inventory.Room
+        {
+            Smtp = "rm-onthaal@contoso.com", DisplayName = "Onthaal", WorkDays = "Weekdays", WorkStart = "08:30", WorkEnd = "17:00",
+            WorkTimeZone = "W. Europe Standard Time", OnlyDuringWorkHours = false,
+        };
+
+        // The same days written otherwise: no change; other hours and only within them: two steps
+        Assert.Empty(PlanBuilder.Room(room, new RoomDesired { WorkDays = "Monday,Tuesday,Wednesday,Thursday,Friday" }));
+        var plan = PlanBuilder.Room(room, new RoomDesired { WorkDays = "Monday,Tuesday,Thursday", WorkStart = "07:45", OnlyDuringWorkHours = true });
+        var hours = Assert.Single(plan, c => c.ChangeAction == ChangeAction.ExchangeRoomWorkingHours);
+        Assert.Equal(("Monday,Tuesday,Thursday", "07:45"), (hours.P("WorkDays"), hours.P("WorkingHoursStartTime")));
+        Assert.Equal(("Weekdays", "08:30"), (hours.Previous!["WorkDays"], hours.Previous["WorkingHoursStartTime"]));
+        Assert.False(hours.Parameters.ContainsKey("WorkingHoursEndTime"));
+        Assert.Equal("True", Assert.Single(plan, c => c.ChangeAction == ChangeAction.ExchangeRoomCalendarProcessing).P("ScheduleOnlyDuringWorkHours"));
+        var entry = new Moss365.Core.Changes.LogEntry(DateTimeOffset.Now, "admin", "test", "Exchange", nameof(ChangeAction.ExchangeRoomWorkingHours), room.Smtp, room.DisplayName, "x",
+            hours.Parameters, nameof(ResultStatus.Succeeded), string.Empty, Previous: hours.Previous);
+        Assert.Null(Undo.WhyNot(entry));
+
+        // An end before the start: no step
+        Assert.DoesNotContain(PlanBuilder.Room(room, new RoomDesired { WorkEnd = "07:00" }), c => c.ChangeAction == ChangeAction.ExchangeRoomWorkingHours);
+    }
+}
+
+/// <summary>R21: the wrong role cannot change anything: no buttons on the page, and the engine refuses the plan.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public async Task WithoutTheRoleToManageNothingIsEditedOrWritten()
+    {
+        var an = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        var plan = AttributePlans.User(State.Data, State.Config, an, new UserDesired { Upn = "c.vos@test.be", AccountExpires = "2027-06-30" }).Plan;
+        var contact = ContactPlans.Edit(State.Data, State.Data.Contacts.First(c => !c.IsDirSynced), new ContactDesired { Company = "X" }).Plan;
+        Assert.NotEmpty(plan);
+
+        State.Config.ProfilesRequired = true;
+        _factory.AppRoles = new[] { "Moss365.Helpdesk" };
+        var user = RenderComponent<UserDetail>(p => p.Add(x => x.Key, an.Key));
+        Assert.Empty(user.FindAll(".kb-sectie button"));
+        var page = RenderComponent<ContactDetail>(p => p.Add(x => x.Smtp, "jan@fabrikam.com"));
+        Assert.All(page.FindAll("input"), i => Assert.True(i.HasAttribute("disabled")));
+        Assert.Empty(RenderComponent<Contacts>().FindAll("button").Where(b => b.TextContent == "Plan maken"));
+
+        var results = await State.ExecuteAsync(plan.Concat(contact).ToList(), "test", null);
+        Assert.All(results, r => Assert.NotEqual(ResultStatus.Succeeded, r.Status));
+        Assert.Empty(_factory.Executed);
     }
 }

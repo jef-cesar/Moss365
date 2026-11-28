@@ -30,7 +30,7 @@ else
         </div>
         <RoomForm Desired="desired" />
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" disabled="@(selected.Count == 0)" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+            <button class="kb-knop kb-primair" disabled="@(selected.Count == 0 || RoomForm.Invalid(desired))" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
         </div>
     </section>
     }

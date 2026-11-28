@@ -25,10 +25,42 @@
     <label>@T["room-form.video"] <input class="kb-invoer" @bind="Desired.VideoDevice" /></label>
     <label>@T["room-form.display"] <input class="kb-invoer" @bind="Desired.DisplayDevice" /></label>
     <label>@T["room-form.wheelchair"] <YesNo @bind-Value="Desired.WheelchairAccessible" /></label>
+    @* R21: the working hours *@
+    <fieldset class="kb-dagen">
+        <legend>@T["room-form.work-days"]</legend>
+        @foreach (var day in PlanBuilder.WeekDays)
+        {
+            <label><input type="checkbox" checked="@PlanBuilder.DaysOf(Desired.WorkDays ?? string.Empty).Contains(day)" @onchange="e => Toggle(day, e.Value is true)" aria-label="@T["room-form.day." + day.ToLowerInvariant()]" /> @T["room-form.day." + day.ToLowerInvariant()]</label>
+        }
+    </fieldset>
+    <label>@T["room-form.work-start"] <input class="kb-invoer" type="time" value="@Desired.WorkStart" @onchange="e => Desired.WorkStart = e.Value?.ToString()" aria-label="@T["room-form.work-start"]" /></label>
+    <label>@T["room-form.work-end"] <input class="kb-invoer" type="time" value="@Desired.WorkEnd" @onchange="e => Desired.WorkEnd = e.Value?.ToString()" aria-label="@T["room-form.work-end"]" />
+        @if (!PlanBuilder.ValidWorkingHours(Desired.WorkStart ?? string.Empty, Desired.WorkEnd ?? string.Empty)) { <span class="kb-waarschuwing">@T["room-form.work-hours-invalid"]</span> }
+    </label>
+    <label>@T["room-form.time-zone"] <input class="kb-invoer" list="kb-tijdzones" value="@Desired.WorkTimeZone" @onchange="e => Desired.WorkTimeZone = e.Value?.ToString()" aria-label="@T["room-form.time-zone"]" placeholder="@TimeZones[0]" />
+        <datalist id="kb-tijdzones">
+            @foreach (var zone in TimeZones) { <option value="@zone"></option> }
+        </datalist>
+    </label>
+    <label>@T["room-form.only-work-hours"] <YesNo @bind-Value="Desired.OnlyDuringWorkHours" /></label>
 </div>
 
 @code {
     [Parameter, EditorRequired] public RoomDesired Desired { get; set; } = new();
+
+    /// <summary>Windows time zones that are common here (Exchange names them so); a room can have another.</summary>
+    private static readonly string[] TimeZones = { "W. Europe Standard Time", "Romance Standard Time", "GMT Standard Time", "Central Europe Standard Time", "E. South America Standard Time", "UTC" };
+
+    private void Toggle(string day, bool on)
+    {
+        var days = PlanBuilder.DaysOf(Desired.WorkDays ?? string.Empty).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (on) { days.Add(day); } else { days.Remove(day); }
+        var text = PlanBuilder.WorkDaysText(string.Join(",", days));
+        Desired.WorkDays = text.Length == 0 ? null : text;
+    }
+
+    /// <summary>Wrong working hours (not HH:mm, or the end before the start): no plan.</summary>
+    public static bool Invalid(RoomDesired g) => !PlanBuilder.ValidWorkingHours(g.WorkStart ?? string.Empty, g.WorkEnd ?? string.Empty);
 
     /// <summary>Empty text fields mean "do not change".</summary>
     public static RoomDesired Cleaned(RoomDesired g) => new()
@@ -53,6 +85,11 @@
         VideoDevice = Empty(g.VideoDevice),
         DisplayDevice = Empty(g.DisplayDevice),
         WheelchairAccessible = g.WheelchairAccessible,
+        WorkDays = Empty(g.WorkDays),
+        WorkStart = Empty(g.WorkStart),
+        WorkEnd = Empty(g.WorkEnd),
+        WorkTimeZone = Empty(g.WorkTimeZone),
+        OnlyDuringWorkHours = g.OnlyDuringWorkHours,
     };
 
     private static string? Empty(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();

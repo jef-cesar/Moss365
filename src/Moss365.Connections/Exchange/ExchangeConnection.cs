@@ -135,6 +135,11 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
                 }
 
                 break;
+            case ChangeAction.ExchangeRoomWorkingHours:
+                op = "Werkuren";
+                p["Identity"] = w.Target;
+                Take(w, p, "WorkDays", "WorkingHoursStartTime", "WorkingHoursEndTime", "WorkingHoursTimeZone");
+                break;
             case ChangeAction.ExchangeRoomPlace:
                 op = "Place";
                 p["Identity"] = w.Target;
@@ -554,6 +559,11 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
         VideoDevice = S(e, "Video"),
         DisplayDevice = S(e, "Scherm"),
         WheelchairAccessible = S(e, "Rolstoel").Length > 0 ? B(e, "Rolstoel") : null,
+        WorkDays = S(e, "WerkDagen"),
+        WorkStart = S(e, "WerkBegin"),
+        WorkEnd = S(e, "WerkEinde"),
+        WorkTimeZone = S(e, "WerkTijdzone"),
+        OnlyDuringWorkHours = S(e, "AlleenWerkuren").Length > 0 ? B(e, "AlleenWerkuren") : null,
         Hidden = B(e, "Hidden"),
         AutomateProcessing = S(e, "AutomateProcessing"),
         AllBookInPolicy = B(e, "AllBookInPolicy"),

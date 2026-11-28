@@ -73,6 +73,7 @@ public static class InventoryWriter
                 ["PostalCode"] = u.PostalCode, ["State"] = u.State, ["Country"] = u.Country,
                 ["HomePhone"] = u.HomePhone, ["Fax"] = u.Fax, ["IpPhone"] = u.IpPhone, ["AccountExpirationDate"] = u.AccountExpires,
                 ["ProxyAddresses"] = string.Join('|', u.ProxyAddresses),
+                ["extensionAttribute1"] = X(u.ExtensionAttributes, 1), ["extensionAttribute2"] = X(u.ExtensionAttributes, 2), ["extensionAttribute3"] = X(u.ExtensionAttributes, 3), ["extensionAttribute4"] = X(u.ExtensionAttributes, 4), ["extensionAttribute5"] = X(u.ExtensionAttributes, 5), ["extensionAttribute6"] = X(u.ExtensionAttributes, 6), ["extensionAttribute7"] = X(u.ExtensionAttributes, 7), ["extensionAttribute8"] = X(u.ExtensionAttributes, 8), ["extensionAttribute9"] = X(u.ExtensionAttributes, 9), ["extensionAttribute10"] = X(u.ExtensionAttributes, 10), ["extensionAttribute11"] = X(u.ExtensionAttributes, 11), ["extensionAttribute12"] = X(u.ExtensionAttributes, 12), ["extensionAttribute13"] = X(u.ExtensionAttributes, 13), ["extensionAttribute14"] = X(u.ExtensionAttributes, 14), ["extensionAttribute15"] = X(u.ExtensionAttributes, 15),
             }));
             Write(InventoryLoader.AdGroups, d.AdGroupsByDn.Values.Select(g => new Dictionary<string, string?>
             {
@@ -100,6 +101,7 @@ public static class InventoryWriter
                 ["LaatsteAanmelding"] = e.LastSignIn,
                 ["EmployeeId"] = e.EmployeeId, ["EmployeeType"] = e.EmployeeType, ["StreetAddress"] = e.StreetAddress,
                 ["PostalCode"] = e.PostalCode, ["State"] = e.State, ["Country"] = e.Country, ["FaxNumber"] = e.Fax,
+                ["extensionAttribute1"] = X(e.ExtensionAttributes, 1), ["extensionAttribute2"] = X(e.ExtensionAttributes, 2), ["extensionAttribute3"] = X(e.ExtensionAttributes, 3), ["extensionAttribute4"] = X(e.ExtensionAttributes, 4), ["extensionAttribute5"] = X(e.ExtensionAttributes, 5), ["extensionAttribute6"] = X(e.ExtensionAttributes, 6), ["extensionAttribute7"] = X(e.ExtensionAttributes, 7), ["extensionAttribute8"] = X(e.ExtensionAttributes, 8), ["extensionAttribute9"] = X(e.ExtensionAttributes, 9), ["extensionAttribute10"] = X(e.ExtensionAttributes, 10), ["extensionAttribute11"] = X(e.ExtensionAttributes, 11), ["extensionAttribute12"] = X(e.ExtensionAttributes, 12), ["extensionAttribute13"] = X(e.ExtensionAttributes, 13), ["extensionAttribute14"] = X(e.ExtensionAttributes, 14), ["extensionAttribute15"] = X(e.ExtensionAttributes, 15),
             }));
             Write(InventoryLoader.EntraGroups, d.CloudGroups.Values.Select(g => new Dictionary<string, string?>
             {
@@ -165,6 +167,8 @@ public static class InventoryWriter
                 ["Stad"] = r.City, ["Straat"] = r.Street, ["Postcode"] = r.PostalCode, ["Land"] = r.Country,
                 ["Audio"] = r.AudioDevice, ["Video"] = r.VideoDevice, ["Scherm"] = r.DisplayDevice,
                 ["Rolstoel"] = r.WheelchairAccessible is null ? string.Empty : B(r.WheelchairAccessible.Value),
+                ["WerkDagen"] = r.WorkDays, ["WerkBegin"] = r.WorkStart, ["WerkEinde"] = r.WorkEnd, ["WerkTijdzone"] = r.WorkTimeZone,
+                ["AlleenWerkuren"] = r.OnlyDuringWorkHours is null ? string.Empty : B(r.OnlyDuringWorkHours.Value),
                 ["AutomateProcessing"] = r.AutomateProcessing, ["AllBookInPolicy"] = B(r.AllBookInPolicy), ["AllRequestInPolicy"] = B(r.AllRequestInPolicy),
                 ["BookInPolicy"] = r.BookInPolicy, ["ResourceDelegates"] = r.ResourceDelegates, ["BookingWindowInDays"] = N(r.BookingWindowInDays),
                 ["MaximumDurationInMinutes"] = N(r.MaximumDurationInMinutes), ["AllowConflicts"] = B(r.AllowConflicts),
@@ -211,6 +215,9 @@ public static class InventoryWriter
     private static string B(bool b) => b ? "True" : "False";
 
     private static string N(int? n) => n?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+
+    /// <summary>Extension attribute n (1 to 15), or empty.</summary>
+    private static string X(IReadOnlyList<string> values, int n) => values.Count >= n ? values[n - 1] : string.Empty;
 
 }
 
@@ -263,4 +270,5 @@ public static class CsvWriter
         var output = new string(name.Select(c => invalid.Contains(c) || char.IsControl(c) ? '-' : c).ToArray()).Trim(' ', '.');
         return output.Length == 0 ? "export" : output;
     }
+
 }

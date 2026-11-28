@@ -71,6 +71,14 @@ public sealed class RoomDesired
     public string? DisplayDevice { get; set; }
     public bool? WheelchairAccessible { get; set; }
 
+    // R21: the working hours: the days (English day names, comma separated), start and end (HH:mm), the Windows time
+    // zone, and whether the room can only be booked in them
+    public string? WorkDays { get; set; }
+    public string? WorkStart { get; set; }
+    public string? WorkEnd { get; set; }
+    public string? WorkTimeZone { get; set; }
+    public bool? OnlyDuringWorkHours { get; set; }
+
     public static RoomDesired FromDefault(RoomDefault s) => new()
     {
         AutomateProcessing = s.AutomateProcessing,
@@ -170,6 +178,7 @@ public static class PlanBuilder
         Compare("AllowRecurringMeetings", Bool(room.AllowRecurringMeetings), Bool(desired.AllowRecurringMeetings));
         Compare("AddOrganizerToSubject", Bool(room.AddOrganizerToSubject), Bool(desired.AddOrganizerToSubject));
         Compare("DeleteSubject", Bool(room.DeleteSubject), Bool(desired.DeleteSubject));
+        Compare("ScheduleOnlyDuringWorkHours", room.OnlyDuringWorkHours is null ? string.Empty : Bool(room.OnlyDuringWorkHours.Value), desired.OnlyDuringWorkHours is null ? null : Bool(desired.OnlyDuringWorkHours.Value));
         if (processing.Count > 0)
         {
             plan.Add(new Change
@@ -235,6 +244,57 @@ public static class PlanBuilder
             });
         }
 
+        // R21: the working hours, with the values before to undo
+        var hours = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var hoursPrevious = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        old = new List<string>();
+        newValue = new List<string>();
+        void CompareHours(string name, string current, string? targetValue, string label)
+        {
+            if (targetValue is not null && targetValue.Trim().Length > 0 && !string.Equals(current.Trim(), targetValue.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                hours[name] = targetValue.Trim();
+                if (current.Trim().Length > 0)
+                {
+                    hoursPrevious[name] = current.Trim();
+                }
+
+                old.Add($"{label}: {(current.Length == 0 ? Texts.T["kpi.value.unknown"] : current)}");
+                newValue.Add($"{label}: {targetValue.Trim()}");
+            }
+        }
+
+        if (desired.WorkDays is { } days && WorkDaysText(days) is { Length: > 0 } wanted && !string.Equals(WorkDaysText(room.WorkDays), wanted, StringComparison.Ordinal))
+        {
+            hours["WorkDays"] = wanted;
+            if (room.WorkDays.Length > 0)
+            {
+                hoursPrevious["WorkDays"] = WorkDaysText(room.WorkDays);
+            }
+
+            old.Add($"{Texts.T["room-form.work-days"]}: {(room.WorkDays.Length == 0 ? Texts.T["kpi.value.unknown"] : WorkDaysText(room.WorkDays))}");
+            newValue.Add($"{Texts.T["room-form.work-days"]}: {wanted}");
+        }
+
+        CompareHours("WorkingHoursStartTime", room.WorkStart, desired.WorkStart, Texts.T["room-form.work-start"]);
+        CompareHours("WorkingHoursEndTime", room.WorkEnd, desired.WorkEnd, Texts.T["room-form.work-end"]);
+        CompareHours("WorkingHoursTimeZone", room.WorkTimeZone, desired.WorkTimeZone, Texts.T["room-form.time-zone"]);
+        if (hours.Count > 0 && ValidWorkingHours(hours.GetValueOrDefault("WorkingHoursStartTime") ?? room.WorkStart, hours.GetValueOrDefault("WorkingHoursEndTime") ?? room.WorkEnd))
+        {
+            plan.Add(new Change
+            {
+                TargetSystem = TargetSystem.Exchange,
+                ChangeAction = ChangeAction.ExchangeRoomWorkingHours,
+                Target = room.Smtp,
+                TargetName = room.DisplayName,
+                Parameters = hours,
+                Previous = hoursPrevious,
+                Description = Texts.T.Format("room.plan.working-hours", room.DisplayName),
+                CurrentValue = string.Join(", ", old),
+                NewValue = string.Join(", ", newValue),
+            });
+        }
+
         if (desired.DefaultCalendarPermission is { } permission && !string.Equals(room.DefaultCalendarPermission, permission, StringComparison.OrdinalIgnoreCase))
         {
             plan.Add(new Change
@@ -251,6 +311,61 @@ public static class PlanBuilder
         }
 
         return plan;
+    }
+
+    private static readonly string[] Week = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+
+    /// <summary>The days of a room as one text in a fixed order (R21): "Weekdays" for Monday to Friday, "AllDays" for
+    /// all seven, "WeekendDays" for Saturday and Sunday, otherwise the days separated by commas; empty when unknown.</summary>
+    public static string WorkDaysText(string days)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var d in days.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            set.UnionWith(d.ToLowerInvariant() switch
+            {
+                "weekdays" => Week[..5],
+                "weekenddays" => Week[5..],
+                "alldays" => Week,
+                _ => Week.Where(w => string.Equals(w, d, StringComparison.OrdinalIgnoreCase)),
+            });
+        }
+
+        var list = Week.Where(set.Contains).ToList();
+        return list.Count switch
+        {
+            0 => string.Empty,
+            7 => "AllDays",
+            5 when !set.Contains("Saturday") && !set.Contains("Sunday") => "Weekdays",
+            2 when set.Contains("Saturday") && set.Contains("Sunday") => "WeekendDays",
+            _ => string.Join(",", list),
+        };
+    }
+
+    /// <summary>The days of the week in order (for the form).</summary>
+    public static IReadOnlyList<string> WeekDays => Week;
+
+    /// <summary>The days a value holds, one by one.</summary>
+    public static IReadOnlySet<string> DaysOf(string days)
+        => WorkDaysText(days) switch
+        {
+            "" => new HashSet<string>(),
+            "AllDays" => Week.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            "Weekdays" => Week[..5].ToHashSet(StringComparer.OrdinalIgnoreCase),
+            "WeekendDays" => Week[5..].ToHashSet(StringComparer.OrdinalIgnoreCase),
+            var t => t.Split(',').ToHashSet(StringComparer.OrdinalIgnoreCase),
+        };
+
+    /// <summary>Start and end as HH:mm, the start before the end (an unknown one is not checked).</summary>
+    public static bool ValidWorkingHours(string start, string end)
+    {
+        static TimeSpan? Time(string s) => TimeSpan.TryParseExact(s, @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : null;
+        if ((start.Length > 0 && Time(start) is null) || (end.Length > 0 && Time(end) is null))
+        {
+            return false;
+        }
+
+        return Time(start) is not { } a || Time(end) is not { } b || a < b;
     }
 
     /// <summary>Deviations of a room from the default, as readable text.</summary>

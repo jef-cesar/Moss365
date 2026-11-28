@@ -25,7 +25,12 @@
                     }
                 </div>
                 <dl class="kb-velden">
-                    @foreach (var field in section.Fields.Where(Visible))
+                    @if (!editing && section.Key == "extra" && section.Fields.Where(Visible).All(f => CurrentText(f).Length == 0))
+                    {
+                        <dd class="kb-zacht">@T["edit-user.no-extensions"]</dd>
+                    }
+                    @* Extension attributes: only the filled in ones, until you edit them *@
+                    @foreach (var field in section.Fields.Where(Visible).Where(f => editing || section.Key != "extra" || CurrentText(f).Length > 0))
                     {
                         var current = CurrentText(field);
                         <dt>
@@ -96,6 +101,7 @@
         new("organisation", new[] { nameof(UserDesired.JobTitle), nameof(UserDesired.Department), nameof(UserDesired.Company), nameof(UserDesired.Office), nameof(UserDesired.Manager), nameof(UserDesired.Description) }),
         new("contact", new[] { nameof(UserDesired.Phone), nameof(UserDesired.Mobile), nameof(UserDesired.HomePhone), nameof(UserDesired.Fax), nameof(UserDesired.IpPhone), nameof(UserDesired.StreetAddress), nameof(UserDesired.PostalCode), nameof(UserDesired.City), nameof(UserDesired.State), nameof(UserDesired.Country), nameof(UserDesired.UsageLocation) }),
         new("access", new[] { nameof(UserDesired.Upn), nameof(UserDesired.PrimaryAddress), nameof(UserDesired.AccountExpires), nameof(UserDesired.LogonScript) }),
+        new("extra", UserDesired.ExtensionFields.ToArray()),
     };
 
     private readonly HashSet<string> open = new();
@@ -147,6 +153,11 @@
             return AttributePlans.HasPrimaryAddress(Person);
         }
 
+        if (field.StartsWith("ExtensionAttribute", StringComparison.Ordinal) && !AttributePlans.HasExtensions(State.Data, Person))
+        {
+            return false;
+        }
+
         var (_, inAd, inEntra) = field == nameof(UserDesired.Manager) ? (field, true, true) : AttributePlans.UserFields.First(f => f.Field == field);
         return (viaAd && inAd) || (Person.Entra is not null && inEntra);
     }
@@ -184,7 +195,7 @@
 
     private void Set(string field, string? value) => typeof(UserDesired).GetProperty(field)!.SetValue(desired, value);
 
-    private string Label(string field) => field == nameof(UserDesired.Manager) ? T["reports.manager"] : T["attribute." + field.ToLowerInvariant()];
+    private string Label(string field) => field == nameof(UserDesired.Manager) ? T["reports.manager"] : AttributePlans.FieldName(field);
 
     /// <summary>An empty value: no expiry date is "never".</summary>
     private string EmptyText(string field) => field == nameof(UserDesired.AccountExpires) ? T["edit-user.never"] : T["edit-user.empty"];
