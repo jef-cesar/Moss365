@@ -4169,5 +4169,14 @@
   "connections.google.remember-same": "„Auf diesem PC angemeldet bleiben\" (oben) behält auch die Anmeldung bei Google, verschlüsselt mit Ihrem Windows-Konto.",
   "local-logs.google.step": "Google-Protokolle lokal aufbewahren",
   "local-logs.google.failed": "Die Google-Protokolle konnten nicht gelesen werden: {0}",
-  "local-logs.source": "Quelle der Protokolle"
+  "local-logs.source": "Quelle der Protokolle",
+  "google.stat.edition": "Edition",
+  "google.stat.lacks": "fehlt: {0}",
+  "google.stat.without-licence": "Aktiv ohne Workspace-Lizenz",
+  "google.licences.part-off": "Lizenzen und Edition: Aktivieren Sie den Teil Google-Lizenzen unter Verbindungen.",
+  "google.user.licences": "Lizenzen",
+  "google.feature.vault": "Vault (Aufbewahrung und eDiscovery)",
+  "google.feature.context-aware-access": "kontextsensitiver Zugriff",
+  "google.feature.advanced-endpoints": "erweiterte Endpunktverwaltung",
+  "google.feature.security-center": "das Sicherheitscenter"
 }

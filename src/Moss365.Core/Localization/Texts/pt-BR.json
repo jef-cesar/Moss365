@@ -4169,5 +4169,14 @@
   "connections.google.remember-same": "\"Manter sessão iniciada neste PC\" (acima) também guarda o início de sessão no Google, cifrado com a sua conta Windows.",
   "local-logs.google.step": "Guardar localmente os registos do Google",
   "local-logs.google.failed": "Não foi possível ler os registos do Google: {0}",
-  "local-logs.source": "Origem dos registos"
+  "local-logs.source": "Origem dos registos",
+  "google.stat.edition": "Edição",
+  "google.stat.lacks": "não tem: {0}",
+  "google.stat.without-licence": "Ativas sem licença Workspace",
+  "google.licences.part-off": "Licenças e edição: ative a parte Licenças Google em Ligações.",
+  "google.user.licences": "Licenças",
+  "google.feature.vault": "Vault (retenção e eDiscovery)",
+  "google.feature.context-aware-access": "acesso sensível ao contexto",
+  "google.feature.advanced-endpoints": "gestão avançada de dispositivos",
+  "google.feature.security-center": "o centro de segurança"
 }

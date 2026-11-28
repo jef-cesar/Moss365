@@ -358,6 +358,9 @@ public sealed record GoogleRoleAssignment
     public string Scope { get; init; } = "CUSTOMER";
 }
 
+/// <summary>A licence of Google Workspace (G1, part "Google licences"): who has which SKU of which product.</summary>
+public sealed record GoogleLicence(string UserEmail, string ProductId, string SkuId, string SkuName);
+
 /// <summary>A group of Google Workspace (G1).</summary>
 public sealed record GoogleGroup
 {
@@ -390,6 +393,9 @@ public sealed record InventoryData
     /// <summary>The calendar resources and admin roles of Google Workspace (G1).</summary>
     public IReadOnlyList<GoogleResource> GoogleResources { get; init; } = Array.Empty<GoogleResource>();
     public IReadOnlyList<GoogleRoleAssignment> GoogleRoles { get; init; } = Array.Empty<GoogleRoleAssignment>();
+
+    /// <summary>The licences of Google Workspace (G1, only with the part "Google licences").</summary>
+    public IReadOnlyList<GoogleLicence> GoogleLicences { get; init; } = Array.Empty<GoogleLicence>();
     public IReadOnlyDictionary<string, AdGroup> AdGroupsByDn { get; init; } = new Dictionary<string, AdGroup>();
     public IReadOnlyDictionary<string, CloudGroup> CloudGroups { get; init; } = new Dictionary<string, CloudGroup>();
 
@@ -500,6 +506,7 @@ public sealed record InventoryData
     /// <summary>The data without anything of Google Workspace (G0): for a tenant that does not have it.</summary>
     public InventoryData WithoutGoogle()
         => GoogleUsers.Count == 0 && GoogleGroups.Count == 0 && GoogleOrgUnits.Count == 0 && GoogleResources.Count == 0 && GoogleRoles.Count == 0
+           && GoogleLicences.Count == 0
            && !Persons.Any(p => p.Google is not null)
             ? this
             : this with
@@ -509,6 +516,7 @@ public sealed record InventoryData
                 GoogleOrgUnits = Array.Empty<GoogleOrgUnit>(),
                 GoogleResources = Array.Empty<GoogleResource>(),
                 GoogleRoles = Array.Empty<GoogleRoleAssignment>(),
+                GoogleLicences = Array.Empty<GoogleLicence>(),
                 Persons = InventoryLoader.LinkPersons(AdUsers, EntraUsers),
                 Sources = Sources.Where(f => !f.File.StartsWith("google-", StringComparison.OrdinalIgnoreCase)).ToList(),
             };

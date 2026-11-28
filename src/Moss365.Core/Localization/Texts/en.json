@@ -4169,5 +4169,14 @@
   "connections.google.remember-same": "\"Stay signed in on this PC\" (above) also keeps the sign-in at Google, encrypted with your Windows account.",
   "local-logs.google.step": "Keep the Google logs locally",
   "local-logs.google.failed": "The Google logs could not be read: {0}",
-  "local-logs.source": "Source of the logs"
+  "local-logs.source": "Source of the logs",
+  "google.stat.edition": "Edition",
+  "google.stat.lacks": "lacks {0}",
+  "google.stat.without-licence": "Active without a Workspace licence",
+  "google.licences.part-off": "Licences and the edition: turn on the part Google licences on Connections.",
+  "google.user.licences": "Licences",
+  "google.feature.vault": "Vault (retention and eDiscovery)",
+  "google.feature.context-aware-access": "context-aware access",
+  "google.feature.advanced-endpoints": "advanced endpoint management",
+  "google.feature.security-center": "the security center"
 }

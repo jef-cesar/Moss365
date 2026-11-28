@@ -57,6 +57,7 @@ public static class Snapshots
         [InventoryLoader.GoogleOrgUnitsFile] = new[] { "OrgUnitPath" },
         [InventoryLoader.GoogleResourcesFile] = new[] { "Id" },
         [InventoryLoader.GoogleRolesFile] = new[] { "UserId", "Role", "Scope" },
+        [InventoryLoader.GoogleLicencesFile] = new[] { "UserEmail", "SkuId" },
         [Devices.DeviceSnapshot.AdTable] = Devices.DeviceSnapshot.KeyColumns[Devices.DeviceSnapshot.AdTable],
         [Devices.DeviceSnapshot.EntraTable] = Devices.DeviceSnapshot.KeyColumns[Devices.DeviceSnapshot.EntraTable],
         [Devices.DeviceSnapshot.IntuneTable] = Devices.DeviceSnapshot.KeyColumns[Devices.DeviceSnapshot.IntuneTable],

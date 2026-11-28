@@ -4169,5 +4169,14 @@
   "connections.google.remember-same": "\"Aangemeld blijven op deze pc\" (hierboven) bewaart ook de aanmelding bij Google, versleuteld met je Windows-account.",
   "local-logs.google.step": "Google-logboeken lokaal bewaren",
   "local-logs.google.failed": "De Google-logboeken konden niet gelezen worden: {0}",
-  "local-logs.source": "Bron van de logboeken"
+  "local-logs.source": "Bron van de logboeken",
+  "google.stat.edition": "Editie",
+  "google.stat.lacks": "mist {0}",
+  "google.stat.without-licence": "Actief zonder Workspace-licentie",
+  "google.licences.part-off": "Licenties en de editie: zet het onderdeel Google-licenties aan op Verbindingen.",
+  "google.user.licences": "Licenties",
+  "google.feature.vault": "Vault (bewaren en eDiscovery)",
+  "google.feature.context-aware-access": "contextbewuste toegang",
+  "google.feature.advanced-endpoints": "geavanceerd toestelbeheer",
+  "google.feature.security-center": "het beveiligingscentrum"
 }

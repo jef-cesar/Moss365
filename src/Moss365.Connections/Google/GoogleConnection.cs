@@ -154,9 +154,55 @@ public sealed class GoogleConnection : IGoogleConnection
             progress?.Report(Texts.T.Format("google.read.part-failed", Texts.T["google.read.roles"], ex.Message));
         }
 
+        // Licences only with their part (U40): its scope can also assign them
+        IReadOnlyList<GoogleLicence>? licences = null;
+        if (PartOn(Core.Setup.GoogleParts.Licences))
+        {
+            progress?.Report(Texts.T["google.read.licences"]);
+            licences = await LicencesAsync(progress, cancel);
+        }
+
         progress?.Report(Texts.T.Format("google.read.done", users.Count, groups.Count, units.Count));
-        return new GoogleData(users, groups, units, resources, roles);
+        return new GoogleData(users, groups, units, resources, roles, licences);
     }
+
+    /// <summary>The licences per product; a product the customer does not have is skipped, and when none can be read the
+    /// licences are not read (null).</summary>
+    private async Task<IReadOnlyList<GoogleLicence>?> LicencesAsync(IProgress<string>? progress, CancellationToken cancel)
+    {
+        var output = new List<GoogleLicence>();
+        var anyRead = false;
+        string? last = null;
+        foreach (var product in Core.Google.GoogleEditions.Products)
+        {
+            try
+            {
+                output.AddRange((await AllAsync($"{Licensing}/product/{product}/users?customerId={Uri.EscapeDataString(_domain)}&maxResults=1000", "items", cancel))
+                    .Select(ToLicence).Where(l => l.UserEmail.Length > 0));
+                anyRead = true;
+            }
+            catch (GoogleError ex) when (ex.Status is HttpStatusCode.BadRequest or HttpStatusCode.NotFound)
+            {
+                // The customer has no subscription of this product
+                anyRead = true;
+            }
+            catch (GoogleError ex)
+            {
+                last = ex.Message;
+            }
+        }
+
+        if (!anyRead)
+        {
+            progress?.Report(Texts.T.Format("google.read.part-failed", Texts.T["google.read.licences"], last ?? string.Empty));
+            return null;
+        }
+
+        return output;
+    }
+
+    internal static GoogleLicence ToLicence(JsonElement l) => new(S(l, "userId"), S(l, "productId"), S(l, "skuId"), S(l, "skuName"));
+
 
     public async Task<GoogleLogs> ReadLogsAsync(DateTimeOffset loginsSince, DateTimeOffset adminSince, int max, CancellationToken cancel)
     {

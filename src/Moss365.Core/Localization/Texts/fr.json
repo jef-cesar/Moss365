@@ -4169,5 +4169,14 @@
   "connections.google.remember-same": "« Rester connecté sur ce PC » (ci-dessus) garde aussi la connexion à Google, chiffrée avec votre compte Windows.",
   "local-logs.google.step": "Conserver localement les journaux Google",
   "local-logs.google.failed": "Les journaux Google n'ont pas pu être lus : {0}",
-  "local-logs.source": "Source des journaux"
+  "local-logs.source": "Source des journaux",
+  "google.stat.edition": "Édition",
+  "google.stat.lacks": "n'a pas : {0}",
+  "google.stat.without-licence": "Actifs sans licence Workspace",
+  "google.licences.part-off": "Licences et édition : activez la partie Licences Google dans Connexions.",
+  "google.user.licences": "Licences",
+  "google.feature.vault": "Vault (conservation et eDiscovery)",
+  "google.feature.context-aware-access": "accès contextuel",
+  "google.feature.advanced-endpoints": "gestion avancée des terminaux",
+  "google.feature.security-center": "le centre de sécurité"
 }

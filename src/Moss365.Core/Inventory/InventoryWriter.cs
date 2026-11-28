@@ -207,6 +207,10 @@ public static class InventoryWriter
             {
                 ["UserId"] = x.UserId, ["Role"] = x.Role, ["SuperAdmin"] = B(x.SuperAdmin), ["Scope"] = x.Scope,
             }));
+            Write(InventoryLoader.GoogleLicencesFile, d.GoogleLicences.Select(x => new Dictionary<string, string?>
+            {
+                ["UserEmail"] = x.UserEmail, ["ProductId"] = x.ProductId, ["SkuId"] = x.SkuId, ["SkuName"] = x.SkuName,
+            }));
         }
 
         if (components.HasFlag(InventoryComponent.Mailboxes))

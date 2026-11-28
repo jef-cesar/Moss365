@@ -28,6 +28,7 @@ public static class InventoryLoader
     public const string GoogleOrgUnitsFile = "google-eenheden.csv";
     public const string GoogleResourcesFile = "google-agendabronnen.csv";
     public const string GoogleRolesFile = "google-rollen.csv";
+    public const string GoogleLicencesFile = "google-licenties.csv";
     public const string EntraMfa = "entra-mfa.csv";
     public const string EntraRoles = "entra-rollen.csv";
 
@@ -38,7 +39,7 @@ public static class InventoryLoader
     {
         AdUsers, AdGroups, AdGroupMembers, EntraUsers, EntraGroups, EntraGroupMembers, EntraLicences,
         ExoRooms, ExoGroups, ExoGroupMembers, ExoMailboxes, ExoMailboxPermissions, EntraMfa, EntraRoles, ExoContacts,
-        GoogleUsersFile, GoogleGroupsFile, GoogleOrgUnitsFile, GoogleResourcesFile, GoogleRolesFile,
+        GoogleUsersFile, GoogleGroupsFile, GoogleOrgUnitsFile, GoogleResourcesFile, GoogleRolesFile, GoogleLicencesFile,
     };
 
     /// <summary>All inventory folders under the base folder, newest first (the name contains yyyyMMdd-HHmm).</summary>
@@ -211,6 +212,8 @@ public static class InventoryLoader
             {
                 UserId = K(r, "UserId"), Role = W(r, "Role"), SuperAdmin = B(r, "SuperAdmin"), Scope = K(r, "Scope") is { Length: > 0 } scope ? scope : "CUSTOMER",
             }).Where(x => x.UserId.Length > 0).ToList(),
+            GoogleLicences = T(GoogleLicencesFile).Select(r => new GoogleLicence(K(r, "UserEmail"), K(r, "ProductId"), K(r, "SkuId"), W(r, "SkuName")))
+                .Where(x => x.UserEmail.Length > 0).ToList(),
             Security = T(EntraMfa).Count + T(EntraRoles).Count == 0 ? null : new SecurityData(
                 T(EntraMfa).Select(r => new MfaRegistration(K(r, "Id"), K(r, "UserPrincipalName"), B(r, "IsMfaRegistered"), B(r, "IsMfaCapable"),
                     K(r, "Methods").Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), K(r, "DefaultMethod"), B(r, "IsAdmin")))

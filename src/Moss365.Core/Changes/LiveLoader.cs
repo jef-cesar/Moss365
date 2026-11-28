@@ -79,6 +79,7 @@ public static class LiveLoader
             GoogleOrgUnits = current.GoogleOrgUnits,
             GoogleResources = current.GoogleResources,
             GoogleRoles = current.GoogleRoles,
+            GoogleLicences = current.GoogleLicences,
             Security = current.Security,
             ConditionalAccess = current.ConditionalAccess,
         };
@@ -115,6 +116,7 @@ public static class LiveLoader
             // Null = could not be read (another scope or an older connection): keep what there was
             GoogleResources = google.Resources?.OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase).ToList() ?? current.GoogleResources,
             GoogleRoles = google.Roles?.ToList() ?? current.GoogleRoles,
+            GoogleLicences = google.Licences?.ToList() ?? current.GoogleLicences,
             Sources = sources,
         };
     }

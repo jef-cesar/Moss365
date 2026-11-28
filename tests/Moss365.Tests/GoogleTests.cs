@@ -262,6 +262,42 @@ public sealed class GoogleTests
     }
 
     [Fact]
+    public async Task LicencesAreReadOnlyWithTheirPartAndGiveTheEdition()
+    {
+        var google = new FakeGoogle
+        {
+            Answer = (r, _) => r.RequestUri!.ToString() switch
+            {
+                var u when u.Contains("/product/Google-Apps/", StringComparison.Ordinal) => (HttpStatusCode.OK, """
+                    {"items":[{"productId":"Google-Apps","skuId":"1010020025","skuName":"Google Workspace Business Plus","userId":"an@example.com"},
+                              {"productId":"Google-Apps","skuId":"1010020025","skuName":"Google Workspace Business Plus","userId":"bo@example.com"}]}
+                    """),
+                var u when u.Contains("licensing", StringComparison.Ordinal) => (HttpStatusCode.BadRequest, """{"error":{"code":400,"message":"Invalid productId"}}"""),
+                var u when u.Contains("/users?", StringComparison.Ordinal) => (HttpStatusCode.OK, """{"users":[{"id":"1","primaryEmail":"an@example.com"},{"id":"2","primaryEmail":"bo@example.com"},{"id":"3","primaryEmail":"cas@example.com"}]}"""),
+                _ => (HttpStatusCode.OK, "{}"),
+            },
+        };
+        var off = await new GoogleConnection(new HttpClient(google), _ => Task.FromResult("token-1"), null, Array.Empty<string>(), "example.com").ReadAsync(null, CancellationToken.None);
+        Assert.Null(off.Licences);
+        Assert.DoesNotContain(google.Asked, a => a.Url.Contains("licensing", StringComparison.Ordinal)); // the part is off
+
+        var on = await new GoogleConnection(new HttpClient(google), _ => Task.FromResult("token-1"), null, new[] { Moss365.Core.Setup.GoogleParts.Licences }, "example.com")
+            .ReadAsync(null, CancellationToken.None);
+        Assert.Equal(2, on.Licences!.Count); // the products the customer does not have are skipped
+        var (edition, sku, skus) = Moss365.Core.Google.GoogleEditions.Of(on.Licences);
+        Assert.Equal(("business-plus", "Google Workspace Business Plus", 2), (edition!.Key, sku, skus.Single().Count));
+        Assert.Contains("contextbewuste toegang", edition.Lacks);
+        Assert.DoesNotContain(edition.Lacks, l => l.StartsWith("Vault", StringComparison.Ordinal));
+        Assert.Empty(Moss365.Core.Google.GoogleEditions.Of("Google Workspace Enterprise Plus")!.Lacks);
+        Assert.Null(Moss365.Core.Google.GoogleEditions.Of("Iets anders"));
+        Assert.Equal("cas@example.com", Assert.Single(Moss365.Core.Google.GoogleEditions.WithoutLicence(on.Users, on.Licences)).PrimaryEmail);
+
+        // Stored and read back
+        var d = LiveLoader.WithGoogle(InventoryLoader.Build(TestData.Files()), on);
+        Assert.Equal(d.GoogleLicences, InventoryLoader.Build(Snapshots.Tables(InventoryWriter.Files(d, InventoryComponent.Google))).GoogleLicences);
+    }
+
+    [Fact]
     public async Task WithoutAWindowGoogleIsNeverSignedIn()
     {
         var signIn = new GoogleSignIn(new HttpClient(new FakeGoogle()), "client-1", "secret-1", "example.com", new SignInStatus(), withoutWindow: true);

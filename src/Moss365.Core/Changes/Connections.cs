@@ -309,7 +309,7 @@ public sealed record GraphOwner(string Id, string Name, string Upn);
 /// <summary>What a live Exchange read of groups and mailboxes returns.</summary>
 /// <summary>What a read of Google Workspace returns (G1).</summary>
 public sealed record GoogleData(IReadOnlyList<GoogleUser> Users, IReadOnlyList<GoogleGroup> Groups, IReadOnlyList<GoogleOrgUnit> OrgUnits,
-    IReadOnlyList<GoogleResource>? Resources = null, IReadOnlyList<GoogleRoleAssignment>? Roles = null);
+    IReadOnlyList<GoogleResource>? Resources = null, IReadOnlyList<GoogleRoleAssignment>? Roles = null, IReadOnlyList<GoogleLicence>? Licences = null);
 
 /// <summary>Reading Google Workspace through the Directory API (G1), signed in with the OAuth client of the own
 /// project.</summary>
