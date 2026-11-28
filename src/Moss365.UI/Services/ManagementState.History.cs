@@ -182,10 +182,20 @@ public sealed partial class ManagementState
             IReadOnlyDictionary<string, string>? previous = null;
             foreach (var v in Database.Timeline(table, key))
             {
+                // R21: only columns the older version had count (a field read for the first time is no change)
                 var changed = previous is null
                     ? Array.Empty<string>()
-                    : v.Content.Keys.Union(previous.Keys).Where(k => v.Content.GetValueOrDefault(k) != previous.GetValueOrDefault(k)).OrderBy(k => k).ToArray();
-                output.Add(new TimelineEntry(v.FromTime, what, previous is null ? "eerste momentopname" : string.Join(", ", changed.Select(k => $"{k}: {previous.GetValueOrDefault(k)} → {v.Content.GetValueOrDefault(k)}")), v));
+                    : previous.Keys.Where(k => (v.Content.GetValueOrDefault(k) ?? string.Empty) != (previous.GetValueOrDefault(k) ?? string.Empty)).OrderBy(k => k).ToArray();
+                if (previous is not null && changed.Length == 0)
+                {
+                    previous = v.Content;
+                    continue;
+                }
+
+                output.Add(new TimelineEntry(v.FromTime, what, previous is null ? "eerste momentopname" : string.Join(", ", changed.Select(k => $"{k}: {previous.GetValueOrDefault(k)} → {v.Content.GetValueOrDefault(k)}")), v)
+                {
+                    Fields = changed,
+                });
                 previous = v.Content;
             }
         }
@@ -203,7 +213,10 @@ public sealed partial class ManagementState
         var targets = new[] { p.Ad?.DistinguishedName, p.Ad?.SamAccountName, p.Entra?.Id, p.Entra?.UserPrincipalName }.Where(x => !string.IsNullOrEmpty(x)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var r in ChangeLog.Recent(2000).Where(r => targets.Contains(r.Target)))
         {
-            output.Add(new TimelineEntry(r.Time, "Moss365", $"{r.Description} ({r.User}, {(r.Succeeded ? "gelukt" : "mislukt")})", null));
+            output.Add(new TimelineEntry(r.Time, "Moss365", $"{r.Description} ({r.User}, {(r.Succeeded ? "gelukt" : "mislukt")})", null)
+            {
+                Fields = r.Parameters.Keys.ToList(),
+            });
         }
 
         return output.OrderByDescending(x => x.Time).ToList();
@@ -261,4 +274,9 @@ public sealed partial class ManagementState
 }
 
 /// <summary>One line of the timeline of an object: a version from a snapshot, or a change made with Moss365.</summary>
-public sealed record TimelineEntry(DateTimeOffset Time, string What, string Details, ObjectVersion? Version);
+public sealed record TimelineEntry(DateTimeOffset Time, string What, string Details, ObjectVersion? Version)
+{
+    /// <summary>R21: the fields this entry changed (columns of a snapshot, or parameters of a change in Moss365), to show
+    /// the history of one field.</summary>
+    public IReadOnlyList<string> Fields { get; init; } = Array.Empty<string>();
+}

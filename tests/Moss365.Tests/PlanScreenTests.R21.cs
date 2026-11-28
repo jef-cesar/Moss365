@@ -205,3 +205,45 @@ public sealed partial class PlanScreenTests
         Assert.False(Assert.Single(MailboxPlans.Settings(named, new MailboxDesired { SendOnBehalf = new[] { "bo@contoso.com" } }).Plan).Previous!.ContainsKey("GrantSendOnBehalfTo"));
     }
 }
+
+/// <summary>R21: several users at once with the new fields, and the history of one field.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void SeveralUsersGetANewFieldInOnePlan()
+    {
+        var two = State.Data.Persons.Where(p => p.Ad is not null && !p.IsGuest).Take(2).ToList();
+        var outcome = BulkPlans.Attribute(State.Data, State.Config, two, nameof(UserDesired.Company), "Contoso Zorg");
+        Assert.Equal(2, outcome.Plan.Count(c => c.ChangeAction == ChangeAction.AdSetAttributes && c.P("company") == "Contoso Zorg"));
+
+        // The usage location for several: written in Entra, checked like on the page of one user
+        var location = BulkPlans.Attribute(State.Data, State.Config, two.Where(p => p.Entra is not null), nameof(UserDesired.UsageLocation), "BE");
+        Assert.All(location.Plan, c => Assert.Equal(ChangeAction.GraphSetAttributes, c.ChangeAction));
+        Assert.Empty(BulkPlans.Attribute(State.Data, State.Config, two, nameof(UserDesired.UsageLocation), "Belgie").Plan);
+    }
+
+    [Fact]
+    public void TheHistoryOfOneFieldLeavesOutFieldsReadForTheFirstTime()
+    {
+        var cas = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        Dictionary<string, List<Dictionary<string, string>>> Rows(params (string Key, string Value)[] values)
+        {
+            var row = new Dictionary<string, string> { ["SamAccountName"] = "cas.vos", ["Department"] = "Verkoop", ["Title"] = "Medewerker" };
+            foreach (var (k, v) in values) row[k] = v;
+            return new() { [Moss365.Core.Inventory.InventoryLoader.AdUsers] = new() { row } };
+        }
+
+        State.Database.SaveSnapshot(DateTimeOffset.Now.AddDays(-3), "test", Rows());
+        State.Database.SaveSnapshot(DateTimeOffset.Now.AddDays(-2), "test", Rows(("Company", "Contoso")));
+        State.Database.SaveSnapshot(DateTimeOffset.Now.AddDays(-1), "test", Rows(("Company", "Contoso"), ("Department", "Boekhouding")));
+
+        var history = State.Timeline(cas).Where(t => t.What == "AD-account").ToList();
+        Assert.Contains(history, t => t.Fields.SequenceEqual(new[] { "Department" }));
+        Assert.DoesNotContain(history, t => t.Fields.Contains("Company"));
+
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key));
+        cut.FindAll("button").First(b => b.TextContent == "Tijdlijn tonen").Click();
+        cut.Find("select[aria-label='Veld']").Change("Department");
+        Assert.Contains("Department: Verkoop → Boekhouding", cut.Markup, StringComparison.Ordinal);
+    }
+}

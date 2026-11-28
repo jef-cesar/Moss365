@@ -4035,5 +4035,7 @@
   "mailbox.sent-copy": "Kopie van wat anderen ervan verzenden in Verzonden items bewaren",
   "mailbox.on-behalf": "Verzenden namens (adressen)",
   "mailbox.on-behalf.placeholder": "(niet wijzigen; - is niemand)",
-  "mailbox.now": "nu: {0}"
+  "mailbox.now": "nu: {0}",
+  "user-detail.field": "Veld",
+  "user-detail.all-fields": "alle velden"
 }

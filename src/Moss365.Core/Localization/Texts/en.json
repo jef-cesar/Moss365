@@ -4035,5 +4035,7 @@
   "mailbox.sent-copy": "Keep a copy of what others send from it in its Sent Items",
   "mailbox.on-behalf": "Send on behalf of (addresses)",
   "mailbox.on-behalf.placeholder": "(do not change; - is nobody)",
-  "mailbox.now": "now: {0}"
+  "mailbox.now": "now: {0}",
+  "user-detail.field": "Field",
+  "user-detail.all-fields": "all fields"
 }

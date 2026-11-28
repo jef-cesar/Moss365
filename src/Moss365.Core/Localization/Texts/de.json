@@ -4035,5 +4035,7 @@
   "mailbox.sent-copy": "Kopie dessen, was andere daraus senden, in Gesendete Elemente behalten",
   "mailbox.on-behalf": "Senden im Auftrag von (Adressen)",
   "mailbox.on-behalf.placeholder": "(nicht ändern; - ist niemand)",
-  "mailbox.now": "jetzt: {0}"
+  "mailbox.now": "jetzt: {0}",
+  "user-detail.field": "Feld",
+  "user-detail.all-fields": "alle Felder"
 }

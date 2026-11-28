@@ -4035,5 +4035,7 @@
   "mailbox.sent-copy": "Garder dans ses éléments envoyés une copie de ce que d'autres envoient",
   "mailbox.on-behalf": "Envoyer de la part de (adresses)",
   "mailbox.on-behalf.placeholder": "(ne pas modifier ; - signifie personne)",
-  "mailbox.now": "maintenant : {0}"
+  "mailbox.now": "maintenant : {0}",
+  "user-detail.field": "Champ",
+  "user-detail.all-fields": "tous les champs"
 }
