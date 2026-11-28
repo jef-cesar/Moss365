@@ -4,8 +4,11 @@ Every version becomes a release on GitHub; the section under the version is the 
 
 ## 0.41.0
 
-G0, the platform basis for Google Workspace next to AD and Microsoft 365 (decided on 27 November 2026, U28 to U36),
-and the first part of G1: Moss365 reads Google Workspace (users, groups, organisational units); writing comes with G2.
+G0, the platform basis for Google Workspace next to AD and Microsoft 365 (decided on 27 November 2026, U28 to U36);
+R21, editing every object; and the first part of G1: Moss365 reads Google Workspace (writing comes with G2).
+
+Not yet tested in a real tenant (issue 19): the new writes in AD (proxyAddresses, accountExpires, extension
+attributes), the new fixed Exchange commands (contacts, working hours, primary address) and the sign-in at Google.
 
 - **Google Workspace as a third system** (U28): on *Tenants* and *Verbindingen* three checkboxes choose any combination
   of Active Directory, Microsoft 365 and Google Workspace. The menu, the settings and Ctrl+K show only what the tenant
@@ -35,17 +38,18 @@ G1, reading Google Workspace, first part (U35; [docs/google.md](docs/google.md))
   domain of the tenant (or a subdomain) is accepted; the tokens stay in memory; reading without a window never signs in.
 - **Reading** with only reading scopes: users (addresses and aliases, organisational unit, suspended or archived,
   administrator, 2-Step Verification, last sign-in, employee id, department), groups, organisational units, calendar
-  resources and admin roles, in a
-  lane of its own next to AD, Entra and Exchange. Every read is a snapshot (`google-gebruikers.csv`, `google-groepen.csv`,
-  `google-eenheden.csv`, `google-agendabronnen.csv`, `google-rollen.csv`), and the Google users are linked to the persons
-  (G0). Calendar resources and admin roles (to a user, for the whole organisation or one organisational unit) are read
+  resources and admin roles, in a lane of its own next to AD, Entra and Exchange. Every read is a snapshot
+  (`google-gebruikers.csv`, `google-groepen.csv`, `google-eenheden.csv`, `google-agendabronnen.csv`, `google-rollen.csv`),
+  and the Google users are linked to the persons (G0). Calendar resources and admin roles (to a user, for the whole organisation or one organisational unit) are read
   each on their own: a missing right leaves the rest, and what could not be read stays as it was.
 - **Shown on the screens**: the page of a person has a section Google Workspace (address and aliases, organisational
   unit, suspended or archived, 2-Step Verification, administrator and admin roles, last sign-in, how it was linked), and
   Statistics a block with the Google accounts, the suspended ones, the administrators and super administrators, those
-  without 2-Step Verification, the groups, the calendar resources and the accounts only in Google. A person with only a Google account is not edited until G2.
+  without 2-Step Verification, the groups, the calendar resources and the accounts only in Google. A person with only a
+  Google account is not edited until G2.
 
-R21, editing every object, first part (decided on 27 November 2026, U27):
+R21, editing every object (decided on 27 November 2026, U27), every item in its first version; the logon name in AD
+stays a limitation (issue 57):
 
 - **A user in sections**: identity, organisation, contact and address, access, each with its current values and edited
   in place, with the current value next to the new one and the platform label of where it goes. New fields: company,
