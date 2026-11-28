@@ -321,6 +321,16 @@ public sealed partial class ManagementState
                 Live("Google", ObjectKind.User, ObjectKind.Group);
                 WasRead(InventoryComponent.Google);
             }));
+
+            // The logs of Google kept locally (as R18), after the users (the administrators), in the same lane
+            if (Config.Retention.KeepLocalLogs)
+            {
+                steps.Add(new(Texts.T["local-logs.google.step"], "Google", async (p, ct) =>
+                {
+                    var google = _factory.Google(EffectiveSettings) ?? throw new InvalidOperationException(Texts.T["google.not-available"]);
+                    await CollectGoogleLogsAsync(google, p, ct);
+                }));
+            }
         }
 
         if (kind == LoadKind.Google && steps.Count == 0)

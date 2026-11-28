@@ -16,19 +16,51 @@ public sealed partial class ManagementState
     private static readonly JsonSerializerOptions LocalLogsJson = new JsonSerializerOptions().WithLegacyNames();
 
     /// <summary>The last collection, or null when there was none yet.</summary>
-    public LocalLogsRun? LocalLogsLast
+    public LocalLogsRun? LocalLogsLast => LastRun(LocalLogs.Document);
+
+    /// <summary>The last collection of the Google logs (G1), or null.</summary>
+    public LocalLogsRun? GoogleLogsLast => LastRun(LocalLogs.GoogleDocument);
+
+    private LocalLogsRun? LastRun(string document)
     {
-        get
+        try
         {
-            try
-            {
-                return Database.ReadDocument(LocalLogs.Document) is { } json ? JsonSerializer.Deserialize<LocalLogsRun>(json, LocalLogsJson) : null;
-            }
-            catch (JsonException)
-            {
-                return null;
-            }
+            return Database.ReadDocument(document) is { } json ? JsonSerializer.Deserialize<LocalLogsRun>(json, LocalLogsJson) : null;
         }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The logs of Google Workspace (G1), kept as for Entra: failed and suspicious logins and those of
+    /// administrators and emergency accounts, and every admin activity. When the Reports API cannot be read, a message.</summary>
+    internal async Task<LocalLogsRun> CollectGoogleLogsAsync(IGoogleConnection google, IProgress<string>? progress, CancellationToken cancel)
+    {
+        var now = DateTimeOffset.Now;
+        string? message = null;
+        var signIns = 0;
+        var audits = 0;
+        try
+        {
+            var read = await google.ReadLogsAsync(LocalLogs.Since(Database.LastLocal(LocalLogs.GoogleSignInKind), now),
+                LocalLogs.Since(Database.LastLocal(LocalLogs.GoogleAuditKind), now), LocalLogs.MaxPerRun, cancel);
+            var admins = _data.GoogleUsers.Where(u => u.IsAdmin).Select(u => u.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var emergency = Config.EmergencyAccounts.Where(u => !string.IsNullOrWhiteSpace(u)).Select(u => u.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            signIns = Database.KeepSignIns(LocalLogs.ToKeep(read.Logins, admins, emergency), LocalLogs.GoogleSignInKind);
+            audits = Database.KeepAudits(read.Admin, LocalLogs.GoogleAuditKind);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException and not InvalidOperationException)
+        {
+            // The connection's own error (no right, API off): the read of Google itself stays
+            message = Texts.T.Format("local-logs.google.failed", ex.Message);
+        }
+
+        var run = new LocalLogsRun(now, signIns, audits, message);
+        Database.SaveDocument(LocalLogs.GoogleDocument, JsonSerializer.Serialize(run, LocalLogsJson));
+        Log.Information("Lokale logboeken Google: {Aanmeldingen} aanmeldingen en {Audit} beheerregels bewaard", signIns, audits);
+        progress?.Report(run.Message ?? Texts.T.Format("local-logs.kept", signIns, audits));
+        return run;
     }
 
     /// <summary>Reads what is new since the last collection and keeps it. A part that cannot be read (licence,
@@ -70,8 +102,10 @@ public sealed partial class ManagementState
     }
 
     /// <summary>The sign-ins kept between two times, newest first (the screen writes the access log).</summary>
-    public IReadOnlyList<KeptSignIn> KeptSignIns(DateTimeOffset from, DateTimeOffset until) => Database.ReadSignIns(from, until);
+    public IReadOnlyList<KeptSignIn> KeptSignIns(DateTimeOffset from, DateTimeOffset until, bool google = false)
+        => Database.ReadSignIns(from, until, kind: google ? LocalLogs.GoogleSignInKind : LocalLogs.SignInKind);
 
     /// <summary>The audit lines kept between two times, newest first.</summary>
-    public IReadOnlyList<AuditEvent> KeptAudits(DateTimeOffset from, DateTimeOffset until) => Database.ReadAudits(from, until);
+    public IReadOnlyList<AuditEvent> KeptAudits(DateTimeOffset from, DateTimeOffset until, bool google = false)
+        => Database.ReadAudits(from, until, kind: google ? LocalLogs.GoogleAuditKind : LocalLogs.AuditKind);
 }

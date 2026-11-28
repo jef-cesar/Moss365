@@ -4166,5 +4166,8 @@
   "connections.google.check": "Vérifier le projet",
   "connections.google.parts": "Parties de Google",
   "connections.google.parts.help": "Pour ceux-ci, Google n'a pas de champ d'accès en lecture seule. Une partie ne demande son champ que lorsqu'elle est activée ; après l'avoir activée ou désactivée, vous vous reconnectez à Google.",
-  "connections.google.remember-same": "« Rester connecté sur ce PC » (ci-dessus) garde aussi la connexion à Google, chiffrée avec votre compte Windows."
+  "connections.google.remember-same": "« Rester connecté sur ce PC » (ci-dessus) garde aussi la connexion à Google, chiffrée avec votre compte Windows.",
+  "local-logs.google.step": "Conserver localement les journaux Google",
+  "local-logs.google.failed": "Les journaux Google n'ont pas pu être lus : {0}",
+  "local-logs.source": "Source des journaux"
 }

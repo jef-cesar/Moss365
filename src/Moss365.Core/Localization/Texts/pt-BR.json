@@ -4166,5 +4166,8 @@
   "connections.google.check": "Verificar o projeto",
   "connections.google.parts": "Partes do Google",
   "connections.google.parts.help": "Para estes o Google não tem um âmbito só de leitura. Uma parte só pede o seu âmbito quando está ativa; depois de a ativar ou desativar volta a entrar no Google.",
-  "connections.google.remember-same": "\"Manter sessão iniciada neste PC\" (acima) também guarda o início de sessão no Google, cifrado com a sua conta Windows."
+  "connections.google.remember-same": "\"Manter sessão iniciada neste PC\" (acima) também guarda o início de sessão no Google, cifrado com a sua conta Windows.",
+  "local-logs.google.step": "Guardar localmente os registos do Google",
+  "local-logs.google.failed": "Não foi possível ler os registos do Google: {0}",
+  "local-logs.source": "Origem dos registos"
 }

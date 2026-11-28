@@ -220,6 +220,48 @@ public sealed class GoogleTests
     }
 
     [Fact]
+    public async Task TheLoginAndAdminLogsBecomeSignInsAndAuditLines()
+    {
+        var google = new FakeGoogle
+        {
+            Answer = (r, _) =>
+            {
+                var url = r.RequestUri!.ToString();
+                if (url.Contains("/applications/login", StringComparison.Ordinal))
+                {
+                    return (HttpStatusCode.OK, """
+                        {"items":[
+                          {"id":{"time":"2026-11-27T08:00:00.000Z","uniqueQualifier":"q1"},"actor":{"email":"an@example.com","profileId":"1"},"ipAddress":"192.0.2.10",
+                           "events":[{"type":"login","name":"login_failure","parameters":[{"name":"login_type","value":"google_password"}]}]},
+                          {"id":{"time":"2026-11-27T09:00:00.000Z","uniqueQualifier":"q2"},"actor":{"email":"bo@example.com","profileId":"2"},
+                           "events":[{"type":"login","name":"login_success","parameters":[{"name":"is_suspicious","boolValue":true}]}]},
+                          {"id":{"time":"2026-11-27T10:00:00.000Z","uniqueQualifier":"q3"},"actor":{"email":"cas@example.com","profileId":"3"},
+                           "events":[{"type":"login","name":"login_success"}]}]}
+                        """);
+                }
+
+                return url.Contains("/applications/admin", StringComparison.Ordinal)
+                    ? (HttpStatusCode.OK, """{"items":[{"id":{"time":"2026-11-27T11:00:00.000Z","uniqueQualifier":"a1"},"actor":{"email":"admin@example.com"},"events":[{"type":"USER_SETTINGS","name":"CHANGE_PASSWORD","parameters":[{"name":"USER_EMAIL","value":"an@example.com"}]}]}]}""")
+                    : (HttpStatusCode.NotFound, "{}");
+            },
+        };
+        var since = new DateTimeOffset(2026, 11, 27, 0, 0, 0, TimeSpan.Zero);
+        var logs = await new GoogleConnection(new HttpClient(google), _ => Task.FromResult("token-1")).ReadLogsAsync(since, since, 100, CancellationToken.None);
+        Assert.Contains(google.Asked, a => a.Url.Contains("startTime=2026-11-27T00%3A00%3A00.000Z", StringComparison.Ordinal));
+        Assert.Equal(3, logs.Logins.Count);
+        Assert.False(logs.Logins[0].Succeeded);
+        Assert.Equal(("login_failure", "192.0.2.10", "google_password"), (logs.Logins[0].Reason, logs.Logins[0].Ip, logs.Logins[0].Client));
+        Assert.True(logs.Logins[1].Risky);
+        var change = Assert.Single(logs.Admin);
+        Assert.Equal(("CHANGE_PASSWORD", "admin@example.com", "an@example.com"), (change.Activity, change.By, change.TargetName));
+
+        // Kept as for Entra: the failure, the suspicious one, and an administrator's normal sign-in
+        var kept = Moss365.Core.Security.LocalLogs.ToKeep(logs.Logins, new HashSet<string> { "3" }, new HashSet<string>());
+        Assert.Equal(new[] { "q1:0", "q2:0", "q3:0" }, kept.Select(k => k.SignIn.Id));
+        Assert.Empty(Moss365.Core.Security.LocalLogs.ToKeep(logs.Logins.Skip(2), new HashSet<string>(), new HashSet<string>()));
+    }
+
+    [Fact]
     public async Task WithoutAWindowGoogleIsNeverSignedIn()
     {
         var signIn = new GoogleSignIn(new HttpClient(new FakeGoogle()), "client-1", "secret-1", "example.com", new SignInStatus(), withoutWindow: true);

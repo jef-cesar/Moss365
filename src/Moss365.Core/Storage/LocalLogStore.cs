@@ -10,12 +10,12 @@ public sealed partial class Database
     private static string Utc(DateTimeOffset t) => t.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture);
 
     /// <summary>Keeps the sign-ins that are new; returns how many were new.</summary>
-    public int KeepSignIns(IEnumerable<KeptSignIn> kept)
-        => KeepLocal(LocalLogs.SignInKind, kept.Select(k => (k.SignIn.Id, k.SignIn.Time, JsonSerializer.Serialize(k, Options))));
+    public int KeepSignIns(IEnumerable<KeptSignIn> kept, string kind = LocalLogs.SignInKind)
+        => KeepLocal(kind, kept.Select(k => (k.SignIn.Id, k.SignIn.Time, JsonSerializer.Serialize(k, Options))));
 
     /// <summary>Keeps the audit lines that are new; returns how many were new.</summary>
-    public int KeepAudits(IEnumerable<AuditEvent> audits)
-        => KeepLocal(LocalLogs.AuditKind, audits.Where(a => a.Id.Length > 0).Select(a => (a.Id, a.Time, JsonSerializer.Serialize(a, Options))));
+    public int KeepAudits(IEnumerable<AuditEvent> audits, string kind = LocalLogs.AuditKind)
+        => KeepLocal(kind, audits.Where(a => a.Id.Length > 0).Select(a => (a.Id, a.Time, JsonSerializer.Serialize(a, Options))));
 
     private int KeepLocal(string kind, IEnumerable<(string Id, DateTimeOffset Time, string Json)> rows)
     {
@@ -45,12 +45,12 @@ public sealed partial class Database
     }
 
     /// <summary>The sign-ins kept between two times, newest first.</summary>
-    public IReadOnlyList<KeptSignIn> ReadSignIns(DateTimeOffset from, DateTimeOffset until, int max = 5000)
-        => ReadLocal(LocalLogs.SignInKind, from, until, max).Select(j => JsonSerializer.Deserialize<KeptSignIn>(j, Options)).OfType<KeptSignIn>().ToList();
+    public IReadOnlyList<KeptSignIn> ReadSignIns(DateTimeOffset from, DateTimeOffset until, int max = 5000, string kind = LocalLogs.SignInKind)
+        => ReadLocal(kind, from, until, max).Select(j => JsonSerializer.Deserialize<KeptSignIn>(j, Options)).OfType<KeptSignIn>().ToList();
 
     /// <summary>The audit lines kept between two times, newest first.</summary>
-    public IReadOnlyList<AuditEvent> ReadAudits(DateTimeOffset from, DateTimeOffset until, int max = 5000)
-        => ReadLocal(LocalLogs.AuditKind, from, until, max).Select(j => JsonSerializer.Deserialize<AuditEvent>(j, Options)).OfType<AuditEvent>().ToList();
+    public IReadOnlyList<AuditEvent> ReadAudits(DateTimeOffset from, DateTimeOffset until, int max = 5000, string kind = LocalLogs.AuditKind)
+        => ReadLocal(kind, from, until, max).Select(j => JsonSerializer.Deserialize<AuditEvent>(j, Options)).OfType<AuditEvent>().ToList();
 
     private List<string> ReadLocal(string kind, DateTimeOffset from, DateTimeOffset until, int max)
     {

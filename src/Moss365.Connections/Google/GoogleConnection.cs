@@ -158,8 +158,60 @@ public sealed class GoogleConnection : IGoogleConnection
         return new GoogleData(users, groups, units, resources, roles);
     }
 
-    /// <summary>All items of a list across its pages.</summary>
-    internal async Task<List<JsonElement>> AllAsync(string url, string property, CancellationToken cancel)
+    public async Task<GoogleLogs> ReadLogsAsync(DateTimeOffset loginsSince, DateTimeOffset adminSince, int max, CancellationToken cancel)
+    {
+        string Since(DateTimeOffset t) => Uri.EscapeDataString(t.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture));
+        var logins = (await AllAsync($"{Reports}/activity/users/all/applications/login?startTime={Since(loginsSince)}&maxResults=1000", "items", cancel, max))
+            .SelectMany(ToLogins).ToList();
+        var admin = (await AllAsync($"{Reports}/activity/users/all/applications/admin?startTime={Since(adminSince)}&maxResults=1000", "items", cancel, max))
+            .SelectMany(ToAdminEvents).ToList();
+        return new GoogleLogs(logins, admin);
+    }
+
+    /// <summary>The logins of one activity (one per event): a failure has error code 1, a suspicious login risk "high";
+    /// the id is the unique qualifier of Google with the event, so a line is never kept twice.</summary>
+    internal static IEnumerable<SignInEvent> ToLogins(JsonElement a)
+    {
+        var id = a.TryGetProperty("id", out var i) ? i : default;
+        var actor = a.TryGetProperty("actor", out var ac) ? ac : default;
+        var time = DateTimeOffset.TryParse(S(id, "time"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var t) ? t : DateTimeOffset.MinValue;
+        var n = 0;
+        foreach (var e in Items(a, "events"))
+        {
+            var name = S(e, "name");
+            var suspicious = name.StartsWith("suspicious_", StringComparison.Ordinal) || Parameters(e).Any(p => p.Name == "is_suspicious" && p.Value == "true");
+            var failed = name is "login_failure" || name.StartsWith("account_disabled", StringComparison.Ordinal);
+            yield return new SignInEvent(
+                time, S(actor, "profileId"), S(actor, "email"), string.Empty, "Google", S(a, "ipAddress"), string.Empty,
+                failed ? 1 : 0, failed || suspicious ? name : string.Empty,
+                Parameters(e).FirstOrDefault(p => p.Name == "login_type").Value ?? string.Empty,
+                Id: $"{S(id, "uniqueQualifier")}:{n++}", Risk: suspicious ? "high" : string.Empty);
+        }
+    }
+
+    /// <summary>The admin activities of one item, as audit lines (who, what, on which user or group).</summary>
+    internal static IEnumerable<Core.Security.AuditEvent> ToAdminEvents(JsonElement a)
+    {
+        var id = a.TryGetProperty("id", out var i) ? i : default;
+        var actor = a.TryGetProperty("actor", out var ac) ? ac : default;
+        var time = DateTimeOffset.TryParse(S(id, "time"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var t) ? t : DateTimeOffset.MinValue;
+        var n = 0;
+        foreach (var e in Items(a, "events"))
+        {
+            var parameters = Parameters(e).ToList();
+            var target = parameters.FirstOrDefault(p => p.Name is "USER_EMAIL" or "GROUP_EMAIL" or "ORG_UNIT_NAME" or "DEVICE_ID").Value ?? string.Empty;
+            yield return new Core.Security.AuditEvent($"{S(id, "uniqueQualifier")}:{n++}", time, S(e, "name"), S(e, "type"), "Google Admin", S(actor, "email"),
+                string.Empty, target, string.Empty);
+        }
+    }
+
+    private static IEnumerable<(string Name, string? Value)> Parameters(JsonElement e)
+        => Items(e, "parameters").Select(p => (S(p, "name"), p.TryGetProperty("value", out var v) ? v.GetString()
+            : p.TryGetProperty("boolValue", out var b) ? (b.ValueKind == JsonValueKind.True ? "true" : "false")
+            : p.TryGetProperty("multiValue", out var m) && m.ValueKind == JsonValueKind.Array ? string.Join(", ", m.EnumerateArray().Select(x => x.GetString())) : null));
+
+    /// <summary>All items of a list across its pages (at most <paramref name="max"/>).</summary>
+    internal async Task<List<JsonElement>> AllAsync(string url, string property, CancellationToken cancel, int max = int.MaxValue)
     {
         var output = new List<JsonElement>();
         string? page = null;
@@ -169,9 +221,9 @@ public sealed class GoogleConnection : IGoogleConnection
             output.AddRange(Items(answer, property));
             page = answer.TryGetProperty("nextPageToken", out var next) ? next.GetString() : null;
         }
-        while (!string.IsNullOrEmpty(page));
+        while (!string.IsNullOrEmpty(page) && output.Count < max);
 
-        return output;
+        return output.Count > max ? output.Take(max).ToList() : output;
     }
 
     private async Task<JsonElement> GetAsync(string url, CancellationToken cancel)

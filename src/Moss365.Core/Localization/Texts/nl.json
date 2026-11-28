@@ -4166,5 +4166,8 @@
   "connections.google.check": "Project controleren",
   "connections.google.parts": "Onderdelen van Google",
   "connections.google.parts.help": "Hiervoor heeft Google geen scope die alleen leest. Een onderdeel vraagt zijn scope alleen als het aan staat; na aan- of uitzetten meld je je opnieuw aan bij Google.",
-  "connections.google.remember-same": "\"Aangemeld blijven op deze pc\" (hierboven) bewaart ook de aanmelding bij Google, versleuteld met je Windows-account."
+  "connections.google.remember-same": "\"Aangemeld blijven op deze pc\" (hierboven) bewaart ook de aanmelding bij Google, versleuteld met je Windows-account.",
+  "local-logs.google.step": "Google-logboeken lokaal bewaren",
+  "local-logs.google.failed": "De Google-logboeken konden niet gelezen worden: {0}",
+  "local-logs.source": "Bron van de logboeken"
 }

@@ -320,9 +320,18 @@ public interface IGoogleConnection
     /// <summary>The address that signed in, or null.</summary>
     string? SignedInAs => null;
 
+    /// <summary>The login and admin activities since the given times (Reports API, G1), at most <paramref name="max"/>
+    /// each, as sign-ins and audit lines.</summary>
+    Task<GoogleLogs> ReadLogsAsync(DateTimeOffset loginsSince, DateTimeOffset adminSince, int max, CancellationToken cancel)
+        => Task.FromResult(new GoogleLogs(Array.Empty<SignInEvent>(), Array.Empty<Security.AuditEvent>()));
+
     /// <summary>The check of the own project (G1): signing in, and every API Moss365 uses, with what is wrong.</summary>
     Task<IReadOnlyList<GoogleCheck>> CheckAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleCheck>>(Array.Empty<GoogleCheck>());
 }
+
+/// <summary>The logs of Google Workspace (G1): logins as sign-ins (a failure has error code 1, a suspicious login risk
+/// "high") and admin activities as audit lines.</summary>
+public sealed record GoogleLogs(IReadOnlyList<SignInEvent> Logins, IReadOnlyList<Security.AuditEvent> Admin);
 
 /// <summary>One line of the check of the Google project: what, whether it works, and what to do when not.</summary>
 public sealed record GoogleCheck(string Name, bool Ok, string? Message = null);

@@ -4166,5 +4166,8 @@
   "connections.google.check": "Check the project",
   "connections.google.parts": "Parts of Google",
   "connections.google.parts.help": "For these Google has no scope that only reads. A part asks its scope only when it is on; after turning one on or off you sign in to Google again.",
-  "connections.google.remember-same": "\"Stay signed in on this PC\" (above) also keeps the sign-in at Google, encrypted with your Windows account."
+  "connections.google.remember-same": "\"Stay signed in on this PC\" (above) also keeps the sign-in at Google, encrypted with your Windows account.",
+  "local-logs.google.step": "Keep the Google logs locally",
+  "local-logs.google.failed": "The Google logs could not be read: {0}",
+  "local-logs.source": "Source of the logs"
 }
