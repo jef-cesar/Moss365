@@ -23,6 +23,8 @@ public sealed class GoogleSignIn
         "https://www.googleapis.com/auth/admin.directory.user.readonly",
         "https://www.googleapis.com/auth/admin.directory.group.readonly",
         "https://www.googleapis.com/auth/admin.directory.orgunit.readonly",
+        "https://www.googleapis.com/auth/admin.directory.resource.calendar.readonly",
+        "https://www.googleapis.com/auth/admin.directory.rolemanagement.readonly",
     };
 
     private const string AuthEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -238,6 +240,8 @@ public sealed class GoogleSignIn
         {
             using var client = await listener.AcceptTcpClientAsync(cancel);
             await using var stream = client.GetStream();
+            // The whole request first: closing with unread data makes Windows reset the connection, and the browser
+            // would not see the page
             var line = await RequestLineAsync(stream, cancel);
             var target = line.Split(' ') is [_, var t, ..] ? t : "/";
             var query = Query(target);
@@ -247,6 +251,8 @@ public sealed class GoogleSignIn
             var head = Encoding.ASCII.GetBytes($"HTTP/1.1 {(done ? "200 OK" : "404 Not Found")}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {bytes.Length}\r\nConnection: close\r\n\r\n");
             await stream.WriteAsync(head, cancel);
             await stream.WriteAsync(bytes, cancel);
+            await stream.FlushAsync(cancel);
+            client.Client.Shutdown(SocketShutdown.Send);
             if (done)
             {
                 return (query.GetValueOrDefault("code"), query.GetValueOrDefault("state"), query.GetValueOrDefault("error"));
@@ -254,24 +260,29 @@ public sealed class GoogleSignIn
         }
     }
 
+    /// <summary>The first line of the request, after reading the request up to the empty line that ends its headers
+    /// (at most 16 KB; a browser sends no body with a GET).</summary>
     private static async Task<string> RequestLineAsync(Stream stream, CancellationToken cancel)
     {
         var bytes = new List<byte>();
         var one = new byte[1];
-        while (bytes.Count < 8192 && await stream.ReadAsync(one, cancel) == 1)
+        while (bytes.Count < 16384 && await stream.ReadAsync(one, cancel) == 1)
         {
-            if (one[0] == '\n')
+            bytes.Add(one[0]);
+            if (bytes.Count >= 4 && bytes[^4] == '\r' && bytes[^3] == '\n' && bytes[^2] == '\r' && bytes[^1] == '\n')
             {
                 break;
             }
 
-            if (one[0] != '\r')
+            if (bytes.Count >= 2 && bytes[^2] == '\n' && bytes[^1] == '\n')
             {
-                bytes.Add(one[0]);
+                break;
             }
         }
 
-        return Encoding.ASCII.GetString(bytes.ToArray());
+        var text = Encoding.ASCII.GetString(bytes.ToArray());
+        var end = text.IndexOfAny(new[] { '\r', '\n' });
+        return end < 0 ? text : text[..end];
     }
 
     internal static Dictionary<string, string> Query(string target)
