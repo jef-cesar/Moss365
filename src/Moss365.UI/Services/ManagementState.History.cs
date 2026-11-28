@@ -31,7 +31,7 @@ public sealed partial class ManagementState
         try
         {
             var tables = Snapshots.Tables(InventoryWriter.Files(Data, components));
-            var parts = string.Join(", ", new[] { (InventoryComponent.Ad, "AD"), (InventoryComponent.Entra, "Entra"), (InventoryComponent.Rooms, "rooms"), (InventoryComponent.Mailboxes, "postvakken") }
+            var parts = string.Join(", ", new[] { (InventoryComponent.Ad, "AD"), (InventoryComponent.Entra, "Entra"), (InventoryComponent.Rooms, "rooms"), (InventoryComponent.Mailboxes, "postvakken"), (InventoryComponent.Google, "Google") }
                 .Where(x => components.HasFlag(x.Item1)).Select(x => x.Item2));
             var id = Database.SaveSnapshot(DateTimeOffset.Now, "Live: " + parts, tables);
             MarkSnapshotted(folder);

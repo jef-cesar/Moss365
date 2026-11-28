@@ -21,6 +21,13 @@ public static class InventoryLoader
 
     /// <summary>The mail contacts (R21; written by the app, Export-Inventaris.ps1 does not create it).</summary>
     public const string ExoContacts = "exo-contacten.csv";
+
+    /// <summary>Google Workspace (G1; written by the app).</summary>
+    public const string GoogleUsersFile = "google-gebruikers.csv";
+    public const string GoogleGroupsFile = "google-groepen.csv";
+    public const string GoogleOrgUnitsFile = "google-eenheden.csv";
+    public const string GoogleResourcesFile = "google-agendabronnen.csv";
+    public const string GoogleRolesFile = "google-rollen.csv";
     public const string EntraMfa = "entra-mfa.csv";
     public const string EntraRoles = "entra-rollen.csv";
 
@@ -31,6 +38,7 @@ public static class InventoryLoader
     {
         AdUsers, AdGroups, AdGroupMembers, EntraUsers, EntraGroups, EntraGroupMembers, EntraLicences,
         ExoRooms, ExoGroups, ExoGroupMembers, ExoMailboxes, ExoMailboxPermissions, EntraMfa, EntraRoles, ExoContacts,
+        GoogleUsersFile, GoogleGroupsFile, GoogleOrgUnitsFile, GoogleResourcesFile, GoogleRolesFile,
     };
 
     /// <summary>All inventory folders under the base folder, newest first (the name contains yyyyMMdd-HHmm).</summary>
@@ -187,6 +195,22 @@ public static class InventoryLoader
                 .ToList(),
             Contacts = T(ExoContacts).Select(MakeContact).Where(c => c.Smtp.Length > 0)
                 .OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList(),
+            GoogleUsers = T(GoogleUsersFile).Select(MakeGoogleUser).Where(u => u.Id.Length > 0).ToList(),
+            GoogleGroups = T(GoogleGroupsFile).Select(MakeGoogleGroup).Where(g => g.Id.Length > 0).ToList(),
+            GoogleOrgUnits = T(GoogleOrgUnitsFile).Select(r => new GoogleOrgUnit
+            {
+                Path = K(r, "OrgUnitPath"), Name = W(r, "Name"), Description = W(r, "Description"), ParentPath = K(r, "ParentOrgUnitPath"),
+            }).Where(o => o.Path.Length > 0).ToList(),
+            GoogleResources = T(GoogleResourcesFile).Select(r => new GoogleResource
+            {
+                Id = K(r, "Id"), Email = K(r, "Email"), Name = W(r, "Name"), Type = W(r, "Type"), Category = K(r, "Category"),
+                Capacity = int.TryParse(K(r, "Capacity"), out var capacity) ? capacity : null, Building = W(r, "Building"), Floor = W(r, "Floor"),
+                Description = W(r, "Description"),
+            }).Where(x => x.Id.Length > 0).ToList(),
+            GoogleRoles = T(GoogleRolesFile).Select(r => new GoogleRoleAssignment
+            {
+                UserId = K(r, "UserId"), Role = W(r, "Role"), SuperAdmin = B(r, "SuperAdmin"), Scope = K(r, "Scope") is { Length: > 0 } scope ? scope : "CUSTOMER",
+            }).Where(x => x.UserId.Length > 0).ToList(),
             Security = T(EntraMfa).Count + T(EntraRoles).Count == 0 ? null : new SecurityData(
                 T(EntraMfa).Select(r => new MfaRegistration(K(r, "Id"), K(r, "UserPrincipalName"), B(r, "IsMfaRegistered"), B(r, "IsMfaCapable"),
                     K(r, "Methods").Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), K(r, "DefaultMethod"), B(r, "IsAdmin")))
@@ -444,6 +468,37 @@ public static class InventoryLoader
         ManagedBy = K(r, "ManagedBy") is "ja" or "nee" ? Array.Empty<string>() : Items(r, "ManagedBy"),
         CountMembers = I(r, "AantalLeden"),
         Members = members.GetValueOrDefault(W(r, "DisplayName").Trim()) ?? Array.Empty<ExoMember>(),
+    };
+
+    private static GoogleUser MakeGoogleUser(Dictionary<string, string> r) => new()
+    {
+        Id = K(r, "Id"),
+        PrimaryEmail = K(r, "PrimaryEmail"),
+        Aliases = Items(r, "Aliases"),
+        Name = W(r, "Name"),
+        GivenName = W(r, "GivenName"),
+        FamilyName = W(r, "FamilyName"),
+        Department = W(r, "Department"),
+        OrgUnitPath = K(r, "OrgUnitPath") is { Length: > 0 } ou ? ou : "/",
+        Suspended = B(r, "Suspended"),
+        Archived = B(r, "Archived"),
+        EmployeeId = W(r, "EmployeeId"),
+        LastLogin = W(r, "LastLoginTime"),
+        CreationTime = W(r, "CreationTime"),
+        IsAdmin = B(r, "IsAdmin"),
+        TwoStepEnrolled = B(r, "IsEnrolledIn2Sv"),
+        TwoStepEnforced = B(r, "IsEnforcedIn2Sv"),
+    };
+
+    private static GoogleGroup MakeGoogleGroup(Dictionary<string, string> r) => new()
+    {
+        Id = K(r, "Id"),
+        Email = K(r, "Email"),
+        Name = W(r, "Name"),
+        Description = W(r, "Description"),
+        CountMembers = int.TryParse(K(r, "DirectMembersCount"), out var n) ? n : 0,
+        Aliases = Items(r, "Aliases"),
+        AdminCreated = B(r, "AdminCreated"),
     };
 
     private static MailContact MakeContact(Dictionary<string, string> r) => new()

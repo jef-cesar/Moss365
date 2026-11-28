@@ -31,6 +31,27 @@
     </p>
 </section>
 
+@if (State.HasGoogle && State.Data.GoogleUsers.Count > 0)
+{
+    var google = State.Data.GoogleUsers;
+    <section class="kb-kaart">
+        <h2>@T["systems.google.name"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></h2>
+        <div class="kb-tegels">
+            <Tile Count="google.Count" Label="@T["google.stat.users"]" />
+            <Tile Count="google.Count(u => u.Suspended)" Label="@T["google.stat.suspended"]" />
+            <Tile Count="google.Count(u => u.IsAdmin)" Label="@T["google.stat.admins"]" />
+            <Tile Count="State.Data.GoogleRoles.Where(r => r.SuperAdmin).Select(r => r.UserId).Distinct().Count()" Label="@T["google.stat.super-admins"]" />
+            <Tile Count="google.Count(u => !u.Suspended && !u.TwoStepEnrolled)" Label="@T["google.stat.no-two-step"]" />
+            <Tile Count="State.Data.GoogleGroups.Count" Label="@T["google.stat.groups"]" />
+            <Tile Count="State.Data.GoogleResources.Count" Label="@T["google.stat.resources"]" Attention="false" />
+            @if (State.HasAd || State.HasMicrosoft365)
+            {
+                <Tile Count="State.Data.Persons.Count(p => p.Google is not null && p.Ad is null && p.Entra is null)" Label="@T["google.stat.only-google"]" Link="koppelingen" />
+            }
+        </div>
+    </section>
+}
+
 <section class="kb-kaart">
     <h2>@T["statistics.points-of-attention"]</h2>
     <p class="kb-zacht">@T["statistics.signals-to-check-not-conclusions"]</p>

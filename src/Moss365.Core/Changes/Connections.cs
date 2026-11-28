@@ -76,8 +76,19 @@ public sealed class ConnectionSettings
     [System.Text.Json.Serialization.JsonIgnore]
     public ITokenCacheStore? TokenCache { get; set; }
 
+    /// <summary>G1: the primary domain of Google Workspace (e.g. example.com).</summary>
+    public string GoogleDomain { get; set; } = string.Empty;
+
+    /// <summary>G1: the OAuth client of the own Google project (U35: one per organisation, type Desktop app).</summary>
+    public string GoogleClientId { get; set; } = string.Empty;
+
+    /// <summary>G1: the "secret" of that client. Google says a Desktop app client cannot keep it secret, so it is no
+    /// real secret; it stays in the (encrypted) tenant database and is never logged or shown.</summary>
+    public string GoogleClientSecret { get; set; } = string.Empty;
+
     public bool AdFilled => AdServer.Trim().Length > 0;
     public bool GraphFilled => TenantId.Trim().Length > 0 && ClientId.Trim().Length > 0;
+    public bool GoogleFilled => GoogleDomain.Trim().Length > 0 && GoogleClientId.Trim().Length > 0;
 }
 
 /// <summary>What a live AD read returns. Snapshot = from where the next read can ask for the changes only.</summary>
@@ -283,6 +294,20 @@ public sealed class NoPermissionError(string message) : Exception(message);
 public sealed record GraphOwner(string Id, string Name, string Upn);
 
 /// <summary>What a live Exchange read of groups and mailboxes returns.</summary>
+/// <summary>What a read of Google Workspace returns (G1).</summary>
+public sealed record GoogleData(IReadOnlyList<GoogleUser> Users, IReadOnlyList<GoogleGroup> Groups, IReadOnlyList<GoogleOrgUnit> OrgUnits,
+    IReadOnlyList<GoogleResource>? Resources = null, IReadOnlyList<GoogleRoleAssignment>? Roles = null);
+
+/// <summary>Reading Google Workspace through the Directory API (G1), signed in with the OAuth client of the own
+/// project.</summary>
+public interface IGoogleConnection
+{
+    Task<GoogleData> ReadAsync(IProgress<string>? progress, CancellationToken cancel);
+
+    /// <summary>The address that signed in, or null.</summary>
+    string? SignedInAs => null;
+}
+
 public sealed record ExchangeData(IReadOnlyList<ExoGroup> Groups, IReadOnlyList<Mailbox> Mailboxes, IReadOnlyList<MailboxPermission> Permissions,
     IReadOnlyList<MailContact>? Contacts = null);
 
@@ -349,6 +374,9 @@ public interface IConnectionFactory
     IGraphConnection? Graph(ConnectionSettings settings);
 
     IExchangeConnection? Exchange(ConnectionSettings settings);
+
+    /// <summary>Google Workspace (G1); null without its settings or where that is not possible.</summary>
+    IGoogleConnection? Google(ConnectionSettings settings) => null;
 
     IReadOnlyList<IExecutor> Executors(ConnectionSettings settings, string? adPassword);
 
