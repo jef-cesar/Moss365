@@ -25,7 +25,7 @@ public static class MenuModel
         }),
         new MenuGroup("Groepen en toegang", new MenuItem[]
         {
-            new("groepen", "Groepen"), new("postvakken", "Gedeelde postvakken"), new("rooms", "Rooms"), new("contacten", "Contacten"), new("samenwerking", "Teams en SharePoint"), new("logonscripts", "Logonscripts"),
+            new("groepen", "Groepen"), new("postvakken", "Gedeelde postvakken"), new("rooms", "Rooms"), new("contacten", "Contacten"), new("google-groepen", "Google-groepen"), new("google-bronnen", "Google-agendabronnen"), new("samenwerking", "Teams en SharePoint"), new("logonscripts", "Logonscripts"),
         }),
         new MenuGroup("Beveiliging", new MenuItem[]
         {

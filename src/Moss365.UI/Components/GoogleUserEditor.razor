@@ -72,6 +72,31 @@
     }
 </div>
 
+@if (CanManage && State.GoogleParts.Contains(Moss365.Core.Setup.GoogleParts.Licences))
+{
+    <div class="kb-sectie" id="google-licenties">
+        <h3>@T["google.user.licences"]</h3>
+        @if (Licences.Count == 0) { <p class="kb-zacht">@T["google.edit.no-licence"]</p> }
+        <ul class="kb-lijst">
+            @foreach (var l in Licences)
+            {
+                var licence = l;
+                <li>@GoogleGroupPlans.SkuName(licence) <button class="kb-knop kb-klein" @onclick="() => Show(PlanOutcome.Of(new[] { GoogleGroupPlans.RemoveLicence(User, licence) }))">@T["google.edit.remove"]</button></li>
+            }
+        </ul>
+        @if (GoogleGroupPlans.Skus(State.Data) is { Count: > 0 } skus)
+        {
+            <div class="kb-filters">
+                <select class="kb-invoer" value="@sku" @onchange="e => sku = e.Value?.ToString() ?? string.Empty" aria-label="@T["google.edit.licence"]">
+                    <option value="">@T["script-form.choose"]</option>
+                    @foreach (var s in skus) { <option value="@($"{s.ProductId}|{s.SkuId}")">@GoogleGroupPlans.SkuName(s)</option> }
+                </select>
+                <button class="kb-knop" disabled="@(sku.Length == 0)" @onclick="AssignLicence">@T["google.edit.assign-licence"]</button>
+            </div>
+        }
+    </div>
+}
+
 @if (CanHelp)
 {
     <div class="kb-sectie" id="google-acties">
@@ -136,11 +161,11 @@
 
     private bool CanHelp => !State.IsHistoric && State.Can(Permission.Helpdesk);
 
-    private GoogleSource Source => GooglePlans.Source(State.Systems, State.Data, State.SourceSettings);
+    private GoogleSource Source => State.GoogleUserSource;
 
     private IReadOnlyCollection<string> Followed => GooglePlans.Followed(Source);
 
-    private IReadOnlyList<string> Domains => GooglePlans.Domains(State.Data, State.EffectiveSettings.GoogleDomain);
+    private IReadOnlyList<string> Domains => State.GoogleDomains;
 
     private string AliasExample => "alias@" + (Domains.FirstOrDefault() ?? "example.com");
 
@@ -188,6 +213,16 @@
     }
 
     private void AddAlias() => Show(GooglePlans.AddAlias(State.Data, User, newAlias, Domains));
+
+    private string sku = string.Empty;
+
+    private IReadOnlyList<GoogleLicence> Licences => State.Data.GoogleLicences.Where(l => string.Equals(l.UserEmail, User.PrimaryEmail, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private void AssignLicence()
+    {
+        var parts = sku.Split('|');
+        Show(GoogleGroupPlans.AssignLicence(State.Data, User, parts[0], parts.Length > 1 ? parts[1] : string.Empty, State.GoogleParts));
+    }
 
     private void NewPassword()
     {

@@ -121,3 +121,105 @@ public sealed class GooglePlanTests
         Assert.Equal(Permission.GroupMembers, PermissionTable.ForAction(ChangeAction.GoogleAddGroupMember));
     }
 }
+
+/// <summary>G2: the plans for Google groups, calendar resources and licences.</summary>
+public sealed class GoogleGroupPlanTests
+{
+    private static readonly GoogleGroup Team = new()
+    {
+        Id = "gg-1", Email = "team@example.com", Name = "Team", Description = "Het team", WhoCanJoin = "INVITED_CAN_JOIN",
+        WhoCanPost = "ALL_MEMBERS_CAN_POST", WhoCanViewMembership = "ALL_MEMBERS_CAN_VIEW", AllowExternalMembers = false,
+    };
+
+    private static readonly GoogleMember[] Members = { new("an@example.com", "OWNER", "USER"), new("bo@example.com", "MEMBER", "USER") };
+
+    private static readonly string[] Domains = { "example.com" };
+
+    private static InventoryData Data() => new()
+    {
+        GoogleUsers = new[] { new GoogleUser { Id = "g-an", PrimaryEmail = "an@example.com" }, new GoogleUser { Id = "g-cas", PrimaryEmail = "cas@example.com" } },
+        GoogleGroups = new[] { Team },
+        GoogleLicences = new[] { new GoogleLicence("an@example.com", "Google-Apps", "1010020028", "Google Workspace Business Standard") },
+    };
+
+    private static LogEntry Log(Change c) => new(DateTimeOffset.Now, "beheerder", "test", c.TargetSystem.ToString(), c.ChangeAction.ToString(), c.Target, c.TargetName,
+        c.Description, c.Parameters, "Succeeded", string.Empty, Previous: c.Previous);
+
+    [Fact]
+    public void TheNameAndTheMembersOfAGroupThatFollowsAreChangedAtTheSource()
+    {
+        var edit = Assert.Single(GoogleGroupPlans.Edit(Team, "Ploeg", "Het team", null).Plan);
+        Assert.Equal(("gg-1", "Ploeg", "Team", false), (edit.Target, edit.P("name"), edit.Previous!["name"], edit.Parameters.ContainsKey("description")));
+        Assert.Single(GoogleGroupPlans.Edit(Team, " ", null, null).Errors);
+        Assert.Single(GoogleGroupPlans.Edit(Team, "Ploeg", null, Platform.EntraId).Errors);
+        Assert.Single(GoogleGroupPlans.AddMember(Data(), Team, "cas@example.com", "MEMBER", Members, Domains, Platform.ActiveDirectory).Errors);
+        Assert.Single(GoogleGroupPlans.RemoveMember(Team, Members[1], Members, Platform.ActiveDirectory).Errors);
+        Assert.Equal(Platform.ActiveDirectory, GoogleGroupPlans.FollowsFrom(TenantSystems.Both | TenantSystems.GoogleWorkspace, Data(), new SourceSettings { GoogleGroups = GoogleFeed.FromAd }));
+    }
+
+    [Fact]
+    public void MembersComeInWithARoleAndGoOutWithItSoThatUndoPutsThemBack()
+    {
+        var add = Assert.Single(GoogleGroupPlans.AddMember(Data(), Team, " Cas@Example.com ", "MANAGER", Members, Domains, null).Plan);
+        Assert.Equal((ChangeAction.GoogleAddGroupMember, "cas@example.com", "team@example.com", "MANAGER"), (add.ChangeAction, add.Target, add.P("groep"), add.P("rol")));
+        Assert.Null(add.Warning);
+
+        // Already in the group: the same role is refused, another role is a change of role with undo
+        Assert.Single(GoogleGroupPlans.AddMember(Data(), Team, "bo@example.com", "MEMBER", Members, Domains, null).Errors);
+        var role = Assert.Single(GoogleGroupPlans.AddMember(Data(), Team, "bo@example.com", "OWNER", Members, Domains, null).Plan);
+        Assert.Equal((ChangeAction.GoogleSetGroupMemberRole, "OWNER", "MEMBER"), (role.ChangeAction, role.P("rol"), role.Previous!["rol"]));
+        var back = Assert.Single(Undo.Plan(new[] { Log(role) }).Plan);
+        Assert.Equal(("MEMBER", "team@example.com"), (back.P("rol"), back.P("groep")));
+
+        // From outside: a warning, sharper when the group allows nobody from outside
+        Assert.Contains("weigeren", GoogleGroupPlans.AddMember(Data(), Team, "x@fabrikam.com", "MEMBER", Members, Domains, null).Plan[0].Warning, StringComparison.Ordinal);
+        Assert.Single(GoogleGroupPlans.AddMember(Data(), Team, "team@example.com", "MEMBER", Members, Domains, null).Errors);
+        Assert.Single(GoogleGroupPlans.AddMember(Data(), Team, "geen adres", "MEMBER", Members, Domains, null).Errors);
+
+        var remove = Assert.Single(GoogleGroupPlans.RemoveMember(Team, Members[0], Members, null).Plan);
+        Assert.NotNull(remove.Warning); // the last owner
+        var again = Assert.Single(Undo.Plan(new[] { Log(remove) }).Plan);
+        Assert.Equal((ChangeAction.GoogleAddGroupMember, "an@example.com", "OWNER"), (again.ChangeAction, again.Target, again.P("rol")));
+
+        // A member is helpdesk work; an owner or a manager is a change of the group itself
+        Assert.Null(PermissionTable.Refusal(Role.Helpdesk, GoogleGroupPlans.AddMember(Data(), Team, "cas@example.com", "MEMBER", Members, Domains, null).Plan[0]));
+        Assert.NotNull(PermissionTable.Refusal(Role.Helpdesk, add));
+    }
+
+    [Fact]
+    public void TheSettingsOfAGroupNeedTheirPartAndOpeningItUpComesWithAWarning()
+    {
+        var on = new[] { Moss365.Core.Setup.GoogleParts.GroupSettings };
+        Assert.Single(GoogleGroupPlans.Settings(Team, new GoogleGroupSettingsDesired("ANYONE_CAN_JOIN"), Array.Empty<string>()).Errors);
+        Assert.Single(GoogleGroupPlans.Settings(Team with { WhoCanJoin = "" }, new GoogleGroupSettingsDesired("ANYONE_CAN_JOIN"), on).Errors);
+        Assert.Single(GoogleGroupPlans.Settings(Team, new GoogleGroupSettingsDesired("IEDEREEN"), on).Errors);
+        var open = Assert.Single(GoogleGroupPlans.Settings(Team, new GoogleGroupSettingsDesired("ANYONE_CAN_JOIN", "ALL_MEMBERS_CAN_POST", null, true), on).Plan);
+        Assert.Equal(("team@example.com", "ANYONE_CAN_JOIN", "True", false), (open.Target, open.P("whoCanJoin"), open.P("allowExternalMembers"), open.Parameters.ContainsKey("whoCanPostMessage")));
+        Assert.Equal(("INVITED_CAN_JOIN", "False"), (open.Previous!["whoCanJoin"], open.Previous["allowExternalMembers"]));
+        Assert.NotNull(open.Warning);
+        Assert.Null(Assert.Single(GoogleGroupPlans.Settings(Team, new GoogleGroupSettingsDesired(WhoCanPost: "ALL_MANAGERS_CAN_POST"), on).Plan).Warning);
+        Assert.Equal("Alleen wie uitgenodigd is", GoogleGroupPlans.Name("INVITED_CAN_JOIN"));
+    }
+
+    [Fact]
+    public void AResourceAndALicenceAreChangedWithWhatWasBefore()
+    {
+        var room = new GoogleResource { Id = "r-1", Name = "Zaal 1", Capacity = 8, Floor = "1" };
+        var edit = Assert.Single(GoogleGroupPlans.EditResource(room, new GoogleResourceDesired("Zaal 1", 12, "2", "")).Plan);
+        Assert.Equal(("12", "8", "2", false), (edit.P("capacity"), edit.Previous!["capacity"], edit.P("floorName"), edit.Parameters.ContainsKey("resourceName")));
+        Assert.Equal("", Assert.Single(GoogleGroupPlans.EditResource(room, new GoogleResourceDesired(ClearCapacity: true)).Plan).P("capacity"));
+        Assert.Single(GoogleGroupPlans.EditResource(room, new GoogleResourceDesired(Capacity: -1)).Errors);
+        Assert.Empty(GoogleGroupPlans.EditResource(room, new GoogleResourceDesired("Zaal 1", 8)).Plan);
+
+        var on = new[] { Moss365.Core.Setup.GoogleParts.Licences };
+        var cas = Data().GoogleUsers[1];
+        Assert.Single(GoogleGroupPlans.AssignLicence(Data(), cas, "Google-Apps", "1010020028", Array.Empty<string>()).Errors);
+        Assert.Single(GoogleGroupPlans.AssignLicence(Data(), cas, "Google-Apps", "1010020099", on).Errors);
+        Assert.Single(GoogleGroupPlans.AssignLicence(Data(), Data().GoogleUsers[0], "Google-Apps", "1010020028", on).Errors);
+        var assign = Assert.Single(GoogleGroupPlans.AssignLicence(Data(), cas, "Google-Apps", "1010020028", on).Plan);
+        Assert.Equal(("cas@example.com", "Google Workspace Business Standard"), (assign.Target, assign.P("sku")));
+        var remove = GoogleGroupPlans.RemoveLicence(cas, Data().GoogleLicences[0]);
+        Assert.NotNull(remove.Warning);
+        Assert.Equal(ChangeAction.GoogleAssignLicence, Assert.Single(Undo.Plan(new[] { Log(remove) }).Plan).ChangeAction);
+    }
+}

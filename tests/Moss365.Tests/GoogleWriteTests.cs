@@ -99,6 +99,28 @@ public sealed class GoogleWriteTests
     }
 
     [Fact]
+    public async Task MembersAreReadPageByPageAndARoleIsChangedInPlace()
+    {
+        var google = new FakeGoogle
+        {
+            Answer = (r, _) => r.Method == HttpMethod.Get && !r.RequestUri!.Query.Contains("pageToken", StringComparison.Ordinal)
+                ? (HttpStatusCode.OK, """{"members":[{"email":"bo@example.com","role":"MEMBER","type":"USER"}],"nextPageToken":"p2"}""")
+                : r.Method == HttpMethod.Get ? (HttpStatusCode.OK, """{"members":[{"email":"an@example.com","role":"OWNER","type":"USER","status":"ACTIVE"}]}""")
+                : (HttpStatusCode.OK, "{}"),
+        };
+        var connection = new GoogleConnection(new HttpClient(google), _ => Task.FromResult("token-1"));
+        var members = await connection.ReadMembersAsync("team@example.com", CancellationToken.None);
+        Assert.Equal(new[] { "an@example.com", "bo@example.com" }, members!.Select(m => m.Email)); // owners first
+        Assert.Equal(2, google.Asked.Count);
+
+        var role = Step(ChangeAction.GoogleSetGroupMemberRole, "bo@example.com", ("groep", "team@example.com"), ("rol", "MANAGER"));
+        Assert.Equal(ResultStatus.Succeeded, (await connection.ExecuteAsync(new[] { role }, CancellationToken.None))[0].Status);
+        var patch = google.Asked.Last();
+        Assert.Equal((HttpMethod.Patch, "{\"role\":\"MANAGER\"}"), (patch.Method, patch.Body));
+        Assert.EndsWith("/groups/team@example.com/members/bo@example.com", patch.Url, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheEngineRefusesAPartThatIsOffAndEveryStepHasItsLabel()
     {
         var licence = Step(ChangeAction.GoogleAssignLicence, "an@example.com", ("productId", "Google-Apps"), ("skuId", "1010020025"));

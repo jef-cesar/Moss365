@@ -134,6 +134,7 @@ public enum ChangeAction
     GmailSetSignature,            // Target = the address of the user; handtekening (HTML); Previous
     GmailAddFilter,               // Target = the address of the user; json (criteria and action, as Gmail gives them)
     GmailRemoveFilter,            // Target = the address of the user; id; Previous json (to add it again)
+    GoogleSetGroupMemberRole,     // Target = the address of the member; groep, rol (MEMBER, MANAGER, OWNER); Previous rol
 }
 
 /// <summary>

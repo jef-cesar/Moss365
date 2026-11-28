@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Moss365.Core.Changes;
+using Moss365.Core.Inventory;
 using Moss365.Core.Localization;
 
 namespace Moss365.Connections.Google;
@@ -120,6 +121,10 @@ public sealed partial class GoogleConnection
                 return await AlreadyAsync(w, () => SendAsync(HttpMethod.Delete, $"{Directory}/groups/{Key(w.P("groep"))}/members/{Key(w.Target)}", null, cancel),
                     HttpStatusCode.NotFound, "google.member.already-gone", cancel);
 
+            case ChangeAction.GoogleSetGroupMemberRole:
+                await SendAsync(HttpMethod.Patch, $"{Directory}/groups/{Key(w.P("groep"))}/members/{Key(w.Target)}", new JsonObject { ["role"] = w.P("rol") }, cancel);
+                return ChangeResult.Ok(w);
+
             case ChangeAction.GoogleUpdateGroup:
                 await SendAsync(HttpMethod.Patch, $"{Directory}/groups/{Key(w.Target)}", Fields(w, "name", "description"), cancel);
                 return ChangeResult.Ok(w);
@@ -234,6 +239,14 @@ public sealed partial class GoogleConnection
 
         return body;
     }
+
+    /// <summary>The direct members of a group with their role (G2), read when the page of the group asks.</summary>
+    public async Task<IReadOnlyList<GoogleMember>?> ReadMembersAsync(string group, CancellationToken cancel)
+        => (await AllAsync($"{Directory}/groups/{Key(group)}/members?maxResults=200", "members", cancel))
+            .Select(m => new GoogleMember(S(m, "email"), S(m, "role") is { Length: > 0 } role ? role : "MEMBER", S(m, "type"), S(m, "status")))
+            .Where(m => m.Email.Length > 0)
+            .OrderBy(m => m.Role switch { "OWNER" => 0, "MANAGER" => 1, _ => 2 }).ThenBy(m => m.Email, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     private Task<ChangeResult> GmailAsync(Change w, CancellationToken cancel)
         => GmailToken is null

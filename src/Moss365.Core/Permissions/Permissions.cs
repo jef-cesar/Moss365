@@ -197,7 +197,10 @@ public static class PermissionTable
             ? Permission.Settings
             : w.ChangeAction == ChangeAction.IntuneDeviceAction
                 ? (Devices.DevicePlans.LevelOf(w) == Devices.DeviceActionLevel.Safe ? Permission.Helpdesk : Permission.Manage)
-                : ForAction(w.ChangeAction);
+                // G2: a manager or owner of a Google group can change the group itself
+                : w.ChangeAction == ChangeAction.GoogleAddGroupMember && w.P("rol") is "OWNER" or "MANAGER"
+                    ? Permission.Manage
+                    : ForAction(w.ChangeAction);
         if (!Can(roles, permission))
         {
             return Texts.T.Format("permission.refused", Text(roles, and: true), Text(RolesFor(permission)));

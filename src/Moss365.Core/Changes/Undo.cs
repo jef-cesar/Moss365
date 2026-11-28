@@ -50,7 +50,7 @@ public static class Undo
         ChangeAction.GraphUpdatePolicy, ChangeAction.GraphRoleEligibility, ChangeAction.ExchangeOrganisationSetting, ChangeAction.ExchangeRoomPlace,
         ChangeAction.AdSetProxyAddresses, ChangeAction.ExchangeUpdateContact, ChangeAction.ExchangeRoomWorkingHours,
         ChangeAction.GoogleUpdateUser, ChangeAction.GoogleUpdateGroup, ChangeAction.GoogleUpdateGroupSettings, ChangeAction.GoogleUpdateResource,
-        ChangeAction.GmailSetForwarding, ChangeAction.GmailSetVacation, ChangeAction.GmailSetSignature,
+        ChangeAction.GmailSetForwarding, ChangeAction.GmailSetVacation, ChangeAction.GmailSetSignature, ChangeAction.GoogleSetGroupMemberRole,
     };
 
     /// <summary>Can this entry be undone? If not, why not.</summary>

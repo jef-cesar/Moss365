@@ -331,6 +331,10 @@ public interface IGoogleConnection
 
     /// <summary>The check of the own project (G1): signing in, and every API Moss365 uses, with what is wrong.</summary>
     Task<IReadOnlyList<GoogleCheck>> CheckAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleCheck>>(Array.Empty<GoogleCheck>());
+
+    /// <summary>The direct members of a group with their role (G2), read when the page of the group asks; null when
+    /// this connection cannot read them.</summary>
+    Task<IReadOnlyList<GoogleMember>?> ReadMembersAsync(string group, CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleMember>?>(null);
 }
 
 /// <summary>The logs of Google Workspace (G1): logins as sign-ins (a failure has error code 1, a suspicious login risk

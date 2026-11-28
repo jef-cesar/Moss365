@@ -23,6 +23,11 @@ public sealed partial class PlanScreenTests
 
         public Task<IReadOnlyList<ChangeResult>> ExecuteAsync(IReadOnlyList<Change> changes, CancellationToken cancel) => Writer!.Run(changes);
 
+        /// <summary>G2: the members of every group, as Google gives them.</summary>
+        public List<GoogleMember> Members { get; } = new() { new("cas.vos@test.be", "OWNER", "USER"), new("nieuw@test.be", "MEMBER", "USER") };
+
+        public Task<IReadOnlyList<GoogleMember>?> ReadMembersAsync(string group, CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleMember>?>(Members.ToList());
+
         public Task<GoogleData> ReadAsync(IProgress<string>? progress, CancellationToken cancel)
         {
             Reads++;

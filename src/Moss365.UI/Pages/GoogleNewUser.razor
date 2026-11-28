@@ -74,9 +74,9 @@
     private GoogleNewUserProposal? proposal;
     private (string Email, string Password)? made;
 
-    private GoogleSource Source => GooglePlans.Source(State.Systems, State.Data, State.SourceSettings);
+    private GoogleSource Source => State.GoogleUserSource;
 
-    private IReadOnlyList<string> Domains => GooglePlans.Domains(State.Data, State.EffectiveSettings.GoogleDomain);
+    private IReadOnlyList<string> Domains => State.GoogleDomains;
 
     private string DomainValue => request.Domain.Length > 0 ? request.Domain : Domains.FirstOrDefault() ?? string.Empty;
 
