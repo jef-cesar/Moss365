@@ -211,7 +211,7 @@ public sealed partial class PlanScreenTests
         var file = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
         {
             ["type"] = "service_account", ["project_id"] = "moss365-test", ["private_key_id"] = "kid-1", ["private_key"] = pem,
-            ["client_email"] = "moss365-gmail@moss365-test.iam.gserviceaccount.com", ["client_id"] = "1234567890", ["token_uri"] = Moss365.Core.Google.GmailKey.GoogleTokenUri,
+            ["client_email"] = "moss365-gmail@example.com", ["client_id"] = "1234567890", ["token_uri"] = Moss365.Core.Google.GmailKey.GoogleTokenUri,
         });
         Assert.NotNull(s.SaveGmailKey("{}"));
         Assert.Null(s.SaveGmailKey(file));

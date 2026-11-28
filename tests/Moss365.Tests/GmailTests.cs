@@ -37,7 +37,7 @@ public sealed class GmailTests
         ["project_id"] = "moss365-test",
         ["private_key_id"] = "kid-1",
         ["private_key"] = Rsa.ExportPkcs8PrivateKeyPem(),
-        ["client_email"] = "moss365-gmail@moss365-test.iam.gserviceaccount.com",
+        ["client_email"] = "moss365-gmail@example.com",
         ["client_id"] = "1234567890",
         ["token_uri"] = tokenUri,
     });

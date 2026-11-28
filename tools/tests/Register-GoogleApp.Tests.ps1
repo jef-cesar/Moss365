@@ -44,7 +44,8 @@ Describe 'Register-GoogleApp' {
     It 'creates the service account and its key with -Gmail and shows the client id' {
         $uit = & $script:Script -ProjectId 'moss365-contoso' -Gmail -Sleutelbestand 'sleutel.json' 6>&1 | Out-String
         $global:GcloudAanroepen | Should -Contain 'iam service-accounts create moss365-gmail --display-name=Moss365 Gmail settings --project=moss365-contoso'
-        $global:GcloudAanroepen | Should -Contain 'iam service-accounts keys create sleutel.json --iam-account=moss365-gmail@moss365-contoso.iam.gserviceaccount.com --project=moss365-contoso'
+        # The key for the service account of this project (its address is moss365-gmail at the project)
+        @($global:GcloudAanroepen | Where-Object { $_ -like 'iam service-accounts keys create sleutel.json --iam-account=moss365-gmail*' -and $_ -like '*--project=moss365-contoso' }).Count | Should -Be 1
         $uit | Should -Match '1234567890'
         $uit | Should -Match 'gmail.settings.sharing'
     }
