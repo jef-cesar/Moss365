@@ -4067,5 +4067,19 @@
   "plan.primary.exchange": "Definir o endereço principal da caixa no Exchange Online",
   "edit-user.no-mailbox": "Esta conta não tem endereço de e-mail: não há endereço principal para alterar.",
   "edit-user.address-confirm": "Sei que {0} passa a enviar a partir de {1}; o endereço antigo continua como alias.",
-  "ad.proxy.one-primary": "A lista de endereços deve ter exatamente um endereço principal (SMTP:)."
+  "ad.proxy.one-primary": "A lista de endereços deve ter exatamente um endereço principal (SMTP:).",
+  "menu.contacten": "Contatos",
+  "contacts.intro": "{0} contatos de e-mail: pessoas de fora da organização no catálogo de endereços do Exchange Online.",
+  "contacts.none": "Ainda não há contatos, ou o Exchange Online ainda não foi lido: leia as caixas de correio em Ligações.",
+  "contacts.new": "Novo contato",
+  "contacts.hidden": "Oculto",
+  "contacts.source": "Origem",
+  "contact.external": "Endereço de e-mail",
+  "contact.details": "Dados do contato",
+  "contact.not-found": "Contato não encontrado",
+  "contact.back": "Voltar aos contatos",
+  "contact.synced": "Este contato vem do AD: é alterado lá, não no Exchange Online.",
+  "contact.name-needed": "Um contato precisa de um nome de exibição.",
+  "contact.plan.new": "Criar o contato {0} no Exchange Online",
+  "contact.plan.edit": "Alterar o contato {0} no Exchange Online"
 }

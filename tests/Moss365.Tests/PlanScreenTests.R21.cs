@@ -425,3 +425,53 @@ public sealed partial class PlanScreenTests
         Assert.Equal(an.Ad!.DistinguishedName, step.Target);
     }
 }
+
+/// <summary>R21: mail contacts, in a list with a new one, and edited on their own page as a plan with undo.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void ANewMailContactIsCheckedAndCreated()
+    {
+        Assert.Equal(2, State.Data.Contacts.Count);
+        Assert.Equal("jan.extern2", ContactPlans.Alias(State.Data, "jan.extern@fabrikam.com")); // the alias of Jan is taken
+        var cut = RenderComponent<Contacts>();
+        Assert.Contains("Jan Extern", cut.Markup, StringComparison.Ordinal);
+
+        // An address another recipient has (a contact) is refused while typing
+        cut.Find("input[aria-label='Weergavenaam']").Input("Piet Extern");
+        cut.Find("input[aria-label='E-mailadres']").Input("jan@fabrikam.com");
+        Assert.Contains("heeft het adres jan@fabrikam.com al", cut.Markup, StringComparison.Ordinal);
+
+        cut.Find("input[aria-label='E-mailadres']").Input("piet@fabrikam.com");
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.ExchangeCreateContact));
+        var step = Assert.Single(_factory.Executed, w => w.ChangeAction == ChangeAction.ExchangeCreateContact);
+        Assert.Equal("piet@fabrikam.com", step.Target);
+        Assert.Equal(("Piet Extern", "piet"), (step.P("DisplayName"), step.P("Alias")));
+        Assert.Equal(Moss365.Core.Changes.Platform.ExchangeOnline, Platforms.Of(step));
+    }
+
+    [Fact]
+    public void AMailContactIsEditedWithUndoAndOneFromAdIsNot()
+    {
+        var cut = RenderComponent<ContactDetail>(p => p.Add(x => x.Smtp, "jan@fabrikam.com"));
+        cut.Find("input[aria-label='Bedrijf']").Input("Fabrikam NV");
+        cut.Find("input[aria-label='Verbergen in de adreslijst']").Change(true);
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.ExchangeUpdateContact));
+        var step = Assert.Single(_factory.Executed, w => w.ChangeAction == ChangeAction.ExchangeUpdateContact);
+        Assert.Equal("jan@fabrikam.com", step.Target);
+        Assert.Equal(("Fabrikam NV", "True"), (step.P("Company"), step.P("HiddenFromAddressListsEnabled")));
+        Assert.Equal(("Fabrikam", "False"), (step.Previous!["Company"], step.Previous["HiddenFromAddressListsEnabled"]));
+        Assert.False(step.Parameters.ContainsKey("DisplayName")); // only what changed
+
+        // From AD: shown, not editable, and the plan refuses it
+        var ad = State.Data.Contacts.Single(c => c.IsDirSynced);
+        var page = RenderComponent<ContactDetail>(p => p.Add(x => x.Smtp, ad.Smtp));
+        Assert.Contains("komt uit AD", page.Markup, StringComparison.Ordinal);
+        Assert.Empty(page.FindAll("button").Where(b => b.TextContent == "Plan maken"));
+        Assert.NotEmpty(ContactPlans.Edit(State.Data, ad, new ContactDesired { Company = "X" }).Errors);
+    }
+}

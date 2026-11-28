@@ -105,6 +105,8 @@ public enum ChangeAction
 
     // New in 0.41: the primary address of a user from AD (R21)
     AdSetProxyAddresses,          // Target = DN; mail, proxyAddresses (the whole list, separated by |; absent = unchanged); Previous both
+    ExchangeCreateContact,        // Target = the external address; Name, DisplayName, ExternalEmailAddress, Alias, FirstName, LastName, Company, Title, Phone
+    ExchangeUpdateContact,        // Target = the address of the contact; the fields that change (ContactInstellen); Previous the same fields
 }
 
 /// <summary>

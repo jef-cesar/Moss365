@@ -25,7 +25,7 @@ public static class MenuModel
         }),
         new MenuGroup("Groepen en toegang", new MenuItem[]
         {
-            new("groepen", "Groepen"), new("postvakken", "Gedeelde postvakken"), new("rooms", "Rooms"), new("samenwerking", "Teams en SharePoint"), new("logonscripts", "Logonscripts"),
+            new("groepen", "Groepen"), new("postvakken", "Gedeelde postvakken"), new("rooms", "Rooms"), new("contacten", "Contacten"), new("samenwerking", "Teams en SharePoint"), new("logonscripts", "Logonscripts"),
         }),
         new MenuGroup("Beveiliging", new MenuItem[]
         {
@@ -78,6 +78,7 @@ public static class MenuModel
             "groep" => "groepen",
             "postvak" => "postvakken",
             "room" => "rooms",
+            "contact" => "contacten",
             "ca-beleid" => "conditional-access",
             _ => first,
         };

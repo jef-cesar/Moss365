@@ -4067,5 +4067,19 @@
   "plan.primary.exchange": "Primäre Adresse des Postfachs in Exchange Online festlegen",
   "edit-user.no-mailbox": "Dieses Konto hat keine E-Mail-Adresse: Es gibt keine primäre Adresse zu ändern.",
   "edit-user.address-confirm": "Ich weiß, dass {0} danach von {1} sendet; die alte Adresse bleibt als Alias.",
-  "ad.proxy.one-primary": "Die Adressliste muss genau eine primäre Adresse haben (SMTP:)."
+  "ad.proxy.one-primary": "Die Adressliste muss genau eine primäre Adresse haben (SMTP:).",
+  "menu.contacten": "Kontakte",
+  "contacts.intro": "{0} E-Mail-Kontakte: Personen außerhalb der Organisation im Adressbuch von Exchange Online.",
+  "contacts.none": "Noch keine E-Mail-Kontakte, oder Exchange Online wurde noch nicht gelesen: Lesen Sie die Postfächer unter Verbindungen.",
+  "contacts.new": "Neuer Kontakt",
+  "contacts.hidden": "Ausgeblendet",
+  "contacts.source": "Quelle",
+  "contact.external": "E-Mail-Adresse",
+  "contact.details": "Angaben des Kontakts",
+  "contact.not-found": "Kontakt nicht gefunden",
+  "contact.back": "Zurück zu den Kontakten",
+  "contact.synced": "Dieser Kontakt stammt aus dem AD: Er wird dort geändert, nicht in Exchange Online.",
+  "contact.name-needed": "Ein Kontakt braucht einen Anzeigenamen.",
+  "contact.plan.new": "E-Mail-Kontakt {0} in Exchange Online anlegen",
+  "contact.plan.edit": "E-Mail-Kontakt {0} in Exchange Online ändern"
 }

@@ -194,6 +194,12 @@ public static class InventoryWriter
                 ["AutoAntwoord"] = p.AutoReply, ["AutoAntwoordIntern"] = p.AutoReplyInternal, ["AutoAntwoordExtern"] = p.AutoReplyExternal,
                 ["KopieVerzonden"] = p.SentItemsCopy is null ? string.Empty : B(p.SentItemsCopy.Value), ["NamensVan"] = string.Join('|', p.SendOnBehalf),
             }));
+            Write(InventoryLoader.ExoContacts, d.Contacts.Select(c => new Dictionary<string, string?>
+            {
+                ["DisplayName"] = c.DisplayName, ["Name"] = c.Name, ["Alias"] = c.Alias, ["ExternalEmailAddress"] = c.External, ["PrimarySmtpAddress"] = c.Smtp,
+                ["Hidden"] = B(c.Hidden), ["IsDirSynced"] = B(c.IsDirSynced), ["FirstName"] = c.FirstName, ["LastName"] = c.LastName,
+                ["Company"] = c.Company, ["Title"] = c.Title, ["Phone"] = c.Phone,
+            }));
             Write(InventoryLoader.ExoMailboxPermissions, d.MailboxPermissions.Select(r => new Dictionary<string, string?>
             {
                 ["Postvak"] = r.Mailbox, ["Recht"] = r.Permission, ["Gebruiker"] = r.Trustee, ["Adres"] = r.Trustee,

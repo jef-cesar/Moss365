@@ -16,7 +16,7 @@ public sealed partial class PlanScreenTests
     private static readonly string[] AdPages = { "logonscripts", "wachtwoorden" };
 
     private static readonly string[] Microsoft365Pages =
-        { "gasten", "postvakken", "rooms", "beveiliging", "conditional-access", "inrichten", "bewaarde-logboeken", "licenties", "samenwerking", "gastenverlenging" };
+        { "gasten", "postvakken", "rooms", "contacten", "beveiliging", "conditional-access", "inrichten", "bewaarde-logboeken", "licenties", "samenwerking", "gastenverlenging" };
 
     [Fact]
     public void EveryCombinationOfSystemsShowsOnlyItsPages()

@@ -533,7 +533,8 @@ public static class MailboxPlans
                ?? data.Rooms.FirstOrDefault(r => Is(r.Smtp))?.DisplayName
                ?? data.ExoGroups.FirstOrDefault(x => Is(x.Smtp))?.DisplayName
                ?? data.CloudGroups.Values.FirstOrDefault(x => Is(x.Mail))?.DisplayName
-               ?? data.AdGroupsByDn.Values.FirstOrDefault(x => Is(x.Mail))?.Name;
+               ?? data.AdGroupsByDn.Values.FirstOrDefault(x => Is(x.Mail))?.Name
+               ?? data.Contacts.FirstOrDefault(c => Is(c.Smtp) || Is(c.External))?.DisplayName;
     }
 
     private static bool IsOwnDomain(string address, string mailboxSmtp)

@@ -73,6 +73,7 @@ public static class LiveLoader
             ExoGroups = current.ExoGroups,
             Mailboxes = current.Mailboxes,
             MailboxPermissions = current.MailboxPermissions,
+            Contacts = current.Contacts,
             Security = current.Security,
             ConditionalAccess = current.ConditionalAccess,
         };
@@ -112,7 +113,7 @@ public static class LiveLoader
     /// Exchange).</summary>
     public static InventoryData WithExchange(InventoryData current, ExchangeData exchange)
     {
-        var replace = new[] { InventoryLoader.ExoGroups, InventoryLoader.ExoGroupMembers, InventoryLoader.ExoMailboxes, InventoryLoader.ExoMailboxPermissions };
+        var replace = new[] { InventoryLoader.ExoGroups, InventoryLoader.ExoGroupMembers, InventoryLoader.ExoMailboxes, InventoryLoader.ExoMailboxPermissions, InventoryLoader.ExoContacts };
         var sources = current.Sources.Where(b => !replace.Contains(b.File) && !b.File.StartsWith("Postvakken", StringComparison.Ordinal)).ToList();
         sources.Add(new SourceFile("Postvakken en groepen (Exchange)", $"live {DateTime.Now:yyyy-MM-dd HH:mm}", exchange.Mailboxes.Count + exchange.Groups.Count));
         return current with
@@ -120,6 +121,8 @@ public static class LiveLoader
             ExoGroups = exchange.Groups,
             Mailboxes = exchange.Mailboxes.OrderBy(p => p.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList(),
             MailboxPermissions = exchange.Permissions,
+            // Contacts null = not read (an older connection): keep what there was
+            Contacts = exchange.Contacts is { } contacts ? contacts.OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList() : current.Contacts,
             Sources = sources,
         };
     }

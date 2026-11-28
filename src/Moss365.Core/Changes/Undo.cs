@@ -40,7 +40,7 @@ public static class Undo
         ChangeAction.GraphUpdateCaPolicy, ChangeAction.GraphUpdateCaLocation, ChangeAction.AdSetAccountFlag, ChangeAction.IntuneDeviceAction,
         ChangeAction.GraphSetDeviceEnabled, ChangeAction.IntuneSetComplianceSettings, ChangeAction.AdHardening,
         ChangeAction.GraphUpdatePolicy, ChangeAction.GraphRoleEligibility, ChangeAction.ExchangeOrganisationSetting, ChangeAction.ExchangeRoomPlace,
-        ChangeAction.AdSetProxyAddresses,
+        ChangeAction.AdSetProxyAddresses, ChangeAction.ExchangeUpdateContact,
     };
 
     /// <summary>Can this entry be undone? If not, why not.</summary>

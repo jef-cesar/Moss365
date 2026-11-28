@@ -95,7 +95,11 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   through the fixed `GroepInstellen`); mailbox settings `MailboxPlans.Settings` (`PostvakInstellen`; the primary address as `WindowsEmailAddress`, the old one stays
   an alias; `MailboxPlans.AddressHolder` refuses an address another recipient has). The UPN is a `SignInFields` field (a
   confirmation on the page); the sAMAccountName is never changed: it is the person key (`ad:<sam>`) and the snapshot key.
-  `accountExpires` goes through `AttributePlans.ExpiryValue` (file time of the start of the next day; "0" is never). Every yes/no value
+  `accountExpires` goes through `AttributePlans.ExpiryValue` (file time of the start of the next day; "0" is never).
+  The primary address of a person: `AdSetProxyAddresses` (mail and the whole proxyAddresses list, `WithPrimary`) for an
+  account from AD, `WindowsEmailAddress` on the mailbox otherwise. Mail contacts: `InventoryData.Contacts` (table
+  `exo-contacten.csv`, read with `LeesPostvakken`/`LeesObjecten`; `ExchangeData.Contacts` null = not read, keep them),
+  `Changes/ContactPlans.cs` through the fixed `ContactAanmaken`/`ContactInstellen`; pages `contacten` and `contact/<smtp>`. Every yes/no value
   of `Exchange.ps1` goes through `$JaNee`. Reading a new field: add it to the reader, `InventoryWriter` and
   `InventoryLoader`; `Snapshots.SameRow`/`SameAsBefore` make a column read for the first time no change.
 - Organisation settings (R9): naming in `Configuration/Naming.cs` (`OrganisationConfig.Naming`, used by

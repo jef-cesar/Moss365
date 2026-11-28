@@ -4067,5 +4067,19 @@
   "plan.primary.exchange": "Set the primary address of the mailbox in Exchange Online",
   "edit-user.no-mailbox": "This account has no mail address: there is no primary address to change.",
   "edit-user.address-confirm": "I know that {0} sends from {1} afterwards; the old address stays as an alias.",
-  "ad.proxy.one-primary": "The list of addresses must have exactly one primary address (SMTP:)."
+  "ad.proxy.one-primary": "The list of addresses must have exactly one primary address (SMTP:).",
+  "menu.contacten": "Contacts",
+  "contacts.intro": "{0} mail contacts: people outside the organisation in the address book of Exchange Online.",
+  "contacts.none": "No mail contacts yet, or Exchange Online has not been read: read the mailboxes on Connections.",
+  "contacts.new": "New contact",
+  "contacts.hidden": "Hidden",
+  "contacts.source": "Source",
+  "contact.external": "E-mail address",
+  "contact.details": "Details of the contact",
+  "contact.not-found": "Contact not found",
+  "contact.back": "Back to the contacts",
+  "contact.synced": "This contact comes from AD: it is changed there, not in Exchange Online.",
+  "contact.name-needed": "A contact needs a display name.",
+  "contact.plan.new": "Create the mail contact {0} in Exchange Online",
+  "contact.plan.edit": "Change the mail contact {0} in Exchange Online"
 }

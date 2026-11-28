@@ -109,4 +109,26 @@ public sealed class R21FieldTests
         Assert.Equal("onthaal@test.be", x.P("WindowsEmailAddress"));
         Assert.Equal("info@test.onmicrosoft.com", x.Previous!["WindowsEmailAddress"]);
     }
+
+    [Fact]
+    public void MailContactsAreStoredAndReadAgainWithANewAddress()
+    {
+        var all = InventoryComponent.Ad | InventoryComponent.Entra | InventoryComponent.Rooms | InventoryComponent.Mailboxes;
+        var d = InventoryLoader.Build(TestData.Files());
+        var back = InventoryLoader.Build(Snapshots.Tables(InventoryWriter.Files(d, all)));
+        Assert.Equal(d.Contacts, back.Contacts);
+        Assert.Empty(d.WithoutMicrosoft365().Contacts);
+
+        // Read again after a new external address: the alias finds the old entry, so there is no double
+        var jan = d.Contacts.Single(c => c.Alias == "jan.extern");
+        var renamed = jan with { External = "jan@contoso.com", Smtp = "jan@contoso.com" };
+        var objects = new ExchangeObjects(Array.Empty<Room>(), new ExchangeData(Array.Empty<ExoGroup>(), Array.Empty<Mailbox>(), Array.Empty<MailboxPermission>(), new[] { renamed }), Array.Empty<string>());
+        var after = ObjectRefresher.WithExchange(d, objects);
+        Assert.Equal("jan@contoso.com", Assert.Single(after.Contacts, c => c.Alias == "jan.extern").Smtp);
+        Assert.Equal(d.Contacts.Count, after.Contacts.Count);
+
+        // Not found any more: gone; a reading without contacts (an older connection) keeps them
+        Assert.DoesNotContain(ObjectRefresher.WithExchange(d, new ExchangeObjects(Array.Empty<Room>(), new ExchangeData(Array.Empty<ExoGroup>(), Array.Empty<Mailbox>(), Array.Empty<MailboxPermission>()), new[] { jan.Smtp })).Contacts, c => c.Alias == "jan.extern");
+        Assert.Equal(d.Contacts.Count, LiveLoader.WithExchange(d, new ExchangeData(Array.Empty<ExoGroup>(), Array.Empty<Mailbox>(), Array.Empty<MailboxPermission>())).Contacts.Count);
+    }
 }

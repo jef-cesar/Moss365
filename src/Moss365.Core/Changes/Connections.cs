@@ -283,7 +283,8 @@ public sealed class NoPermissionError(string message) : Exception(message);
 public sealed record GraphOwner(string Id, string Name, string Upn);
 
 /// <summary>What a live Exchange read of groups and mailboxes returns.</summary>
-public sealed record ExchangeData(IReadOnlyList<ExoGroup> Groups, IReadOnlyList<Mailbox> Mailboxes, IReadOnlyList<MailboxPermission> Permissions);
+public sealed record ExchangeData(IReadOnlyList<ExoGroup> Groups, IReadOnlyList<Mailbox> Mailboxes, IReadOnlyList<MailboxPermission> Permissions,
+    IReadOnlyList<MailContact>? Contacts = null);
 
 public interface IExchangeConnection
 {

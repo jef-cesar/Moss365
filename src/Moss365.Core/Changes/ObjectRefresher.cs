@@ -133,8 +133,13 @@ public static class ObjectRefresher
             .OrderBy(p => p.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
         var permissions = d.MailboxPermissions.Where(r => !route.Contains(r.Mailbox) && !newMailboxes.ContainsKey(r.Mailbox)).Concat(o.Data.Permissions).ToList();
         var groups = d.ExoGroups.Where(g => !route.Contains(g.Smtp) && !newGroups.ContainsKey(g.Smtp)).Concat(newGroups.Values).ToList();
+        var newContacts = (o.Data.Contacts ?? Array.Empty<MailContact>()).Where(c => c.Smtp.Length > 0).ToDictionary(c => c.Smtp, Cmp);
+        // The alias is unique in Exchange: a contact read again with another primary address replaces the old one
+        var newAliases = newContacts.Values.Select(c => c.Alias).Where(a => a.Length > 0).ToHashSet(Cmp);
+        var contacts = d.Contacts.Where(c => !route.Contains(c.Smtp) && !newContacts.ContainsKey(c.Smtp) && !newAliases.Contains(c.Alias)).Concat(newContacts.Values)
+            .OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
 
-        return d with { Rooms = rooms, Mailboxes = mailboxes, MailboxPermissions = permissions, ExoGroups = groups };
+        return d with { Rooms = rooms, Mailboxes = mailboxes, MailboxPermissions = permissions, ExoGroups = groups, Contacts = contacts };
     }
 
     private static Dictionary<string, HashSet<string>> Copy(IReadOnlyDictionary<string, IReadOnlySet<string>> source)
@@ -160,6 +165,7 @@ public static class ObjectRefresher
             ExoGroups = d.ExoGroups,
             Mailboxes = d.Mailboxes,
             MailboxPermissions = d.MailboxPermissions,
+            Contacts = d.Contacts,
             Security = d.Security,
             ConditionalAccess = d.ConditionalAccess,
         };

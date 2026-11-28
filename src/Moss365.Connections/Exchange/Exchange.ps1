@@ -62,6 +62,8 @@ $Toegestaan = @{
     'RechtVerwijderen' = @('Identity', 'Recht', 'Trustee')
     'PostvakAanmaken'  = @('Name', 'DisplayName', 'Alias', 'PrimarySmtpAddress')
     'GroepAanmaken'    = @('Name', 'DisplayName', 'Alias', 'PrimarySmtpAddress', 'Type')
+    'ContactAanmaken'  = @('Name', 'DisplayName', 'ExternalEmailAddress', 'Alias', 'FirstName', 'LastName', 'Company', 'Title', 'Phone')
+    'ContactInstellen' = @('Identity', 'DisplayName', 'ExternalEmailAddress', 'HiddenFromAddressListsEnabled', 'FirstName', 'LastName', 'Company', 'Title', 'Phone')
     'LeesOrganisatie'  = @()
     'OrganisatieInstellen' = @('Instelling', 'Waarde', 'Identity')
 }
@@ -161,7 +163,7 @@ function Get-RoomsVoorApp {
 function Get-PostvakkenVoorApp {
     # Shared mailboxes with permissions, forwarding and automatic reply; Exchange groups with members.
     # Without lists: everything; with lists: only those objects.
-    param([object[]]$Postvakken, [object[]]$Groepen)
+    param([object[]]$Postvakken, [object[]]$Groepen, [object[]]$Contacten)
     $enkele = $PSBoundParameters.ContainsKey('Postvakken')
     $postvakken = if ($enkele) { @($Postvakken) } else {
         @(Get-EXOMailbox -RecipientTypeDetails SharedMailbox, SchedulingMailbox -ResultSize Unlimited `
@@ -214,13 +216,31 @@ function Get-PostvakkenVoorApp {
             Leden = @($leden)
         }
     }
-    return [pscustomobject]@{ Postvakken = @($pv); Rechten = @($rechten); Groepen = @($exoGroepen) }
+    # R21: mail contacts, with the details of Get-Contact (company, job title, phone); $null when they cannot be read
+    $mailContacten = $null
+    try {
+        $lijst = if ($enkele) { @($Contacten) } else { @(Get-MailContact -ResultSize Unlimited -ErrorAction Stop) }
+        $details = @{}
+        $bron = if ($enkele) { @($lijst | ForEach-Object { Get-Contact -Identity "$($_.Guid)" -ErrorAction SilentlyContinue }) } else { @(Get-Contact -RecipientTypeDetails MailContact -ResultSize Unlimited -ErrorAction SilentlyContinue) }
+        foreach ($c in $bron) { if ($c) { $details["$($c.Guid)"] = $c } }
+        $mailContacten = @(foreach ($c in $lijst) {
+            $d = $details["$($c.Guid)"]
+            [pscustomobject]@{
+                DisplayName = "$($c.DisplayName)"; Name = "$($c.Name)"; Alias = "$($c.Alias)"
+                Extern = ("$($c.ExternalEmailAddress)" -replace '(?i)^smtp:', ''); Smtp = "$($c.PrimarySmtpAddress)"
+                Hidden = "$($c.HiddenFromAddressListsEnabled)"; IsDirSynced = "$($c.IsDirSynced)"
+                Voornaam = "$($d.FirstName)"; Achternaam = "$($d.LastName)"; Bedrijf = "$($d.Company)"; Functie = "$($d.Title)"; Telefoon = "$($d.Phone)"
+            }
+        })
+    }
+    catch { $mailContacten = $null }
+    return [pscustomobject]@{ Postvakken = @($pv); Rechten = @($rechten); Groepen = @($exoGroepen); Contacten = $mailContacten }
 }
 
 function Get-ObjectenVoorApp {
     # Read a few rooms, mailboxes or groups again; Adressen = addresses separated by |
     param([string]$Adressen)
-    $rooms = @(); $postvakken = @(); $groepen = @(); $weg = @()
+    $rooms = @(); $postvakken = @(); $groepen = @(); $contacten = @(); $weg = @()
     foreach ($adres in @($Adressen -split '\|' | Where-Object { $_ })) {
         try { $ontvanger = Get-Recipient -Identity $adres -ErrorAction Stop }
         catch { $weg += $adres; continue }
@@ -234,11 +254,14 @@ function Get-ObjectenVoorApp {
             { $_ -like 'Mail*Group' -or $_ -eq 'RoomList' } {
                 $groepen += Get-DistributionGroup -Identity $adres
             }
+            'MailContact' {
+                $contacten += Get-MailContact -Identity $adres
+            }
         }
     }
-    $rest = Get-PostvakkenVoorApp -Postvakken $postvakken -Groepen $groepen
+    $rest = Get-PostvakkenVoorApp -Postvakken $postvakken -Groepen $groepen -Contacten $contacten
     return [pscustomobject]@{
-        Rooms = @(Get-RoomsVoorApp -Lijst $rooms); Postvakken = $rest.Postvakken; Rechten = $rest.Rechten; Groepen = $rest.Groepen
+        Rooms = @(Get-RoomsVoorApp -Lijst $rooms); Postvakken = $rest.Postvakken; Rechten = $rest.Rechten; Groepen = $rest.Groepen; Contacten = $rest.Contacten
         NietGevonden = @($weg)
     }
 }
@@ -412,6 +435,35 @@ function Invoke-Opdracht {
         }
         'OrganisatieInstellen' {
             Set-OrganisatieVoorApp -P $P
+            return $null
+        }
+        'ContactAanmaken' {
+            # R21: a mail contact; company, job title and phone through Set-Contact once it can be found
+            $nieuw = @{}
+            foreach ($k in 'Name', 'DisplayName', 'ExternalEmailAddress', 'Alias', 'FirstName', 'LastName') { if ($P.ContainsKey($k) -and $P[$k]) { $nieuw[$k] = $P[$k] } }
+            if (-not $nieuw['ExternalEmailAddress'] -or -not $nieuw['Name']) { throw 'A contact needs a name and an address.' }
+            $contact = New-MailContact @nieuw -ErrorAction Stop
+            $meer = @{}
+            foreach ($k in 'Company', 'Title', 'Phone') { if ($P.ContainsKey($k) -and $P[$k]) { $meer[$k] = $P[$k] } }
+            # Set-Contact knows the contact by its GUID, not by its address
+            if ($meer.Count -gt 0) { Invoke-MetHerhaling { Set-Contact -Identity "$($contact.Guid)" @meer -ErrorAction Stop } | Out-Null }
+            return $null
+        }
+        'ContactInstellen' {
+            # R21: the address book entry (Set-MailContact) and the details (Set-Contact); empty clears a detail
+            $mail = @{}
+            foreach ($k in 'DisplayName', 'ExternalEmailAddress') {
+                if ($P.ContainsKey($k)) {
+                    if (-not $P[$k]) { throw "$k cannot be empty." }
+                    $mail[$k] = $P[$k]
+                }
+            }
+            if ($P.ContainsKey('HiddenFromAddressListsEnabled')) { $mail['HiddenFromAddressListsEnabled'] = $P['HiddenFromAddressListsEnabled'] }
+            $contact = Get-MailContact -Identity $P.Identity -ErrorAction Stop
+            if ($mail.Count -gt 0) { Set-MailContact -Identity "$($contact.Guid)" @mail -ErrorAction Stop }
+            $meer = @{}
+            foreach ($k in 'FirstName', 'LastName', 'Company', 'Title', 'Phone') { if ($P.ContainsKey($k)) { $meer[$k] = $(if ($P[$k]) { $P[$k] } else { $null }) } }
+            if ($meer.Count -gt 0) { Set-Contact -Identity "$($contact.Guid)" @meer -ErrorAction Stop }
             return $null
         }
         'GroepAanmaken' {
