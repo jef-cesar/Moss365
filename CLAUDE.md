@@ -10,7 +10,7 @@ feature needs a server or a service of the makers.
 Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R14 are done (0.37.0); R16 to R20 have their first
 version in 0.39.0 and are complete in 0.40.0 (only the test in a test tenant remains, issue 19); G0, the platform basis,
 has its first version for 0.41.0 (issue 46), and so have R21 (issue 44: every item; the logon name in AD stays a limitation,
-issue 57) and G1 (issue 47: reading Google Workspace, every item in 0.42.0); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
+issue 57), G1 (issue 47: reading Google Workspace, every item in 0.42.0) and G2 (issue 48: writing in Google, every item in 0.42.0); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
 per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. The code targets .NET 10 (U22, in the CHANGELOG under 0.39.0: .NET 8 has no support since 10 November 2026; `bunit` stays 1.40 until a separate move to bUnit 2). Next, before 1.0 (decided 26 November 2026, U15): R16 security advice (explanation, solving as a plan, guided for high risk, exceptions, hardening score, compromised account), R17 devices and Intune (a destructive action: one device per plan, never a personal device; a device record is deleted only after 90 days disabled), R18 own data (sign-in and audit logs kept locally, reading without a window), R19 the overview (All tenants: only scores and counts, never stored together), R20 access reviews; then (27 November 2026, U27 and U28) G0 the platform basis (Google Workspace as a third system per tenant,
 platform labels, where the mail lives, linking persons, the source of truth), R21 edit every object (every field, one
 intuitive way of editing, plans with undo), R22 the mailbox as PST at offboarding, and G1 to G5 Google Workspace
@@ -83,8 +83,9 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   check through `IConnectionFactory.Dns` (`Connections/Dns/MxLookup.cs`, one UDP question to the DNS servers of the PC,
   only counts in the technical log); page `postlocatie`. Screens for mail work with `State.MailOf(person)`.
 - Google Workspace (G1, [docs/google.md](docs/google.md)): `Connections/Google/GoogleSignIn.cs` (OAuth for installed
-  apps with PKCE and a loopback `TcpListener`, through `SignInStatus`; only reading scopes; an account outside the domain
-  is refused; tokens only in memory, never without a window) and `GoogleConnection.cs` (Directory API with paging);
+  apps with PKCE and a loopback `TcpListener`, through `SignInStatus`; the scopes of `GoogleParts.BaseScopes` and of the
+  parts that are on; an account outside the domain is refused; tokens only in memory, never without a window) and
+  `GoogleConnection.cs` (Directory API with paging);
   `IConnectionFactory.Google`, settings `GoogleDomain`/`GoogleClientId`/`GoogleClientSecret` (only through
   `EffectiveSettings` for a tenant with Google), lane "Google" in `StartLoading`, `InventoryComponent.Google` and the
   tables `google-gebruikers.csv`, `google-groepen.csv`, `google-eenheden.csv`, `google-agendabronnen.csv`,
@@ -92,6 +93,19 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   write is a part (`Setup/GoogleParts.cs`, U40: licences, group settings, alerts; `ConnectionSettings.GoogleParts`),
   asked only when on. Stay signed in keeps the refresh token in document `google-aanmelding` (DPAPI). The logs go to
   `LocalLog` as kinds `google-signin`, `google-audit`, `google-alert`. Editions are data (`Google/GoogleEditions.cs`).
+  Writing (G2): `TargetSystem.Google`, the actions `Google...`/`Gmail...` (labels Google Workspace and Gmail), run by
+  `GoogleConnection` as an `IExecutor` (`Google/GoogleExecutor.cs`; 409/404 for what is already so is a success; a user
+  is never deleted); plans in `Core/Google/GooglePlans.cs` (users; `GooglePlans.Source`/`Followed`: what Entra
+  provisioning or Directory Sync carries is refused and changed at the source), `GoogleGroupPlans.cs` (groups, members
+  with their role through `GoogleSetGroupMemberRole`, settings, resources, licences) and `GmailPlans.cs`; screens
+  `GoogleUserEditor` and `GmailCard` on the person page, pages `google-nieuw`, `google-groepen`, `google-groep/<id>`,
+  `google-bronnen`. Members (`ReadMembersAsync`) and Gmail settings (`ReadGmailAsync`, in the access log) are read on
+  demand, never in a snapshot. The part `gmail-settings` (U34) works through a service account: its JSON key in
+  document `gmail-serviceaccount` (`ConnectionSettings.GmailKeyStore`, DPAPI in `ConnectionFactory`, never shown or
+  logged; `GmailKey.Parse` only accepts Google's token address), tokens per user from a JWT with RS256
+  (`Connections/Google/GmailTokens.cs`, only `GoogleParts.GmailScopes`); `Register-GoogleApp.ps1 -Gmail`. The roles:
+  password and signing out Helpdesk, members GroupMembers (an owner or manager Manage), a Google administrator as
+  target needs Privileged.
 - Linking persons (G0, U32): `Linking/PersonLinks.cs` (AD and Entra by the anchor as before; a Google account by address,
   employee id, alias; links by hand win, document `koppelingen`; doubtful cases, also AD accounts not synchronised next
   to a cloud account with their address), applied in `State.Data` once there are Google users; page `koppelingen`.
