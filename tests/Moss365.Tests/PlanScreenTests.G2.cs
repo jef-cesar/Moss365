@@ -45,6 +45,12 @@ public sealed partial class PlanScreenTests
     }
 
     /// <summary>
+    /// A find and an action on the dispatcher of the renderer, waiting for its redraw: the background task of the hub
+    /// still redraws the page just after it counts as done, and a plain click would then return before its redraw.
+    /// </summary>
+    private static void Do(IRenderedFragment cut, Action action) => cut.InvokeAsync(action).GetAwaiter().GetResult();
+
+    /// <summary>
     /// Opens a plan and runs it. These tests use a hub of their own whose background work redraws the page now and then;
     /// a click on an element found before such a redraw is lost. So every find and click runs on the dispatcher of the
     /// renderer (as bUnit advises), and a plan that a redraw closed is opened again.
@@ -82,9 +88,9 @@ public sealed partial class PlanScreenTests
         using var __ = ctx;
         var cas = s.Data.Persons.Single(p => p.Ad?.SamAccountName == "cas.vos");
         var page = ctx.RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key));
-        page.Find("#google-velden").QuerySelectorAll("button").First(b => b.TextContent == "Bewerken").Click();
-        page.Find("input[aria-label='Afdeling']").Input("Zorg");
-        page.Find("#google-velden").QuerySelectorAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Do(page, () => page.Find("#google-velden").QuerySelectorAll("button").First(b => b.TextContent == "Bewerken").Click());
+        Do(page, () => page.Find("input[aria-label='Afdeling']").Input("Zorg"));
+        Do(page, () => page.Find("#google-velden").QuerySelectorAll("button").First(b => b.TextContent == "Plan maken").Click());
         Assert.Contains("Google Workspace", page.Find("section.kb-plan").TextContent, StringComparison.Ordinal);
         Confirm(page);
         page.WaitForAssertion(() => Assert.Contains(f.Executed, w => w.ChangeAction == ChangeAction.GoogleUpdateUser));
@@ -94,7 +100,7 @@ public sealed partial class PlanScreenTests
 
         // An alias, and signing out everywhere
         page = ctx.RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key));
-        page.Find("input[aria-label='Nieuwe alias']").Input("cas@test.be");
+        Do(page, () => page.Find("input[aria-label='Nieuwe alias']").Input("cas@test.be"));
         ConfirmSteady(page, () => page.FindAll("button").First(b => b.TextContent == "Alias toevoegen").Click());
         page.WaitForAssertion(() => Assert.Contains(f.Executed, w => w.ChangeAction == ChangeAction.GoogleAddAlias && w.P("alias") == "cas@test.be"));
         page = Settled(ctx, s, () => ctx.RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key)));
@@ -105,7 +111,7 @@ public sealed partial class PlanScreenTests
         s.SaveSource(new Moss365.Core.Linking.SourceSettings { GoogleUsers = Moss365.Core.Linking.GoogleFeed.FromAd, GoogleGroups = Moss365.Core.Linking.GoogleFeed.Itself, GooglePasswordSync = true });
         page = ctx.RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key));
         Assert.Contains("volgen daaruit", page.Find("#google-velden").TextContent, StringComparison.Ordinal);
-        page.Find("#google-velden").QuerySelectorAll("button").First(b => b.TextContent == "Bewerken").Click();
+        Do(page, () => page.Find("#google-velden").QuerySelectorAll("button").First(b => b.TextContent == "Bewerken").Click());
         Assert.Empty(page.FindAll("input[aria-label='Afdeling']"));
         Assert.DoesNotContain(page.Find("#google-acties").QuerySelectorAll("button"), b => b.TextContent == "Wachtwoord opnieuw instellen");
     }
@@ -121,10 +127,10 @@ public sealed partial class PlanScreenTests
         Assert.Equal(Moss365.Core.Permissions.Permission.Actions, Access.ForPath("google-nieuw"));
 
         var page = ctx.RenderComponent<GoogleNewUser>();
-        page.FindAll("label").First(l => l.TextContent.TrimStart().StartsWith("Voornaam", StringComparison.Ordinal)).QuerySelector("input")!.Input("Lien");
-        page.FindAll("label").First(l => l.TextContent.TrimStart().StartsWith("Achternaam", StringComparison.Ordinal)).QuerySelector("input")!.Input("Maes");
-        page.FindAll("label").First(l => l.TextContent.TrimStart().StartsWith("Organisatie-eenheid", StringComparison.Ordinal)).QuerySelector("select")!.Change("/Zorg");
-        page.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Do(page, () => page.FindAll("label").First(l => l.TextContent.TrimStart().StartsWith("Voornaam", StringComparison.Ordinal)).QuerySelector("input")!.Input("Lien"));
+        Do(page, () => page.FindAll("label").First(l => l.TextContent.TrimStart().StartsWith("Achternaam", StringComparison.Ordinal)).QuerySelector("input")!.Input("Maes"));
+        Do(page, () => page.FindAll("label").First(l => l.TextContent.TrimStart().StartsWith("Organisatie-eenheid", StringComparison.Ordinal)).QuerySelector("select")!.Change("/Zorg"));
+        Do(page, () => page.FindAll("button").First(b => b.TextContent == "Plan maken").Click());
         Assert.Contains("lien.maes@test.be", page.Markup, StringComparison.Ordinal);
         Confirm(page);
         page.WaitForAssertion(() => Assert.Contains(f.Executed, w => w.ChangeAction == ChangeAction.GoogleCreateUser));
@@ -153,14 +159,14 @@ public sealed partial class PlanScreenTests
 
         var page = ctx.RenderComponent<GoogleGroupDetail>(p => p.Add(x => x.Id, "gg-1"));
         Assert.Empty(page.FindAll("#google-groep-leden table"));
-        page.FindAll("button").First(b => b.TextContent == "Leden lezen").Click();
+        Do(page, () => page.FindAll("button").First(b => b.TextContent == "Leden lezen").Click());
         page.WaitForAssertion(() => Assert.Contains("nieuw@test.be", page.Find("#google-groep-leden").TextContent, StringComparison.Ordinal));
 
-        page.Find("input[aria-label='Adres van het nieuwe lid']").Input("lien@test.be");
+        Do(page, () => page.Find("input[aria-label='Adres van het nieuwe lid']").Input("lien@test.be"));
         ConfirmSteady(page, () => page.FindAll("button").First(b => b.TextContent == "Lid toevoegen").Click());
         page.WaitForAssertion(() => Assert.Contains(f.Executed, w => w.ChangeAction == ChangeAction.GoogleAddGroupMember && w.Target == "lien@test.be" && w.P("rol") == "MEMBER"));
         page = Settled(ctx, s, () => ctx.RenderComponent<GoogleGroupDetail>(p => p.Add(x => x.Id, "gg-1")));
-        page.FindAll("button").First(b => b.TextContent == "Leden lezen").Click();
+        Do(page, () => page.FindAll("button").First(b => b.TextContent == "Leden lezen").Click());
         page.WaitForAssertion(() => Assert.Contains("nieuw@test.be", page.Find("#google-groep-leden").TextContent, StringComparison.Ordinal));
 
         ConfirmSteady(page, () => page.FindAll("#google-groep-leden tr").First(r => r.TextContent.Contains("nieuw@test.be", StringComparison.Ordinal)).QuerySelector("button")!.Click());
@@ -168,14 +174,14 @@ public sealed partial class PlanScreenTests
 
         // The settings with their part
         page = Settled(ctx, s, () => ctx.RenderComponent<GoogleGroupDetail>(p => p.Add(x => x.Id, "gg-1")));
-        page.Find("select[aria-label='Wie mag lid worden']").Change("ALL_IN_DOMAIN_CAN_JOIN");
+        Do(page, () => page.Find("select[aria-label='Wie mag lid worden']").Change("ALL_IN_DOMAIN_CAN_JOIN"));
         ConfirmSteady(page, () => page.Find("#google-groep-instellingen").QuerySelectorAll("button").First(b => b.TextContent == "Plan maken").Click());
         page.WaitForAssertion(() => Assert.Contains(f.Executed, w => w.ChangeAction == ChangeAction.GoogleUpdateGroupSettings && w.P("whoCanJoin") == "ALL_IN_DOMAIN_CAN_JOIN"));
 
         // A calendar resource, edited in its row
         var resources = Settled(ctx, s, () => ctx.RenderComponent<GoogleResources>());
-        resources.Find("#bron-r-1 button").Click();
-        resources.Find("input[aria-label='Capaciteit']").Input("10");
+        Do(resources, () => resources.Find("#bron-r-1 button").Click());
+        Do(resources, () => resources.Find("input[aria-label='Capaciteit']").Input("10"));
         ConfirmSteady(resources, () => resources.FindAll("button").First(b => b.TextContent == "Plan maken").Click());
         resources.WaitForAssertion(() => Assert.Contains(f.Executed, w => w.ChangeAction == ChangeAction.GoogleUpdateResource && w.P("capacity") == "10" && w.Previous!["capacity"] == "8"));
     }
