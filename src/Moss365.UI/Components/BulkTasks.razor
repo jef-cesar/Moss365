@@ -33,7 +33,14 @@
                                 </select>
                             </label>
                             <label>@T["plan.becomes"]
-                                <input class="kb-invoer" list="kb-bulk-waarden" @bind="value" />
+                                @if (attribute == nameof(UserDesired.AccountExpires))
+                                {
+                                    <input class="kb-invoer" type="date" value="@value" @onchange="e => value = e.Value?.ToString() ?? string.Empty" aria-label="@AttributeLabel(attribute)" />
+                                }
+                                else
+                                {
+                                    <input class="kb-invoer" list="kb-bulk-waarden" @bind="value" />
+                                }
                                 <datalist id="kb-bulk-waarden">
                                     @foreach (var w in Values())
                                     {
@@ -126,6 +133,7 @@
     {
         nameof(UserDesired.Company), nameof(UserDesired.EmployeeType), nameof(UserDesired.StreetAddress), nameof(UserDesired.PostalCode),
         nameof(UserDesired.State), nameof(UserDesired.Country), nameof(UserDesired.UsageLocation), nameof(UserDesired.LogonScript),
+        nameof(UserDesired.AccountExpires),
     };
 
     private IEnumerable<string> Values() => attribute switch

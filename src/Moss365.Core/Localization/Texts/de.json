@@ -4047,5 +4047,13 @@
   "attribute.sign-in-changes": "{0} wird {1}: die Person meldet sich danach mit dem neuen Namen an.",
   "attribute.invalid.hint.upn": "Ein Name, @ und eine Domäne (name@example.com), ohne Leerzeichen.",
   "edit-user.upn-domain": "Noch kein anderes Konto verwendet die Domäne {0}: prüfen Sie, ob es eine verifizierte Domäne des Tenants ist.",
-  "edit-user.sign-in-confirm": "Ich weiß, dass sich {0} danach mit dem neuen Namen anmeldet, und ich gebe Bescheid."
+  "edit-user.sign-in-confirm": "Ich weiß, dass sich {0} danach mit dem neuen Namen anmeldet, und ich gebe Bescheid.",
+  "attribute.homephone": "Telefon privat",
+  "attribute.fax": "Fax",
+  "attribute.ipphone": "IP-Telefon",
+  "attribute.accountexpires": "Konto gilt bis einschließlich",
+  "attribute.invalid.hint.accountexpires": "Ein Datum (Tag, Monat, Jahr) oder nie.",
+  "attribute.expires-past": "{0} liegt vor heute: das Konto funktioniert nicht mehr, sobald der Plan ausgeführt ist.",
+  "edit-user.never": "läuft nie ab",
+  "edit-user.never-expires": "Läuft nie ab"
 }

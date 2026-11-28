@@ -289,6 +289,10 @@ public static class InventoryLoader
             PostalCode = W(r, "PostalCode"),
             State = W(r, "State"),
             Country = W(r, "Country"),
+            HomePhone = W(r, "HomePhone"),
+            Fax = W(r, "Fax"),
+            IpPhone = W(r, "IpPhone"),
+            AccountExpires = W(r, "AccountExpirationDate"),
         };
     }
 
@@ -347,6 +351,7 @@ public static class InventoryLoader
         PostalCode = W(r, "PostalCode"),
         State = W(r, "State"),
         Country = W(r, "Country"),
+        Fax = W(r, "FaxNumber"),
     };
 
     private static CloudGroup MakeCloudGroup(Dictionary<string, string> r) => new()

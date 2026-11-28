@@ -220,6 +220,11 @@ public sealed partial class PlanScreenTests
         var location = BulkPlans.Attribute(State.Data, State.Config, two.Where(p => p.Entra is not null), nameof(UserDesired.UsageLocation), "BE");
         Assert.All(location.Plan, c => Assert.Equal(ChangeAction.GraphSetAttributes, c.ChangeAction));
         Assert.Empty(BulkPlans.Attribute(State.Data, State.Config, two, nameof(UserDesired.UsageLocation), "Belgie").Plan);
+
+        // The last day for several (interns): the same file time for each, and a day as typed elsewhere is refused
+        var expiry = BulkPlans.Attribute(State.Data, State.Config, two, nameof(UserDesired.AccountExpires), "2027-06-30");
+        Assert.Equal(2, expiry.Plan.Count(c => c.P("accountExpires") == AttributePlans.ExpiryValue("2027-06-30")));
+        Assert.Empty(BulkPlans.Attribute(State.Data, State.Config, two, nameof(UserDesired.AccountExpires), "30/06/2027").Plan);
     }
 
     [Fact]
@@ -313,4 +318,50 @@ public sealed partial class PlanScreenTests
     }
 
     private readonly record struct Button(bool Disabled);
+}
+
+/// <summary>R21: the expiry date of an account and the other phones, on the page of the user.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void TheExpiryDateIsAFileTimeInAdAndCanBeUndone()
+    {
+        var an = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, an.Key));
+        Assert.Contains("vervalt nooit", cut.Markup, StringComparison.Ordinal);
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Toegang").QuerySelector("button")!.Click();
+
+        // A day in the past: a warning, not a block
+        var yesterday = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        cut.Find("input[aria-label='Account werkt tot en met']").Change(yesterday);
+        Assert.Contains("ligt voor vandaag", cut.Markup, StringComparison.Ordinal);
+        Assert.False(cut.FindAll("button").First(b => b.TextContent == "Plan maken").HasAttribute("disabled"));
+
+        var day = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        cut.Find("input[aria-label='Account werkt tot en met']").Change(day);
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Contact en adres").QuerySelector("button")!.Click();
+        cut.Find("input[aria-label='Telefoon thuis']").Input("03 000 00 09");
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Assert.Contains("Account werkt tot en met: " + day, cut.Find("section.kb-plan").TextContent, StringComparison.Ordinal);
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetAttributes));
+        var ad = Assert.Single(_factory.Executed, w => w.ChangeAction == ChangeAction.AdSetAttributes);
+        Assert.Equal(AttributePlans.ExpiryValue(day), ad.P("accountExpires"));
+        Assert.Equal("0", ad.Previous!["accountExpires"]); // undo: never again
+        Assert.Equal("03 000 00 09", ad.P("homePhone"));
+    }
+
+    [Fact]
+    public void ACloudAccountHasTheFaxButNotTheFieldsOnlyAdHas()
+    {
+        var cloud = State.Data.Persons.First(p => p.Ad is null && p.Entra is { IsGuest: false });
+        var cut = RenderComponent<UserDetail>(p => p.Add(x => x.Key, cloud.Key));
+        cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Contact en adres").QuerySelector("button")!.Click();
+        Assert.Empty(cut.FindAll("input[aria-label='Telefoon thuis']"));
+        Assert.Empty(cut.FindAll("input[aria-label='Account werkt tot en met']"));
+        cut.Find("input[aria-label='Fax']").Input("03 000 00 08");
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.GraphSetAttributes && w.P("faxNumber") == "03 000 00 08"));
+    }
 }

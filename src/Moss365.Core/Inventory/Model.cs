@@ -14,6 +14,13 @@ public sealed record AdUser
     public string PostalCode { get; init; } = string.Empty;
     public string State { get; init; } = string.Empty;
     public string Country { get; init; } = string.Empty;
+
+    /// <summary>R21: other phones (homePhone, facsimileTelephoneNumber, ipPhone) and when the account expires
+    /// (accountExpires, local time "yyyy-MM-dd HH:mm:ss"; empty = never); empty in data read before.</summary>
+    public string HomePhone { get; init; } = string.Empty;
+    public string Fax { get; init; } = string.Empty;
+    public string IpPhone { get; init; } = string.Empty;
+    public string AccountExpires { get; init; } = string.Empty;
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
@@ -66,6 +73,9 @@ public sealed record EntraUser
     public string PostalCode { get; init; } = string.Empty;
     public string State { get; init; } = string.Empty;
     public string Country { get; init; } = string.Empty;
+
+    /// <summary>R21: the fax number (faxNumber).</summary>
+    public string Fax { get; init; } = string.Empty;
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;

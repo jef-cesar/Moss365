@@ -4047,5 +4047,13 @@
   "attribute.sign-in-changes": "{0} devient {1} : la personne se connecte ensuite avec le nouveau nom.",
   "attribute.invalid.hint.upn": "Un nom, @ et un domaine (nom@example.com), sans espaces.",
   "edit-user.upn-domain": "Aucun autre compte n'utilise encore le domaine {0} : vérifiez qu'il s'agit d'un domaine vérifié du tenant.",
-  "edit-user.sign-in-confirm": "Je sais que {0} se connecte ensuite avec le nouveau nom, et je le lui dirai."
+  "edit-user.sign-in-confirm": "Je sais que {0} se connecte ensuite avec le nouveau nom, et je le lui dirai.",
+  "attribute.homephone": "Téléphone domicile",
+  "attribute.fax": "Fax",
+  "attribute.ipphone": "Téléphone IP",
+  "attribute.accountexpires": "Compte valable jusqu'au",
+  "attribute.invalid.hint.accountexpires": "Une date (jour, mois, année), ou jamais.",
+  "attribute.expires-past": "{0} est antérieur à aujourd'hui : le compte ne fonctionne plus dès que le plan est exécuté.",
+  "edit-user.never": "n'expire jamais",
+  "edit-user.never-expires": "N'expire jamais"
 }

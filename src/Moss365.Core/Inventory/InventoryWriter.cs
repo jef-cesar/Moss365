@@ -71,6 +71,7 @@ public static class InventoryWriter
                 ["MemberOf"] = string.Join('|', u.MemberOr),
                 ["EmployeeID"] = u.EmployeeId, ["EmployeeType"] = u.EmployeeType, ["StreetAddress"] = u.StreetAddress,
                 ["PostalCode"] = u.PostalCode, ["State"] = u.State, ["Country"] = u.Country,
+                ["HomePhone"] = u.HomePhone, ["Fax"] = u.Fax, ["IpPhone"] = u.IpPhone, ["AccountExpirationDate"] = u.AccountExpires,
             }));
             Write(InventoryLoader.AdGroups, d.AdGroupsByDn.Values.Select(g => new Dictionary<string, string?>
             {
@@ -97,7 +98,7 @@ public static class InventoryWriter
                 ["OnPremisesDistinguishedName"] = e.OnPremisesDistinguishedName, ["Licenties"] = string.Join('|', e.Licences),
                 ["LaatsteAanmelding"] = e.LastSignIn,
                 ["EmployeeId"] = e.EmployeeId, ["EmployeeType"] = e.EmployeeType, ["StreetAddress"] = e.StreetAddress,
-                ["PostalCode"] = e.PostalCode, ["State"] = e.State, ["Country"] = e.Country,
+                ["PostalCode"] = e.PostalCode, ["State"] = e.State, ["Country"] = e.Country, ["FaxNumber"] = e.Fax,
             }));
             Write(InventoryLoader.EntraGroups, d.CloudGroups.Values.Select(g => new Dictionary<string, string?>
             {

@@ -35,12 +35,12 @@
                         <dd>
                             @if (!editing)
                             {
-                                <span>@(current.Length > 0 ? current : T["edit-user.empty"])</span>
+                                <span>@(current.Length > 0 ? current : EmptyText(field))</span>
                             }
                             else
                             {
                                 @Input(field)
-                                @if (Changed(field)) { <div class="kb-zacht kb-klein-tekst">@T.Format("edit-user.now", current.Length > 0 ? current : T["edit-user.empty"])</div> }
+                                @if (Changed(field)) { <div class="kb-zacht kb-klein-tekst">@T.Format("edit-user.now", current.Length > 0 ? current : EmptyText(field))</div> }
                                 @if (Problem(field) is { } problem) { <div class="kb-waarschuwing">@problem</div> }
                             }
                         </dd>
@@ -87,8 +87,8 @@
     {
         new("identity", new[] { nameof(UserDesired.DisplayName), nameof(UserDesired.GivenName), nameof(UserDesired.Surname), nameof(UserDesired.EmployeeId), nameof(UserDesired.EmployeeType) }),
         new("organisation", new[] { nameof(UserDesired.JobTitle), nameof(UserDesired.Department), nameof(UserDesired.Company), nameof(UserDesired.Office), nameof(UserDesired.Manager), nameof(UserDesired.Description) }),
-        new("contact", new[] { nameof(UserDesired.Phone), nameof(UserDesired.Mobile), nameof(UserDesired.StreetAddress), nameof(UserDesired.PostalCode), nameof(UserDesired.City), nameof(UserDesired.State), nameof(UserDesired.Country), nameof(UserDesired.UsageLocation) }),
-        new("access", new[] { nameof(UserDesired.Upn), nameof(UserDesired.LogonScript) }),
+        new("contact", new[] { nameof(UserDesired.Phone), nameof(UserDesired.Mobile), nameof(UserDesired.HomePhone), nameof(UserDesired.Fax), nameof(UserDesired.IpPhone), nameof(UserDesired.StreetAddress), nameof(UserDesired.PostalCode), nameof(UserDesired.City), nameof(UserDesired.State), nameof(UserDesired.Country), nameof(UserDesired.UsageLocation) }),
+        new("access", new[] { nameof(UserDesired.Upn), nameof(UserDesired.AccountExpires), nameof(UserDesired.LogonScript) }),
     };
 
     private readonly HashSet<string> open = new();
@@ -171,6 +171,9 @@
 
     private string Label(string field) => field == nameof(UserDesired.Manager) ? T["reports.manager"] : T["attribute." + field.ToLowerInvariant()];
 
+    /// <summary>An empty value: no expiry date is "never".</summary>
+    private string EmptyText(string field) => field == nameof(UserDesired.AccountExpires) ? T["edit-user.never"] : T["edit-user.empty"];
+
     private string CurrentText(string field) => field == nameof(UserDesired.Manager)
         ? (string.IsNullOrEmpty(current.Manager) ? string.Empty : State.Data.SearchPerson(current.Manager)?.Name ?? string.Empty)
         : Get(current, field) ?? string.Empty;
@@ -193,6 +196,7 @@
         {
             nameof(UserDesired.EmployeeId) => AttributePlans.ValidValue(field, value),
             nameof(UserDesired.Upn) => AttributePlans.ValidValue(field, value) && AttributePlans.Taken(State.Data, Person, field, value) is null,
+            nameof(UserDesired.AccountExpires) => AttributePlans.ValidValue(field, value),
             _ => false,
         };
     }
@@ -214,6 +218,11 @@
         if (AttributePlans.Taken(State.Data, Person, field, value) is { } holder)
         {
             return T.Format("attribute.taken", Label(field), holder);
+        }
+
+        if (field == nameof(UserDesired.AccountExpires) && AttributePlans.ExpiresBeforeToday(value))
+        {
+            return T.Format("attribute.expires-past", value);
         }
 
         if (field == nameof(UserDesired.Upn) && upnDomains.Count > 0 && value[(value.IndexOf('@') + 1)..] is var domain && !upnDomains.Contains(domain))
@@ -246,7 +255,11 @@
                                        </div>,
         nameof(UserDesired.UsageLocation) => @<input class="kb-invoer kb-smal" maxlength="2" value="@desired.UsageLocation" @oninput="e => desired.UsageLocation = e.Value?.ToString()?.ToUpperInvariant()" aria-label="@Label(field)" placeholder="BE" />,
         nameof(UserDesired.Upn) => @<input class="kb-invoer" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" autocomplete="off" spellcheck="false" />,
-        nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) => @<input class="kb-invoer" type="tel" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" />,
+        nameof(UserDesired.AccountExpires) => @<div>
+                                                  <input class="kb-invoer kb-smal" type="date" value="@desired.AccountExpires" @onchange="e => desired.AccountExpires = e.Value?.ToString()" aria-label="@Label(field)" />
+                                                  @if (!string.IsNullOrEmpty(desired.AccountExpires)) { <button class="kb-knop kb-klein" @onclick="() => desired.AccountExpires = string.Empty">@T["edit-user.never-expires"]</button> }
+                                              </div>,
+        nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) or nameof(UserDesired.HomePhone) or nameof(UserDesired.Fax) => @<input class="kb-invoer" type="tel" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" />,
         _ => @<input class="kb-invoer" value="@Get(desired, field)" @oninput="e => Set(field, e.Value?.ToString())" aria-label="@Label(field)" />,
     };
 

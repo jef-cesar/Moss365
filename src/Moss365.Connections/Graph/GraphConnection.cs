@@ -18,7 +18,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
     private const string UserFields = "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,department,"
                                            + "jobTitle,officeLocation,companyName,city,usageLocation,createdDateTime,onPremisesSyncEnabled,"
                                            + "onPremisesSamAccountName,onPremisesDistinguishedName,assignedLicenses,businessPhones,mobilePhone,"
-                                           + "employeeId,employeeType,streetAddress,postalCode,state,country";
+                                           + "employeeId,employeeType,streetAddress,postalCode,state,country,faxNumber";
 
     private const string GroupFields = "id,displayName,description,mail,mailEnabled,securityEnabled,groupTypes,membershipRule,"
                                        + "onPremisesSyncEnabled,onPremisesSamAccountName,assignedLicenses,visibility";
@@ -1246,6 +1246,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             PostalCode = S(u, "postalCode"),
             State = S(u, "state"),
             Country = S(u, "country"),
+            Fax = S(u, "faxNumber"),
             CreatedDateTime = S(u, "createdDateTime"),
             OnPremisesSyncEnabled = B(u, "onPremisesSyncEnabled"),
             OnPremisesSamAccountName = S(u, "onPremisesSamAccountName"),

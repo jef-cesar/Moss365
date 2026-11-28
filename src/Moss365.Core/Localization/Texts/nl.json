@@ -4047,5 +4047,13 @@
   "attribute.sign-in-changes": "{0} wordt {1}: de persoon meldt zich daarna aan met de nieuwe naam.",
   "attribute.invalid.hint.upn": "Een naam, @ en een domein (naam@example.com), zonder spaties.",
   "edit-user.upn-domain": "Nog geen ander account gebruikt het domein {0}: controleer of het een geverifieerd domein van de tenant is.",
-  "edit-user.sign-in-confirm": "Ik weet dat {0} zich daarna met de nieuwe naam aanmeldt, en ik laat het weten."
+  "edit-user.sign-in-confirm": "Ik weet dat {0} zich daarna met de nieuwe naam aanmeldt, en ik laat het weten.",
+  "attribute.homephone": "Telefoon thuis",
+  "attribute.fax": "Fax",
+  "attribute.ipphone": "IP-telefoon",
+  "attribute.accountexpires": "Account werkt tot en met",
+  "attribute.invalid.hint.accountexpires": "Een datum (dag, maand, jaar), of nooit.",
+  "attribute.expires-past": "{0} ligt voor vandaag: het account werkt niet meer zodra het plan uitgevoerd is.",
+  "edit-user.never": "vervalt nooit",
+  "edit-user.never-expires": "Vervalt nooit"
 }

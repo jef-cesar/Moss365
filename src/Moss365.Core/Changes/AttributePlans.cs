@@ -1,3 +1,4 @@
+using System.Globalization;
 using Moss365.Core.Analysis;
 using Moss365.Core.Configuration;
 using Moss365.Core.Inventory;
@@ -44,6 +45,14 @@ public sealed class UserDesired
     /// <summary>R21: the sign-in name (UPN): the person signs in with the new one afterwards (a confirmation on the page).</summary>
     public string? Upn { get; set; }
 
+    /// <summary>R21: other phones (home and IP phone only in AD; the fax in both).</summary>
+    public string? HomePhone { get; set; }
+    public string? Fax { get; set; }
+    public string? IpPhone { get; set; }
+
+    /// <summary>R21: the last day the account works ("yyyy-MM-dd"), only in AD; "" = never.</summary>
+    public string? AccountExpires { get; set; }
+
     /// <summary>The current values (AD when the account comes from AD, otherwise Entra), as the start of the
     /// form.</summary>
     public static UserDesired Of(Person p, InventoryData? d = null)
@@ -54,13 +63,14 @@ public sealed class UserDesired
                 DisplayName = a.DisplayName, GivenName = a.GivenName, Surname = a.Surname, JobTitle = a.Title, Department = a.Department, Office = a.Office, City = a.City,
                 Description = a.Description, LogonScript = a.ScriptPath, Phone = a.Phone, Mobile = a.Mobile,
                 Company = a.Company, EmployeeId = a.EmployeeId, EmployeeType = a.EmployeeType, StreetAddress = a.StreetAddress, PostalCode = a.PostalCode, State = a.State, Country = a.Country,
+                HomePhone = a.HomePhone, Fax = a.Fax, IpPhone = a.IpPhone, AccountExpires = AttributePlans.ExpiryDay(a.AccountExpires),
             }
             : new UserDesired
             {
                 DisplayName = p.Entra?.DisplayName, GivenName = p.Entra?.GivenName, Surname = p.Entra?.Surname, JobTitle = p.Entra?.JobTitle, Department = p.Entra?.Department,
                 Office = p.Entra?.OfficeLocation, City = p.Entra?.City, Phone = p.Entra?.Phone, Mobile = p.Entra?.Mobile,
                 Company = p.Entra?.CompanyName, EmployeeId = p.Entra?.EmployeeId, EmployeeType = p.Entra?.EmployeeType, StreetAddress = p.Entra?.StreetAddress,
-                PostalCode = p.Entra?.PostalCode, State = p.Entra?.State, Country = p.Entra?.Country,
+                PostalCode = p.Entra?.PostalCode, State = p.Entra?.State, Country = p.Entra?.Country, Fax = p.Entra?.Fax,
             };
         g.UsageLocation = p.Entra?.UsageLocation;
         g.Upn = p.Ad?.UserPrincipalName is { Length: > 0 } upn ? upn : p.Entra?.UserPrincipalName;
@@ -100,7 +110,31 @@ public static class AttributePlans
         (nameof(UserDesired.Country), "co", "country", "Land"),
         (nameof(UserDesired.UsageLocation), null, "usageLocation", "Gebruikslocatie"),
         (nameof(UserDesired.Upn), "userPrincipalName", "userPrincipalName", "UPN"),
+        (nameof(UserDesired.HomePhone), "homePhone", null, "Telefoon thuis"),
+        (nameof(UserDesired.Fax), "facsimileTelephoneNumber", "faxNumber", "Fax"),
+        (nameof(UserDesired.IpPhone), "ipPhone", null, "IP-telefoon"),
+        (nameof(UserDesired.AccountExpires), "accountExpires", null, "Account vervalt"),
     };
+
+    /// <summary>The last day an account works, from accountExpires as read (local time; midnight is the end of the day
+    /// before, as Active Directory Users and Computers sets it); empty = never.</summary>
+    public static string ExpiryDay(string accountExpires)
+        => DateTime.TryParse(accountExpires, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t)
+            ? (t.TimeOfDay == TimeSpan.Zero ? t.AddDays(-1) : t).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            : string.Empty;
+
+    /// <summary>accountExpires for the last day an account works: the start of the next day in local time, as a file
+    /// time; "0" = never.</summary>
+    public static string ExpiryValue(string day)
+        => DateTime.TryParseExact(day, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+            ? DateTime.SpecifyKind(d.AddDays(1), DateTimeKind.Local).ToFileTime().ToString(CultureInfo.InvariantCulture)
+            : "0";
+
+    /// <summary>accountExpires as it was read (local time), as a file time to put back on undo; "0" = never.</summary>
+    private static string ExpiryValueOf(string accountExpires)
+        => DateTime.TryParse(accountExpires, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t)
+            ? DateTime.SpecifyKind(t, DateTimeKind.Local).ToFileTime().ToString(CultureInfo.InvariantCulture)
+            : "0";
 
     /// <summary>The fields that change how the person signs in (R21): a confirmation on the page, a warning on the plan.
     /// The logon name in AD (sAMAccountName) is not among them: it is the key of a person in the app (snapshots,
@@ -203,6 +237,22 @@ public static class AttributePlans
             if (SignInFields.Contains(field))
             {
                 warnings.Add(Texts.T.Format("attribute.sign-in-changes", name, newValue.Trim()));
+            }
+
+            if (field == nameof(UserDesired.AccountExpires))
+            {
+                // A date in AD is a file time: the start of the day after the last day (R21)
+                var day = newValue.Trim();
+                parameters[key] = ExpiryValue(day);
+                previous[key] = ExpiryValueOf(p.Ad?.AccountExpires ?? string.Empty);
+                now.Add($"{name}: {(old.Length == 0 ? Texts.T["edit-user.never"] : old)}");
+                becomes.Add($"{name}: {(day.Length == 0 ? Texts.T["edit-user.never"] : day)}");
+                if (ExpiresBeforeToday(day))
+                {
+                    warnings.Add(Texts.T.Format("attribute.expires-past", day));
+                }
+
+                continue;
             }
 
             parameters[key] = newValue.Trim();
@@ -382,16 +432,25 @@ public static class AttributePlans
     /// <summary>A value a field can take (R21, checked while typing too): the usage location is two letters (ISO 3166),
     /// a phone number has only digits, spaces and + ( ) - . /, an employee id at most 16 characters (the limit of AD).</summary>
     public static bool ValidValue(string field, string value)
-        => value.Length == 0 || field switch
+        => value.Length == 0 ? !Required.Contains(field) : field switch
         {
             nameof(UserDesired.UsageLocation) => value.Length == 2 && value.All(char.IsAsciiLetterUpper),
-            nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) => value.All(c => char.IsAsciiDigit(c) || c is ' ' or '+' or '(' or ')' or '-' or '.' or '/'),
+            nameof(UserDesired.AccountExpires) => DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) && d.Year is >= 2000 and < 9999,
+            nameof(UserDesired.IpPhone) => value.Length <= 64,
+            nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) or nameof(UserDesired.HomePhone) or nameof(UserDesired.Fax) => value.All(c => char.IsAsciiDigit(c) || c is ' ' or '+' or '(' or ')' or '-' or '.' or '/'),
             nameof(UserDesired.EmployeeId) => value.Length <= 16,
             nameof(UserDesired.PostalCode) => value.Length <= 40,
             nameof(UserDesired.Upn) => value.Length <= 113 && value.Count(c => c == '@') == 1 && value.IndexOf('@') > 0 && value.IndexOf('@') < value.Length - 1
                                        && !value.Any(c => char.IsWhiteSpace(c) || c is '"' or '\\' or '(' or ')' or ',' or ':' or ';' or '<' or '>' or '[' or ']'),
             _ => value.Length <= 256,
         };
+
+    /// <summary>Fields that cannot be emptied: an account without a sign-in name or a name does not work.</summary>
+    private static readonly string[] Required = { nameof(UserDesired.Upn), nameof(UserDesired.DisplayName) };
+
+    /// <summary>The account stops working at once: the last day is before today (R21).</summary>
+    public static bool ExpiresBeforeToday(string day)
+        => DateTime.TryParseExact(day, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) && d < DateTime.Today;
 
     /// <summary>Another account has this sign-in name already (R21): the plan would fail. The name of who has it, or
     /// null.</summary>
