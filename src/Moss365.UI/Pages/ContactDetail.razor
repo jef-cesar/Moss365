@@ -1,0 +1,98 @@
+@page "/contact/{Smtp}"
+@inherits RefreshingPage
+@* R21: one mail contact, edited in place, as a plan with undo; a contact from AD is changed there. *@
+
+@if (contact is null)
+{
+    <h1>@T["contact.not-found"]</h1>
+    <p><a href="contacten">@T["contact.back"]</a></p>
+}
+else
+{
+    <h1>@contact.DisplayName <PlatformLabel Platform="@(contact.IsDirSynced ? Platform.ActiveDirectory : Platform.ExchangeOnline)" /></h1>
+    <p class="kb-zacht">@contact.External@(contact.Smtp != contact.External ? $" ({contact.Smtp})" : string.Empty)</p>
+    @if (contact.IsDirSynced)
+    {
+        <div class="kb-melding">@T["contact.synced"]</div>
+    }
+
+    <section class="kb-kaart">
+        <h2>@T["contact.details"]</h2>
+        <div class="kb-raster">
+            <label>@T["edit-user.display-name"] <input class="kb-invoer" value="@desired.DisplayName" @oninput="e => desired.DisplayName = e.Value?.ToString()" disabled="@(!CanEdit)" aria-label="@T["edit-user.display-name"]" /></label>
+            <label>@T["contact.external"] <input class="kb-invoer" type="email" value="@desired.External" @oninput="e => desired.External = e.Value?.ToString()" disabled="@(!CanEdit)" aria-label="@T["contact.external"]" autocomplete="off" spellcheck="false" />
+                @if (ExternalProblem is { } problem) { <span class="kb-waarschuwing">@problem</span> }
+            </label>
+            <label>@T["bulk-tasks.hide-in-the-address-list"] <input type="checkbox" checked="@(desired.Hidden == true)" @onchange="e => desired.Hidden = e.Value is true" disabled="@(!CanEdit)" aria-label="@T["bulk-tasks.hide-in-the-address-list"]" /></label>
+            <label>@T["attribute.givenname"] <input class="kb-invoer" value="@desired.FirstName" @oninput="e => desired.FirstName = e.Value?.ToString()" disabled="@(!CanEdit)" aria-label="@T["attribute.givenname"]" /></label>
+            <label>@T["attribute.surname"] <input class="kb-invoer" value="@desired.LastName" @oninput="e => desired.LastName = e.Value?.ToString()" disabled="@(!CanEdit)" aria-label="@T["attribute.surname"]" /></label>
+            <label>@T["attribute.company"] <input class="kb-invoer" value="@desired.Company" @oninput="e => desired.Company = e.Value?.ToString()" disabled="@(!CanEdit)" aria-label="@T["attribute.company"]" /></label>
+            <label>@T["attribute.jobtitle"] <input class="kb-invoer" value="@desired.Title" @oninput="e => desired.Title = e.Value?.ToString()" disabled="@(!CanEdit)" aria-label="@T["attribute.jobtitle"]" /></label>
+            <label>@T["attribute.phone"] <input class="kb-invoer" type="tel" value="@desired.Phone" @oninput="e => desired.Phone = e.Value?.ToString()" disabled="@(!CanEdit)" aria-label="@T["attribute.phone"]" /></label>
+        </div>
+        @if (CanEdit)
+        {
+            <div class="kb-filters">
+                <button class="kb-knop kb-primair" disabled="@(ExternalProblem is not null)" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+                <button class="kb-knop" @onclick="Reset">@T["edit-user.reset"]</button>
+            </div>
+        }
+        @foreach (var f in errors)
+        {
+            <div class="kb-melding kb-fout">@f</div>
+        }
+    </section>
+
+    @if (plan is not null)
+    {
+        <PlanView Plan="plan" Context="@contact.DisplayName" Title="@T["contact.details"]" Executed="AfterExecute" />
+    }
+}
+
+@code {
+    [Parameter] public string Smtp { get; set; } = string.Empty;
+
+    private MailContact? contact;
+    private ContactDesired desired = new();
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private string? loaded;
+
+    private bool CanEdit => contact is { IsDirSynced: false } && !State.IsHistoric && State.Can(Permission.Manage);
+
+    private string? ExternalProblem => contact is not null && desired.External?.Trim() is { Length: > 0 } a && !string.Equals(a, contact.External, StringComparison.OrdinalIgnoreCase)
+        ? ContactPlans.Problem(State.Data, a, contact) : null;
+
+    protected override void OnParametersSet()
+    {
+        var address = Uri.UnescapeDataString(Smtp);
+        contact = State.Data.Contacts.FirstOrDefault(c => string.Equals(c.Smtp, address, StringComparison.OrdinalIgnoreCase));
+        if (contact?.Smtp != loaded)
+        {
+            loaded = contact?.Smtp;
+            Reset();
+        }
+    }
+
+    private void Reset()
+    {
+        desired = contact is null ? new() : ContactDesired.Of(contact);
+        plan = null;
+        errors = Array.Empty<string>();
+    }
+
+    private void MakePlan()
+    {
+        var outcome = ContactPlans.Edit(State.Data, contact!, desired);
+        errors = outcome.Errors;
+        plan = outcome.Plan.Count > 0 ? outcome.Plan : null;
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            plan = null;
+        }
+    }
+}

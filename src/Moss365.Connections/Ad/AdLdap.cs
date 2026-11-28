@@ -559,6 +559,34 @@ public sealed class AdLdap : IAdConnection, IExecutor
                     return ChangeResult.Ok(w);
                 }
 
+                case ChangeAction.AdSetProxyAddresses:
+                {
+                    // R21: the primary address; the whole list of addresses at once, so the old primary stays an alias
+                    using var item = Item(w.Target);
+                    if (w.Parameters.TryGetValue("proxyAddresses", out var list))
+                    {
+                        var addresses = list.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                        if (addresses.Count(a => a.StartsWith("SMTP:", StringComparison.Ordinal)) != 1)
+                        {
+                            return ChangeResult.Error(w, Texts.T["ad.proxy.one-primary"]);
+                        }
+
+                        item.Properties["proxyAddresses"].Clear();
+                        foreach (var a in addresses)
+                        {
+                            item.Properties["proxyAddresses"].Add(a);
+                        }
+                    }
+
+                    if (w.P("mail") is { Length: > 0 } mail)
+                    {
+                        item.Properties["mail"].Value = mail;
+                    }
+
+                    item.CommitChanges();
+                    return ChangeResult.Ok(w);
+                }
+
                 case ChangeAction.AdCreateUser:
                     return Create(w);
 

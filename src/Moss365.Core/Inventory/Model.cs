@@ -21,6 +21,10 @@ public sealed record AdUser
     public string Fax { get; init; } = string.Empty;
     public string IpPhone { get; init; } = string.Empty;
     public string AccountExpires { get; init; } = string.Empty;
+
+    /// <summary>R21: the mail addresses (proxyAddresses: "SMTP:" is the primary one, "smtp:" an alias); empty in data
+    /// read before.</summary>
+    public IReadOnlyList<string> ProxyAddresses { get; init; } = Array.Empty<string>();
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
@@ -329,6 +333,9 @@ public sealed record InventoryData
     /// <summary>FullAccess and SendAs permissions on shared mailboxes.</summary>
     public IReadOnlyList<MailboxPermission> MailboxPermissions { get; init; } = Array.Empty<MailboxPermission>();
 
+    /// <summary>The mail contacts of Exchange Online (R21).</summary>
+    public IReadOnlyList<MailContact> Contacts { get; init; } = Array.Empty<MailContact>();
+
     /// <summary>Members of cloud groups that are not users (devices, contacts): id to (kind, name).</summary>
     public IReadOnlyDictionary<string, (string Kind, string Name)> CloudMemberNames { get; init; } = new Dictionary<string, (string, string)>();
 
@@ -391,7 +398,7 @@ public sealed record InventoryData
     /// </summary>
     public InventoryData WithoutMicrosoft365()
         => EntraUsers.Count == 0 && CloudGroups.Count == 0 && CloudMembership.Count == 0 && Rooms.Count == 0 && Licences.Count == 0
-           && ExoGroups.Count == 0 && Mailboxes.Count == 0 && MailboxPermissions.Count == 0 && Security is null && ConditionalAccess is null
+           && ExoGroups.Count == 0 && Mailboxes.Count == 0 && MailboxPermissions.Count == 0 && Contacts.Count == 0 && Security is null && ConditionalAccess is null
            && !Sources.Any(IsMicrosoft365Source)
             ? this
             : this with
@@ -405,6 +412,7 @@ public sealed record InventoryData
                 ExoGroups = Array.Empty<ExoGroup>(),
                 Mailboxes = Array.Empty<Mailbox>(),
                 MailboxPermissions = Array.Empty<MailboxPermission>(),
+                Contacts = Array.Empty<MailContact>(),
                 Security = null,
                 ConditionalAccess = null,
                 Persons = InventoryLoader.LinkPersons(AdUsers, Array.Empty<EntraUser>()),

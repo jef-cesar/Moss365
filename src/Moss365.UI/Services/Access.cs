@@ -18,6 +18,7 @@ public static class Access
             "groepen" when p == "groepen/nieuw" => Permission.Manage,
             "statistieken" or "gebruikers" or "gebruiker" or "gasten" or "groepen" or "groep" or "postvak" or "room" or "rooms" or "vergelijk" => Permission.View,
             "postvakken" => p == "postvakken/nieuw" ? Permission.Manage : Permission.View,
+            "contacten" or "contact" => Permission.View,
             "beveiliging" or "conditional-access" or "controles" => Permission.Security,
             "bewaarde-logboeken" => Permission.SignIns,
             "toegangsreviews" => Permission.Security,
@@ -58,7 +59,7 @@ public static class Access
 
         return first switch
         {
-            "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "beveiliging" or "conditional-access" or "inrichten" or "bewaarde-logboeken" => hasMicrosoft365,
+            "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "contacten" or "contact" or "beveiliging" or "conditional-access" or "inrichten" or "bewaarde-logboeken" => hasMicrosoft365,
             "vergelijk" => hasAd && hasMicrosoft365,
             "logonscripts" or "wachtwoorden" => hasAd,
             "licenties" or "samenwerking" or "gastenverlenging" => hasMicrosoft365,

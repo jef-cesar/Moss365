@@ -78,7 +78,17 @@ public sealed partial class RefreshTargets
                     break;
                 case ChangeAction.ExchangeCreateSharedMailbox:
                 case ChangeAction.ExchangeCreateGroup:
+                case ChangeAction.ExchangeCreateContact:
                     targets.ExchangeAddresses.Add(w.Target);
+                    break;
+                case ChangeAction.ExchangeUpdateContact:
+                    // A new external address can be the new primary address of the contact too: read it by both
+                    targets.ExchangeAddresses.Add(w.Target);
+                    if (w.P("ExternalEmailAddress") is { Length: > 0 } external)
+                    {
+                        targets.ExchangeAddresses.Add(external);
+                    }
+
                     break;
                 case ChangeAction.AdCreateGroup:
                     // New group: read by sAMAccountName (with the members that were added right away)

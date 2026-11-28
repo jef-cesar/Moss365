@@ -522,16 +522,19 @@ public static class MailboxPlans
         return data is not null && AddressHolder(data, address, p.Smtp) is { } holder ? Texts.T.Format("mailbox.primary.taken", address, holder) : null;
     }
 
-    /// <summary>Who has this address already (a person, mailbox, room or group), apart from the mailbox itself.</summary>
-    public static string? AddressHolder(InventoryData data, string address, string own)
+    /// <summary>Who has this address already (a person, mailbox, room or group), apart from the object itself (its own
+    /// address, or the person with key <paramref name="self"/>).</summary>
+    public static string? AddressHolder(InventoryData data, string address, string own, string? self = null)
     {
         bool Is(string? a) => !string.IsNullOrEmpty(a) && string.Equals(a, address, StringComparison.OrdinalIgnoreCase) && !string.Equals(a, own, StringComparison.OrdinalIgnoreCase);
-        return data.Persons.FirstOrDefault(x => Is(x.Ad?.EmailAddress) || Is(x.Entra?.Mail) || Is(x.Entra?.UserPrincipalName) || Is(x.Ad?.UserPrincipalName))?.Name
+        return data.Persons.FirstOrDefault(x => x.Key != self && (Is(x.Ad?.EmailAddress) || Is(x.Entra?.Mail) || Is(x.Entra?.UserPrincipalName) || Is(x.Ad?.UserPrincipalName)
+                                                                   || x.Ad?.ProxyAddresses.Any(a => a.Length > 5 && a.StartsWith("smtp:", StringComparison.OrdinalIgnoreCase) && Is(a[5..])) == true))?.Name
                ?? data.Mailboxes.FirstOrDefault(m => Is(m.Smtp))?.DisplayName
                ?? data.Rooms.FirstOrDefault(r => Is(r.Smtp))?.DisplayName
                ?? data.ExoGroups.FirstOrDefault(x => Is(x.Smtp))?.DisplayName
                ?? data.CloudGroups.Values.FirstOrDefault(x => Is(x.Mail))?.DisplayName
-               ?? data.AdGroupsByDn.Values.FirstOrDefault(x => Is(x.Mail))?.Name;
+               ?? data.AdGroupsByDn.Values.FirstOrDefault(x => Is(x.Mail))?.Name
+               ?? data.Contacts.FirstOrDefault(c => Is(c.Smtp) || Is(c.External))?.DisplayName;
     }
 
     private static bool IsOwnDomain(string address, string mailboxSmtp)

@@ -38,8 +38,21 @@ BeforeAll {
     function global:Get-EXOMailboxPermission { param($Identity, $ErrorAction)
         @([pscustomobject]@{ User = 'sg@test.be'; AccessRights = @('FullAccess'); IsInherited = $false }, [pscustomobject]@{ User = 'NT AUTHORITY\SELF'; AccessRights = @('FullAccess'); IsInherited = $false }
             [pscustomobject]@{ User = 'Interne Naam2'; AccessRights = @('FullAccess'); IsInherited = $false }) }
+    # R21: mail contacts
+    function global:Get-MailContact { param($Identity, $ResultSize, $ErrorAction)
+        [pscustomobject]@{ Guid = [guid]'11111111-1111-1111-1111-111111111111'; DisplayName = 'Jan Extern'; Name = 'Jan Extern'; Alias = 'jan.extern'
+            ExternalEmailAddress = 'SMTP:jan@fabrikam.com'; PrimarySmtpAddress = 'jan@fabrikam.com'; HiddenFromAddressListsEnabled = $false; IsDirSynced = $false } }
+    function global:Get-Contact { param($Identity, $RecipientTypeDetails, $ResultSize, $ErrorAction)
+        [pscustomobject]@{ Guid = [guid]'11111111-1111-1111-1111-111111111111'; FirstName = 'Jan'; LastName = 'Extern'; Company = 'Fabrikam'; Title = 'Adviseur'; Phone = '+32 9 000 00 00' } }
+    function global:New-MailContact { param($Name, $DisplayName, $ExternalEmailAddress, $Alias, $FirstName, $LastName, $ErrorAction)
+        $global:ExoAanroepen.Add("NewContact $Name $ExternalEmailAddress $Alias")
+        [pscustomobject]@{ Guid = [guid]'22222222-2222-2222-2222-222222222222' } }
+    function global:Set-MailContact { param($Identity, $DisplayName, $ExternalEmailAddress, $HiddenFromAddressListsEnabled, $ErrorAction)
+        $global:ExoAanroepen.Add("SetMailContact $Identity $DisplayName $ExternalEmailAddress Hidden=$HiddenFromAddressListsEnabled/$(if ($null -ne $HiddenFromAddressListsEnabled) { $HiddenFromAddressListsEnabled.GetType().Name })") }
+    function global:Set-Contact { param($Identity, $FirstName, $LastName, $Company, $Title, $Phone, $ErrorAction)
+        $global:ExoAanroepen.Add("SetContact $Identity Company=$(if ($null -eq $Company -and $PSBoundParameters.ContainsKey('Company')) { 'NULL' } else { $Company }) Title=$Title") }
     function global:Get-Recipient { param($Identity, $ErrorAction)
-        $type = @{ 'Interne Naam2' = 'UserMailbox'; 'rm-a@test.be' = 'RoomMailbox'; 'info@test.be' = 'SharedMailbox'; 'sg@test.be' = 'MailUniversalSecurityGroup' }
+        $type = @{ 'Interne Naam2' = 'UserMailbox'; 'rm-a@test.be' = 'RoomMailbox'; 'info@test.be' = 'SharedMailbox'; 'sg@test.be' = 'MailUniversalSecurityGroup'; 'jan@fabrikam.com' = 'MailContact' }
         if ($Identity -eq 'Interne Naam2') { return [pscustomobject]@{ PrimarySmtpAddress = 'intern@test.be'; RecipientTypeDetails = 'UserMailbox' } }
         if ($type.ContainsKey($Identity)) { return [pscustomobject]@{ PrimarySmtpAddress = $Identity; RecipientTypeDetails = $type[$Identity] } }
         throw "couldn't be found" }
@@ -234,6 +247,29 @@ Describe 'Exchange.ps1' {
         ($r | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
         ($r | Where-Object id -eq 'b').status | Should -Not -Be 'Gelukt'
         $global:ExoAanroepen | Should -Contain 'SetMbxR21 info@test.be Copy=True/Boolean OnBehalf=an@test.be,bo@test.be/2'
+    }
+
+    It 'reads mail contacts with their details, also one again by address (R21)' {
+        $r = Voer @(@{ id = 'p'; op = 'LeesPostvakken'; params = @{} })
+        $c = @($r[0].data.Contacten)[0]
+        ($c.Extern, $c.Smtp, $c.Bedrijf, $c.Functie, $c.Voornaam) | Should -Be @('jan@fabrikam.com', 'jan@fabrikam.com', 'Fabrikam', 'Adviseur', 'Jan')
+        $o = Voer @(@{ id = 'o'; op = 'LeesObjecten'; params = @{ Adressen = 'jan@fabrikam.com' } })
+        @($o[0].data.Contacten)[0].Alias | Should -Be 'jan.extern'
+    }
+
+    It 'creates a mail contact and changes it, never with an empty address (R21)' {
+        $r = Voer @(
+            @{ id = 'a'; op = 'ContactAanmaken'; params = @{ Name = 'Piet Extern'; DisplayName = 'Piet Extern'; ExternalEmailAddress = 'piet@fabrikam.com'; Alias = 'piet.extern'; Company = 'Fabrikam' } }
+            @{ id = 'b'; op = 'ContactInstellen'; params = @{ Identity = 'jan@fabrikam.com'; DisplayName = 'Jan (Fabrikam)'; HiddenFromAddressListsEnabled = 'True'; Company = ''; Title = 'Directeur' } }
+            @{ id = 'c'; op = 'ContactInstellen'; params = @{ Identity = 'jan@fabrikam.com'; ExternalEmailAddress = '' } }
+        )
+        ($r | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
+        ($r | Where-Object id -eq 'b').status | Should -Be 'Gelukt'
+        ($r | Where-Object id -eq 'c').status | Should -Not -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'NewContact Piet Extern piet@fabrikam.com piet.extern'
+        $global:ExoAanroepen | Should -Contain 'SetContact 22222222-2222-2222-2222-222222222222 Company=Fabrikam Title='
+        $global:ExoAanroepen | Should -Contain 'SetMailContact 11111111-1111-1111-1111-111111111111 Jan (Fabrikam)  Hidden=True/Boolean'
+        $global:ExoAanroepen | Should -Contain 'SetContact 11111111-1111-1111-1111-111111111111 Company=NULL Title=Directeur'
     }
 
     It 'gives a mailbox a new primary address, never an empty one (R21)' {

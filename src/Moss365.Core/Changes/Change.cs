@@ -102,6 +102,11 @@ public enum ChangeAction
     GraphUpdatePolicy,            // Target = a policy of TenantAdvice.PolicyTargets; json = the fields that change; Previous json
     GraphRoleEligibility,         // Target = principal id; rolId, rol, naar (eligible/active); Previous naar
     ExchangeOrganisationSetting,  // Target = setting or object; instelling (ExchangeAdvice.Settings), waarde, identity; Previous waarde
+
+    // New in 0.41: the primary address of a user from AD (R21)
+    AdSetProxyAddresses,          // Target = DN; mail, proxyAddresses (the whole list, separated by |; absent = unchanged); Previous both
+    ExchangeCreateContact,        // Target = the external address; Name, DisplayName, ExternalEmailAddress, Alias, FirstName, LastName, Company, Title, Phone
+    ExchangeUpdateContact,        // Target = the address of the contact; the fields that change (ContactInstellen); Previous the same fields
 }
 
 /// <summary>

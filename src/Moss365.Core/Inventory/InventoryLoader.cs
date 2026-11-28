@@ -18,6 +18,9 @@ public static class InventoryLoader
     public const string ExoGroupMembers = "exo-groepsleden.csv";
     public const string ExoMailboxes = "exo-postvakken-niet-gebruikers.csv";
     public const string ExoMailboxPermissions = "exo-gedeelde-postvakrechten.csv";
+
+    /// <summary>The mail contacts (R21; written by the app, Export-Inventaris.ps1 does not create it).</summary>
+    public const string ExoContacts = "exo-contacten.csv";
     public const string EntraMfa = "entra-mfa.csv";
     public const string EntraRoles = "entra-rollen.csv";
 
@@ -27,7 +30,7 @@ public static class InventoryLoader
     private static readonly string[] Files =
     {
         AdUsers, AdGroups, AdGroupMembers, EntraUsers, EntraGroups, EntraGroupMembers, EntraLicences,
-        ExoRooms, ExoGroups, ExoGroupMembers, ExoMailboxes, ExoMailboxPermissions, EntraMfa, EntraRoles,
+        ExoRooms, ExoGroups, ExoGroupMembers, ExoMailboxes, ExoMailboxPermissions, EntraMfa, EntraRoles, ExoContacts,
     };
 
     /// <summary>All inventory folders under the base folder, newest first (the name contains yyyyMMdd-HHmm).</summary>
@@ -182,6 +185,8 @@ public static class InventoryLoader
                 .Where(r => r.Mailbox.Length > 0 && r.Trustee.Length > 0)
                 .SelectMany(r => r.Permission.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(x => r with { Permission = x }))
                 .ToList(),
+            Contacts = T(ExoContacts).Select(MakeContact).Where(c => c.Smtp.Length > 0)
+                .OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList(),
             Security = T(EntraMfa).Count + T(EntraRoles).Count == 0 ? null : new SecurityData(
                 T(EntraMfa).Select(r => new MfaRegistration(K(r, "Id"), K(r, "UserPrincipalName"), B(r, "IsMfaRegistered"), B(r, "IsMfaCapable"),
                     K(r, "Methods").Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), K(r, "DefaultMethod"), B(r, "IsAdmin")))
@@ -293,6 +298,7 @@ public static class InventoryLoader
             Fax = W(r, "Fax"),
             IpPhone = W(r, "IpPhone"),
             AccountExpires = W(r, "AccountExpirationDate"),
+            ProxyAddresses = Items(r, "ProxyAddresses"),
         };
     }
 
@@ -424,6 +430,22 @@ public static class InventoryLoader
         ManagedBy = K(r, "ManagedBy") is "ja" or "nee" ? Array.Empty<string>() : Items(r, "ManagedBy"),
         CountMembers = I(r, "AantalLeden"),
         Members = members.GetValueOrDefault(W(r, "DisplayName").Trim()) ?? Array.Empty<ExoMember>(),
+    };
+
+    private static MailContact MakeContact(Dictionary<string, string> r) => new()
+    {
+        DisplayName = W(r, "DisplayName"),
+        Name = W(r, "Name"),
+        Alias = K(r, "Alias"),
+        External = K(r, "ExternalEmailAddress"),
+        Smtp = K(r, "PrimarySmtpAddress"),
+        Hidden = B(r, "Hidden"),
+        IsDirSynced = B(r, "IsDirSynced"),
+        FirstName = W(r, "FirstName"),
+        LastName = W(r, "LastName"),
+        Company = W(r, "Company"),
+        Title = W(r, "Title"),
+        Phone = W(r, "Phone"),
     };
 
     private static Mailbox MakeMailbox(Dictionary<string, string> r) => new()

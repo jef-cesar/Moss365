@@ -47,6 +47,13 @@ R21, editing every object, first part (decided on 27 November 2026, U27):
 - **A shared mailbox**: a copy of what others send from it in its Sent Items, who sends on behalf of it, and a new
   primary address (confirmed; the old address stays as an alias, so mail keeps arriving; a mailbox from AD is changed
   there). A group, a mailbox or a person cannot get an address another recipient has.
+- **The primary address of a person**, confirmed on the page: for an account from AD in AD (mail and the whole list of
+  proxyAddresses at once, the old primary address as an alias; proxyAddresses is now read from AD), for a cloud account
+  on its mailbox in Exchange Online. An address or alias of another person, mailbox, room, group or contact is refused.
+- **Mail contacts** (new page Contacts, under Microsoft 365): read with the mailboxes of Exchange Online (with company,
+  job title and phone), stored with the inventory and in the snapshots, a new contact (with a unique alias, an address
+  nobody has) and changing one (name, address, hidden, first and last name, company, job title, phone) with undo. A
+  contact from AD is shown but changed there.
 - **A room**: the address (street, postal code, city, country) and the equipment (audio, video, screen, wheelchair
   access), with undo.
 - **Several users at once**: the new fields (company, kind of employee, address, country, usage location, logon

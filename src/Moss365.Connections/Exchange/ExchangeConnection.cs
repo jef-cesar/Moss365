@@ -207,6 +207,16 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
                     Take(w, p, "Type");
                 }
                 break;
+            case ChangeAction.ExchangeCreateContact:
+                op = "ContactAanmaken";
+                p["ExternalEmailAddress"] = w.Target;
+                Take(w, p, "Name", "DisplayName", "Alias", "FirstName", "LastName", "Company", "Title", "Phone");
+                break;
+            case ChangeAction.ExchangeUpdateContact:
+                op = "ContactInstellen";
+                p["Identity"] = w.Target;
+                Take(w, p, "DisplayName", "ExternalEmailAddress", "HiddenFromAddressListsEnabled", "FirstName", "LastName", "Company", "Title", "Phone");
+                break;
             default:
                 throw new InvalidOperationException(Texts.T.Format("code.exchange-connection.action-does-not-belong-to", w.ChangeAction));
         }
@@ -447,7 +457,25 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
                 CountMembers = members.Count,
             };
         }).ToList();
-        return new ExchangeData(groups, mailboxes, permissions);
+        // R21: mail contacts; null when Exchange could not read them (the app keeps what it had)
+        IReadOnlyList<MailContact>? contacts = d.TryGetProperty("Contacten", out var cl) && cl.ValueKind == JsonValueKind.Array
+            ? cl.EnumerateArray().Select(e => new MailContact
+            {
+                DisplayName = S(e, "DisplayName"),
+                Name = S(e, "Name"),
+                Alias = S(e, "Alias"),
+                External = S(e, "Extern"),
+                Smtp = S(e, "Smtp"),
+                Hidden = B(e, "Hidden"),
+                IsDirSynced = B(e, "IsDirSynced"),
+                FirstName = S(e, "Voornaam"),
+                LastName = S(e, "Achternaam"),
+                Company = S(e, "Bedrijf"),
+                Title = S(e, "Functie"),
+                Phone = S(e, "Telefoon"),
+            }).Where(c => c.Smtp.Length > 0).ToList()
+            : null;
+        return new ExchangeData(groups, mailboxes, permissions, contacts);
     }
 
     internal async Task<IReadOnlyList<Result>> RunScriptAsync(IReadOnlyList<Command> commands, CancellationToken cancel)

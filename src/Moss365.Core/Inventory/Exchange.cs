@@ -85,3 +85,24 @@ public sealed record Mailbox
 
 /// <summary>A permission on a shared mailbox. Trustee is as Exchange returns it (address, name or alias).</summary>
 public sealed record MailboxPermission(string Mailbox, string Permission, string Trustee);
+
+/// <summary>A mail contact of Exchange Online (R21): someone outside the organisation in the address book.</summary>
+public sealed record MailContact
+{
+    public string DisplayName { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Alias { get; init; } = string.Empty;
+
+    /// <summary>The address outside the organisation where mail goes (ExternalEmailAddress, without "SMTP:").</summary>
+    public string External { get; init; } = string.Empty;
+
+    /// <summary>The primary address in the address book (usually the same as <see cref="External"/>): the identity.</summary>
+    public string Smtp { get; init; } = string.Empty;
+    public bool Hidden { get; init; }
+    public bool IsDirSynced { get; init; }
+    public string FirstName { get; init; } = string.Empty;
+    public string LastName { get; init; } = string.Empty;
+    public string Company { get; init; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
+    public string Phone { get; init; } = string.Empty;
+}

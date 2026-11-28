@@ -1,0 +1,77 @@
+@page "/contacten"
+@inherits RefreshingPage
+@* R21: the mail contacts of Exchange Online (people outside the organisation in the address book), and a new one. *@
+
+<h1>@T["menu.contacten"] <PlatformLabel Platform="Platform.ExchangeOnline" /></h1>
+<p class="kb-zacht">@T.Format("contacts.intro", State.Data.Contacts.Count)</p>
+
+@if (State.Data.Contacts.Count == 0)
+{
+    <div class="kb-melding">@T["contacts.none"]</div>
+}
+else
+{
+    <KbTable Id="contacten" Items="State.Data.Contacts" Columns="columns" DefaultSorting="naam" KeyOf="c => c.Smtp" />
+}
+
+@if (!State.IsHistoric && State.Can(Permission.Manage))
+{
+    <section class="kb-kaart">
+        <h2>@T["contacts.new"]</h2>
+        <div class="kb-raster">
+            <label>@T["edit-user.display-name"] <input class="kb-invoer" value="@request.DisplayName" @oninput="e => request.DisplayName = e.Value?.ToString() ?? string.Empty" aria-label="@T["edit-user.display-name"]" /></label>
+            <label>@T["contact.external"] <input class="kb-invoer" type="email" value="@request.External" @oninput="e => request.External = e.Value?.ToString() ?? string.Empty" aria-label="@T["contact.external"]" autocomplete="off" spellcheck="false" />
+                @if (request.External.Trim().Length > 0 && ContactPlans.Problem(State.Data, request.External.Trim(), null) is { } problem) { <span class="kb-waarschuwing">@problem</span> }
+            </label>
+            <label>@T["attribute.givenname"] <input class="kb-invoer" @bind="request.FirstName" /></label>
+            <label>@T["attribute.surname"] <input class="kb-invoer" @bind="request.LastName" /></label>
+            <label>@T["attribute.company"] <input class="kb-invoer" @bind="request.Company" /></label>
+            <label>@T["attribute.jobtitle"] <input class="kb-invoer" @bind="request.Title" /></label>
+            <label>@T["attribute.phone"] <input class="kb-invoer" type="tel" @bind="request.Phone" /></label>
+        </div>
+        <div class="kb-filters">
+            <button class="kb-knop kb-primair" disabled="@(request.DisplayName.Trim().Length == 0 || request.External.Trim().Length == 0)" @onclick="MakePlan">@T["bulk-tasks.make-plan"]</button>
+        </div>
+        @foreach (var f in errors)
+        {
+            <div class="kb-melding kb-fout">@f</div>
+        }
+    </section>
+}
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@T["menu.contacten"]" Title="@T["contacts.new"]" Executed="AfterExecute" />
+}
+
+@code {
+    private NewContactRequest request = new();
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private IReadOnlyList<Column<MailContact>> columns = Array.Empty<Column<MailContact>>();
+
+    protected override void OnInitialized() => columns = new List<Column<MailContact>>
+    {
+        new() { Key = "naam", Title = T["edit-user.display-name"], Cell = c => @<text><a href="@($"contact/{Uri.EscapeDataString(c.Smtp)}")">@c.DisplayName</a></text>, SortBy = c => c.DisplayName, Text = c => c.DisplayName },
+        new() { Key = "adres", Title = T["contact.external"], Cell = c => @<text>@c.External</text>, SortBy = c => c.External },
+        new() { Key = "bedrijf", Title = T["attribute.company"], Cell = c => @<text>@c.Company</text>, SortBy = c => c.Company },
+        new() { Key = "functie", Title = T["attribute.jobtitle"], Cell = c => @<text>@c.Title</text>, SortBy = c => c.Title },
+        new() { Key = "verborgen", Title = T["contacts.hidden"], Cell = c => @<text>@(c.Hidden ? T["word.yes"] : T["word.no"])</text>, SortBy = c => c.Hidden },
+        new() { Key = "bron", Title = T["contacts.source"], Cell = c => @<text>@(c.IsDirSynced ? "AD" : "Exchange Online")</text>, SortBy = c => c.IsDirSynced },
+    };
+
+    private void MakePlan()
+    {
+        var outcome = ContactPlans.New(State.Data, request);
+        errors = outcome.Errors;
+        plan = outcome.Plan.Count > 0 ? outcome.Plan : null;
+    }
+
+    private void AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            request = new();
+        }
+    }
+}

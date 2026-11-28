@@ -72,6 +72,7 @@ public static class InventoryWriter
                 ["EmployeeID"] = u.EmployeeId, ["EmployeeType"] = u.EmployeeType, ["StreetAddress"] = u.StreetAddress,
                 ["PostalCode"] = u.PostalCode, ["State"] = u.State, ["Country"] = u.Country,
                 ["HomePhone"] = u.HomePhone, ["Fax"] = u.Fax, ["IpPhone"] = u.IpPhone, ["AccountExpirationDate"] = u.AccountExpires,
+                ["ProxyAddresses"] = string.Join('|', u.ProxyAddresses),
             }));
             Write(InventoryLoader.AdGroups, d.AdGroupsByDn.Values.Select(g => new Dictionary<string, string?>
             {
@@ -192,6 +193,12 @@ public static class InventoryWriter
                 ["DoorsturenNaar"] = p.ForwardingTo, ["DoorsturenEnBewaren"] = p.SaveForwardingAnd is null ? string.Empty : B(p.SaveForwardingAnd.Value),
                 ["AutoAntwoord"] = p.AutoReply, ["AutoAntwoordIntern"] = p.AutoReplyInternal, ["AutoAntwoordExtern"] = p.AutoReplyExternal,
                 ["KopieVerzonden"] = p.SentItemsCopy is null ? string.Empty : B(p.SentItemsCopy.Value), ["NamensVan"] = string.Join('|', p.SendOnBehalf),
+            }));
+            Write(InventoryLoader.ExoContacts, d.Contacts.Select(c => new Dictionary<string, string?>
+            {
+                ["DisplayName"] = c.DisplayName, ["Name"] = c.Name, ["Alias"] = c.Alias, ["ExternalEmailAddress"] = c.External, ["PrimarySmtpAddress"] = c.Smtp,
+                ["Hidden"] = B(c.Hidden), ["IsDirSynced"] = B(c.IsDirSynced), ["FirstName"] = c.FirstName, ["LastName"] = c.LastName,
+                ["Company"] = c.Company, ["Title"] = c.Title, ["Phone"] = c.Phone,
             }));
             Write(InventoryLoader.ExoMailboxPermissions, d.MailboxPermissions.Select(r => new Dictionary<string, string?>
             {

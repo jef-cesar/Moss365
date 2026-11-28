@@ -221,6 +221,20 @@ public static class TestData
             Permission("info@test.be", "FullAccess", "S-1-5-21-111-222-333-1001"),
             Permission("boekhouding@test.be", "FullAccess,SendAs", "an.peeters@test.be"),
         },
+        // R21: mail contacts (one from AD)
+        [InventoryLoader.ExoContacts] = new()
+        {
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["DisplayName"] = "Jan Extern", ["Name"] = "Jan Extern", ["Alias"] = "jan.extern", ["ExternalEmailAddress"] = "jan@fabrikam.com",
+                ["PrimarySmtpAddress"] = "jan@fabrikam.com", ["Hidden"] = "False", ["IsDirSynced"] = "False", ["Company"] = "Fabrikam", ["Title"] = "Adviseur",
+            },
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["DisplayName"] = "Leverancier AD", ["Name"] = "Leverancier AD", ["Alias"] = "leverancier", ["ExternalEmailAddress"] = "info@fabrikam.com",
+                ["PrimarySmtpAddress"] = "info@fabrikam.com", ["Hidden"] = "False", ["IsDirSynced"] = "True",
+            },
+        },
         [InventoryLoader.EntraGroupMembers] = new()
         {
             Member("g-alle", "e-an"), Member("g-alle", "e-bo"), Member("g-sm", "e-an"), Member("g-team", "e-an"), Member("g-team", "e-bo"),
