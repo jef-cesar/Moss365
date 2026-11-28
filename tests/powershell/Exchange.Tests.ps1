@@ -20,8 +20,9 @@ BeforeAll {
     function global:Set-MailboxFolderPermission { param($Identity, $User, $AccessRights, $ErrorAction)
         if ($Identity -like '*:\Calendar') { throw 'map niet gevonden' }
         $global:ExoAanroepen.Add("Perm $Identity $User $AccessRights") }
-    function global:Set-Mailbox { param($Identity, $Type, $DisplayName, $HiddenFromAddressListsEnabled, $ForwardingSmtpAddress, $DeliverToMailboxAndForward, $MessageCopyForSentAsEnabled, $MessageCopyForSendOnBehalfEnabled, $GrantSendOnBehalfTo, $ErrorAction)
+    function global:Set-Mailbox { param($Identity, $Type, $DisplayName, $HiddenFromAddressListsEnabled, $ForwardingSmtpAddress, $DeliverToMailboxAndForward, $MessageCopyForSentAsEnabled, $MessageCopyForSendOnBehalfEnabled, $GrantSendOnBehalfTo, $WindowsEmailAddress, $ErrorAction)
         if ($Type) { $global:ExoAanroepen.Add("Mbx $Identity $Type"); return }
+        if ($WindowsEmailAddress) { $global:ExoAanroepen.Add("SetMbxPrimary $Identity $WindowsEmailAddress"); return }
         if ($null -ne $MessageCopyForSentAsEnabled -or $null -ne $GrantSendOnBehalfTo) {
             $global:ExoAanroepen.Add("SetMbxR21 $Identity Copy=$MessageCopyForSentAsEnabled/$($MessageCopyForSentAsEnabled.GetType().Name) OnBehalf=$($GrantSendOnBehalfTo -join ',')/$(@($GrantSendOnBehalfTo).Count)"); return
         }
@@ -233,6 +234,16 @@ Describe 'Exchange.ps1' {
         ($r | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
         ($r | Where-Object id -eq 'b').status | Should -Not -Be 'Gelukt'
         $global:ExoAanroepen | Should -Contain 'SetMbxR21 info@test.be Copy=True/Boolean OnBehalf=an@test.be,bo@test.be/2'
+    }
+
+    It 'gives a mailbox a new primary address, never an empty one (R21)' {
+        $r = Voer @(
+            @{ id = 'a'; op = 'PostvakInstellen'; params = @{ Identity = 'info@test.be'; WindowsEmailAddress = 'onthaal@test.be' } }
+            @{ id = 'b'; op = 'PostvakInstellen'; params = @{ Identity = 'info@test.be'; WindowsEmailAddress = '' } }
+        )
+        ($r | Where-Object id -eq 'a').status | Should -Be 'Gelukt'
+        ($r | Where-Object id -eq 'b').status | Should -Not -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'SetMbxPrimary info@test.be onthaal@test.be'
     }
 
     It 'reads shared mailboxes with permissions and groups' {

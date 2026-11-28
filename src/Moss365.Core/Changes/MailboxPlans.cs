@@ -24,6 +24,9 @@ public sealed class MailboxDesired
 
     /// <summary>R21: the whole list of who may send on behalf (addresses); null = do not change.</summary>
     public IReadOnlyList<string>? SendOnBehalf { get; set; }
+
+    /// <summary>R21: the new primary address; the old one stays as an alias. Null = do not change.</summary>
+    public string? PrimaryAddress { get; set; }
 }
 
 /// <summary>A new shared mailbox with its access group.</summary>
@@ -99,7 +102,7 @@ public static class MailboxPlans
     public static readonly string[] Permissions = { "FullAccess", "SendAs" };
 
     /// <summary>Settings of the mailbox: only what differs from the known value.</summary>
-    public static PlanOutcome Settings(Mailbox p, MailboxDesired g)
+    public static PlanOutcome Settings(Mailbox p, MailboxDesired g, InventoryData? data = null)
     {
         var plan = new List<Change>();
         var errors = new List<string>();
@@ -176,8 +179,26 @@ public static class MailboxPlans
             }
         }
 
+        // R21: the primary address (WindowsEmailAddress: in Exchange Online the old primary address stays as an alias,
+        // so mail to it keeps arriving and undo finds the mailbox by it)
+        string? addressWarning = null;
+        if (g.PrimaryAddress is { } wanted && wanted.Trim() is { Length: > 0 } address && !string.Equals(address, p.Smtp, StringComparison.OrdinalIgnoreCase))
+        {
+            if (PrimaryAddressProblem(p, address, data) is { } problem)
+            {
+                errors.Add(problem);
+            }
+            else
+            {
+                Set("WindowsEmailAddress", p.Smtp, address);
+                addressWarning = Texts.T.Format("mailbox.primary.alias", p.Smtp);
+            }
+        }
+
         if (configure.Count > 0)
         {
+            var forwarding = configure.TryGetValue("ForwardingSmtpAddress", out var f) && f.Length > 0 && !IsOwnDomain(f, p.Smtp)
+                ? Texts.T["code.mailbox-plans.forwarding-to-another-domain-check"] : null;
             plan.Add(new Change
             {
                 TargetSystem = TargetSystem.Exchange,
@@ -189,8 +210,7 @@ public static class MailboxPlans
                 Previous = previous,
                 CurrentValue = string.Join(", ", old),
                 NewValue = string.Join(", ", newValue),
-                Warning = configure.TryGetValue("ForwardingSmtpAddress", out var f) && f.Length > 0 && !IsOwnDomain(f, p.Smtp)
-                    ? Texts.T["code.mailbox-plans.forwarding-to-another-domain-check"] : null,
+                Warning = forwarding is null && addressWarning is null ? null : string.Join(" ", new[] { forwarding, addressWarning }.Where(w => w is not null)),
             });
         }
 
@@ -484,6 +504,35 @@ public static class MailboxPlans
     };
 
     private static string Domain(string smtp) => smtp.Contains('@') ? smtp[(smtp.IndexOf('@') + 1)..] : string.Empty;
+
+    /// <summary>Why a mailbox cannot get this primary address (R21), or null: not an address, a mailbox from AD (its
+    /// addresses are proxyAddresses there), or an address another recipient has.</summary>
+    public static string? PrimaryAddressProblem(Mailbox p, string address, InventoryData? data)
+    {
+        if (!AttributePlans.ValidValue(nameof(UserDesired.Upn), address))
+        {
+            return Texts.T.Format("code.mailbox-plans.is-not-an-e-mail", address);
+        }
+
+        if (p.IsDirSynced)
+        {
+            return Texts.T["mailbox.primary.synced"];
+        }
+
+        return data is not null && AddressHolder(data, address, p.Smtp) is { } holder ? Texts.T.Format("mailbox.primary.taken", address, holder) : null;
+    }
+
+    /// <summary>Who has this address already (a person, mailbox, room or group), apart from the mailbox itself.</summary>
+    public static string? AddressHolder(InventoryData data, string address, string own)
+    {
+        bool Is(string? a) => !string.IsNullOrEmpty(a) && string.Equals(a, address, StringComparison.OrdinalIgnoreCase) && !string.Equals(a, own, StringComparison.OrdinalIgnoreCase);
+        return data.Persons.FirstOrDefault(x => Is(x.Ad?.EmailAddress) || Is(x.Entra?.Mail) || Is(x.Entra?.UserPrincipalName) || Is(x.Ad?.UserPrincipalName))?.Name
+               ?? data.Mailboxes.FirstOrDefault(m => Is(m.Smtp))?.DisplayName
+               ?? data.Rooms.FirstOrDefault(r => Is(r.Smtp))?.DisplayName
+               ?? data.ExoGroups.FirstOrDefault(x => Is(x.Smtp))?.DisplayName
+               ?? data.CloudGroups.Values.FirstOrDefault(x => Is(x.Mail))?.DisplayName
+               ?? data.AdGroupsByDn.Values.FirstOrDefault(x => Is(x.Mail))?.Name;
+    }
 
     private static bool IsOwnDomain(string address, string mailboxSmtp)
         => string.Equals(Domain(address), Domain(mailboxSmtp), StringComparison.OrdinalIgnoreCase);

@@ -4055,5 +4055,10 @@
   "attribute.invalid.hint.accountexpires": "Ein Datum (Tag, Monat, Jahr) oder nie.",
   "attribute.expires-past": "{0} liegt vor heute: das Konto funktioniert nicht mehr, sobald der Plan ausgeführt ist.",
   "edit-user.never": "läuft nie ab",
-  "edit-user.never-expires": "Läuft nie ab"
+  "edit-user.never-expires": "Läuft nie ab",
+  "mailbox.primary": "Primäre Adresse",
+  "mailbox.primary.alias": "{0} bleibt als Alias: E-Mails dorthin kommen weiterhin an.",
+  "mailbox.primary.synced": "Dieses Postfach stammt aus dem AD: seine Adressen werden dort geändert (proxyAddresses), nicht in Exchange Online.",
+  "mailbox.primary.taken": "{1} hat die Adresse {0} bereits.",
+  "mailbox.primary.confirm": "Ich weiß, dass das Postfach danach als {0} sendet; {1} bleibt als Alias."
 }

@@ -136,6 +136,9 @@ else
         }
         <div class="kb-raster">
             <label>@T["edit-user.display-name"] <input class="kb-invoer" @bind="desired.DisplayName" /></label>
+            <label>@T["mailbox.primary"] <input class="kb-invoer" placeholder="@mailbox.Smtp" value="@extra.PrimaryAddress" @oninput="e => extra.PrimaryAddress = e.Value?.ToString()" aria-label="@T["mailbox.primary"]" autocomplete="off" spellcheck="false" />
+                @if (PrimaryChanges && MailboxPlans.PrimaryAddressProblem(mailbox, extra.PrimaryAddress!.Trim(), State.Data) is { } problem) { <span class="kb-waarschuwing">@problem</span> }
+            </label>
             <label>@T["bulk-tasks.hide-in-the-address-list"] <YesNo @bind-Value="desired.Hidden" /></label>
             <label>@T["mailbox-detail.forward-to-empty-off"] <input class="kb-invoer" placeholder="@(mailbox.ForwardingTo.Length > 0 ? mailbox.ForwardingTo : "(niet wijzigen)")" @bind="extra.Forwarding" /></label>
             <label>@T["mailbox-detail.also-keep-when-forwarding"] <YesNo @bind-Value="desired.SaveForwardingAnd" /></label>
@@ -150,6 +153,10 @@ else
             </label>
         </div>
         <label><input type="checkbox" @bind="extra.DisableForwarding" /> @T["mailbox-detail.turn-off-forwarding"]</label>
+        @if (PrimaryChanges)
+        {
+            <p><label><input type="checkbox" checked="@extra.PrimaryConfirmed" @onchange="e => extra.PrimaryConfirmed = e.Value is true" /> @T.Format("mailbox.primary.confirm", extra.PrimaryAddress!.Trim(), mailbox.Smtp)</label></p>
+        }
         @if (extra.AutoReply == "Enabled")
         {
             <div class="kb-raster kb-breed-raster">
@@ -158,7 +165,7 @@ else
             </div>
         }
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" @onclick="SettingsPlan">@T["bulk-tasks.make-plan"]</button>
+            <button class="kb-knop kb-primair" disabled="@(PrimaryChanges && !extra.PrimaryConfirmed)" @onclick="SettingsPlan">@T["bulk-tasks.make-plan"]</button>
         </div>
     </section>
     }
@@ -185,7 +192,7 @@ else
     private IReadOnlyList<PermissionRule> permissions = Array.Empty<PermissionRule>();
     private MailboxDesired desired = new();
     // What you filled in is kept per mailbox until the plan has run (Back, Forward, menu)
-    private sealed class Extra { public string? Forwarding { get; set; } public bool DisableForwarding { get; set; } public string AutoReply { get; set; } = string.Empty; public string? OnBehalf { get; set; } }
+    private sealed class Extra { public string? Forwarding { get; set; } public bool DisableForwarding { get; set; } public string AutoReply { get; set; } = string.Empty; public string? OnBehalf { get; set; } public string? PrimaryAddress { get; set; } public bool PrimaryConfirmed { get; set; } }
     private Extra extra = new();
     private string Form => $"postvakken/{loaded}/wijzigen";
     private IReadOnlyList<Change>? plan;
@@ -221,6 +228,9 @@ else
         }
     }
 
+    /// <summary>A new primary address is typed (R21): it needs a confirmation.</summary>
+    private bool PrimaryChanges => mailbox is not null && extra.PrimaryAddress?.Trim() is { Length: > 0 } a && !string.Equals(a, mailbox.Smtp, StringComparison.OrdinalIgnoreCase);
+
     private void AfterExecute(IReadOnlyList<ChangeResult> results)
     {
         if (results.Any(r => r.Status == ResultStatus.Succeeded))
@@ -238,7 +248,8 @@ else
         desired.SendOnBehalf = extra.OnBehalf is null || extra.OnBehalf.Trim().Length == 0 ? null
             : extra.OnBehalf.Trim() == "-" ? Array.Empty<string>()
             : extra.OnBehalf.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        Plan(MailboxPlans.Settings(mailbox!, desired), T["code.mailbox-detail.settings-of-the-mailbox"]);
+        desired.PrimaryAddress = PrimaryChanges ? extra.PrimaryAddress!.Trim() : null;
+        Plan(MailboxPlans.Settings(mailbox!, desired, State.Data), T["code.mailbox-detail.settings-of-the-mailbox"]);
     }
 
     private void Plan(PlanOutcome u, string title)

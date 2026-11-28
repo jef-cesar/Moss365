@@ -4055,5 +4055,10 @@
   "attribute.invalid.hint.accountexpires": "A date (day, month, year), or never.",
   "attribute.expires-past": "{0} is before today: the account stops working as soon as the plan has run.",
   "edit-user.never": "never expires",
-  "edit-user.never-expires": "Never expires"
+  "edit-user.never-expires": "Never expires",
+  "mailbox.primary": "Primary address",
+  "mailbox.primary.alias": "{0} stays as an alias: mail to it keeps arriving.",
+  "mailbox.primary.synced": "This mailbox comes from AD: its addresses are changed there (proxyAddresses), not in Exchange Online.",
+  "mailbox.primary.taken": "{1} has the address {0} already.",
+  "mailbox.primary.confirm": "I know that the mailbox sends as {0} afterwards; {1} stays as an alias."
 }

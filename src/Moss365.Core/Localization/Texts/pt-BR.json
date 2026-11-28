@@ -4055,5 +4055,10 @@
   "attribute.invalid.hint.accountexpires": "Uma data (dia, mês, ano), ou nunca.",
   "attribute.expires-past": "{0} é anterior a hoje: a conta deixa de funcionar assim que o plano for executado.",
   "edit-user.never": "nunca expira",
-  "edit-user.never-expires": "Nunca expira"
+  "edit-user.never-expires": "Nunca expira",
+  "mailbox.primary": "Endereço principal",
+  "mailbox.primary.alias": "{0} continua como alias: o correio enviado para ele continua a chegar.",
+  "mailbox.primary.synced": "Esta caixa de correio vem do AD: os endereços são alterados lá (proxyAddresses), não no Exchange Online.",
+  "mailbox.primary.taken": "{1} já tem o endereço {0}.",
+  "mailbox.primary.confirm": "Sei que a caixa passa a enviar como {0}; {1} continua como alias."
 }

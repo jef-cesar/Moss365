@@ -125,14 +125,24 @@ public static class GroupPlans
         }
     }
 
-    /// <summary>Display name, description and (mail groups) e-mail address; only what differs.</summary>
-    public static PlanOutcome Attributes(Group g, GroupDesired desired)
+    /// <summary>Display name, description and (mail groups) e-mail address; only what differs. With the data, an
+    /// address another recipient has is refused (R21).</summary>
+    public static PlanOutcome Attributes(Group g, GroupDesired desired, InventoryData? data = null)
     {
         var errors = new List<string>();
         var plan = new List<Change>();
         var name = New(g.Name, desired.DisplayName);
         var description = New(g.Description, desired.Description);
         var mail = New(g.Mail, desired.Mail);
+        if (mail is { Length: > 0 } && !AttributePlans.ValidValue(nameof(UserDesired.Upn), mail))
+        {
+            return PlanOutcome.Error(Texts.T.Format("code.mailbox-plans.is-not-an-e-mail", mail));
+        }
+
+        if (mail is { Length: > 0 } && data is not null && MailboxPlans.AddressHolder(data, mail, g.Mail) is { } holder)
+        {
+            return PlanOutcome.Error(Texts.T.Format("mailbox.primary.taken", mail, holder));
+        }
 
         switch (g.Route)
         {

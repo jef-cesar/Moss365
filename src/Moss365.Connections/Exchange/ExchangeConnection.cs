@@ -168,7 +168,7 @@ public sealed class ExchangeConnection : IExchangeConnection, IExecutor
                 op = "PostvakInstellen";
                 p["Identity"] = w.Target;
                 Take(w, p, "DisplayName", "HiddenFromAddressListsEnabled", "ForwardingSmtpAddress", "DeliverToMailboxAndForward",
-                    "MessageCopyForSentAsEnabled", "MessageCopyForSendOnBehalfEnabled", "GrantSendOnBehalfTo");
+                    "MessageCopyForSentAsEnabled", "MessageCopyForSendOnBehalfEnabled", "GrantSendOnBehalfTo", "WindowsEmailAddress");
                 break;
             case ChangeAction.ExchangeAutoReply:
                 op = "AutoAntwoord";

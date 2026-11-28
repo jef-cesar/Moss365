@@ -4055,5 +4055,10 @@
   "attribute.invalid.hint.accountexpires": "Une date (jour, mois, année), ou jamais.",
   "attribute.expires-past": "{0} est antérieur à aujourd'hui : le compte ne fonctionne plus dès que le plan est exécuté.",
   "edit-user.never": "n'expire jamais",
-  "edit-user.never-expires": "N'expire jamais"
+  "edit-user.never-expires": "N'expire jamais",
+  "mailbox.primary": "Adresse principale",
+  "mailbox.primary.alias": "{0} reste un alias : le courrier envoyé à cette adresse continue d'arriver.",
+  "mailbox.primary.synced": "Cette boîte aux lettres vient de l'AD : ses adresses se modifient là-bas (proxyAddresses), pas dans Exchange Online.",
+  "mailbox.primary.taken": "{1} a déjà l'adresse {0}.",
+  "mailbox.primary.confirm": "Je sais que la boîte envoie ensuite en tant que {0} ; {1} reste un alias."
 }

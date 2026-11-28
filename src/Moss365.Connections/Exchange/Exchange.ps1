@@ -54,7 +54,7 @@ $Toegestaan = @{
     'LeesObjecten'     = @('Adressen')
     'GroepInstellen'   = @('Identity', 'DisplayName', 'PrimarySmtpAddress', 'HiddenFromAddressListsEnabled', 'RequireSenderAuthenticationEnabled', 'MemberJoinRestriction')
     'Beheerder'        = @('Identity', 'Toevoegen', 'Verwijderen')
-    'PostvakInstellen' = @('Identity', 'DisplayName', 'HiddenFromAddressListsEnabled', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled', 'GrantSendOnBehalfTo')
+    'PostvakInstellen' = @('Identity', 'DisplayName', 'HiddenFromAddressListsEnabled', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled', 'GrantSendOnBehalfTo', 'WindowsEmailAddress')
     'AutoAntwoord'     = @('Identity', 'AutoReplyState', 'InternalMessage', 'ExternalMessage', 'StartTime', 'EndTime')
     'Berichtspoor'     = @('SenderAddress', 'RecipientAddress', 'Dagen')
     'Doorsturen'       = @('MetRegels')
@@ -326,6 +326,11 @@ function Invoke-Opdracht {
             # R21: who may send on behalf of the mailbox: the whole list, addresses separated by | (empty = nobody)
             if ($P.ContainsKey('GrantSendOnBehalfTo')) {
                 $instellen['GrantSendOnBehalfTo'] = @($P.GrantSendOnBehalfTo -split '\|' | Where-Object { $_ })
+            }
+            # R21: a new primary address (the old one stays as an alias in Exchange Online); never empty
+            if ($P.ContainsKey('WindowsEmailAddress')) {
+                if (-not $P.WindowsEmailAddress) { throw 'No primary address given.' }
+                $instellen['WindowsEmailAddress'] = $P.WindowsEmailAddress
             }
             if ($P.ContainsKey('ForwardingSmtpAddress')) {
                 # Empty = turn forwarding off

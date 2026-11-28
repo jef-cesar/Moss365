@@ -365,3 +365,35 @@ public sealed partial class PlanScreenTests
         cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.GraphSetAttributes && w.P("faxNumber") == "03 000 00 08"));
     }
 }
+
+/// <summary>R21: the primary address of a shared mailbox, checked and confirmed, with the old one kept as an alias.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void ANewPrimaryAddressIsCheckedConfirmedAndCanBeUndone()
+    {
+        var info = State.Data.Index.Mailbox("info@test.be")!;
+        var taken = State.Data.Persons.First(p => p.Entra?.Mail is { Length: > 0 }).Entra!.Mail;
+        Assert.NotNull(MailboxPlans.PrimaryAddressProblem(info, taken, State.Data));
+        Assert.NotNull(MailboxPlans.PrimaryAddressProblem(info, "onthaal test.be", State.Data));
+        Assert.NotNull(MailboxPlans.PrimaryAddressProblem(info with { IsDirSynced = true }, "onthaal@test.be", State.Data)); // from AD: changed there
+        Assert.Null(MailboxPlans.PrimaryAddressProblem(info, "onthaal@test.be", State.Data));
+
+        var cut = RenderComponent<MailboxDetail>(p => p.Add(x => x.Smtp, "info@test.be"));
+        bool Disabled() => cut.FindAll("button").First(b => b.TextContent == "Plan maken").HasAttribute("disabled");
+        cut.Find("input[aria-label='Primair adres']").Input(taken);
+        Assert.Contains("heeft het adres", cut.Markup, StringComparison.Ordinal);
+        cut.Find("input[aria-label='Primair adres']").Input("onthaal@test.be");
+        Assert.True(Disabled()); // a new primary address needs the confirmation first
+        cut.FindAll("input[type='checkbox']").First(c => c.ParentElement!.TextContent.Contains("blijft als alias", StringComparison.Ordinal)).Change(true);
+        Assert.False(Disabled());
+        cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
+        Assert.Contains("mail daarnaartoe komt nog aan", cut.Find("section.kb-plan").TextContent, StringComparison.Ordinal);
+        Confirm(cut);
+        cut.WaitForAssertion(() => Assert.Contains(_factory.Executed, w => w.ChangeAction == ChangeAction.ExchangeUpdateMailbox));
+        var step = Assert.Single(_factory.Executed, w => w.ChangeAction == ChangeAction.ExchangeUpdateMailbox);
+        Assert.Equal("onthaal@test.be", step.P("WindowsEmailAddress"));
+        Assert.Equal("info@test.be", step.Target); // found by the old address, which stays as an alias
+        Assert.Equal("info@test.be", step.Previous!["WindowsEmailAddress"]);
+    }
+}

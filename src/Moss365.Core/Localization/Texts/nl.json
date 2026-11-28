@@ -4055,5 +4055,10 @@
   "attribute.invalid.hint.accountexpires": "Een datum (dag, maand, jaar), of nooit.",
   "attribute.expires-past": "{0} ligt voor vandaag: het account werkt niet meer zodra het plan uitgevoerd is.",
   "edit-user.never": "vervalt nooit",
-  "edit-user.never-expires": "Vervalt nooit"
+  "edit-user.never-expires": "Vervalt nooit",
+  "mailbox.primary": "Primair adres",
+  "mailbox.primary.alias": "{0} blijft als alias: mail daarnaartoe komt nog aan.",
+  "mailbox.primary.synced": "Dit postvak komt uit AD: de adressen worden daar gewijzigd (proxyAddresses), niet in Exchange Online.",
+  "mailbox.primary.taken": "{1} heeft het adres {0} al.",
+  "mailbox.primary.confirm": "Ik weet dat het postvak daarna verstuurt als {0}; {1} blijft als alias."
 }

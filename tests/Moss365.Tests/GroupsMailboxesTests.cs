@@ -148,6 +148,13 @@ public sealed class GroupsMailboxesTests
 
         // Nothing changed = no plan
         Assert.Empty(GroupPlans.Attributes(G("g-team"), new GroupDesired { DisplayName = "DNST_CULTUUR" }).Plan);
+
+        // R21: an address another recipient has, or no address at all, is refused
+        var d = InventoryLoader.Build(TestData.Files());
+        var taken = d.Persons.First(p => p.Entra?.Mail is { Length: > 0 }).Entra!.Mail;
+        Assert.NotEmpty(GroupPlans.Attributes(G("gemeentehuis@test.be"), new GroupDesired { Mail = taken }, d).Errors);
+        Assert.NotEmpty(GroupPlans.Attributes(G("gemeentehuis@test.be"), new GroupDesired { Mail = "iedereen" }, d).Errors);
+        Assert.Single(GroupPlans.Attributes(G("gemeentehuis@test.be"), new GroupDesired { Mail = "iedereen@test.be" }, d).Plan);
     }
 
     [Fact]
