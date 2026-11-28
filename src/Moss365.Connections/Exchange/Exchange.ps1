@@ -44,7 +44,8 @@ $Toegestaan = @{
     'LidToevoegen'     = @('Identity', 'Member')
     'LidVerwijderen'   = @('Identity', 'Member')
     'Agendaverwerking' = @('Identity', 'AutomateProcessing', 'BookingWindowInDays', 'MaximumDurationInMinutes', 'AllowConflicts',
-        'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject')
+        'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject', 'ScheduleOnlyDuringWorkHours')
+    'Werkuren'         = @('Identity', 'WorkDays', 'WorkingHoursStartTime', 'WorkingHoursEndTime', 'WorkingHoursTimeZone')
     'Place'            = @('Identity', 'Building', 'Floor', 'FloorLabel', 'Capacity', 'City', 'Street', 'PostalCode', 'CountryOrRegion',
                            'AudioDeviceName', 'VideoDeviceName', 'DisplayDeviceName', 'IsWheelChairAccessible')
     'AgendaRecht'      = @('Identity', 'User', 'AccessRights')
@@ -67,9 +68,11 @@ $Toegestaan = @{
     'LeesOrganisatie'  = @()
     'OrganisatieInstellen' = @('Instelling', 'Waarde', 'Identity')
 }
+$WerkDagen = @('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Weekdays', 'WeekendDays', 'AllDays')
 $Getallen = @('BookingWindowInDays', 'MaximumDurationInMinutes', 'Floor', 'Capacity')
 $JaNee = @('AllowConflicts', 'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward',
-    'RequireSenderAuthenticationEnabled', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled', 'IsWheelChairAccessible')
+    'RequireSenderAuthenticationEnabled', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled', 'IsWheelChairAccessible',
+    'ScheduleOnlyDuringWorkHours')
 $PostvakRechten = @('FullAccess', 'SendAs')
 $AutoAntwoordStanden = @('Enabled', 'Disabled', 'Scheduled')
 $AgendaRechten = @('None', 'AvailabilityOnly', 'LimitedDetails', 'Reviewer', 'Author', 'Editor', 'PublishingEditor', 'Owner')
@@ -117,6 +120,14 @@ function Get-AgendaRechtenTekst {
     return ''
 }
 
+function Format-Uur {
+    # A time of day (TimeSpan or text) as HH:mm
+    param($Tijd)
+    if ($null -eq $Tijd -or "$Tijd" -eq '') { return '' }
+    $t = [timespan]::Parse("$Tijd", [Globalization.CultureInfo]::InvariantCulture)
+    return '{0:00}:{1:00}' -f $t.Hours, $t.Minutes
+}
+
 function Get-RoomsVoorApp {
     # Without a list: all rooms; with a list: only those (when reading a few objects again)
     param([object[]]$Lijst)
@@ -124,9 +135,10 @@ function Get-RoomsVoorApp {
         @(Get-EXOMailbox -RecipientTypeDetails RoomMailbox -ResultSize Unlimited -Properties DisplayName, Alias, PrimarySmtpAddress, HiddenFromAddressListsEnabled) }
     foreach ($r in $rooms) {
         $smtp = "$($r.PrimarySmtpAddress)"
-        $cal = $null; $place = $null
+        $cal = $null; $place = $null; $werk = $null
         try { $cal = Get-CalendarProcessing -Identity $smtp -ErrorAction Stop } catch { }
         try { $place = Get-Place -Identity $smtp -ErrorAction Stop } catch { }
+        try { $werk = Get-MailboxCalendarConfiguration -Identity $smtp -ErrorAction Stop } catch { }
         [pscustomobject]@{
             Smtp                     = $smtp
             DisplayName              = "$($r.DisplayName)"
@@ -143,6 +155,11 @@ function Get-RoomsVoorApp {
             Video                    = "$($place.VideoDeviceName)"
             Scherm                   = "$($place.DisplayDeviceName)"
             Rolstoel                 = "$($place.IsWheelChairAccessible)"
+            WerkDagen                = ("$($werk.WorkDays)" -replace '\s', '')
+            WerkBegin                = $(if ($werk) { Format-Uur $werk.WorkingHoursStartTime } else { '' })
+            WerkEinde                = $(if ($werk) { Format-Uur $werk.WorkingHoursEndTime } else { '' })
+            WerkTijdzone             = "$($werk.WorkingHoursTimeZone)"
+            AlleenWerkuren           = "$($cal.ScheduleOnlyDuringWorkHours)"
             Hidden                   = "$($r.HiddenFromAddressListsEnabled)"
             AutomateProcessing       = "$($cal.AutomateProcessing)"
             AllBookInPolicy          = "$($cal.AllBookInPolicy)"
@@ -296,6 +313,28 @@ function Invoke-Opdracht {
         }
         'Place' {
             Set-Place @P -ErrorAction Stop
+            return $null
+        }
+        'Werkuren' {
+            # R21: only the known days, times as HH:mm
+            $instellen = @{ Identity = $P.Identity }
+            if ($P.ContainsKey('WorkDays')) {
+                $dagen = @("$($P.WorkDays)" -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+                foreach ($d in $dagen) { if ($WerkDagen -notcontains $d) { throw "Unknown work day '$d'." } }
+                if ($dagen.Count -eq 0) { throw 'No work days given.' }
+                $instellen['WorkDays'] = $dagen -join ','
+            }
+            foreach ($k in 'WorkingHoursStartTime', 'WorkingHoursEndTime') {
+                if ($P.ContainsKey($k)) {
+                    if ("$($P[$k])" -notmatch '^([01][0-9]|2[0-3]):[0-5][0-9]$') { throw "$k is not a time (HH:mm)." }
+                    $instellen[$k] = [timespan]::Parse("$($P[$k])", [Globalization.CultureInfo]::InvariantCulture)
+                }
+            }
+            if ($P.ContainsKey('WorkingHoursTimeZone')) {
+                if (-not $P.WorkingHoursTimeZone) { throw 'No time zone given.' }
+                $instellen['WorkingHoursTimeZone'] = $P.WorkingHoursTimeZone
+            }
+            Set-MailboxCalendarConfiguration @instellen -ErrorAction Stop
             return $null
         }
         'AgendaRecht' {

@@ -4081,5 +4081,20 @@
   "contact.synced": "This contact comes from AD: it is changed there, not in Exchange Online.",
   "contact.name-needed": "A contact needs a display name.",
   "contact.plan.new": "Create the mail contact {0} in Exchange Online",
-  "contact.plan.edit": "Change the mail contact {0} in Exchange Online"
+  "contact.plan.edit": "Change the mail contact {0} in Exchange Online",
+  "room-form.day.monday": "Monday",
+  "room-form.day.tuesday": "Tuesday",
+  "room-form.day.wednesday": "Wednesday",
+  "room-form.day.thursday": "Thursday",
+  "room-form.day.friday": "Friday",
+  "room-form.day.saturday": "Saturday",
+  "room-form.day.sunday": "Sunday",
+  "room-form.work-days": "Working days",
+  "room-form.work-start": "Working hours from",
+  "room-form.work-end": "Working hours until",
+  "room-form.time-zone": "Time zone",
+  "room-form.only-work-hours": "Only bookable during the working hours",
+  "room-form.working-hours": "Working hours",
+  "room-form.work-hours-invalid": "The end has to come after the start (HH:mm).",
+  "room.plan.working-hours": "Change the working hours of {0}"
 }

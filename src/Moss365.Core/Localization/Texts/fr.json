@@ -4081,5 +4081,20 @@
   "contact.synced": "Ce contact vient de l'AD : il se modifie là-bas, pas dans Exchange Online.",
   "contact.name-needed": "Un contact a besoin d'un nom d'affichage.",
   "contact.plan.new": "Créer le contact {0} dans Exchange Online",
-  "contact.plan.edit": "Modifier le contact {0} dans Exchange Online"
+  "contact.plan.edit": "Modifier le contact {0} dans Exchange Online",
+  "room-form.day.monday": "lundi",
+  "room-form.day.tuesday": "mardi",
+  "room-form.day.wednesday": "mercredi",
+  "room-form.day.thursday": "jeudi",
+  "room-form.day.friday": "vendredi",
+  "room-form.day.saturday": "samedi",
+  "room-form.day.sunday": "dimanche",
+  "room-form.work-days": "Jours ouvrés",
+  "room-form.work-start": "Heures de travail de",
+  "room-form.work-end": "Heures de travail jusqu'à",
+  "room-form.time-zone": "Fuseau horaire",
+  "room-form.only-work-hours": "Réservable uniquement pendant les heures de travail",
+  "room-form.working-hours": "Heures de travail",
+  "room-form.work-hours-invalid": "La fin doit venir après le début (HH:mm).",
+  "room.plan.working-hours": "Modifier les heures de travail de {0}"
 }

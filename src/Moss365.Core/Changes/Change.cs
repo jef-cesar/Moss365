@@ -107,6 +107,7 @@ public enum ChangeAction
     AdSetProxyAddresses,          // Target = DN; mail, proxyAddresses (the whole list, separated by |; absent = unchanged); Previous both
     ExchangeCreateContact,        // Target = the external address; Name, DisplayName, ExternalEmailAddress, Alias, FirstName, LastName, Company, Title, Phone
     ExchangeUpdateContact,        // Target = the address of the contact; the fields that change (ContactInstellen); Previous the same fields
+    ExchangeRoomWorkingHours,     // Target = room address; WorkDays, WorkingHoursStartTime/EndTime (HH:mm), WorkingHoursTimeZone; Previous
 }
 
 /// <summary>

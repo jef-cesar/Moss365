@@ -33,6 +33,10 @@ else
                     @if (room.VideoDevice.Length > 0) { <tr><th>@T["room-form.video"]</th><td>@room.VideoDevice</td></tr> }
                     @if (room.DisplayDevice.Length > 0) { <tr><th>@T["room-form.display"]</th><td>@room.DisplayDevice</td></tr> }
                     @if (room.WheelchairAccessible is { } wheelchair) { <tr><th>@T["room-form.wheelchair"]</th><td>@(wheelchair ? T["word.yes"] : T["word.no"])</td></tr> }
+                    @if (room.WorkDays.Length > 0 || room.WorkStart.Length > 0)
+                    {
+                        <tr><th>@T["room-form.working-hours"]</th><td>@DaysText(room.WorkDays) @room.WorkStart–@room.WorkEnd @(room.WorkTimeZone.Length > 0 ? $"({room.WorkTimeZone})" : null)@(room.OnlyDuringWorkHours == true ? " · " + T["room-form.only-work-hours"] : null)</td></tr>
+                    }
                 </tbody>
             </table>
         </section>
@@ -139,7 +143,7 @@ else
         </div>
         <RoomForm Desired="desired" />
         <div class="kb-filters">
-            <button class="kb-knop kb-primair" @onclick="() => plan = PlanBuilder.Room(room, RoomForm.Cleaned(desired))">@T["bulk-tasks.make-plan"]</button>
+            <button class="kb-knop kb-primair" disabled="@RoomForm.Invalid(desired)" @onclick="() => plan = PlanBuilder.Room(room, RoomForm.Cleaned(desired))">@T["bulk-tasks.make-plan"]</button>
         </div>
     </section>
     }
@@ -238,4 +242,7 @@ else
 
     private static IEnumerable<(string Who, string Permission)> Permissions(string text)
         => Items(text).Select(d => d.IndexOf('=') is var i and > 0 ? (d[..i], d[(i + 1)..]) : (d, string.Empty));
+
+    /// <summary>The working days in the language of the screen.</summary>
+    private string DaysText(string days) => string.Join(", ", PlanBuilder.WeekDays.Where(PlanBuilder.DaysOf(days).Contains).Select(d => T["room-form.day." + d.ToLowerInvariant()]));
 }

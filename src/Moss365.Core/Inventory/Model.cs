@@ -203,6 +203,15 @@ public sealed record Room
     public string VideoDevice { get; init; } = string.Empty;
     public string DisplayDevice { get; init; } = string.Empty;
     public bool? WheelchairAccessible { get; init; }
+
+    // R21: the working hours (Get-MailboxCalendarConfiguration): days as Exchange names them ("Weekdays", "Monday,
+    // Tuesday"), start and end "HH:mm", the Windows time zone; and whether it can only be booked in them. Empty or null
+    // when not read.
+    public string WorkDays { get; init; } = string.Empty;
+    public string WorkStart { get; init; } = string.Empty;
+    public string WorkEnd { get; init; } = string.Empty;
+    public string WorkTimeZone { get; init; } = string.Empty;
+    public bool? OnlyDuringWorkHours { get; init; }
     public bool Hidden { get; init; }
     public string AutomateProcessing { get; init; } = string.Empty;
     public bool AllBookInPolicy { get; init; }
