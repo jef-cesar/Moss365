@@ -1,0 +1,152 @@
+@using Moss365.Core.Google
+@using Moss365.Core.Permissions
+@* The Gmail settings of a person (G2, part Gmail settings, U34): read when asked through the service account (in the
+   access log), and forwarding, the automatic reply, delegates, filters and the signature changed as plans with undo. *@
+@inject ManagementState State
+
+<div class="kb-sectie" id="gmail">
+    <div class="kb-sectie-kop">
+        <h3>@T["gmail.title"] <PlatformLabel Platform="Platform.Gmail" /></h3>
+        @if (settings is null) { <button class="kb-knop kb-klein" disabled="@reading" @onclick="Read">@T["gmail.read"]</button> }
+    </div>
+    @if (note is not null) { <div class="kb-melding">@note</div> }
+    @if (settings is { } s)
+    {
+        <h4>@T["gmail.forwarding"]</h4>
+        <p>@(s.Forwarding.Enabled ? T.Format("gmail.forwarding.now", s.Forwarding.Address, GmailPlans.DispositionName(s.Forwarding.Disposition)) : T["gmail.forwarding.none"])</p>
+        <div class="kb-filters">
+            <input class="kb-invoer" type="email" value="@forwardTo" @oninput="e => forwardTo = e.Value?.ToString() ?? string.Empty" aria-label="@T["gmail.forwarding.to"]" placeholder="@T["gmail.forwarding.to"]" />
+            <select class="kb-invoer" value="@disposition" @onchange="e => disposition = e.Value?.ToString() ?? disposition" aria-label="@T["gmail.forwarding.disposition"]">
+                @foreach (var d in GmailPlans.Dispositions) { <option value="@d">@GmailPlans.DispositionName(d)</option> }
+            </select>
+            <button class="kb-knop" @onclick="() => Show(GmailPlans.Forwarding(User, s, forwardTo, disposition, State.GoogleDomains))">@T["bulk-tasks.make-plan"]</button>
+            @if (s.Forwarding.Enabled) { <button class="kb-knop" @onclick="() => Show(GmailPlans.Forwarding(User, s, string.Empty, disposition, State.GoogleDomains))">@T["gmail.forwarding.stop"]</button> }
+        </div>
+
+        <h4>@T["gmail.vacation"]</h4>
+        <div class="kb-raster">
+            <label><input type="checkbox" checked="@vacationOn" @onchange="e => vacationOn = e.Value is true" /> @T["gmail.vacation.on"]</label>
+            <label>@T["gmail.vacation.subject"] <input class="kb-invoer" value="@subject" @oninput="e => subject = e.Value?.ToString() ?? string.Empty" aria-label="@T["gmail.vacation.subject"]" /></label>
+            <label>@T["gmail.vacation.text"] <textarea class="kb-invoer" rows="3" value="@text" @oninput="e => text = e.Value?.ToString() ?? string.Empty" aria-label="@T["gmail.vacation.text"]"></textarea></label>
+            <label><input type="checkbox" checked="@onlyInternal" @onchange="e => onlyInternal = e.Value is true" /> @T["gmail.vacation.only-internal"]</label>
+            <label>@T["gmail.vacation.start"] <input class="kb-invoer" type="date" value="@start" @onchange="e => start = e.Value?.ToString() ?? string.Empty" aria-label="@T["gmail.vacation.start"]" /></label>
+            <label>@T["gmail.vacation.end"] <input class="kb-invoer" type="date" value="@end" @onchange="e => end = e.Value?.ToString() ?? string.Empty" aria-label="@T["gmail.vacation.end"]" /></label>
+        </div>
+        <div class="kb-filters"><button class="kb-knop" @onclick="MakeVacationPlan">@T["bulk-tasks.make-plan"]</button></div>
+
+        <h4>@T["gmail.delegates"]</h4>
+        @if (s.Delegates.Count == 0) { <p class="kb-zacht">@T["gmail.delegates.none"]</p> }
+        <ul class="kb-lijst">
+            @foreach (var d in s.Delegates)
+            {
+                var who = d;
+                <li>@who <button class="kb-knop kb-klein" @onclick="() => Show(PlanOutcome.Of(new[] { GmailPlans.RemoveDelegate(User, who) }))">@T["google.edit.remove"]</button></li>
+            }
+        </ul>
+        <div class="kb-filters">
+            <input class="kb-invoer" type="email" value="@delegateAddress" @oninput="e => delegateAddress = e.Value?.ToString() ?? string.Empty" aria-label="@T["gmail.delegates.new"]" placeholder="@T["gmail.delegates.new"]" />
+            <button class="kb-knop" @onclick="() => Show(GmailPlans.AddDelegate(User, s, delegateAddress, State.GoogleDomains))">@T["gmail.delegates.add"]</button>
+        </div>
+
+        <h4>@T["gmail.filters"]</h4>
+        @if (s.Filters.Count == 0) { <p class="kb-zacht">@T["gmail.filters.none"]</p> }
+        <ul class="kb-lijst-plat">
+            @foreach (var f in s.Filters)
+            {
+                var filter = f;
+                <li>@if (filter.Forwards) { <span class="kb-label kb-rood">@T["gmail.filters.forwards"]</span> } @filter.Summary
+                    <button class="kb-knop kb-klein" @onclick="() => Show(PlanOutcome.Of(new[] { GmailPlans.RemoveFilter(User, filter) }))">@T["google.edit.remove"]</button></li>
+            }
+        </ul>
+
+        <h4>@T["gmail.signature"]</h4>
+        <textarea class="kb-invoer kb-breed" rows="4" value="@signature" @oninput="e => signature = e.Value?.ToString() ?? string.Empty" aria-label="@T["gmail.signature"]"></textarea>
+        <div class="kb-filters"><button class="kb-knop" @onclick="() => Show(GmailPlans.Signature(User, s, signature))">@T["bulk-tasks.make-plan"]</button></div>
+    }
+</div>
+
+@foreach (var e in errors) { <div class="kb-melding kb-fout">@e</div> }
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@($"Gmail {User.PrimaryEmail}")" Title="@T["gmail.title"]" Executed="AfterExecute" />
+}
+
+@code {
+    [Parameter, EditorRequired] public GoogleUser User { get; set; } = default!;
+
+    private GmailSettings? settings;
+    private string? note;
+    private bool reading;
+    private string forwardTo = string.Empty;
+    private string disposition = "leaveInInbox";
+    private bool vacationOn;
+    private string subject = string.Empty;
+    private string text = string.Empty;
+    private bool onlyInternal;
+    private string start = string.Empty;
+    private string end = string.Empty;
+    private string delegateAddress = string.Empty;
+    private string signature = string.Empty;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private string? loaded;
+
+    protected override void OnParametersSet()
+    {
+        // Another user: take nothing along from the previous one
+        if (loaded != User.Id)
+        {
+            loaded = User.Id;
+            settings = null;
+            note = null;
+            plan = null;
+            errors = Array.Empty<string>();
+        }
+    }
+
+    private async Task Read()
+    {
+        reading = true;
+        (settings, note) = await State.ReadGmailAsync(User);
+        reading = false;
+        if (settings is { } s)
+        {
+            forwardTo = s.Forwarding.Enabled ? s.Forwarding.Address : string.Empty;
+            disposition = s.Forwarding.Disposition is { Length: > 0 } d ? d : "leaveInInbox";
+            (vacationOn, subject, text, onlyInternal) = (s.Vacation.Enabled, s.Vacation.Subject, s.Vacation.Text, s.Vacation.OnlyInternal);
+            start = Day(s.Vacation.Start);
+            end = Day(s.Vacation.End);
+            signature = s.Signature;
+        }
+    }
+
+    private static string Day(long? ms) => ms is { } v
+        ? DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeMilliseconds(v).LocalDateTime).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+        : string.Empty;
+
+    private static DateOnly? Date(string value)
+        => DateOnly.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d) ? d : null;
+
+    private void MakeVacationPlan()
+        => Show(GmailPlans.Vacation(User, settings!, new GmailVacationDesired(vacationOn, subject, text, onlyInternal, Date(start), Date(end))));
+
+    private void Show(PlanOutcome outcome)
+    {
+        errors = outcome.Errors;
+        plan = outcome.Plan.Count > 0 ? outcome.Plan : null;
+        if (outcome.Plan.Count == 0 && outcome.Errors.Count == 0)
+        {
+            errors = new[] { T["gmail.nothing-changes"] };
+        }
+    }
+
+    private async Task AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded))
+        {
+            delegateAddress = string.Empty;
+            await Read();
+        }
+    }
+}

@@ -92,6 +92,32 @@ public sealed partial class GoogleConnection : IGoogleConnection, IExecutor
             }
         }
 
+        // G2, part Gmail settings: the service account on behalf of the administrator who signed in
+        if (PartOn(Core.Setup.GoogleParts.GmailSettings))
+        {
+            var name = Texts.T["gmail.check"];
+            if (GmailToken is not { } tokens)
+            {
+                checks.Add(new GoogleCheck(name, false, Texts.T["gmail.no-service-account"]));
+            }
+            else if (SignedInAs is { Length: > 0 } admin)
+            {
+                try
+                {
+                    await SendAsync(HttpMethod.Get, $"{Gmail}/{Key(admin)}/settings/autoForwarding", null, cancel, c => tokens(admin, c));
+                    checks.Add(new GoogleCheck(name, true));
+                }
+                catch (GoogleError ex)
+                {
+                    checks.Add(new GoogleCheck(name, false, Advice(ex, "gmail.googleapis.com")));
+                }
+                catch (InvalidOperationException ex)
+                {
+                    checks.Add(new GoogleCheck(name, false, ex.Message));
+                }
+            }
+        }
+
         return checks;
     }
 

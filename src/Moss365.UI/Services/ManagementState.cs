@@ -377,7 +377,8 @@ public sealed partial class ManagementState
             GoogleClientId = HasGoogle ? Settings.GoogleClientId : string.Empty,
             GoogleClientSecret = HasGoogle ? Settings.GoogleClientSecret : string.Empty,
             GoogleTokenCache = HasGoogle ? Settings.GoogleTokenCache : null,
-            GoogleParts = HasGoogle ? Config.PermissionParts.Where(p => p.StartsWith("google-", StringComparison.Ordinal)).ToList() : Array.Empty<string>(),
+            GmailKeyStore = HasGoogle ? Settings.GmailKeyStore : null,
+            GoogleParts = HasGoogle ? Config.PermissionParts.Where(p => Core.Setup.GoogleParts.All.Any(g => g.Key == p)).ToList() : Array.Empty<string>(),
         },
     };
 
@@ -575,6 +576,7 @@ public sealed partial class ManagementState
         // Where the encrypted sign-in is kept, when "stay signed in" is on (0.33); never saved with the settings
         read.TokenCache = new DocumentTokenStore(Database);
         read.GoogleTokenCache = new DocumentTokenStore(Database, Moss365.Core.Storage.Documents.GoogleSignInCache);
+        read.GmailKeyStore = new DocumentTokenStore(Database, Moss365.Core.Storage.Documents.GmailServiceAccount);
         return read;
     }
 

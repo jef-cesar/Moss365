@@ -7,3 +7,6 @@ TestResults/
 *.db
 *.db-shm
 *.db-wal
+
+# G2: the key of the service account of the part Gmail settings (tools/Register-GoogleApp.ps1 -Gmail)
+moss365-gmail-sleutel.json

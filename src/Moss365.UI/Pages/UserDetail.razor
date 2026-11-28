@@ -87,6 +87,7 @@ else
                 </tbody>
             </table>
             @if (!State.IsHistoric && (State.Can(Permission.Manage) || State.Can(Permission.Helpdesk))) { <GoogleUserEditor User="google" /> }
+            @if (!State.IsHistoric && State.Can(Permission.Manage) && State.GoogleParts.Contains(Moss365.Core.Setup.GoogleParts.GmailSettings)) { <GmailCard User="google" /> }
         </section>
     }
 

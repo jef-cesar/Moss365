@@ -377,4 +377,7 @@ public static class Documents
 
     /// <summary>The kept sign-in at Google (G1): the refresh token, encrypted with the Windows account.</summary>
     public const string GoogleSignInCache = "google-aanmelding";
+
+    /// <summary>The key of the service account of the part Gmail settings (G2, U34), encrypted with the Windows account.</summary>
+    public const string GmailServiceAccount = "gmail-serviceaccount";
 }

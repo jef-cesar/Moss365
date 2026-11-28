@@ -28,6 +28,12 @@ public sealed partial class PlanScreenTests
 
         public Task<IReadOnlyList<GoogleMember>?> ReadMembersAsync(string group, CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleMember>?>(Members.ToList());
 
+        /// <summary>G2: the Gmail settings of every user, as the service account reads them.</summary>
+        public Task<Moss365.Core.Google.GmailSettings?> ReadGmailAsync(string user, CancellationToken cancel) => Task.FromResult<Moss365.Core.Google.GmailSettings?>(new(
+            new Moss365.Core.Google.GmailForwarding(false, string.Empty, string.Empty),
+            new Moss365.Core.Google.GmailVacation(false, string.Empty, string.Empty, false, null, null),
+            Array.Empty<string>(), Array.Empty<Moss365.Core.Google.GmailFilter>(), string.Empty, Array.Empty<string>()));
+
         public Task<GoogleData> ReadAsync(IProgress<string>? progress, CancellationToken cancel)
         {
             Reads++;

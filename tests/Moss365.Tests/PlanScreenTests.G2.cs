@@ -2,6 +2,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Moss365.Core.Changes;
 using Moss365.Core.Inventory;
+using Moss365.Core.Setup;
 using Moss365.Core.Storage;
 using Moss365.UI.Pages;
 using Moss365.UI.Services;
@@ -195,5 +196,46 @@ public sealed partial class PlanScreenTests
         s.Config.PermissionParts.Clear();
         page = ctx.RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key));
         Assert.Empty(page.FindAll("#google-licenties"));
+    }
+
+    [Fact]
+    public void TheKeyOfTheServiceAccountIsKeptOutOfSightAndGmailIsChangedAsAPlan()
+    {
+        var (hub, f, s, ctx) = GoogleTenant("g2-gmail", null, GoogleParts.GmailSettings);
+        using var _ = hub;
+        using var __ = ctx;
+        Assert.Contains("Nog geen serviceaccount", ctx.RenderComponent<Moss365.UI.Pages.Connections>().Markup, StringComparison.Ordinal);
+
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        var pem = rsa.ExportPkcs8PrivateKeyPem();
+        var file = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+        {
+            ["type"] = "service_account", ["project_id"] = "moss365-test", ["private_key_id"] = "kid-1", ["private_key"] = pem,
+            ["client_email"] = "moss365-gmail@moss365-test.iam.gserviceaccount.com", ["client_id"] = "1234567890", ["token_uri"] = Moss365.Core.Google.GmailKey.GoogleTokenUri,
+        });
+        Assert.NotNull(s.SaveGmailKey("{}"));
+        Assert.Null(s.SaveGmailKey(file));
+        Assert.Equal("1234567890", s.GmailKey?.ClientId);
+        var connections = ctx.RenderComponent<Moss365.UI.Pages.Connections>().Markup;
+        Assert.Contains("1234567890", connections, StringComparison.Ordinal);
+        Assert.DoesNotContain("PRIVATE KEY", connections, StringComparison.Ordinal);
+        Assert.Contains(s.Database.ReadAccess(10), a => a.What == "Gmail-serviceaccount ingesteld");
+        var middle = pem.Split('\n')[5];
+        Assert.DoesNotContain(s.Database.ReadTechnicalLog(500), l => l.Message.Contains(middle, StringComparison.Ordinal));
+
+        var cas = s.Data.Persons.Single(p => p.Ad?.SamAccountName == "cas.vos");
+        var page = ctx.RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key));
+        page.InvokeAsync(() => page.FindAll("button").First(b => b.TextContent == "Gmail-instellingen lezen").Click()).GetAwaiter().GetResult();
+        page.WaitForAssertion(() => Assert.Contains("Stuurt niet door.", page.Find("#gmail").TextContent, StringComparison.Ordinal));
+        Assert.Contains(s.Database.ReadAccess(10), a => a.What == "Gmail-instellingen bekeken" && a.Details == "cas.vos@test.be");
+        page.InvokeAsync(() => page.Find("#gmail input[aria-label='Doorsturen naar']").Input("lien@test.be")).GetAwaiter().GetResult();
+        ConfirmSteady(page, () => page.Find("#gmail").QuerySelectorAll("button").First(b => b.TextContent == "Plan maken").Click());
+        page.WaitForAssertion(() => Assert.Contains(f.Executed, w => w.ChangeAction == ChangeAction.GmailSetForwarding && w.P("adres") == "lien@test.be" && w.Target == "cas.vos@test.be"));
+
+        // Removed: no service account any more, and without the part no Gmail on the page
+        s.RemoveGmailKey();
+        Assert.Null(s.GmailKey);
+        s.Config.PermissionParts.Clear();
+        Assert.Empty(ctx.RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key)).FindAll("#gmail"));
     }
 }
