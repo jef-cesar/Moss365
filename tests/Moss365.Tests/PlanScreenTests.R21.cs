@@ -512,3 +512,28 @@ public sealed partial class PlanScreenTests
         Assert.DoesNotContain(PlanBuilder.Room(room, new RoomDesired { WorkEnd = "07:00" }), c => c.ChangeAction == ChangeAction.ExchangeRoomWorkingHours);
     }
 }
+
+/// <summary>R21: the wrong role cannot change anything: no buttons on the page, and the engine refuses the plan.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public async Task WithoutTheRoleToManageNothingIsEditedOrWritten()
+    {
+        var an = State.Data.Persons.First(p => p.Ad?.SamAccountName == "cas.vos");
+        var plan = AttributePlans.User(State.Data, State.Config, an, new UserDesired { Upn = "c.vos@test.be", AccountExpires = "2027-06-30" }).Plan;
+        var contact = ContactPlans.Edit(State.Data, State.Data.Contacts.First(c => !c.IsDirSynced), new ContactDesired { Company = "X" }).Plan;
+        Assert.NotEmpty(plan);
+
+        State.Config.ProfilesRequired = true;
+        _factory.AppRoles = new[] { "Moss365.Helpdesk" };
+        var user = RenderComponent<UserDetail>(p => p.Add(x => x.Key, an.Key));
+        Assert.Empty(user.FindAll(".kb-sectie button"));
+        var page = RenderComponent<ContactDetail>(p => p.Add(x => x.Smtp, "jan@fabrikam.com"));
+        Assert.All(page.FindAll("input"), i => Assert.True(i.HasAttribute("disabled")));
+        Assert.Empty(RenderComponent<Contacts>().FindAll("button").Where(b => b.TextContent == "Plan maken"));
+
+        var results = await State.ExecuteAsync(plan.Concat(contact).ToList(), "test", null);
+        Assert.All(results, r => Assert.NotEqual(ResultStatus.Succeeded, r.Status));
+        Assert.Empty(_factory.Executed);
+    }
+}
