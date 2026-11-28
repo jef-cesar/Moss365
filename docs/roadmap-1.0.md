@@ -592,9 +592,16 @@ organisation also wants a copy outside Microsoft 365 for its archive.
 | **Downloading is a follow-up item**, not something that runs by itself: once the export is ready, the follow-up list shows it, and the administrator downloads it to a folder of their choice. The change log keeps who, when, where and the SHA-256 of the file; the access log keeps the download | Personal data of a leaver: traceable, under own control |
 | **The permission as a part** (U25): eDiscovery.ReadWrite.All only for a tenant that turns the part on; the signed-in administrator needs the role eDiscovery Manager in Purview, and the screen says so when the role or the licence is missing | Least privilege |
 
-To decide at the start of R22, interactively: the route (Purview eDiscovery export, recommended; or the beta mailbox
-export API of Graph with a PST written by Moss365; or only a guide for an export with Outlook), where the PST may go
-(a folder of choice, or the export folder of the tenant), and how long the case and the export stay in Purview.
+Decided interactively on 28 November 2026 (U37 to U39):
+
+- **The route (U37)**: the mailbox export API of Graph (beta, `exportItems`), with the PST written by Moss365 itself,
+  rather than the export of Purview eDiscovery. This needs no Purview licence and no eDiscovery role, but it is more
+  work: Moss365 writes the PST format (MS-PST) from the exported items, and the API is still beta. The permission is a
+  part (U25), so only a tenant that turns it on asks for it.
+- **Where the PST goes (U38)**: a folder of choice, asked at every export (for example an archive share). The change log
+  keeps who, when, where and the SHA-256 of the file; the access log keeps the export.
+- **Nothing left behind (U39)**: once the PST is written and its SHA-256 checked, Moss365 removes every temporary part
+  of the export; nothing of the mailbox stays in the tenant database or next to it.
 
 ## 11. Open source, with room for paid support
 
@@ -632,7 +639,7 @@ Further:
 ## 12. Decisions
 
 U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interactively the same day); U13 on 23 November 2026;
-U14 to U26 interactively on 26 November 2026; U27 to U36 on 27 November 2026 (U28 to U36 interactively).
+U14 to U26 interactively on 26 November 2026; U27 to U36 on 27 November 2026 (U28 to U36 interactively); U37 to U39 interactively on 28 November 2026.
 
 | # | Decision | Outcome |
 | --- | --- | --- |
@@ -672,6 +679,9 @@ U14 to U26 interactively on 26 November 2026; U27 to U36 on 27 November 2026 (U2
 | U34 | **Gmail settings of someone else** | **A part per tenant** with a service account with domain-wide delegation; the key encrypted in the tenant database, never in a log |
 | U35 | **The Google project** | **Its own project per organisation**: a script (gcloud) makes the project, the APIs and the OAuth client; the consent screen and the domain-wide delegation by hand in the admin console, explained and checked afterwards; never a client of the makers |
 | U36 | **What comes with Google** | **All four extras**: the person overview with differences, onboarding and offboarding over all platforms in one plan, Google in the hardening score, advice and costs, and migration help between Google and Microsoft 365 |
+| U37 | **The route of the PST (R22)** (28 November 2026) | **The mailbox export API of Graph, with the PST written by Moss365** (not Purview eDiscovery, not only a guide): no Purview licence or eDiscovery role; the permission as a part |
+| U38 | **Where the PST goes** | **A folder of choice**, asked at every export; the change log keeps who, when, where and the SHA-256 |
+| U39 | **What stays after the export** | **Nothing**: once the PST is written and checked, every temporary part is removed; nothing of the mailbox stays in the tenant database |
 
 ## 13. The steps to 1.0
 
