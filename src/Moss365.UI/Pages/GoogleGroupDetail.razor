@@ -1,0 +1,202 @@
+@page "/google-groep/{Id}"
+@inherits RefreshingPage
+@using Moss365.Core.Google
+@* G2: one group of Google Workspace: the name and description, the members with their role (read when asked), and the
+   settings with the part on; every change a plan with undo. Name and members of a group that follows another platform
+   are changed there. *@
+
+@if (group is null)
+{
+    <h1>@T["google.group.not-found"]</h1>
+    <p><a href="google-groepen">@T["google.group.back"]</a></p>
+}
+else
+{
+    <h1>@(group.Name.Length > 0 ? group.Name : group.Email) <PlatformLabel Platform="Platform.GoogleWorkspace" /></h1>
+    <p class="kb-zacht">@group.Email@(group.Aliases.Count > 0 ? " · " + string.Join(", ", group.Aliases) : string.Empty) · @T.Format("google.group.count", group.CountMembers)</p>
+    @if (Follows is { } from)
+    {
+        <div class="kb-melding">@T.Format("google.group.members-follow", Platforms.Name(from))</div>
+    }
+
+    <section class="kb-kaart" id="google-groep-gegevens">
+        <h2>@T["contact.details"]</h2>
+        <div class="kb-raster">
+            <label>@T["google.group.name"] <input class="kb-invoer" value="@name" @oninput="e => name = e.Value?.ToString() ?? string.Empty" disabled="@(!CanManage || Follows is not null)" aria-label="@T["google.group.name"]" /></label>
+            <label>@T["google.group.description"] <input class="kb-invoer" value="@description" @oninput="e => description = e.Value?.ToString() ?? string.Empty" disabled="@(!CanManage || Follows is not null)" aria-label="@T["google.group.description"]" /></label>
+        </div>
+        @if (CanManage && Follows is null)
+        {
+            <div class="kb-filters"><button class="kb-knop kb-primair" @onclick="MakeEditPlan">@T["bulk-tasks.make-plan"]</button></div>
+        }
+    </section>
+
+    @if (State.GoogleParts.Contains(Moss365.Core.Setup.GoogleParts.GroupSettings) && group.WhoCanJoin.Length > 0)
+    {
+        <section class="kb-kaart" id="google-groep-instellingen">
+            <h2>@T["google.group.settings"]</h2>
+            <div class="kb-raster">
+                <label>@T["google.group.whocanjoin"]
+                    <select class="kb-invoer" value="@join" @onchange="e => join = e.Value?.ToString() ?? string.Empty" disabled="@(!CanManage)" aria-label="@T["google.group.whocanjoin"]">
+                        @foreach (var o in GoogleGroupPlans.JoinOptions) { <option value="@o">@GoogleGroupPlans.Name(o)</option> }
+                    </select>
+                </label>
+                <label>@T["google.group.whocanpostmessage"]
+                    <select class="kb-invoer" value="@post" @onchange="e => post = e.Value?.ToString() ?? string.Empty" disabled="@(!CanManage)" aria-label="@T["google.group.whocanpostmessage"]">
+                        @foreach (var o in GoogleGroupPlans.PostOptions) { <option value="@o">@GoogleGroupPlans.Name(o)</option> }
+                    </select>
+                </label>
+                <label>@T["google.group.whocanviewmembership"]
+                    <select class="kb-invoer" value="@view" @onchange="e => view = e.Value?.ToString() ?? string.Empty" disabled="@(!CanManage)" aria-label="@T["google.group.whocanviewmembership"]">
+                        @foreach (var o in GoogleGroupPlans.ViewOptions) { <option value="@o">@GoogleGroupPlans.Name(o)</option> }
+                    </select>
+                </label>
+                <label><input type="checkbox" checked="@external" @onchange="e => external = e.Value is true" disabled="@(!CanManage)" /> @T["google.group.allowexternalmembers"]</label>
+            </div>
+            @if (CanManage)
+            {
+                <div class="kb-filters"><button class="kb-knop kb-primair" @onclick="MakeSettingsPlan">@T["bulk-tasks.make-plan"]</button></div>
+            }
+        </section>
+    }
+
+    <section class="kb-kaart" id="google-groep-leden">
+        <h2>@T["google.groups.members"]</h2>
+        @if (members is null)
+        {
+            <div class="kb-filters">
+                <button class="kb-knop" disabled="@(reading || State.IsHistoric)" @onclick="ReadMembers">@T["google.group.read-members"]</button>
+            </div>
+            @if (note is not null) { <div class="kb-melding">@note</div> }
+        }
+        else
+        {
+            <table class="kb-tabel">
+                <thead><tr><th>@T["google.user.email"]</th><th>@T["google.group.role"]</th><th>@T["google.group.type"]</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var m in members)
+                    {
+                        var member = m;
+                        <tr>
+                            <td>@member.Email</td>
+                            <td>
+                                @if (CanEditMembers && CanManage)
+                                {
+                                    <select class="kb-invoer" value="@member.Role" @onchange="e => Show(PlanOutcome.Of(new[] { GoogleGroupPlans.SetRole(group, member, e.Value?.ToString() ?? member.Role) }))" aria-label="@T["google.group.role"]">
+                                        @foreach (var r in GoogleGroupPlans.Roles) { <option value="@r">@GoogleGroupPlans.Name(r)</option> }
+                                    </select>
+                                }
+                                else { @GoogleGroupPlans.Name(member.Role) }
+                            </td>
+                            <td>@member.Type</td>
+                            <td>@if (CanEditMembers) { <button class="kb-knop kb-klein" @onclick="() => Show(GoogleGroupPlans.RemoveMember(group, member, members, Follows))">@T["google.edit.remove"]</button> }</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (CanEditMembers)
+            {
+                <div class="kb-filters">
+                    <input class="kb-invoer" value="@newMember" @oninput="e => newMember = e.Value?.ToString() ?? string.Empty" placeholder="@MemberExample" aria-label="@T["google.group.new-member"]" />
+                    <select class="kb-invoer" value="@newRole" @onchange="e => newRole = e.Value?.ToString() ?? GoogleGroupPlans.Member" aria-label="@T["google.group.role"]">
+                        @foreach (var r in GoogleGroupPlans.Roles) { <option value="@r">@GoogleGroupPlans.Name(r)</option> }
+                    </select>
+                    <button class="kb-knop" @onclick="AddMember">@T["google.group.add-member"]</button>
+                </div>
+            }
+        }
+    </section>
+
+    @foreach (var e in errors) { <div class="kb-melding kb-fout">@e</div> }
+
+    @if (plan is not null)
+    {
+        <PlanView Plan="plan" Context="@($"Google {group.Email}")" Title="@T["systems.google.name"]" Executed="AfterExecute" />
+    }
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private GoogleGroup? group;
+    private string name = string.Empty;
+    private string description = string.Empty;
+    private string join = string.Empty;
+    private string post = string.Empty;
+    private string view = string.Empty;
+    private bool external;
+    private IReadOnlyList<GoogleMember>? members;
+    private string? note;
+    private bool reading;
+    private string newMember = string.Empty;
+    private string newRole = GoogleGroupPlans.Member;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+    private string? loaded;
+
+    private bool CanManage => !State.IsHistoric && State.Can(Permission.Manage);
+
+    private bool CanEditMembers => !State.IsHistoric && State.Can(Permission.GroupMembers) && Follows is null;
+
+    private Platform? Follows => State.GoogleGroupsFollow;
+
+    private string MemberExample => T.Format("google.group.member-example", State.GoogleDomains.FirstOrDefault() ?? "example.com");
+
+    protected override void OnParametersSet()
+    {
+        group = State.Data.GoogleGroups.FirstOrDefault(g => g.Id == Id);
+        if (loaded != Id)
+        {
+            loaded = Id;
+            members = null;
+            note = null;
+            plan = null;
+            errors = Array.Empty<string>();
+            Reset();
+        }
+    }
+
+    private void Reset()
+    {
+        if (group is null)
+        {
+            return;
+        }
+
+        (name, description) = (group.Name, group.Description);
+        (join, post, view, external) = (group.WhoCanJoin, group.WhoCanPost, group.WhoCanViewMembership, group.AllowExternalMembers == true);
+    }
+
+    private async Task ReadMembers()
+    {
+        if (group is null)
+        {
+            return;
+        }
+
+        reading = true;
+        (members, note) = await State.ReadGoogleMembersAsync(group);
+        reading = false;
+    }
+
+    private void MakeEditPlan() => Show(GoogleGroupPlans.Edit(group!, name, description, Follows));
+
+    private void MakeSettingsPlan() => Show(GoogleGroupPlans.Settings(group!, new GoogleGroupSettingsDesired(join, post, view, external), State.GoogleParts));
+
+    private void AddMember() => Show(GoogleGroupPlans.AddMember(State.Data, group!, newMember, newRole, members, State.GoogleDomains, Follows));
+
+    private void Show(PlanOutcome outcome)
+    {
+        errors = outcome.Errors;
+        plan = outcome.Plan.Count > 0 ? outcome.Plan : null;
+    }
+
+    private async Task AfterExecute(IReadOnlyList<ChangeResult> results)
+    {
+        if (results.Any(r => r.Status == ResultStatus.Succeeded) && plan?.Any(w => w.ChangeAction is ChangeAction.GoogleAddGroupMember or ChangeAction.GoogleRemoveGroupMember or ChangeAction.GoogleSetGroupMemberRole) == true)
+        {
+            newMember = string.Empty;
+            await ReadMembers();
+        }
+    }
+}

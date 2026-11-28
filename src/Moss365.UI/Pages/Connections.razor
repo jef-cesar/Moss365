@@ -131,10 +131,40 @@
         {
             var key = part.Key;
             <label><input type="checkbox" checked="@Moss365.Core.Setup.GoogleParts.IsOn(State.Config.PermissionParts, key)" disabled="@(!State.Can(Permission.Settings) || State.IsHistoric)"
-                          @onchange="e => State.SetPermissionPart(key, e.Value is true)" aria-label="@part.Name" /> @part.Name <span class="kb-zacht">(@string.Join(", ", part.Scopes.Select(s => s[(s.LastIndexOf('/') + 1)..])))</span></label>
+                          @onchange="e => State.SetPermissionPart(key, e.Value is true)" aria-label="@part.Name" /> @part.Name <span class="kb-zacht">(@ScopesOf(part))</span></label>
             <p class="kb-zacht">@part.Explanation</p>
         }
     </fieldset>
+    @if (Moss365.Core.Setup.GoogleParts.IsOn(State.Config.PermissionParts, Moss365.Core.Setup.GoogleParts.GmailSettings))
+    {
+        <div class="kb-kaart" id="gmail-serviceaccount">
+            <h3>@T["connections.gmail.title"]</h3>
+            @if (State.GmailKey is { } account)
+            {
+                <table class="kb-tabel kb-naast">
+                    <tbody>
+                        <tr><th>@T["connections.gmail.account"]</th><td>@account.ClientEmail</td></tr>
+                        <tr><th>@T["connections.gmail.client-id"]</th><td><CopyField Value="@account.ClientId" Label="@T["connections.gmail.client-id"]" /></td></tr>
+                        <tr><th>@T["connections.gmail.scopes"]</th><td><CopyField Value="@GmailScopes" Label="@T["connections.gmail.scopes"]" /></td></tr>
+                        <tr><th>@T["connections.gmail.key-id"]</th><td>@account.KeyId</td></tr>
+                    </tbody>
+                </table>
+                <p class="kb-zacht">@T["connections.gmail.delegation"]</p>
+            }
+            else
+            {
+                <p class="kb-zacht">@T["connections.gmail.none"]</p>
+            }
+            @if (State.Can(Permission.Settings) && !State.IsHistoric)
+            {
+                <div class="kb-filters">
+                    <label class="kb-knop">@(State.GmailKey is null ? T["connections.gmail.choose"] : T["connections.gmail.replace"]) <InputFile OnChange="LoadGmailKey" accept=".json" style="display:none" /></label>
+                    @if (State.GmailKey is not null) { <button class="kb-knop" @onclick="State.RemoveGmailKey">@T["connections.gmail.remove"]</button> }
+                </div>
+            }
+            @if (gmailMessage is not null) { <div class="kb-melding">@gmailMessage</div> }
+        </div>
+    }
     <div class="kb-filters">
         <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect || !State.Settings.GoogleFilled)" @onclick="() => Load(LoadKind.Google)">@T["connections.google.read"]</button>
         <button class="kb-knop" disabled="@(googleChecking || !State.CanConnect || !State.Settings.GoogleFilled)" @onclick="CheckGoogle">@T["connections.google.check"]</button>
@@ -219,6 +249,28 @@
     }
 
     private void SaveGoogle() => State.SaveSettings();
+
+    // G2, part Gmail settings: the key of the service account, read from its JSON file and kept encrypted
+    private string? gmailMessage;
+
+    private static string GmailScopes => string.Join(",", Moss365.Core.Setup.GoogleParts.GmailScopes);
+
+    private string ScopesOf(Moss365.Core.Setup.GooglePart part)
+        => part.Scopes.Count > 0 ? string.Join(", ", part.Scopes.Select(s => s[(s.LastIndexOf('/') + 1)..])) : T["connections.gmail.through-service-account"];
+
+    private async Task LoadGmailKey(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(64 * 1024));
+            var error = State.SaveGmailKey(await reader.ReadToEndAsync());
+            gmailMessage = error ?? T["connections.gmail.saved"];
+        }
+        catch (IOException)
+        {
+            gmailMessage = T["gmail.key.not-json"];
+        }
+    }
 
     [Inject] private IServiceProvider Services { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;

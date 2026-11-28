@@ -65,11 +65,13 @@ public static class Platforms
         _ => TenantSystems.Microsoft365,
     };
 
-    /// <summary>The platform of a change: by the first word of its action (Ad, Graph, Exchange, Intune).</summary>
+    /// <summary>The platform of a change: by the first word of its action (Ad, Graph, Exchange, Intune, Google, Gmail).</summary>
     public static Platform Of(ChangeAction action)
     {
         var name = action.ToString();
         return name.StartsWith("Intune", StringComparison.Ordinal) ? Platform.Intune
+            : name.StartsWith("Gmail", StringComparison.Ordinal) ? Platform.Gmail
+            : name.StartsWith("Google", StringComparison.Ordinal) ? Platform.GoogleWorkspace
             : name.StartsWith("Graph", StringComparison.Ordinal) ? Platform.EntraId
             : name.StartsWith("Exchange", StringComparison.Ordinal) ? Platform.ExchangeOnline
             : Platform.ActiveDirectory;

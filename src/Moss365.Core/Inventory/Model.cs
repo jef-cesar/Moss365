@@ -361,6 +361,10 @@ public sealed record GoogleRoleAssignment
 /// <summary>A licence of Google Workspace (G1, part "Google licences"): who has which SKU of which product.</summary>
 public sealed record GoogleLicence(string UserEmail, string ProductId, string SkuId, string SkuName);
 
+/// <summary>A direct member of a Google group (G2): the address, the role (MEMBER, MANAGER, OWNER), the type (USER,
+/// GROUP, CUSTOMER, EXTERNAL) and the status; read on demand, never in a snapshot.</summary>
+public sealed record GoogleMember(string Email, string Role, string Type, string Status = "");
+
 /// <summary>A group of Google Workspace (G1).</summary>
 public sealed record GoogleGroup
 {

@@ -1,0 +1,41 @@
+@page "/google-groepen"
+@inherits RefreshingPage
+@using Moss365.Core.Google
+@* G2: the groups of Google Workspace, with their settings when that part is on; each group has its own page. *@
+
+<h1>@T["menu.google-groepen"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></h1>
+<p class="kb-zacht">@T.Format("google.groups.intro", State.Data.GoogleGroups.Count)</p>
+@if (State.GoogleGroupsFollow is { } from)
+{
+    <p class="kb-zacht">@T.Format("google.group.members-follow", Platforms.Name(from))</p>
+}
+
+@if (State.Data.GoogleGroups.Count == 0)
+{
+    <div class="kb-melding">@T["google.groups.none"] <a href="verbindingen">@T["menu.verbindingen"]</a></div>
+}
+else
+{
+    <KbTable Id="google-groepen" Items="State.Data.GoogleGroups" Columns="columns" DefaultSorting="naam" KeyOf="g => g.Id" />
+}
+
+@code {
+    private IReadOnlyList<Column<GoogleGroup>> columns = Array.Empty<Column<GoogleGroup>>();
+
+    protected override void OnInitialized()
+    {
+        var list = new List<Column<GoogleGroup>>
+        {
+            new() { Key = "naam", Title = T["google.group.name"], Cell = g => @<text><a href="@($"google-groep/{Uri.EscapeDataString(g.Id)}")">@(g.Name.Length > 0 ? g.Name : g.Email)</a></text>, SortBy = g => g.Name, Text = g => g.Name + " " + g.Email },
+            new() { Key = "adres", Title = T["google.user.email"], Cell = g => @<text>@g.Email</text>, SortBy = g => g.Email },
+            new() { Key = "leden", Title = T["google.groups.members"], Cell = g => @<text>@g.CountMembers</text>, SortBy = g => g.CountMembers },
+        };
+        if (State.Data.GoogleGroups.Any(g => g.WhoCanJoin.Length > 0))
+        {
+            list.Add(new() { Key = "lidworden", Title = T["google.group.whocanjoin"], Cell = g => @<text>@GoogleGroupPlans.Name(g.WhoCanJoin)</text>, SortBy = g => g.WhoCanJoin });
+            list.Add(new() { Key = "extern", Title = T["google.group.allowexternalmembers"], Cell = g => @<text>@(g.AllowExternalMembers == true ? T["word.yes"] : T["word.no"])</text>, SortBy = g => g.AllowExternalMembers == true });
+        }
+
+        columns = list;
+    }
+}

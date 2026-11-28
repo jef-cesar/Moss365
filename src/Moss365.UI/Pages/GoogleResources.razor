@@ -1,0 +1,95 @@
+@page "/google-bronnen"
+@inherits RefreshingPage
+@using Moss365.Core.Google
+@* G2: the calendar resources of Google Workspace (rooms and equipment): the name, the capacity, the floor and the
+   description, each change a plan with undo. *@
+
+<h1>@T["menu.google-bronnen"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></h1>
+<p class="kb-zacht">@T.Format("google.resources.intro", State.Data.GoogleResources.Count)</p>
+
+@if (State.Data.GoogleResources.Count == 0)
+{
+    <div class="kb-melding">@T["google.resources.none"]</div>
+}
+else
+{
+    <table class="kb-tabel">
+        <thead><tr><th>@T["google.resource.name"]</th><th>@T["google.resources.kind"]</th><th>@T["google.resource.capacity"]</th><th>@T["google.resources.building"]</th><th>@T["google.resource.floor"]</th><th>@T["google.resource.description"]</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var r in State.Data.GoogleResources.OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase))
+            {
+                var resource = r;
+                @if (editing == resource.Id)
+                {
+                    <tr id="@($"bron-{resource.Id}")">
+                        <td><input class="kb-invoer" value="@name" @oninput="e => name = e.Value?.ToString() ?? string.Empty" aria-label="@T["google.resource.name"]" /></td>
+                        <td>@resource.Category</td>
+                        <td><input class="kb-invoer" type="number" min="0" value="@capacity" @oninput="e => capacity = e.Value?.ToString() ?? string.Empty" aria-label="@T["google.resource.capacity"]" /></td>
+                        <td>@resource.Building</td>
+                        <td><input class="kb-invoer" value="@floor" @oninput="e => floor = e.Value?.ToString() ?? string.Empty" aria-label="@T["google.resource.floor"]" /></td>
+                        <td><input class="kb-invoer" value="@description" @oninput="e => description = e.Value?.ToString() ?? string.Empty" aria-label="@T["google.resource.description"]" /></td>
+                        <td>
+                            <button class="kb-knop kb-primair kb-klein" @onclick="() => MakePlan(resource)">@T["bulk-tasks.make-plan"]</button>
+                            <button class="kb-knop kb-klein" @onclick="() => editing = null">@T["edit-user.close"]</button>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    <tr id="@($"bron-{resource.Id}")">
+                        <td>@resource.Name<br /><span class="kb-zacht">@resource.Email</span></td>
+                        <td>@resource.Category</td>
+                        <td>@resource.Capacity</td>
+                        <td>@resource.Building</td>
+                        <td>@resource.Floor</td>
+                        <td>@resource.Description</td>
+                        <td>@if (CanManage) { <button class="kb-knop kb-klein" @onclick="() => Open(resource)">@T["edit-user.edit"]</button> }</td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+}
+
+@foreach (var e in errors) { <div class="kb-melding kb-fout">@e</div> }
+
+@if (plan is not null)
+{
+    <PlanView Plan="plan" Context="@T["menu.google-bronnen"]" Title="@T["systems.google.name"]" Executed="_ => editing = null" />
+}
+
+@code {
+    private string? editing;
+    private string name = string.Empty;
+    private string capacity = string.Empty;
+    private string floor = string.Empty;
+    private string description = string.Empty;
+    private IReadOnlyList<Change>? plan;
+    private IReadOnlyList<string> errors = Array.Empty<string>();
+
+    private bool CanManage => !State.IsHistoric && State.Can(Permission.Manage);
+
+    private void Open(GoogleResource r)
+    {
+        editing = r.Id;
+        (name, floor, description) = (r.Name, r.Floor, r.Description);
+        capacity = r.Capacity?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+        plan = null;
+        errors = Array.Empty<string>();
+    }
+
+    private void MakePlan(GoogleResource r)
+    {
+        var text = capacity.Trim();
+        if (text.Length > 0 && !int.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out _))
+        {
+            errors = new[] { T.Format("attribute.invalid", T["google.resource.capacity"]) };
+            plan = null;
+            return;
+        }
+
+        var outcome = GoogleGroupPlans.EditResource(r, new GoogleResourceDesired(name, text.Length > 0 ? int.Parse(text, System.Globalization.CultureInfo.InvariantCulture) : null, floor, description, ClearCapacity: text.Length == 0));
+        errors = outcome.Errors;
+        plan = outcome.Plan.Count > 0 ? outcome.Plan : null;
+    }
+}

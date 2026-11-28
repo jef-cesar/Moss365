@@ -86,10 +86,12 @@ else
                     <tr><th>@T["google.user.last-login"]</th><td>@(google.LastLogin.Length > 0 ? google.LastLogin : T["google.user.never"])</td></tr>
                 </tbody>
             </table>
+            @if (!State.IsHistoric && (State.Can(Permission.Manage) || State.Can(Permission.Helpdesk))) { <GoogleUserEditor User="google" /> }
+            @if (!State.IsHistoric && State.Can(Permission.Manage) && State.GoogleParts.Contains(Moss365.Core.Setup.GoogleParts.GmailSettings)) { <GmailCard User="google" /> }
         </section>
     }
 
-    @* Editing needs an account in AD or Entra; a person with only Google is changed from G2 on *@
+    @* The fields of AD and Entra; the Google account has its own editor in its section (G2) *@
     @if (State.Can(Permission.Manage) && !person.IsGuest && (person.Ad is not null || person.Entra is not null))
     {
         <EditUser Person="person" />

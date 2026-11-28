@@ -379,6 +379,16 @@ public sealed partial class ManagementState
         }
 
         var steps = new List<TaskWork>();
+        if (targets.Google && HasGoogle)
+        {
+            steps.Add(new(Texts.T["google.read.step"], "Google", async (p, ct) =>
+            {
+                var google = _factory.Google(EffectiveSettings) ?? throw new InvalidOperationException(Texts.T["google.not-available"]);
+                var data = await google.ReadAsync(p, ct);
+                UpdateData(d => LiveLoader.WithGoogle(d, data));
+            }));
+        }
+
         if (targets.AdUsers.Count + targets.AdGroups.Count > 0)
         {
             steps.Add(new($"AD ({targets.AdUsers.Count + targets.AdGroups.Count})", "AD", async (p, ct) =>

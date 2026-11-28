@@ -12,9 +12,27 @@ namespace Moss365.Tests;
 /// <summary>G1: Google Workspace is read in its own lane, becomes a snapshot and is linked to the persons.</summary>
 public sealed partial class PlanScreenTests
 {
-    private sealed class FakeGoogleConnection(GoogleData data) : IGoogleConnection
+    private sealed class FakeGoogleConnection(GoogleData data) : IGoogleConnection, IExecutor
     {
         public int Reads { get; private set; }
+
+        /// <summary>G2: the factory that records what is written in Google.</summary>
+        public FakeFactory? Writer { get; set; }
+
+        public TargetSystem TargetSystem => TargetSystem.Google;
+
+        public Task<IReadOnlyList<ChangeResult>> ExecuteAsync(IReadOnlyList<Change> changes, CancellationToken cancel) => Writer!.Run(changes);
+
+        /// <summary>G2: the members of every group, as Google gives them.</summary>
+        public List<GoogleMember> Members { get; } = new() { new("cas.vos@test.be", "OWNER", "USER"), new("nieuw@test.be", "MEMBER", "USER") };
+
+        public Task<IReadOnlyList<GoogleMember>?> ReadMembersAsync(string group, CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleMember>?>(Members.ToList());
+
+        /// <summary>G2: the Gmail settings of every user, as the service account reads them.</summary>
+        public Task<Moss365.Core.Google.GmailSettings?> ReadGmailAsync(string user, CancellationToken cancel) => Task.FromResult<Moss365.Core.Google.GmailSettings?>(new(
+            new Moss365.Core.Google.GmailForwarding(false, string.Empty, string.Empty),
+            new Moss365.Core.Google.GmailVacation(false, string.Empty, string.Empty, false, null, null),
+            Array.Empty<string>(), Array.Empty<Moss365.Core.Google.GmailFilter>(), string.Empty, Array.Empty<string>()));
 
         public Task<GoogleData> ReadAsync(IProgress<string>? progress, CancellationToken cancel)
         {

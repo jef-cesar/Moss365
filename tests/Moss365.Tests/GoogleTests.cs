@@ -49,7 +49,7 @@ public sealed class GoogleTests
         Assert.Equal("accounts.google.com", link.Host);
         Assert.Equal(("S256", "challenge", "state-1", "example.com", "code"), (query["code_challenge_method"], query["code_challenge"], query["state"], query["hd"], query["response_type"]));
         Assert.Equal(string.Join(' ', GoogleSignIn.Scopes), query["scope"]);
-        Assert.All(GoogleSignIn.Scopes.Where(s => s.Contains("admin.directory", StringComparison.Ordinal)), s => Assert.EndsWith(".readonly", s, StringComparison.Ordinal)); // G1 only reads
+        Assert.Equal(Moss365.Core.Setup.GoogleParts.BaseScopes, GoogleSignIn.Scopes);
 
         Assert.Equal(("an@example.com", "example.com"), GoogleSignIn.Identity(IdToken("an@example.com", "example.com")));
         Assert.Equal((null, null), GoogleSignIn.Identity("not-a-token"));
@@ -186,11 +186,14 @@ public sealed class GoogleTests
     {
         var none = Moss365.Core.Setup.GoogleParts.Scopes(null);
         Assert.Equal(Moss365.Core.Setup.GoogleParts.BaseScopes, none);
-        Assert.All(none.Where(s => s.StartsWith("https://", StringComparison.Ordinal)), s => Assert.EndsWith(".readonly", s, StringComparison.Ordinal));
+        // G2 writes users, groups and resources; organisational units, roles and the logs stay read only
+        Assert.Contains("https://www.googleapis.com/auth/admin.directory.orgunit.readonly", none);
+        Assert.Contains("https://www.googleapis.com/auth/admin.reports.audit.readonly", none);
+        Assert.DoesNotContain(none, s => s.Contains("gmail", StringComparison.Ordinal)); // only for the service account
         var licences = Moss365.Core.Setup.GoogleParts.Scopes(new[] { Moss365.Core.Setup.GoogleParts.Licences });
         Assert.Contains("https://www.googleapis.com/auth/apps.licensing", licences);
         Assert.DoesNotContain("https://www.googleapis.com/auth/apps.alerts", licences);
-        Assert.Equal(new[] { "admin.googleapis.com", "licensing.googleapis.com", "groupssettings.googleapis.com", "alertcenter.googleapis.com" }, Moss365.Core.Setup.GoogleParts.Apis);
+        Assert.Equal(new[] { "admin.googleapis.com", "licensing.googleapis.com", "groupssettings.googleapis.com", "alertcenter.googleapis.com", "gmail.googleapis.com" }, Moss365.Core.Setup.GoogleParts.Apis);
     }
 
     [Fact]

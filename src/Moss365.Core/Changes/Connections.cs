@@ -89,6 +89,11 @@ public sealed class ConnectionSettings
     [System.Text.Json.Serialization.JsonIgnore]
     public IReadOnlyList<string> GoogleParts { get; set; } = Array.Empty<string>();
 
+    /// <summary>Where the key of the service account of the part Gmail settings is kept, encrypted (G2, U34; set by the
+    /// app, never saved with the settings).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ITokenCacheStore? GmailKeyStore { get; set; }
+
     /// <summary>G1: the primary domain of Google Workspace (e.g. example.com).</summary>
     public string GoogleDomain { get; set; } = string.Empty;
 
@@ -331,6 +336,14 @@ public interface IGoogleConnection
 
     /// <summary>The check of the own project (G1): signing in, and every API Moss365 uses, with what is wrong.</summary>
     Task<IReadOnlyList<GoogleCheck>> CheckAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleCheck>>(Array.Empty<GoogleCheck>());
+
+    /// <summary>The direct members of a group with their role (G2), read when the page of the group asks; null when
+    /// this connection cannot read them.</summary>
+    Task<IReadOnlyList<GoogleMember>?> ReadMembersAsync(string group, CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleMember>?>(null);
+
+    /// <summary>The Gmail settings of a user through the service account (G2, part "Gmail settings"); null without the
+    /// part or its key.</summary>
+    Task<Core.Google.GmailSettings?> ReadGmailAsync(string user, CancellationToken cancel) => Task.FromResult<Core.Google.GmailSettings?>(null);
 }
 
 /// <summary>The logs of Google Workspace (G1): logins as sign-ins (a failure has error code 1, a suspicious login risk
@@ -409,6 +422,35 @@ public interface IConnectionFactory
 
     /// <summary>Google Workspace (G1); null without its settings or where that is not possible.</summary>
     IGoogleConnection? Google(ConnectionSettings settings) => null;
+
+    /// <summary>The service account whose key is kept for the part Gmail settings (G2), or null; never the key itself.</summary>
+    Core.Google.GmailKeyInfo? GmailKey(ConnectionSettings settings)
+        => settings.GmailKeyStore?.Load() is { } bytes ? Core.Google.GmailKey.Parse(System.Text.Encoding.UTF8.GetString(bytes)).Key?.Info : null;
+
+    /// <summary>Keeps the key of the service account (the JSON file of Google), encrypted where the PC can; null removes
+    /// it. Returns why it cannot be kept, or null.</summary>
+    string? SaveGmailKey(ConnectionSettings settings, string? json)
+    {
+        if (settings.GmailKeyStore is not { } store)
+        {
+            return Texts.T["gmail.key.no-store"];
+        }
+
+        if (json is null)
+        {
+            store.Clear();
+            return null;
+        }
+
+        var (key, error) = Core.Google.GmailKey.Parse(json);
+        if (key is null)
+        {
+            return error;
+        }
+
+        store.Save(System.Text.Encoding.UTF8.GetBytes(json));
+        return null;
+    }
 
     IReadOnlyList<IExecutor> Executors(ConnectionSettings settings, string? adPassword);
 

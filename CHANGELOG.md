@@ -4,8 +4,31 @@ Every version becomes a release on GitHub; the section under the version is the 
 
 ## 0.42.0
 
-G1, reading Google Workspace, the rest (decided on 28 November 2026, U40; [docs/google.md](docs/google.md)). Not yet
-tested with a real Workspace domain (issue 19).
+G1, reading Google Workspace, the rest (decided on 28 November 2026, U40), and G2, writing in Google Workspace
+([docs/google.md](docs/google.md)). Not yet tested with a real Workspace domain (issue 19).
+
+- **Writing in Google** (G2): Google is a system of the plans, as AD, Entra and Exchange: every change is a plan with a
+  preview, a confirmation, the role of the app (the engine refuses what the role does not allow; a Google administrator
+  needs Beheerder), the change log with the label Google Workspace or Gmail, and undo through the values from before.
+  Nothing in Google is ever deleted. The sign-in at Google now asks the scopes to change users, groups and calendar
+  resources (the base, as the permissions of Microsoft 365); after the update Google asks the consent once more.
+- **Google users** on the page of the person: the first and last name, department, employee id, organisational unit and
+  suspended; aliases; a new password (only in the plan, never logged); signing out of every session; revoking the
+  access of apps. A new page *Nieuwe Google-gebruiker* makes a user by the naming rules of the organisation. When Google
+  gets its users from Entra or AD (the source of truth, U33), what that synchronisation carries is shown and changed at
+  the source, never in Google (with Password Sync also the password).
+- **Google groups** (new page): name and description, the members read when asked, added with a role, removed, or with
+  another role; the settings with the part Google group settings, with a warning when a group opens up to outside.
+  Groups that follow another platform keep their name and members there.
+- **Google calendar resources** (new page): name, capacity, floor and description, edited in their row.
+- **Google licences** (part Google licences): assigned and removed on the page of the person, only licences the
+  organisation uses.
+- **Gmail settings** (new part, U34): forwarding, the automatic reply, delegates, filters (a filter that forwards is
+  marked) and the signature of a user, read when asked (in the access log) and changed as plans. Google only allows
+  this through a service account with domain-wide delegation: its key (the JSON file) is kept encrypted with the
+  Windows account in the tenant database, never shown or logged; *Verbindingen* shows the client id and the scopes for
+  the admin console, and *Project controleren* tries it. `tools/Register-GoogleApp.ps1 -Gmail` makes the service
+  account and its key.
 
 - **Parts of Google** (U40) on *Verbindingen*: licences, group settings and the alerts have only a Google scope that
   can also write, so each is a part, off by default. Its scope is asked only when it is on; Moss365 only reads with it.

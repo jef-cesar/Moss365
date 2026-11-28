@@ -30,9 +30,12 @@ public sealed partial class RefreshTargets
     /// <summary>Read Conditional Access again (after a change to a policy or a named location).</summary>
     public bool ConditionalAccess { get; set; }
 
-    public bool Empty => !ConditionalAccess && AdUsers.Count + AdGroups.Count + EntraUsers.Count + CloudGroups.Count + ExchangeAddresses.Count == 0;
+    /// <summary>Read Google Workspace again (G2: after a change there; one read, the directory is not large).</summary>
+    public bool Google { get; set; }
 
-    public int Count => (ConditionalAccess ? 1 : 0) + AdUsers.Count + AdGroups.Count + EntraUsers.Count + CloudGroups.Count + ExchangeAddresses.Count;
+    public bool Empty => !ConditionalAccess && !Google && AdUsers.Count + AdGroups.Count + EntraUsers.Count + CloudGroups.Count + ExchangeAddresses.Count == 0;
+
+    public int Count => (ConditionalAccess ? 1 : 0) + (Google ? 1 : 0) + AdUsers.Count + AdGroups.Count + EntraUsers.Count + CloudGroups.Count + ExchangeAddresses.Count;
 
     /// <summary>Key of an object for the status "read at" and "changed".</summary>
     public static string Key(ObjectRef r) => $"{r.Kind}:{r.Key}".ToLowerInvariant();
@@ -55,6 +58,13 @@ public sealed partial class RefreshTargets
         var targets = new RefreshTargets();
         foreach (var w in plan.Where(w => succeeded.ContainsKey(w.Id)))
         {
+            if (w.TargetSystem == TargetSystem.Google)
+            {
+                // Gmail settings are not part of the inventory; the directory is read again
+                targets.Google |= !w.ChangeAction.ToString().StartsWith("Gmail", StringComparison.Ordinal);
+                continue;
+            }
+
             switch (w.ChangeAction)
             {
                 case ChangeAction.AdCreateUser:

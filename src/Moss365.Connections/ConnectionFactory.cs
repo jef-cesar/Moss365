@@ -81,7 +81,59 @@ public sealed class ConnectionFactory : IConnectionFactory
             signIn = _google;
         }
 
-        return new Google.GoogleConnection(_http, signIn.TokenAsync, () => signIn.SignedInAs, settings.GoogleParts, settings.GoogleDomain);
+        // G2, part Gmail settings (U34): the service account, only with the part on and its key kept
+        Google.GmailTokens? gmail = null;
+        if (Core.Setup.GoogleParts.IsOn(settings.GoogleParts, Core.Setup.GoogleParts.GmailSettings) && Key(settings) is { } account)
+        {
+            lock (_lock)
+            {
+                if (_gmail is null || _gmail.KeyId != account.KeyId)
+                {
+                    _gmail = new Google.GmailTokens(_http, account);
+                }
+
+                gmail = _gmail;
+            }
+        }
+
+        return new Google.GoogleConnection(_http, signIn.TokenAsync, () => signIn.SignedInAs, settings.GoogleParts, settings.GoogleDomain)
+        {
+            GmailToken = gmail is null ? null : gmail.TokenAsync,
+        };
+    }
+
+    private Google.GmailTokens? _gmail;
+
+    /// <summary>The key of the service account, encrypted with the Windows account (DPAPI) on top of the tenant database.</summary>
+    private static ITokenCacheStore? GmailStore(ConnectionSettings settings)
+        => settings.GmailKeyStore is { } store && OperatingSystem.IsWindows() ? new Check.ProtectedTokenStore(store) : null;
+
+    private static Core.Google.GmailKey? Key(ConnectionSettings settings)
+        => GmailStore(settings)?.Load() is { } bytes ? Core.Google.GmailKey.Parse(System.Text.Encoding.UTF8.GetString(bytes)).Key : null;
+
+    public Core.Google.GmailKeyInfo? GmailKey(ConnectionSettings settings) => Key(settings)?.Info;
+
+    public string? SaveGmailKey(ConnectionSettings settings, string? json)
+    {
+        if (GmailStore(settings) is not { } store)
+        {
+            return Core.Localization.Texts.T["gmail.key.no-store"];
+        }
+
+        if (json is null)
+        {
+            store.Clear();
+            return null;
+        }
+
+        var (key, error) = Core.Google.GmailKey.Parse(json);
+        if (key is null)
+        {
+            return error;
+        }
+
+        store.Save(System.Text.Encoding.UTF8.GetBytes(json));
+        return null;
     }
 
     public IExchangeConnection? Exchange(ConnectionSettings settings)
@@ -124,6 +176,11 @@ public sealed class ConnectionFactory : IConnectionFactory
         if (Exchange(settings) is IExecutor exchange)
         {
             output.Add(exchange);
+        }
+
+        if (Google(settings) is IExecutor google)
+        {
+            output.Add(google);
         }
 
         return output;

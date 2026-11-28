@@ -19,11 +19,12 @@ public static class Access
             "statistieken" or "gebruikers" or "gebruiker" or "gasten" or "groepen" or "groep" or "postvak" or "room" or "rooms" or "vergelijk" => Permission.View,
             "postvakken" => p == "postvakken/nieuw" ? Permission.Manage : Permission.View,
             "contacten" or "contact" => Permission.View,
+            "google-groepen" or "google-groep" or "google-bronnen" => Permission.View, // G2
             "beveiliging" or "conditional-access" or "controles" => Permission.Security,
             "bewaarde-logboeken" => Permission.SignIns,
             "toegangsreviews" => Permission.Security,
             "spiegel" or "functieprofielen" => Permission.CompareMirror,
-            "nieuw" or "uitstroom" or "gepland" or "opvolging" => Permission.Actions,
+            "nieuw" or "google-nieuw" or "uitstroom" or "gepland" or "opvolging" => Permission.Actions,
             "opkuis" => Permission.Manage,
             "logonscripts" or "toestellen" or "samenwerking" or "rapporten" or "aanvragen" => Permission.View,
             "gastenverlenging" => Permission.InviteGuests,
@@ -66,6 +67,7 @@ public static class Access
             "logonscripts" or "wachtwoorden" => hasAd,
             "licenties" or "samenwerking" or "gastenverlenging" => hasMicrosoft365,
             "nieuw" => hasAd || hasMicrosoft365, // in AD, or in the cloud (0.31)
+            "google-nieuw" or "google-groepen" or "google-groep" or "google-bronnen" => systems.HasFlag(TenantSystems.GoogleWorkspace), // G2
             _ => true,
         };
     }

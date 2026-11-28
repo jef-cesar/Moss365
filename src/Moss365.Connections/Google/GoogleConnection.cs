@@ -17,7 +17,7 @@ public sealed class GoogleError(HttpStatusCode status, string message) : Excepti
 /// Reading Google Workspace through the Admin SDK Directory API (G1): users (projection full), organisational units and
 /// groups, with paging (nextPageToken) and one retry on 429/503.
 /// </summary>
-public sealed class GoogleConnection : IGoogleConnection
+public sealed partial class GoogleConnection : IGoogleConnection, IExecutor
 {
     internal const string Directory = "https://admin.googleapis.com/admin/directory/v1";
 
@@ -89,6 +89,32 @@ public sealed class GoogleConnection : IGoogleConnection
             catch (GoogleError ex)
             {
                 checks.Add(new GoogleCheck(name, false, Advice(ex, api)));
+            }
+        }
+
+        // G2, part Gmail settings: the service account on behalf of the administrator who signed in
+        if (PartOn(Core.Setup.GoogleParts.GmailSettings))
+        {
+            var name = Texts.T["gmail.check"];
+            if (GmailToken is not { } tokens)
+            {
+                checks.Add(new GoogleCheck(name, false, Texts.T["gmail.no-service-account"]));
+            }
+            else if (SignedInAs is { Length: > 0 } admin)
+            {
+                try
+                {
+                    await SendAsync(HttpMethod.Get, $"{Gmail}/{Key(admin)}/settings/autoForwarding", null, cancel, c => tokens(admin, c));
+                    checks.Add(new GoogleCheck(name, true));
+                }
+                catch (GoogleError ex)
+                {
+                    checks.Add(new GoogleCheck(name, false, Advice(ex, "gmail.googleapis.com")));
+                }
+                catch (InvalidOperationException ex)
+                {
+                    checks.Add(new GoogleCheck(name, false, ex.Message));
+                }
             }
         }
 
@@ -330,17 +356,26 @@ public sealed class GoogleConnection : IGoogleConnection
         return output.Count > max ? output.Take(max).ToList() : output;
     }
 
-    private async Task<JsonElement> GetAsync(string url, CancellationToken cancel)
+    private Task<JsonElement> GetAsync(string url, CancellationToken cancel) => SendAsync(HttpMethod.Get, url, null, cancel);
+
+    /// <summary>A request with the token of the sign-in (or another, for Gmail), one retry on 429/503; an empty answer
+    /// is an empty object.</summary>
+    private async Task<JsonElement> SendAsync(HttpMethod method, string url, object? body, CancellationToken cancel, Func<CancellationToken, Task<string>>? token = null)
     {
         for (var attempt = 0; ; attempt++)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _token(cancel));
+            using var request = new HttpRequestMessage(method, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await (token ?? _token)(cancel));
+            if (body is not null)
+            {
+                request.Content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
+            }
+
             using var answer = await _http.SendAsync(request, cancel);
             var text = await answer.Content.ReadAsStringAsync(cancel);
             if (answer.IsSuccessStatusCode)
             {
-                using var json = JsonDocument.Parse(text);
+                using var json = JsonDocument.Parse(text.Trim().Length == 0 ? "{}" : text);
                 return json.RootElement.Clone();
             }
 

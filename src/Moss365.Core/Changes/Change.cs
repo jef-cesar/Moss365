@@ -7,6 +7,9 @@ public enum TargetSystem
     ActiveDirectory,
     Graph,
     Exchange,
+
+    /// <summary>Google Workspace (G2): the Directory, Groups Settings, Licensing and (with its part) Gmail API.</summary>
+    Google,
 }
 
 public enum ChangeAction
@@ -108,6 +111,30 @@ public enum ChangeAction
     ExchangeCreateContact,        // Target = the external address; Name, DisplayName, ExternalEmailAddress, Alias, FirstName, LastName, Company, Title, Phone
     ExchangeUpdateContact,        // Target = the address of the contact; the fields that change (ContactInstellen); Previous the same fields
     ExchangeRoomWorkingHours,     // Target = room address; WorkDays, WorkingHoursStartTime/EndTime (HH:mm), WorkingHoursTimeZone; Previous
+
+    // New in 0.42: writing in Google Workspace (G2). Target = the id of the user, group or resource, unless said otherwise
+    GoogleCreateUser,             // Target = the primary address; givenName, familyName, orgUnitPath, employeeId, department; password in Secret
+    GoogleUpdateUser,             // the fields that change (givenName, familyName, orgUnitPath, suspended, employeeId, department); Previous
+    GoogleSetPassword,            // password in Secret; changeAtNextLogin (True/False)
+    GoogleSignOut,                // every web and device session of the user
+    GoogleRevokeTokens,           // every token the user gave to an app
+    GoogleAddAlias,               // alias
+    GoogleRemoveAlias,            // alias
+    GoogleAddGroupMember,         // Target = the address of the member; groep (id or address), rol (MEMBER, MANAGER, OWNER)
+    GoogleRemoveGroupMember,      // Target = the address of the member; groep; Previous rol
+    GoogleUpdateGroup,            // name, description; Previous
+    GoogleUpdateGroupSettings,    // Target = the group address; whoCanJoin, whoCanPostMessage, whoCanViewMembership, allowExternalMembers; Previous (part)
+    GoogleUpdateResource,         // resourceName, capacity, floorName, resourceDescription; Previous
+    GoogleAssignLicence,          // Target = the address of the user; productId, skuId, sku (part)
+    GoogleRemoveLicence,          // Target = the address of the user; productId, skuId, sku (part)
+    GmailSetForwarding,           // Target = the address of the user; adres ("" = off), disposition; Previous (part Gmail settings)
+    GmailSetVacation,             // Target = the address of the user; aan, onderwerp, tekst, alleenIntern, start, einde (ms); Previous
+    GmailAddDelegate,             // Target = the address of the user; gemachtigde
+    GmailRemoveDelegate,          // Target = the address of the user; gemachtigde
+    GmailSetSignature,            // Target = the address of the user; handtekening (HTML); Previous
+    GmailAddFilter,               // Target = the address of the user; json (criteria and action, as Gmail gives them)
+    GmailRemoveFilter,            // Target = the address of the user; id; Previous json (to add it again)
+    GoogleSetGroupMemberRole,     // Target = the address of the member; groep, rol (MEMBER, MANAGER, OWNER); Previous rol
 }
 
 /// <summary>
@@ -159,6 +186,7 @@ public sealed class Change
     {
         TargetSystem.ActiveDirectory => "AD",
         TargetSystem.Graph => "Entra (Graph)",
+        TargetSystem.Google => "Google",
         _ => "Exchange",
     };
 }
