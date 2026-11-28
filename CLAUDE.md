@@ -92,7 +92,10 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   both; a Graph-only field such as `usageLocation` is written in Entra also for a synchronised account; `ValidValue`
   checks while typing) and `EditUser` in sections; guests `GuestPlans.Edit`/`InviteAgain`; computers
   `Devices/ComputerPlans.cs` (`ComputerEditor`); group settings `GroupPlans.Settings` (`GroupSettingsEditor`; Exchange
-  through the fixed `GroepInstellen`); mailbox settings `MailboxPlans.Settings` (`PostvakInstellen`). Every yes/no value
+  through the fixed `GroepInstellen`); mailbox settings `MailboxPlans.Settings` (`PostvakInstellen`; the primary address as `WindowsEmailAddress`, the old one stays
+  an alias; `MailboxPlans.AddressHolder` refuses an address another recipient has). The UPN is a `SignInFields` field (a
+  confirmation on the page); the sAMAccountName is never changed: it is the person key (`ad:<sam>`) and the snapshot key.
+  `accountExpires` goes through `AttributePlans.ExpiryValue` (file time of the start of the next day; "0" is never). Every yes/no value
   of `Exchange.ps1` goes through `$JaNee`. Reading a new field: add it to the reader, `InventoryWriter` and
   `InventoryLoader`; `Snapshots.SameRow`/`SameAsBefore` make a column read for the first time no change.
 - Organisation settings (R9): naming in `Configuration/Naming.cs` (`OrganisationConfig.Naming`, used by
