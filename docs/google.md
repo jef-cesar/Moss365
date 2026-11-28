@@ -40,7 +40,9 @@ as for Microsoft. Open it in a browser on this PC and sign in as an administrato
 - The flow is the OAuth flow for installed apps with PKCE: the code is only of use to whoever started the sign-in.
 - Moss365 accepts only an account of the domain of the tenant, or of a subdomain of it. An account of another domain
   is refused.
-- The tokens stay in memory for the session. They are never written to the disk or to a log.
+- The tokens stay in memory for the session and are never written to a log. With **Stay signed in on this PC** (the
+  same setting as for Microsoft) the refresh token is kept in the tenant database, encrypted with your Windows account;
+  another part on asks a new sign-in, and turning the setting off removes it.
 - Reading without a window (R18) never signs in to Google.
 
 ## What Moss365 reads (G1)
@@ -55,6 +57,22 @@ Moss365 only reads. It asks for these scopes and no others:
 | `admin.directory.orgunit.readonly` | The organisational units |
 | `admin.directory.resource.calendar.readonly` | Calendar resources: rooms and equipment, with capacity, building and floor |
 | `admin.directory.rolemanagement.readonly` | Admin roles of users, for the whole organisation or one organisational unit |
+| `admin.reports.audit.readonly` | The sign-in and admin logs |
+
+For licences, group settings and the alerts, Google has no scope that only reads. Each of them is a **part** of
+Google on *Verbindingen* (U40), off by default: its scope is asked only when the part is on, and Moss365 only reads
+with it. After turning a part on or off you sign in to Google again, with the new consent.
+
+| Part | Scope | API |
+| --- | --- | --- |
+| Google licences | `apps.licensing` | `licensing.googleapis.com` |
+| Google group settings | `apps.groups.settings` | `groupssettings.googleapis.com` |
+| Google alerts | `apps.alerts` | `alertcenter.googleapis.com` |
+
+The script turns all these APIs on; an API that is on gives no right by itself.
+
+**Check the project** on *Verbindingen* signs in and asks every API one small question. When something does not work
+it says what to do: turn an API on, sign in again for a scope, or give the account an admin role.
 
 Every read becomes a snapshot. The tables are `google-gebruikers.csv`, `google-groepen.csv`, `google-eenheden.csv`,
 `google-agendabronnen.csv` and `google-rollen.csv`, and as with the other systems only what changed is stored.

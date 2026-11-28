@@ -91,7 +91,7 @@ public sealed class GoogleTests
     }
 
     /// <summary>The whole sign-in: the link in the bar, the browser comes back with the code, the code becomes a token.</summary>
-    private static async Task<(GoogleSignIn SignIn, FakeGoogle Google, Exception? Error)> SignInAsync(string email, string? hd)
+    private static async Task<(GoogleSignIn SignIn, FakeGoogle Google, Exception? Error)> SignInAsync(string email, string? hd, ITokenCacheStore? cache = null, IReadOnlyList<string>? scopes = null)
     {
         var google = new FakeGoogle
         {
@@ -111,7 +111,7 @@ public sealed class GoogleTests
             var port = new Uri(query["redirect_uri"]).Port;
             _ = Browser(port, $"/?code=code-1&state={Uri.EscapeDataString(query["state"])}");
         };
-        var signIn = new GoogleSignIn(new HttpClient(google), "client-1", "secret-1", "example.com", status, withoutWindow: false);
+        var signIn = new GoogleSignIn(new HttpClient(google), "client-1", "secret-1", "example.com", status, withoutWindow: false, scopes, cache);
         try
         {
             await signIn.TokenAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(20));
@@ -139,6 +139,84 @@ public sealed class GoogleTests
         var (other, _, refused) = await SignInAsync("admin@example.net", "example.net");
         Assert.NotNull(refused);
         Assert.Null(other.SignedInAs);
+    }
+
+    private sealed class MemoryStore : ITokenCacheStore
+    {
+        public byte[]? Data { get; private set; }
+
+        public byte[]? Load() => Data;
+
+        public void Save(byte[] data) => Data = data;
+
+        public void Clear() => Data = null;
+    }
+
+    [Fact]
+    public async Task StayingSignedInKeepsOnlyTheRefreshTokenForTheSameScopes()
+    {
+        var store = new MemoryStore();
+        var (_, _, error) = await SignInAsync("admin@example.com", "example.com", store);
+        Assert.Null(error);
+        var kept = Encoding.UTF8.GetString(store.Data!);
+        Assert.Contains("refresh-1", kept, StringComparison.Ordinal);
+        Assert.DoesNotContain("token-1", kept, StringComparison.Ordinal); // never the access token
+
+        // A next session (even without a window) refreshes with the kept token, without the browser
+        var google = new FakeGoogle { Answer = (_, body) => (HttpStatusCode.OK, JsonSerializer.Serialize(new { access_token = "token-2", expires_in = 3600 })) };
+        var next = new GoogleSignIn(new HttpClient(google), "client-1", "secret-1", "example.com", new SignInStatus(), withoutWindow: true, cache: store);
+        Assert.Equal("admin@example.com", next.SignedInAs);
+        Assert.Equal("token-2", await next.TokenAsync(CancellationToken.None));
+        Assert.Contains("grant_type=refresh_token", Assert.Single(google.Asked).Body, StringComparison.Ordinal);
+
+        // Another part on means other scopes: the kept sign-in does not count, a new consent is needed
+        var other = new GoogleSignIn(new HttpClient(google), "client-1", "secret-1", "example.com", new SignInStatus(), withoutWindow: true,
+            Moss365.Core.Setup.GoogleParts.Scopes(new[] { Moss365.Core.Setup.GoogleParts.Licences }), store);
+        Assert.Null(other.SignedInAs);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => other.TokenAsync(CancellationToken.None));
+
+        // A refused refresh (revoked) forgets what was kept
+        var revoked = new FakeGoogle { Answer = (_, _) => (HttpStatusCode.BadRequest, """{"error":"invalid_grant"}""") };
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new GoogleSignIn(new HttpClient(revoked), "client-1", "secret-1", "example.com", null, true, cache: store).TokenAsync(CancellationToken.None));
+        Assert.Null(store.Data);
+    }
+
+    [Fact]
+    public void APartAddsItsScopeOnlyWhenItIsOn()
+    {
+        var none = Moss365.Core.Setup.GoogleParts.Scopes(null);
+        Assert.Equal(Moss365.Core.Setup.GoogleParts.BaseScopes, none);
+        Assert.All(none.Where(s => s.StartsWith("https://", StringComparison.Ordinal)), s => Assert.EndsWith(".readonly", s, StringComparison.Ordinal));
+        var licences = Moss365.Core.Setup.GoogleParts.Scopes(new[] { Moss365.Core.Setup.GoogleParts.Licences });
+        Assert.Contains("https://www.googleapis.com/auth/apps.licensing", licences);
+        Assert.DoesNotContain("https://www.googleapis.com/auth/apps.alerts", licences);
+        Assert.Equal(new[] { "admin.googleapis.com", "licensing.googleapis.com", "groupssettings.googleapis.com", "alertcenter.googleapis.com" }, Moss365.Core.Setup.GoogleParts.Apis);
+    }
+
+    [Fact]
+    public async Task TheCheckOfTheProjectSaysWhatToDoPerApi()
+    {
+        var google = new FakeGoogle
+        {
+            Answer = (r, _) => r.RequestUri!.ToString() switch
+            {
+                var u when u.Contains("/reports/", StringComparison.Ordinal) => (HttpStatusCode.Forbidden, """{"error":{"code":403,"message":"Request had insufficient authentication scopes."}}"""),
+                var u when u.Contains("licensing.googleapis.com", StringComparison.Ordinal) => (HttpStatusCode.Forbidden, """{"error":{"code":403,"message":"Enterprise License Manager API has not been used in project 123 before or it is disabled."}}"""),
+                _ => (HttpStatusCode.OK, "{}"),
+            },
+        };
+        var connection = new GoogleConnection(new HttpClient(google), _ => Task.FromResult("token-1"), () => "admin@example.com", new[] { Moss365.Core.Setup.GoogleParts.Licences }, "example.com");
+        var checks = await connection.CheckAsync(CancellationToken.None);
+        Assert.True(checks[0].Ok);
+        Assert.Equal("admin@example.com", checks[0].Message);
+        Assert.Contains(checks, c => !c.Ok && c.Message!.Contains("licensing.googleapis.com", StringComparison.Ordinal));
+        Assert.Contains(checks, c => !c.Ok && c.Message!.Contains("opnieuw aan", StringComparison.Ordinal)); // a scope not granted
+        Assert.DoesNotContain(google.Asked, a => a.Url.Contains("alertcenter", StringComparison.Ordinal)); // that part is off
+        Assert.Contains(google.Asked, a => a.Url.Contains("customerId=example.com", StringComparison.Ordinal));
+
+        // Not signed in: one line, and nothing else is asked
+        var failing = new GoogleConnection(new HttpClient(google), _ => throw new InvalidOperationException("geen aanmelding"));
+        Assert.Equal("geen aanmelding", Assert.Single(await failing.CheckAsync(CancellationToken.None)).Message);
     }
 
     [Fact]

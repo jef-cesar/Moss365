@@ -639,7 +639,7 @@ Further:
 ## 12. Decisions
 
 U1 to U12 were decided on 5 November 2026 (U1 to U3 directly, the rest interactively the same day); U13 on 23 November 2026;
-U14 to U26 interactively on 26 November 2026; U27 to U36 on 27 November 2026 (U28 to U36 interactively); U37 to U39 interactively on 28 November 2026.
+U14 to U26 interactively on 26 November 2026; U27 to U36 on 27 November 2026 (U28 to U36 interactively); U37 to U40 interactively on 28 November 2026.
 
 | # | Decision | Outcome |
 | --- | --- | --- |
@@ -682,6 +682,7 @@ U14 to U26 interactively on 26 November 2026; U27 to U36 on 27 November 2026 (U2
 | U37 | **The route of the PST (R22)** (28 November 2026) | **The mailbox export API of Graph, with the PST written by Moss365** (not Purview eDiscovery, not only a guide): no Purview licence or eDiscovery role; the permission as a part |
 | U38 | **Where the PST goes** | **A folder of choice**, asked at every export; the change log keeps who, when, where and the SHA-256 |
 | U39 | **What stays after the export** | **Nothing**: once the PST is written and checked, every temporary part is removed; nothing of the mailbox stays in the tenant database |
+| U40 | **Google scopes that can also write** (28 November 2026) | **A part per tenant, off by default** (as U25): licences, group settings and the alerts have only a scope that can also write; it is asked only when its part is on, although Moss365 only reads with it in G1 |
 
 ## 13. The steps to 1.0
 

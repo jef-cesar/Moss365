@@ -136,6 +136,25 @@ public sealed partial class ManagementState
         }
     }
 
+    /// <summary>The check of the own Google project (G1): the sign-in and every API, with what to do; one line when
+    /// Google is not set up.</summary>
+    public async Task<IReadOnlyList<GoogleCheck>> CheckGoogleAsync(CancellationToken cancel = default)
+    {
+        if (IsHistoric || !HasGoogle || _factory?.Google(EffectiveSettings) is not { } google)
+        {
+            return new[] { new GoogleCheck(Texts.T["google.check.settings"], false, Texts.T["google.fill-in"]) };
+        }
+
+        try
+        {
+            return await google.CheckAsync(cancel);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return new[] { new GoogleCheck(Texts.T["google.check.sign-in"], false, ex.Message) };
+        }
+    }
+
     /// <summary>Starts live loading in the background; false when a task is already running or connecting is not
     /// possible.</summary>
     public bool StartLoading(LoadKind kind)

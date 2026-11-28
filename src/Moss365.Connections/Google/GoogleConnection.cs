@@ -21,15 +21,97 @@ public sealed class GoogleConnection : IGoogleConnection
 {
     internal const string Directory = "https://admin.googleapis.com/admin/directory/v1";
 
+    internal const string Reports = "https://admin.googleapis.com/admin/reports/v1";
+    internal const string Licensing = "https://licensing.googleapis.com/apps/licensing/v1";
+    internal const string GroupsSettings = "https://www.googleapis.com/groups/v1/groups";
+    internal const string AlertCenter = "https://alertcenter.googleapis.com/v1beta1";
+
     private readonly HttpClient _http;
     private readonly Func<CancellationToken, Task<string>> _token;
     private readonly Func<string?> _signedInAs;
+    private readonly IReadOnlyList<string> _parts;
+    private readonly string _domain;
 
-    public GoogleConnection(HttpClient http, Func<CancellationToken, Task<string>> token, Func<string?>? signedInAs = null)
+    public GoogleConnection(HttpClient http, Func<CancellationToken, Task<string>> token, Func<string?>? signedInAs = null,
+        IReadOnlyList<string>? parts = null, string domain = "")
     {
         _http = http;
         _token = token;
         _signedInAs = signedInAs ?? (() => null);
+        _parts = parts ?? Array.Empty<string>();
+        _domain = domain.Trim();
+    }
+
+    private bool PartOn(string part) => Core.Setup.GoogleParts.IsOn(_parts, part);
+
+    /// <summary>The check of the own project (G1): the sign-in, then one small question per API Moss365 uses (a part only
+    /// when it is on), each with what to do when it does not work.</summary>
+    public async Task<IReadOnlyList<GoogleCheck>> CheckAsync(CancellationToken cancel)
+    {
+        var checks = new List<GoogleCheck>();
+        try
+        {
+            await _token(cancel);
+            checks.Add(new GoogleCheck(Texts.T["google.check.sign-in"], true, SignedInAs));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or HttpRequestException)
+        {
+            checks.Add(new GoogleCheck(Texts.T["google.check.sign-in"], false, ex.Message));
+            return checks;
+        }
+
+        var probes = new List<(string Name, string Url, string Api)>
+        {
+            (Texts.T["google.read.users"], $"{Directory}/users?customer=my_customer&maxResults=1", "admin.googleapis.com"),
+            (Texts.T["google.read.org-units"], $"{Directory}/customer/my_customer/orgunits?type=children", "admin.googleapis.com"),
+            (Texts.T["google.read.groups"], $"{Directory}/groups?customer=my_customer&maxResults=1", "admin.googleapis.com"),
+            (Texts.T["google.read.resources"], $"{Directory}/customer/my_customer/resources/calendars?maxResults=1", "admin.googleapis.com"),
+            (Texts.T["google.read.roles"], $"{Directory}/customer/my_customer/roles?maxResults=1", "admin.googleapis.com"),
+            (Texts.T["google.read.logs"], $"{Reports}/activity/users/all/applications/login?maxResults=1", "admin.googleapis.com"),
+        };
+        if (PartOn(Core.Setup.GoogleParts.Licences))
+        {
+            probes.Add((Texts.T["google.read.licences"], $"{Licensing}/product/Google-Apps/users?customerId={Uri.EscapeDataString(_domain)}&maxResults=1", "licensing.googleapis.com"));
+        }
+
+        if (PartOn(Core.Setup.GoogleParts.Alerts))
+        {
+            probes.Add((Texts.T["google.read.alerts"], $"{AlertCenter}/alerts?pageSize=1", "alertcenter.googleapis.com"));
+        }
+
+        foreach (var (name, url, api) in probes)
+        {
+            try
+            {
+                await GetAsync(url, cancel);
+                checks.Add(new GoogleCheck(name, true));
+            }
+            catch (GoogleError ex)
+            {
+                checks.Add(new GoogleCheck(name, false, Advice(ex, api)));
+            }
+        }
+
+        return checks;
+    }
+
+    /// <summary>What to do about an error of the check: the API off in the project, a scope not granted, or no
+    /// administrator.</summary>
+    internal static string Advice(GoogleError ex, string api)
+    {
+        var m = ex.Message;
+        if (m.Contains("has not been used in project", StringComparison.OrdinalIgnoreCase) || m.Contains("is disabled", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("SERVICE_DISABLED", StringComparison.Ordinal) || m.Contains("accessNotConfigured", StringComparison.OrdinalIgnoreCase))
+        {
+            return Texts.T.Format("google.check.api-off", api);
+        }
+
+        if (m.Contains("insufficient", StringComparison.OrdinalIgnoreCase) && m.Contains("scope", StringComparison.OrdinalIgnoreCase))
+        {
+            return Texts.T["google.check.scope"];
+        }
+
+        return ex.Status == HttpStatusCode.Forbidden ? Texts.T["google.check.not-admin"] : m;
     }
 
     public string? SignedInAs => _signedInAs();

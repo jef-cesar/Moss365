@@ -113,7 +113,41 @@
         <input class="kb-invoer kb-breed" type="password" @bind="State.Settings.GoogleClientSecret" aria-label="@T["connections.google.client-secret"]" autocomplete="off" />
     </div>
     <p class="kb-zacht">@Html("connections.google.help")</p>
-    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect || !State.Settings.GoogleFilled)" @onclick="() => Load(LoadKind.Google)">@T["connections.google.read"]</button>
+    @if (State.HasMicrosoft365)
+    {
+        <p class="kb-zacht">@T["connections.google.remember-same"]</p>
+    }
+    else
+    {
+        <label>
+            <input type="checkbox" checked="@State.Settings.RememberSignIn" @onchange="e => State.RememberSignIn(e.Value is true)" aria-label="@T["connections.stay-signed-in"]" />
+            @T["connections.stay-signed-in-on-this"]
+        </label>
+    }
+    <fieldset class="kb-kaart" id="google-onderdelen">
+        <legend>@T["connections.google.parts"]</legend>
+        <p class="kb-zacht">@T["connections.google.parts.help"]</p>
+        @foreach (var part in Moss365.Core.Setup.GoogleParts.All)
+        {
+            var key = part.Key;
+            <label><input type="checkbox" checked="@Moss365.Core.Setup.GoogleParts.IsOn(State.Config.PermissionParts, key)" disabled="@(!State.Can(Permission.Settings) || State.IsHistoric)"
+                          @onchange="e => State.SetPermissionPart(key, e.Value is true)" aria-label="@part.Name" /> @part.Name <span class="kb-zacht">(@string.Join(", ", part.Scopes.Select(s => s[(s.LastIndexOf('/') + 1)..])))</span></label>
+            <p class="kb-zacht">@part.Explanation</p>
+        }
+    </fieldset>
+    <div class="kb-filters">
+        <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect || !State.Settings.GoogleFilled)" @onclick="() => Load(LoadKind.Google)">@T["connections.google.read"]</button>
+        <button class="kb-knop" disabled="@(googleChecking || !State.CanConnect || !State.Settings.GoogleFilled)" @onclick="CheckGoogle">@T["connections.google.check"]</button>
+    </div>
+    @if (googleChecks is { } checks)
+    {
+        <ul class="kb-lijst" id="google-controle">
+            @foreach (var c in checks)
+            {
+                <li class="@(c.Ok ? "kb-ok" : "kb-waarschuwing")">@(c.Ok ? "✓" : "✗") @c.Name@if (c.Message is { Length: > 0 } m) { <span class="kb-zacht"> - @m</span> }</li>
+            }
+        </ul>
+    }
 </section>
 }
 
@@ -171,6 +205,21 @@
 </section>
 
 @code {
+    // G1: the check of the own Google project
+    private IReadOnlyList<GoogleCheck>? googleChecks;
+    private bool googleChecking;
+
+    private async Task CheckGoogle()
+    {
+        googleChecking = true;
+        googleChecks = null;
+        SaveGoogle();
+        googleChecks = await State.CheckGoogleAsync();
+        googleChecking = false;
+    }
+
+    private void SaveGoogle() => State.SaveSettings();
+
     [Inject] private IServiceProvider Services { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
 

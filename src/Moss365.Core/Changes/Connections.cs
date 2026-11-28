@@ -18,12 +18,17 @@ public interface ITokenCacheStore
 public sealed class DocumentTokenStore : ITokenCacheStore
 {
     private readonly Storage.Database _db;
+    private readonly string _document;
 
-    public DocumentTokenStore(Storage.Database db) => _db = db;
+    public DocumentTokenStore(Storage.Database db, string? document = null)
+    {
+        _db = db;
+        _document = document ?? Storage.Documents.SignInCache;
+    }
 
     public byte[]? Load()
     {
-        var text = _db.ReadDocument(Storage.Documents.SignInCache);
+        var text = _db.ReadDocument(_document);
         try
         {
             return string.IsNullOrEmpty(text) ? null : Convert.FromBase64String(System.Text.Json.JsonSerializer.Deserialize<string>(text) ?? string.Empty);
@@ -34,9 +39,9 @@ public sealed class DocumentTokenStore : ITokenCacheStore
         }
     }
 
-    public void Save(byte[] data) => _db.SaveDocument(Storage.Documents.SignInCache, System.Text.Json.JsonSerializer.Serialize(Convert.ToBase64String(data)));
+    public void Save(byte[] data) => _db.SaveDocument(_document, System.Text.Json.JsonSerializer.Serialize(Convert.ToBase64String(data)));
 
-    public void Clear() => _db.DeleteDocument(Storage.Documents.SignInCache);
+    public void Clear() => _db.DeleteDocument(_document);
 }
 
 public sealed class ConnectionSettings
@@ -75,6 +80,14 @@ public sealed class ConnectionSettings
     /// <summary>Where the encrypted sign-in is kept (set by the app, never saved with the settings).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public ITokenCacheStore? TokenCache { get; set; }
+
+    /// <summary>Where the encrypted sign-in at Google is kept (G1; set by the app, never saved with the settings).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ITokenCacheStore? GoogleTokenCache { get; set; }
+
+    /// <summary>The Google parts that are on for the tenant (U40; set by the app from the organisation settings).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IReadOnlyList<string> GoogleParts { get; set; } = Array.Empty<string>();
 
     /// <summary>G1: the primary domain of Google Workspace (e.g. example.com).</summary>
     public string GoogleDomain { get; set; } = string.Empty;
@@ -306,7 +319,13 @@ public interface IGoogleConnection
 
     /// <summary>The address that signed in, or null.</summary>
     string? SignedInAs => null;
+
+    /// <summary>The check of the own project (G1): signing in, and every API Moss365 uses, with what is wrong.</summary>
+    Task<IReadOnlyList<GoogleCheck>> CheckAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<GoogleCheck>>(Array.Empty<GoogleCheck>());
 }
+
+/// <summary>One line of the check of the Google project: what, whether it works, and what to do when not.</summary>
+public sealed record GoogleCheck(string Name, bool Ok, string? Message = null);
 
 public sealed record ExchangeData(IReadOnlyList<ExoGroup> Groups, IReadOnlyList<Mailbox> Mailboxes, IReadOnlyList<MailboxPermission> Permissions,
     IReadOnlyList<MailContact>? Contacts = null);

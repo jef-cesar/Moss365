@@ -21,17 +21,17 @@ Describe 'Register-GoogleApp' {
         Remove-Item function:global:gcloud -ErrorAction SilentlyContinue
     }
 
-    It 'creates the project and turns on the Admin SDK API' {
+    It 'creates the project and turns on the APIs' {
         & $script:Script -ProjectId 'moss365-contoso' 6>$null
         $global:GcloudAanroepen | Should -Contain 'projects create moss365-contoso --name=Moss365'
-        $global:GcloudAanroepen | Should -Contain 'services enable admin.googleapis.com --project=moss365-contoso'
+        $global:GcloudAanroepen | Should -Contain 'services enable admin.googleapis.com licensing.googleapis.com groupssettings.googleapis.com alertcenter.googleapis.com --project=moss365-contoso'
     }
 
     It 'does not create a project that exists already' {
         $global:GcloudBestaat = $true
         & $script:Script -ProjectId 'moss365-contoso' 6>$null
         @($global:GcloudAanroepen | Where-Object { $_ -like 'projects create*' }).Count | Should -Be 0
-        $global:GcloudAanroepen | Should -Contain 'services enable admin.googleapis.com --project=moss365-contoso'
+        @($global:GcloudAanroepen | Where-Object { $_ -like 'services enable admin.googleapis.com*' }).Count | Should -Be 1
     }
 
     It 'refuses a project id Google does not accept' {

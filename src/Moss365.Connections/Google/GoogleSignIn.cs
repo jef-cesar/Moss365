@@ -16,16 +16,8 @@ namespace Moss365.Connections.Google;
 /// </summary>
 public sealed class GoogleSignIn
 {
-    /// <summary>Reading only (G1): users, groups, organisational units, and who signed in.</summary>
-    public static readonly IReadOnlyList<string> Scopes = new[]
-    {
-        "openid", "email",
-        "https://www.googleapis.com/auth/admin.directory.user.readonly",
-        "https://www.googleapis.com/auth/admin.directory.group.readonly",
-        "https://www.googleapis.com/auth/admin.directory.orgunit.readonly",
-        "https://www.googleapis.com/auth/admin.directory.resource.calendar.readonly",
-        "https://www.googleapis.com/auth/admin.directory.rolemanagement.readonly",
-    };
+    /// <summary>The reading scopes (G1) that every sign-in asks; a part adds its own (U40).</summary>
+    public static IReadOnlyList<string> Scopes => Core.Setup.GoogleParts.BaseScopes;
 
     private const string AuthEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
     private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
@@ -37,11 +29,16 @@ public sealed class GoogleSignIn
     private readonly SignInStatus? _status;
     private readonly bool _withoutWindow;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly IReadOnlyList<string> _scopes;
+    private readonly ITokenCacheStore? _cache;
     private string? _access;
     private DateTimeOffset _expires;
     private string? _refresh;
 
-    public GoogleSignIn(HttpClient http, string clientId, string clientSecret, string domain, SignInStatus? status, bool withoutWindow)
+    /// <param name="scopes">What to ask for; null = the reading scopes.</param>
+    /// <param name="cache">Where to keep the refresh token ("stay signed in", encrypted with the Windows account), or null.</param>
+    public GoogleSignIn(HttpClient http, string clientId, string clientSecret, string domain, SignInStatus? status, bool withoutWindow,
+        IReadOnlyList<string>? scopes = null, ITokenCacheStore? cache = null)
     {
         _http = http;
         _clientId = clientId.Trim();
@@ -49,7 +46,44 @@ public sealed class GoogleSignIn
         _domain = domain.Trim().ToLowerInvariant();
         _status = status;
         _withoutWindow = withoutWindow;
+        _scopes = scopes ?? Scopes;
+        _cache = cache;
+        Restore();
     }
+
+    /// <summary>The kept sign-in, when it was for the same client, domain and scopes (another part on means signing in
+    /// again, with the new consent).</summary>
+    private void Restore()
+    {
+        if (_cache?.Load() is not { } bytes)
+        {
+            return;
+        }
+
+        try
+        {
+            var kept = JsonSerializer.Deserialize<Kept>(bytes);
+            if (kept is not null && kept.Client == _clientId && kept.Domain == _domain && kept.Scopes == string.Join(' ', _scopes) && kept.Refresh.Length > 0)
+            {
+                _refresh = kept.Refresh;
+                SignedInAs = kept.Email;
+            }
+        }
+        catch (JsonException)
+        {
+            _cache.Clear();
+        }
+    }
+
+    private void Keep()
+    {
+        if (_cache is not null && _refresh is not null)
+        {
+            _cache.Save(JsonSerializer.SerializeToUtf8Bytes(new Kept(_clientId, _domain, string.Join(' ', _scopes), _refresh, SignedInAs)));
+        }
+    }
+
+    private sealed record Kept(string Client, string Domain, string Scopes, string Refresh, string? Email);
 
     /// <summary>The address that signed in, or null.</summary>
     public string? SignedInAs { get; private set; }
@@ -95,7 +129,7 @@ public sealed class GoogleSignIn
             var redirect = $"http://127.0.0.1:{((IPEndPoint)listener.LocalEndpoint).Port}";
             using var waiting = CancellationTokenSource.CreateLinkedTokenSource(cancel);
             waiting.CancelAfter(TimeSpan.FromMinutes(10));
-            _status?.Show(AuthorizeUrl(_clientId, redirect, Challenge(verifier), state, _domain), waiting);
+            _status?.Show(AuthorizeUrl(_clientId, redirect, Challenge(verifier), state, _domain, _scopes), waiting);
             var answer = await LoopbackAsync(listener, Texts.T["google.signed-in.page"], waiting.Token);
             if (answer.Error is { } error)
             {
@@ -139,8 +173,9 @@ public sealed class GoogleSignIn
         }
         catch (InvalidOperationException)
         {
-            // Revoked or expired: sign in again
+            // Revoked or expired: sign in again, and forget what was kept
             _refresh = null;
+            _cache?.Clear();
             return false;
         }
     }
@@ -173,18 +208,19 @@ public sealed class GoogleSignIn
         }
 
         SignedInAs = who.Email ?? SignedInAs;
+        Keep();
     }
 
     /// <summary>The link to sign in: the client, the loopback address, the scopes, PKCE (S256), the state, and the
     /// domain as a hint (checked again in the answer).</summary>
-    internal static Uri AuthorizeUrl(string clientId, string redirect, string challenge, string state, string domain)
+    internal static Uri AuthorizeUrl(string clientId, string redirect, string challenge, string state, string domain, IReadOnlyList<string>? scopes = null)
     {
         var query = new Dictionary<string, string>
         {
             ["client_id"] = clientId,
             ["redirect_uri"] = redirect,
             ["response_type"] = "code",
-            ["scope"] = string.Join(' ', Scopes),
+            ["scope"] = string.Join(' ', scopes ?? Scopes),
             ["code_challenge"] = challenge,
             ["code_challenge_method"] = "S256",
             ["state"] = state,

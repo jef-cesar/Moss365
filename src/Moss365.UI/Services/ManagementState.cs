@@ -359,7 +359,7 @@ public sealed partial class ManagementState
     /// Microsoft 365 for one that has no Microsoft 365, so that nothing reads or writes there.</summary>
     public ConnectionSettings EffectiveSettings => (HasAd, HasMicrosoft365, HasGoogle) switch
     {
-        (true, true, true) => Settings,
+        // Always a copy: the Google parts come from the organisation settings
         _ => new ConnectionSettings
         {
             AdServer = HasAd ? Settings.AdServer : string.Empty,
@@ -376,6 +376,8 @@ public sealed partial class ManagementState
             GoogleDomain = HasGoogle ? Settings.GoogleDomain : string.Empty,
             GoogleClientId = HasGoogle ? Settings.GoogleClientId : string.Empty,
             GoogleClientSecret = HasGoogle ? Settings.GoogleClientSecret : string.Empty,
+            GoogleTokenCache = HasGoogle ? Settings.GoogleTokenCache : null,
+            GoogleParts = HasGoogle ? Config.PermissionParts.Where(p => p.StartsWith("google-", StringComparison.Ordinal)).ToList() : Array.Empty<string>(),
         },
     };
 
@@ -572,6 +574,7 @@ public sealed partial class ManagementState
 
         // Where the encrypted sign-in is kept, when "stay signed in" is on (0.33); never saved with the settings
         read.TokenCache = new DocumentTokenStore(Database);
+        read.GoogleTokenCache = new DocumentTokenStore(Database, Moss365.Core.Storage.Documents.GoogleSignInCache);
         return read;
     }
 
@@ -582,6 +585,7 @@ public sealed partial class ManagementState
         if (!on)
         {
             Settings.TokenCache?.Clear();
+            Settings.GoogleTokenCache?.Clear();
         }
 
         SaveSettings();

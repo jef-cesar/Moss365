@@ -6,8 +6,11 @@
     Moss365 reads Google Workspace with an OAuth client of the organisation itself, never with a client of the makers
     (U35). This script, with the Google Cloud CLI (gcloud), signed in as someone who may create projects:
       1. creates the project (or uses it when it exists already);
-      2. turns on the Admin SDK API (admin.googleapis.com), which Moss365 reads users, groups and organisational units
-         with.
+      2. turns on the APIs Moss365 reads with: the Admin SDK (admin.googleapis.com: users, groups, organisational
+         units, resources, admin roles, the logs), and for the parts of Google (U40) the Enterprise License Manager
+         (licensing.googleapis.com), the Groups Settings API (groupssettings.googleapis.com) and the Alert Center
+         (alertcenter.googleapis.com). Turning an API on gives no right by itself: a part only asks its scope when it is
+         on in Moss365.
     Two steps stay by hand in the console, because Google has no command for them; the script shows the links:
       3. the OAuth consent screen, of the type Internal (only accounts of the organisation);
       4. an OAuth client of the type Desktop app. Fill in its client ID and secret in Moss365, on Connections, with the
@@ -64,9 +67,10 @@ else {
     Write-Host "Project $ProjectId created."
 }
 
-# 2. The Admin SDK API
-Invoke-Gcloud @('services', 'enable', 'admin.googleapis.com', "--project=$ProjectId") | Out-Null
-Write-Host 'Admin SDK API turned on.'
+# 2. The APIs
+$apis = @('admin.googleapis.com', 'licensing.googleapis.com', 'groupssettings.googleapis.com', 'alertcenter.googleapis.com')
+Invoke-Gcloud (@('services', 'enable') + $apis + @("--project=$ProjectId")) | Out-Null
+Write-Host "APIs turned on: $($apis -join ', ')."
 
 # 3 and 4. By hand in the console
 Write-Host ''
