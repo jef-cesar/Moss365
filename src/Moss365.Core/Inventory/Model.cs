@@ -315,6 +315,36 @@ public sealed record GoogleUser
     public bool Suspended { get; init; }
     public string EmployeeId { get; init; } = string.Empty;
     public string LastLogin { get; init; } = string.Empty;
+
+    // G1: read from the Directory API (projection full)
+    public string CreationTime { get; init; } = string.Empty;
+    public bool IsAdmin { get; init; }
+    public bool TwoStepEnrolled { get; init; }
+    public bool TwoStepEnforced { get; init; }
+    public bool Archived { get; init; }
+}
+
+/// <summary>An organisational unit of Google Workspace (G1): the path ("/Sales/Gent") is the identity.</summary>
+public sealed record GoogleOrgUnit
+{
+    public string Path { get; init; } = "/";
+    public string Name { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public string ParentPath { get; init; } = string.Empty;
+}
+
+/// <summary>A group of Google Workspace (G1).</summary>
+public sealed record GoogleGroup
+{
+    public string Id { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public int CountMembers { get; init; }
+    public IReadOnlyList<string> Aliases { get; init; } = Array.Empty<string>();
+
+    /// <summary>Made by an administrator (not by a user in Groups).</summary>
+    public bool AdminCreated { get; init; }
 }
 
 /// <summary>Where each source file came from (the app chooses the newest inventory folder per file).</summary>
@@ -327,6 +357,10 @@ public sealed record InventoryData
 
     /// <summary>The users of Google Workspace (G0; read from G1 on).</summary>
     public IReadOnlyList<GoogleUser> GoogleUsers { get; init; } = Array.Empty<GoogleUser>();
+
+    /// <summary>The groups and organisational units of Google Workspace (G1).</summary>
+    public IReadOnlyList<GoogleGroup> GoogleGroups { get; init; } = Array.Empty<GoogleGroup>();
+    public IReadOnlyList<GoogleOrgUnit> GoogleOrgUnits { get; init; } = Array.Empty<GoogleOrgUnit>();
     public IReadOnlyDictionary<string, AdGroup> AdGroupsByDn { get; init; } = new Dictionary<string, AdGroup>();
     public IReadOnlyDictionary<string, CloudGroup> CloudGroups { get; init; } = new Dictionary<string, CloudGroup>();
 
@@ -436,11 +470,13 @@ public sealed record InventoryData
 
     /// <summary>The data without anything of Google Workspace (G0): for a tenant that does not have it.</summary>
     public InventoryData WithoutGoogle()
-        => GoogleUsers.Count == 0 && !Persons.Any(p => p.Google is not null)
+        => GoogleUsers.Count == 0 && GoogleGroups.Count == 0 && GoogleOrgUnits.Count == 0 && !Persons.Any(p => p.Google is not null)
             ? this
             : this with
             {
                 GoogleUsers = Array.Empty<GoogleUser>(),
+                GoogleGroups = Array.Empty<GoogleGroup>(),
+                GoogleOrgUnits = Array.Empty<GoogleOrgUnit>(),
                 Persons = InventoryLoader.LinkPersons(AdUsers, EntraUsers),
                 Sources = Sources.Where(f => !f.File.StartsWith("google-", StringComparison.OrdinalIgnoreCase)).ToList(),
             };

@@ -12,6 +12,9 @@ public enum InventoryComponent
     Entra = 2,
     Rooms = 4,
     Mailboxes = 8,
+
+    /// <summary>Google Workspace: users, groups and organisational units (G1).</summary>
+    Google = 16,
 }
 
 /// <summary>
@@ -174,6 +177,26 @@ public static class InventoryWriter
                 ["MaximumDurationInMinutes"] = N(r.MaximumDurationInMinutes), ["AllowConflicts"] = B(r.AllowConflicts),
                 ["AllowRecurringMeetings"] = B(r.AllowRecurringMeetings), ["AddOrganizerToSubject"] = B(r.AddOrganizerToSubject),
                 ["DeleteSubject"] = B(r.DeleteSubject), ["AgendaRechten"] = r.CalendarPermissions,
+            }));
+        }
+
+        if (components.HasFlag(InventoryComponent.Google))
+        {
+            Write(InventoryLoader.GoogleUsersFile, d.GoogleUsers.Select(u => new Dictionary<string, string?>
+            {
+                ["Id"] = u.Id, ["PrimaryEmail"] = u.PrimaryEmail, ["Aliases"] = string.Join('|', u.Aliases), ["Name"] = u.Name,
+                ["GivenName"] = u.GivenName, ["FamilyName"] = u.FamilyName, ["Department"] = u.Department, ["OrgUnitPath"] = u.OrgUnitPath,
+                ["Suspended"] = B(u.Suspended), ["Archived"] = B(u.Archived), ["EmployeeId"] = u.EmployeeId, ["LastLoginTime"] = u.LastLogin,
+                ["CreationTime"] = u.CreationTime, ["IsAdmin"] = B(u.IsAdmin), ["IsEnrolledIn2Sv"] = B(u.TwoStepEnrolled), ["IsEnforcedIn2Sv"] = B(u.TwoStepEnforced),
+            }));
+            Write(InventoryLoader.GoogleGroupsFile, d.GoogleGroups.Select(g => new Dictionary<string, string?>
+            {
+                ["Id"] = g.Id, ["Email"] = g.Email, ["Name"] = g.Name, ["Description"] = g.Description,
+                ["DirectMembersCount"] = N(g.CountMembers), ["Aliases"] = string.Join('|', g.Aliases), ["AdminCreated"] = B(g.AdminCreated),
+            }));
+            Write(InventoryLoader.GoogleOrgUnitsFile, d.GoogleOrgUnits.Select(o => new Dictionary<string, string?>
+            {
+                ["OrgUnitPath"] = o.Path, ["Name"] = o.Name, ["Description"] = o.Description, ["ParentOrgUnitPath"] = o.ParentPath,
             }));
         }
 

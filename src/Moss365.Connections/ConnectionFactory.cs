@@ -54,6 +54,33 @@ public sealed class ConnectionFactory : IConnectionFactory
         return new GraphConnection(new GraphClient(_http, token.TokenAsync), () => token.SignedInAs, () => token.AppRoles, token.TokenAsync, token.SilentAsync);
     }
 
+    private Google.GoogleSignIn? _google;
+    private string? _googleKey;
+
+    /// <summary>Google Workspace (G1): one sign-in per session and per client of the tenant.</summary>
+    public IGoogleConnection? Google(ConnectionSettings settings)
+    {
+        if (!settings.GoogleFilled)
+        {
+            return null;
+        }
+
+        var key = $"{settings.GoogleDomain.Trim()}|{settings.GoogleClientId.Trim()}";
+        Google.GoogleSignIn signIn;
+        lock (_lock)
+        {
+            if (_google is null || _googleKey != key)
+            {
+                _google = new Google.GoogleSignIn(_http, settings.GoogleClientId, settings.GoogleClientSecret, settings.GoogleDomain, _signIn, _withoutWindow);
+                _googleKey = key;
+            }
+
+            signIn = _google;
+        }
+
+        return new Google.GoogleConnection(_http, signIn.TokenAsync, () => signIn.SignedInAs);
+    }
+
     public IExchangeConnection? Exchange(ConnectionSettings settings)
     {
         if (!OperatingSystem.IsWindows())

@@ -12,6 +12,9 @@ public enum LoadKind
     Rooms,
     Mailboxes,
     Everything,
+
+    /// <summary>Google Workspace only (G1).</summary>
+    Google,
 }
 
 /// <summary>
@@ -286,6 +289,26 @@ public sealed partial class ManagementState
                 Live("Postvakken", ObjectKind.Mailbox, ObjectKind.Group);
                 WasRead(InventoryComponent.Mailboxes);
             }));
+        }
+
+        // G1: Google Workspace in its own lane; never without a window (signing in needs the browser)
+        if (kind is LoadKind.Everything or LoadKind.Google && HasGoogle && EffectiveSettings.GoogleFilled && !_readingWithoutWindow)
+        {
+            steps.Add(new(Texts.T["google.read.step"], "Google", async (p, ct) =>
+            {
+                var google = _factory.Google(EffectiveSettings) ?? throw new InvalidOperationException(Texts.T["google.not-available"]);
+                var data = await google.ReadAsync(p, ct);
+                UpdateData(d => LiveLoader.WithGoogle(d, data));
+                Live("Google", ObjectKind.User, ObjectKind.Group);
+                WasRead(InventoryComponent.Google);
+            }));
+        }
+
+        if (kind == LoadKind.Google && steps.Count == 0)
+        {
+            Error = Texts.T["google.fill-in"];
+            Changed?.Invoke();
+            return false;
         }
 
         // Only when all lanes are done

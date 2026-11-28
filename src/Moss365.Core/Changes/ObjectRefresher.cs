@@ -166,6 +166,9 @@ public static class ObjectRefresher
             Mailboxes = d.Mailboxes,
             MailboxPermissions = d.MailboxPermissions,
             Contacts = d.Contacts,
+            GoogleUsers = d.GoogleUsers,
+            GoogleGroups = d.GoogleGroups,
+            GoogleOrgUnits = d.GoogleOrgUnits,
             Security = d.Security,
             ConditionalAccess = d.ConditionalAccess,
         };

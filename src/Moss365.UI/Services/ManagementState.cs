@@ -357,9 +357,9 @@ public sealed partial class ManagementState
 
     /// <summary>The connection settings as the connections use them: without AD for a tenant that has no AD, without
     /// Microsoft 365 for one that has no Microsoft 365, so that nothing reads or writes there.</summary>
-    public ConnectionSettings EffectiveSettings => (HasAd, HasMicrosoft365) switch
+    public ConnectionSettings EffectiveSettings => (HasAd, HasMicrosoft365, HasGoogle) switch
     {
-        (true, true) => Settings,
+        (true, true, true) => Settings,
         _ => new ConnectionSettings
         {
             AdServer = HasAd ? Settings.AdServer : string.Empty,
@@ -373,6 +373,9 @@ public sealed partial class ManagementState
             SearchUpdates = Settings.SearchUpdates,
             QuickLoad = Settings.QuickLoad,
             RefreshAuto = Settings.RefreshAuto,
+            GoogleDomain = HasGoogle ? Settings.GoogleDomain : string.Empty,
+            GoogleClientId = HasGoogle ? Settings.GoogleClientId : string.Empty,
+            GoogleClientSecret = HasGoogle ? Settings.GoogleClientSecret : string.Empty,
         },
     };
 

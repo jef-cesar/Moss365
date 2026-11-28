@@ -4,8 +4,8 @@ Every version becomes a release on GitHub; the section under the version is the 
 
 ## 0.41.0
 
-G0, the platform basis for Google Workspace next to AD and Microsoft 365 (decided on 27 November 2026, U28 to U36).
-Moss365 does not read or write Google Workspace yet: that comes with G1 and G2. This version prepares every tenant.
+G0, the platform basis for Google Workspace next to AD and Microsoft 365 (decided on 27 November 2026, U28 to U36),
+and the first part of G1: Moss365 reads Google Workspace (users, groups, organisational units); writing comes with G2.
 
 - **Google Workspace as a third system** (U28): on *Tenants* and *Verbindingen* three checkboxes choose any combination
   of Active Directory, Microsoft 365 and Google Workspace. The menu, the settings and Ctrl+K show only what the tenant
@@ -24,6 +24,19 @@ Moss365 does not read or write Google Workspace yet: that comes with G1 and G2. 
 - **The source of truth** (U33), a new settings page: per kind of object the chain from the source to what follows it
   (AD to Entra ID when Entra Connect synchronises), and where Google gets its accounts (itself, from Entra ID, from AD).
   A change goes to the source; the page of a synchronised person shows "follows from AD".
+
+G1, reading Google Workspace, first part (U35; [docs/google.md](docs/google.md)):
+
+- **Your own Google project**: `tools/Register-GoogleApp.ps1` (gcloud) makes the project and turns on the Admin SDK
+  API; the consent screen (Internal) and an OAuth client of the type Desktop app are made by hand in the console, with
+  the links the script shows. Never a client of the makers.
+- **Signing in** on *Verbindingen* with the primary domain and that client: the OAuth flow for installed apps with
+  PKCE and a loopback address of this PC, through the same sign-in bar as Microsoft. Only an administrator of the
+  domain of the tenant (or a subdomain) is accepted; the tokens stay in memory; reading without a window never signs in.
+- **Reading** with only reading scopes: users (addresses and aliases, organisational unit, suspended or archived,
+  administrator, 2-Step Verification, last sign-in, employee id, department), groups and organisational units, in a
+  lane of its own next to AD, Entra and Exchange. Every read is a snapshot (`google-gebruikers.csv`, `google-groepen.csv`,
+  `google-eenheden.csv`), and the Google users are linked to the persons (G0).
 
 R21, editing every object, first part (decided on 27 November 2026, U27):
 

@@ -99,8 +99,21 @@
 @if (State.HasGoogle)
 {
 <section class="kb-kaart">
-    <h2>@T["systems.google.name"]</h2>
-    <p>@T["connections.google.later"]</p>
+    <h2>@T["systems.google.name"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></h2>
+    <div class="kb-rij">
+        <label>@T["connections.google.domain"]</label>
+        <input class="kb-invoer kb-breed" placeholder="@T["connections.google.domain.example"]" @bind="State.Settings.GoogleDomain" aria-label="@T["connections.google.domain"]" />
+    </div>
+    <div class="kb-rij">
+        <label>@T["connections.google.client-id"]</label>
+        <input class="kb-invoer kb-breed" @bind="State.Settings.GoogleClientId" aria-label="@T["connections.google.client-id"]" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="kb-rij">
+        <label>@T["connections.google.client-secret"]</label>
+        <input class="kb-invoer kb-breed" type="password" @bind="State.Settings.GoogleClientSecret" aria-label="@T["connections.google.client-secret"]" autocomplete="off" />
+    </div>
+    <p class="kb-zacht">@Html("connections.google.help")</p>
+    <button class="kb-knop" disabled="@(State.TaskBusy || !State.CanConnect || !State.Settings.GoogleFilled)" @onclick="() => Load(LoadKind.Google)">@T["connections.google.read"]</button>
 </section>
 }
 

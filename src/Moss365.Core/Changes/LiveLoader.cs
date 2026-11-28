@@ -74,6 +74,9 @@ public static class LiveLoader
             Mailboxes = current.Mailboxes,
             MailboxPermissions = current.MailboxPermissions,
             Contacts = current.Contacts,
+            GoogleUsers = current.GoogleUsers,
+            GoogleGroups = current.GoogleGroups,
+            GoogleOrgUnits = current.GoogleOrgUnits,
             Security = current.Security,
             ConditionalAccess = current.ConditionalAccess,
         };
@@ -95,6 +98,20 @@ public static class LiveLoader
         var sources = current.Sources.Where(b => b.File != InventoryLoader.EntraCa && !b.File.StartsWith("Conditional Access", StringComparison.Ordinal)).ToList();
         sources.Add(new SourceFile("Conditional Access", $"live {DateTime.Now:yyyy-MM-dd HH:mm}", ca.Policies.Count));
         return current with { ConditionalAccess = ca, Sources = sources };
+    }
+
+    /// <summary>Replaces what Google Workspace has (G1: users, groups, organisational units) and keeps the rest.</summary>
+    public static InventoryData WithGoogle(InventoryData current, GoogleData google)
+    {
+        var sources = current.Sources.Where(b => !b.File.StartsWith("google-", StringComparison.OrdinalIgnoreCase) && !b.File.StartsWith("Google", StringComparison.Ordinal)).ToList();
+        sources.Add(new SourceFile("Google Workspace", $"live {DateTime.Now:yyyy-MM-dd HH:mm}", google.Users.Count + google.Groups.Count));
+        return current with
+        {
+            GoogleUsers = google.Users.OrderBy(u => u.PrimaryEmail, StringComparer.OrdinalIgnoreCase).ToList(),
+            GoogleGroups = google.Groups.OrderBy(g => g.Email, StringComparer.OrdinalIgnoreCase).ToList(),
+            GoogleOrgUnits = google.OrgUnits.OrderBy(o => o.Path, StringComparer.OrdinalIgnoreCase).ToList(),
+            Sources = sources,
+        };
     }
 
     /// <summary>Replaces the rooms (after a live read from Exchange) and keeps the rest.</summary>

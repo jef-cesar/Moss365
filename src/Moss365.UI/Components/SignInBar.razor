@@ -7,7 +7,7 @@
 {
     <div class="kb-aanmelden" role="alert">
         <div class="kb-aanmelden-tekst">
-            <strong><span aria-hidden="true">🔑</span> @T["signin.action"]</strong>
+            <strong><span aria-hidden="true">🔑</span> @(link.Host.EndsWith("google.com", StringComparison.OrdinalIgnoreCase) ? T["signin.action.google"] : T["signin.action"])</strong>
             <span>@T["signin.how"]</span>
         </div>
         <div class="kb-filters">
