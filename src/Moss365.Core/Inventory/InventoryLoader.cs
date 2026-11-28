@@ -299,6 +299,7 @@ public static class InventoryLoader
             IpPhone = W(r, "IpPhone"),
             AccountExpires = W(r, "AccountExpirationDate"),
             ProxyAddresses = Items(r, "ProxyAddresses"),
+            ExtensionAttributes = Extensions(r),
         };
     }
 
@@ -358,7 +359,15 @@ public static class InventoryLoader
         State = W(r, "State"),
         Country = W(r, "Country"),
         Fax = W(r, "FaxNumber"),
+        ExtensionAttributes = Extensions(r),
     };
+
+    /// <summary>extensionAttribute1 to 15; empty when none is filled in (data read before R21 too).</summary>
+    private static IReadOnlyList<string> Extensions(Dictionary<string, string> r)
+    {
+        var values = Enumerable.Range(1, 15).Select(i => W(r, "extensionAttribute" + i)).ToArray();
+        return values.Any(v => v.Length > 0) ? values : Array.Empty<string>();
+    }
 
     private static CloudGroup MakeCloudGroup(Dictionary<string, string> r) => new()
     {

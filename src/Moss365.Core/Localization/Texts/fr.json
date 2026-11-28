@@ -4096,5 +4096,8 @@
   "room-form.only-work-hours": "Réservable uniquement pendant les heures de travail",
   "room-form.working-hours": "Heures de travail",
   "room-form.work-hours-invalid": "La fin doit venir après le début (HH:mm).",
-  "room.plan.working-hours": "Modifier les heures de travail de {0}"
+  "room.plan.working-hours": "Modifier les heures de travail de {0}",
+  "attribute.extension": "Attribut d'extension {0}",
+  "edit-user.section.extra": "Attributs d'extension",
+  "edit-user.no-extensions": "Aucun attribut d'extension n'est renseigné."
 }

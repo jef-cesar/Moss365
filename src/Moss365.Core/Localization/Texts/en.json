@@ -4096,5 +4096,8 @@
   "room-form.only-work-hours": "Only bookable during the working hours",
   "room-form.working-hours": "Working hours",
   "room-form.work-hours-invalid": "The end has to come after the start (HH:mm).",
-  "room.plan.working-hours": "Change the working hours of {0}"
+  "room.plan.working-hours": "Change the working hours of {0}",
+  "attribute.extension": "Extension attribute {0}",
+  "edit-user.section.extra": "Extension attributes",
+  "edit-user.no-extensions": "No extension attribute is filled in."
 }

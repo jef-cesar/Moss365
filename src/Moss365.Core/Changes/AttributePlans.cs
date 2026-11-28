@@ -57,6 +57,26 @@ public sealed class UserDesired
     /// mailbox in Exchange Online. The old one stays as an alias.</summary>
     public string? PrimaryAddress { get; set; }
 
+    /// <summary>R21: extensionAttribute1 to 15 (AD; onPremisesExtensionAttributes for a cloud account).</summary>
+    public string? ExtensionAttribute1 { get; set; }
+    public string? ExtensionAttribute2 { get; set; }
+    public string? ExtensionAttribute3 { get; set; }
+    public string? ExtensionAttribute4 { get; set; }
+    public string? ExtensionAttribute5 { get; set; }
+    public string? ExtensionAttribute6 { get; set; }
+    public string? ExtensionAttribute7 { get; set; }
+    public string? ExtensionAttribute8 { get; set; }
+    public string? ExtensionAttribute9 { get; set; }
+    public string? ExtensionAttribute10 { get; set; }
+    public string? ExtensionAttribute11 { get; set; }
+    public string? ExtensionAttribute12 { get; set; }
+    public string? ExtensionAttribute13 { get; set; }
+    public string? ExtensionAttribute14 { get; set; }
+    public string? ExtensionAttribute15 { get; set; }
+
+    /// <summary>The names of the fifteen extension attributes, in order.</summary>
+    public static IReadOnlyList<string> ExtensionFields { get; } = Enumerable.Range(1, 15).Select(i => "ExtensionAttribute" + i).ToArray();
+
     /// <summary>The current values (AD when the account comes from AD, otherwise Entra), as the start of the
     /// form.</summary>
     public static UserDesired Of(Person p, InventoryData? d = null)
@@ -79,6 +99,11 @@ public sealed class UserDesired
         g.UsageLocation = p.Entra?.UsageLocation;
         g.Upn = p.Ad?.UserPrincipalName is { Length: > 0 } upn ? upn : p.Entra?.UserPrincipalName;
         g.PrimaryAddress = AttributePlans.PrimaryAddressOf(p);
+        var extensions = AttributePlans.ViaAd(p) ? p.Ad!.ExtensionAttributes : p.Entra?.ExtensionAttributes ?? Array.Empty<string>();
+        for (var i = 0; i < ExtensionFields.Count; i++)
+        {
+            typeof(UserDesired).GetProperty(ExtensionFields[i])!.SetValue(g, i < extensions.Count ? extensions[i] : string.Empty);
+        }
         g.Manager = d is null ? null : AttributePlans.ManagerOf(d, p)?.Key ?? string.Empty;
         return g;
     }
@@ -119,7 +144,33 @@ public static class AttributePlans
         (nameof(UserDesired.Fax), "facsimileTelephoneNumber", "faxNumber", "Fax"),
         (nameof(UserDesired.IpPhone), "ipPhone", null, "IP-telefoon"),
         (nameof(UserDesired.AccountExpires), "accountExpires", null, "Account vervalt"),
+        (nameof(UserDesired.ExtensionAttribute1), "extensionAttribute1", "onPremisesExtensionAttributes.extensionAttribute1", "Kenmerk 1"),
+        (nameof(UserDesired.ExtensionAttribute2), "extensionAttribute2", "onPremisesExtensionAttributes.extensionAttribute2", "Kenmerk 2"),
+        (nameof(UserDesired.ExtensionAttribute3), "extensionAttribute3", "onPremisesExtensionAttributes.extensionAttribute3", "Kenmerk 3"),
+        (nameof(UserDesired.ExtensionAttribute4), "extensionAttribute4", "onPremisesExtensionAttributes.extensionAttribute4", "Kenmerk 4"),
+        (nameof(UserDesired.ExtensionAttribute5), "extensionAttribute5", "onPremisesExtensionAttributes.extensionAttribute5", "Kenmerk 5"),
+        (nameof(UserDesired.ExtensionAttribute6), "extensionAttribute6", "onPremisesExtensionAttributes.extensionAttribute6", "Kenmerk 6"),
+        (nameof(UserDesired.ExtensionAttribute7), "extensionAttribute7", "onPremisesExtensionAttributes.extensionAttribute7", "Kenmerk 7"),
+        (nameof(UserDesired.ExtensionAttribute8), "extensionAttribute8", "onPremisesExtensionAttributes.extensionAttribute8", "Kenmerk 8"),
+        (nameof(UserDesired.ExtensionAttribute9), "extensionAttribute9", "onPremisesExtensionAttributes.extensionAttribute9", "Kenmerk 9"),
+        (nameof(UserDesired.ExtensionAttribute10), "extensionAttribute10", "onPremisesExtensionAttributes.extensionAttribute10", "Kenmerk 10"),
+        (nameof(UserDesired.ExtensionAttribute11), "extensionAttribute11", "onPremisesExtensionAttributes.extensionAttribute11", "Kenmerk 11"),
+        (nameof(UserDesired.ExtensionAttribute12), "extensionAttribute12", "onPremisesExtensionAttributes.extensionAttribute12", "Kenmerk 12"),
+        (nameof(UserDesired.ExtensionAttribute13), "extensionAttribute13", "onPremisesExtensionAttributes.extensionAttribute13", "Kenmerk 13"),
+        (nameof(UserDesired.ExtensionAttribute14), "extensionAttribute14", "onPremisesExtensionAttributes.extensionAttribute14", "Kenmerk 14"),
+        (nameof(UserDesired.ExtensionAttribute15), "extensionAttribute15", "onPremisesExtensionAttributes.extensionAttribute15", "Kenmerk 15"),
     };
+
+    /// <summary>The name of a field in the language of the screen (an extension attribute with its number).</summary>
+    public static string FieldName(string field, string? fallback = null)
+        => field.StartsWith("ExtensionAttribute", StringComparison.Ordinal)
+            ? Texts.T.Format("attribute.extension", field["ExtensionAttribute".Length..])
+            : Texts.T.Text("attribute." + field.ToLowerInvariant(), fallback ?? field);
+
+    /// <summary>Has the tenant extension attributes (R21): one is filled in somewhere, or the account is a cloud account
+    /// (Entra always has them; AD only with the Exchange schema).</summary>
+    public static bool HasExtensions(InventoryData data, Person p)
+        => !ViaAd(p) && p.Entra is not null || data.Persons.Any(x => x.Ad?.ExtensionAttributes.Count > 0 || x.Entra?.ExtensionAttributes.Count > 0);
 
     /// <summary>The last day an account works, from accountExpires as read (local time; midnight is the end of the day
     /// before, as Active Directory Users and Computers sets it); empty = never.</summary>
@@ -226,7 +277,7 @@ public static class AttributePlans
 
         foreach (var (field, adName, graphName, dutch) in Fields)
         {
-            var name = Texts.T.Text("attribute." + field.ToLowerInvariant(), dutch);
+            var name = FieldName(field, dutch);
             var old = Value(current, field) ?? string.Empty;
             var newValue = Value(desired, field);
             if (newValue is null || string.Equals(old, newValue.Trim(), StringComparison.Ordinal))
@@ -545,6 +596,7 @@ public static class AttributePlans
             nameof(UserDesired.UsageLocation) => value.Length == 2 && value.All(char.IsAsciiLetterUpper),
             nameof(UserDesired.AccountExpires) => DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) && d.Year is >= 2000 and < 9999,
             nameof(UserDesired.IpPhone) => value.Length <= 64,
+            _ when field.StartsWith("ExtensionAttribute", StringComparison.Ordinal) => value.Length <= 1024,
             nameof(UserDesired.Phone) or nameof(UserDesired.Mobile) or nameof(UserDesired.HomePhone) or nameof(UserDesired.Fax) => value.All(c => char.IsAsciiDigit(c) || c is ' ' or '+' or '(' or ')' or '-' or '.' or '/'),
             nameof(UserDesired.EmployeeId) => value.Length <= 16,
             nameof(UserDesired.PostalCode) => value.Length <= 40,

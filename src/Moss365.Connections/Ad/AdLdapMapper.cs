@@ -22,6 +22,9 @@ public static class AdLdapMapper
         "msDS-User-Account-Control-Computed", "lockoutTime",
         "employeeID", "employeeType", "streetAddress", "postalCode", "st", "co",
         "homePhone", "facsimileTelephoneNumber", "ipPhone", "accountExpires", "proxyAddresses",
+        "extensionAttribute1", "extensionAttribute2", "extensionAttribute3", "extensionAttribute4", "extensionAttribute5",
+        "extensionAttribute6", "extensionAttribute7", "extensionAttribute8", "extensionAttribute9", "extensionAttribute10",
+        "extensionAttribute11", "extensionAttribute12", "extensionAttribute13", "extensionAttribute14", "extensionAttribute15",
     };
 
     public static readonly string[] GroupAttributes = { "name", "sAMAccountName", "distinguishedName", "groupType", "description", "member", "displayName", "mail", "managedBy" };
@@ -68,6 +71,7 @@ public static class AdLdapMapper
             IpPhone = Text(k, "ipPhone"),
             AccountExpires = Date(k, "accountExpires"),
             ProxyAddresses = Items(k, "proxyAddresses"),
+            ExtensionAttributes = Enumerable.Range(1, 15).Select(i => Text(k, "extensionAttribute" + i)).ToArray() is var x && x.Any(v => v.Length > 0) ? x : Array.Empty<string>(),
         };
     }
 

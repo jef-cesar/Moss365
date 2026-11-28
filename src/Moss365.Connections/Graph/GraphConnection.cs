@@ -18,7 +18,7 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
     private const string UserFields = "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,department,"
                                            + "jobTitle,officeLocation,companyName,city,usageLocation,createdDateTime,onPremisesSyncEnabled,"
                                            + "onPremisesSamAccountName,onPremisesDistinguishedName,assignedLicenses,businessPhones,mobilePhone,"
-                                           + "employeeId,employeeType,streetAddress,postalCode,state,country,faxNumber";
+                                           + "employeeId,employeeType,streetAddress,postalCode,state,country,faxNumber,onPremisesExtensionAttributes";
 
     private const string GroupFields = "id,displayName,description,mail,mailEnabled,securityEnabled,groupTypes,membershipRule,"
                                        + "onPremisesSyncEnabled,onPremisesSamAccountName,assignedLicenses,visibility";
@@ -1247,6 +1247,9 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
             State = S(u, "state"),
             Country = S(u, "country"),
             Fax = S(u, "faxNumber"),
+            ExtensionAttributes = u.TryGetProperty("onPremisesExtensionAttributes", out var ext) && ext.ValueKind == JsonValueKind.Object
+                                  && Enumerable.Range(1, 15).Select(i => S(ext, "extensionAttribute" + i)).ToArray() is var values && values.Any(v => v.Length > 0)
+                ? values : Array.Empty<string>(),
             CreatedDateTime = S(u, "createdDateTime"),
             OnPremisesSyncEnabled = B(u, "onPremisesSyncEnabled"),
             OnPremisesSamAccountName = S(u, "onPremisesSamAccountName"),
@@ -1868,17 +1871,38 @@ public sealed class GraphConnection : IGraphConnection, IExecutor
     /// <summary>Text values to JSON: "true"/"false" become booleans (e.g. accountEnabled), the rest stays
     /// text.</summary>
     internal static Dictionary<string, object?> AttributesContent(IReadOnlyDictionary<string, string> parameters)
-        => parameters.ToDictionary(
-            p => p.Key,
-            p => p.Key == "businessPhones"
-                ? (p.Value.Length == 0 ? Array.Empty<string>() : new[] { p.Value })
-                : p.Value switch
+    {
+        static object? Value(string key, string value) => key == "businessPhones"
+            ? (value.Length == 0 ? Array.Empty<string>() : new[] { value })
+            : value switch
             {
                 "true" or "True" => true,
                 "false" or "False" => (object?)false,
                 "" => null,
-                _ => p.Value,
-            });
+                _ => value,
+            };
+
+        // R21: "a.b" is property b of object a (onPremisesExtensionAttributes.extensionAttribute1)
+        var content = new Dictionary<string, object?>();
+        foreach (var (key, value) in parameters)
+        {
+            if (key.Split('.', 2) is [var parent, var child])
+            {
+                if (content.GetValueOrDefault(parent) is not Dictionary<string, object?> inner)
+                {
+                    content[parent] = inner = new Dictionary<string, object?>();
+                }
+
+                inner[child] = value.Length == 0 ? null : value;
+            }
+            else
+            {
+                content[key] = Value(key, value);
+            }
+        }
+
+        return content;
+    }
 
     private static string S(JsonElement e, string name)
         => e.TryGetProperty(name, out var w) && w.ValueKind == JsonValueKind.String ? w.GetString() ?? string.Empty : string.Empty;

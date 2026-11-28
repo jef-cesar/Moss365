@@ -131,4 +131,39 @@ public sealed class R21FieldTests
         Assert.DoesNotContain(ObjectRefresher.WithExchange(d, new ExchangeObjects(Array.Empty<Room>(), new ExchangeData(Array.Empty<ExoGroup>(), Array.Empty<Mailbox>(), Array.Empty<MailboxPermission>()), new[] { jan.Smtp })).Contacts, c => c.Alias == "jan.extern");
         Assert.Equal(d.Contacts.Count, LiveLoader.WithExchange(d, new ExchangeData(Array.Empty<ExoGroup>(), Array.Empty<Mailbox>(), Array.Empty<MailboxPermission>())).Contacts.Count);
     }
+
+    [Fact]
+    public void ExtensionAttributesAreReadStoredAndWrittenAtTheSource()
+    {
+        var u = AdLdapMapper.ToUser(new Dictionary<string, object?[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["sAMAccountName"] = new object?[] { "an.peeters" },
+            ["extensionAttribute3"] = new object?[] { "KOST-42" },
+        });
+        Assert.Equal(15, u.ExtensionAttributes.Count);
+        Assert.Equal("KOST-42", u.ExtensionAttributes[2]);
+        Assert.Empty(AdLdapMapper.ToUser(new Dictionary<string, object?[]>(StringComparer.OrdinalIgnoreCase)).ExtensionAttributes);
+
+        // Stored and read back
+        var all = InventoryComponent.Ad | InventoryComponent.Entra | InventoryComponent.Rooms | InventoryComponent.Mailboxes;
+        var b = TestData.Files();
+        b[InventoryLoader.AdUsers].Single(r => r["SamAccountName"] == "an.peeters")["extensionAttribute3"] = "KOST-42";
+        b[InventoryLoader.EntraUsers].Single(r => r["Id"] == "e-info")["extensionAttribute15"] = "Onthaal";
+        var d = InventoryLoader.Build(b);
+        var back = InventoryLoader.Build(Snapshots.Tables(InventoryWriter.Files(d, all)));
+        Assert.Equal("KOST-42", back.AdUsers.Single(x => x.SamAccountName == "an.peeters").ExtensionAttributes[2]);
+        Assert.Equal("Onthaal", back.EntraUsers.Single(x => x.Id == "e-info").ExtensionAttributes[14]);
+
+        // A synchronised account in AD, a cloud account in Entra (one nested object)
+        var an = d.SearchPerson("ad:an.peeters")!;
+        Assert.Equal("KOST-42", UserDesired.Of(an, d).ExtensionAttribute3);
+        var ad = Assert.Single(AttributePlans.User(d, TestData.Config(), an, new UserDesired { ExtensionAttribute3 = "KOST-43" }).Plan);
+        Assert.Equal((ChangeAction.AdSetAttributes, "KOST-43", "KOST-42"), (ad.ChangeAction, ad.P("extensionAttribute3"), ad.Previous!["extensionAttribute3"]));
+        var info = d.Persons.Single(p => p.Entra?.Id == "e-info");
+        var cloud = Assert.Single(AttributePlans.User(d, TestData.Config(), info, new UserDesired { ExtensionAttribute15 = string.Empty, ExtensionAttribute1 = "A" }).Plan);
+        Assert.Equal(ChangeAction.GraphSetAttributes, cloud.ChangeAction);
+        var json = System.Text.Json.JsonSerializer.Serialize(Moss365.Connections.Graph.GraphConnection.AttributesContent(cloud.Parameters));
+        Assert.Equal("{\"onPremisesExtensionAttributes\":{\"extensionAttribute1\":\"A\",\"extensionAttribute15\":null}}", json);
+        Assert.True(AttributePlans.HasExtensions(d, an));
+    }
 }

@@ -359,6 +359,7 @@ public sealed partial class PlanScreenTests
         cut.FindAll(".kb-sectie").First(s => s.QuerySelector("h3")!.TextContent == "Contact en adres").QuerySelector("button")!.Click();
         Assert.Empty(cut.FindAll("input[aria-label='Telefoon thuis']"));
         Assert.Empty(cut.FindAll("input[aria-label='Account werkt tot en met']"));
+        Assert.Contains("Geen extensieattribuut ingevuld.", cut.Markup, StringComparison.Ordinal); // a cloud account always has them
         cut.Find("input[aria-label='Fax']").Input("03 000 00 08");
         cut.FindAll("button").First(b => b.TextContent == "Plan maken").Click();
         Confirm(cut);

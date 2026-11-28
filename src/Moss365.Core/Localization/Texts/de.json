@@ -4096,5 +4096,8 @@
   "room-form.only-work-hours": "Nur während der Arbeitszeit buchbar",
   "room-form.working-hours": "Arbeitszeit",
   "room-form.work-hours-invalid": "Das Ende muss nach dem Beginn liegen (HH:mm).",
-  "room.plan.working-hours": "Arbeitszeit von {0} ändern"
+  "room.plan.working-hours": "Arbeitszeit von {0} ändern",
+  "attribute.extension": "Erweiterungsattribut {0}",
+  "edit-user.section.extra": "Erweiterungsattribute",
+  "edit-user.no-extensions": "Kein Erweiterungsattribut ausgefüllt."
 }

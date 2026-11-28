@@ -54,8 +54,12 @@ R21, editing every object, first part (decided on 27 November 2026, U27):
   job title and phone), stored with the inventory and in the snapshots, a new contact (with a unique alias, an address
   nobody has) and changing one (name, address, hidden, first and last name, company, job title, phone) with undo. A
   contact from AD is shown but changed there.
-- **A room**: the address (street, postal code, city, country) and the equipment (audio, video, screen, wheelchair
-  access), with undo.
+- **A room**: the address (street, postal code, city, country), the equipment (audio, video, screen, wheelchair
+  access) and the working hours (days, from and until, time zone, only bookable within them; read with
+  Get-MailboxCalendarConfiguration, through the fixed Werkuren), with undo.
+- **Extension attributes** 1 to 15 in their own section of a user: read from AD (the Exchange schema) and from Entra
+  (onPremisesExtensionAttributes), written at the source (AD for a synchronised account, Entra for a cloud account);
+  only the filled in ones are shown until you edit them, and the section only appears when the tenant has them.
 - **Several users at once**: the new fields (company, kind of employee, address, country, usage location, logon
   script, the last day the account works) for a selection, as one plan.
 - **The history of one field** on the page of a person, from the snapshots and the change log.

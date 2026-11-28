@@ -4096,5 +4096,8 @@
   "room-form.only-work-hours": "Alleen te boeken binnen de werkuren",
   "room-form.working-hours": "Werkuren",
   "room-form.work-hours-invalid": "Het einde moet na het begin komen (UU:mm).",
-  "room.plan.working-hours": "Werkuren van {0} wijzigen"
+  "room.plan.working-hours": "Werkuren van {0} wijzigen",
+  "attribute.extension": "Extensieattribuut {0}",
+  "edit-user.section.extra": "Extensieattributen",
+  "edit-user.no-extensions": "Geen extensieattribuut ingevuld."
 }

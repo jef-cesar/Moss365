@@ -25,6 +25,9 @@ public sealed record AdUser
     /// <summary>R21: the mail addresses (proxyAddresses: "SMTP:" is the primary one, "smtp:" an alias); empty in data
     /// read before.</summary>
     public IReadOnlyList<string> ProxyAddresses { get; init; } = Array.Empty<string>();
+
+    /// <summary>R21: extensionAttribute1 to 15 (index 0 is 1; the Exchange schema in AD); empty when not read.</summary>
+    public IReadOnlyList<string> ExtensionAttributes { get; init; } = Array.Empty<string>();
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
@@ -80,6 +83,9 @@ public sealed record EntraUser
 
     /// <summary>R21: the fax number (faxNumber).</summary>
     public string Fax { get; init; } = string.Empty;
+
+    /// <summary>R21: onPremisesExtensionAttributes 1 to 15 (index 0 is 1); empty when not read.</summary>
+    public IReadOnlyList<string> ExtensionAttributes { get; init; } = Array.Empty<string>();
     public string UserPrincipalName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string GivenName { get; init; } = string.Empty;
