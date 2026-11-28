@@ -44,11 +44,40 @@
             <Tile Count="google.Count(u => !u.Suspended && !u.TwoStepEnrolled)" Label="@T["google.stat.no-two-step"]" />
             <Tile Count="State.Data.GoogleGroups.Count" Label="@T["google.stat.groups"]" />
             <Tile Count="State.Data.GoogleResources.Count" Label="@T["google.stat.resources"]" Attention="false" />
+            @if (State.Data.GoogleLicences.Count > 0)
+            {
+                <Tile Count="Moss365.Core.Google.GoogleEditions.WithoutLicence(google, State.Data.GoogleLicences).Count" Label="@T["google.stat.without-licence"]" />
+            }
             @if (State.HasAd || State.HasMicrosoft365)
             {
                 <Tile Count="State.Data.Persons.Count(p => p.Google is not null && p.Ad is null && p.Entra is null)" Label="@T["google.stat.only-google"]" Link="koppelingen" />
             }
         </div>
+        @if (State.Data.GoogleGroups.Any(g => g.WhoCanJoin.Length > 0))
+        {
+            <div class="kb-tegels">
+                <Tile Count="State.Data.GoogleGroups.Count(g => g.AnyoneCanJoin)" Label="@T["google.stat.anyone-can-join"]" />
+                <Tile Count="State.Data.GoogleGroups.Count(g => g.AnyoneCanPost)" Label="@T["google.stat.anyone-can-post"]" />
+                <Tile Count="State.Data.GoogleGroups.Count(g => g.AllowExternalMembers == true)" Label="@T["google.stat.external-members"]" />
+            </div>
+        }
+        @if (Moss365.Core.Setup.GoogleParts.IsOn(State.Config.PermissionParts, Moss365.Core.Setup.GoogleParts.Alerts))
+        {
+            <div class="kb-tegels">
+                <Tile Count="OpenGoogleAlerts()" Label="@T["google.stat.open-alerts"]" Link="bewaarde-logboeken" />
+            </div>
+        }
+        @if (State.Data.GoogleLicences.Count > 0)
+        {
+            var (edition, sku, skus) = Moss365.Core.Google.GoogleEditions.Of(State.Data.GoogleLicences);
+            <p>@T["google.stat.edition"]: <strong>@(sku.Length > 0 ? sku : T["kpi.value.unknown"])</strong>
+                @if (edition is { } e && e.Lacks.Count > 0) { <span class="kb-zacht"> - @T.Format("google.stat.lacks", string.Join(", ", e.Lacks))</span> }</p>
+            <p class="kb-zacht">@string.Join(" · ", skus.Select(x => $"{x.Sku}: {x.Count}"))</p>
+        }
+        else if (!Moss365.Core.Setup.GoogleParts.IsOn(State.Config.PermissionParts, Moss365.Core.Setup.GoogleParts.Licences))
+        {
+            <p class="kb-zacht">@T["google.licences.part-off"]</p>
+        }
     </section>
 }
 
@@ -250,6 +279,9 @@
 </section>
 
 @code {
+    /// <summary>The alerts of Google of the last 30 days that are not closed (G1).</summary>
+    private int OpenGoogleAlerts() => State.KeptGoogleAlerts(DateTimeOffset.Now.AddDays(-30), DateTimeOffset.Now.AddDays(1)).Count(a => !string.Equals(a.Result, "CLOSED", StringComparison.Ordinal));
+
     private Statistic s = Statistic.Compute(new InventoryData(), new Moss365.Core.Configuration.OrganisationConfig(), DateTime.Now);
 
     /// <summary>The division filter above the charts, kept while the app is open.</summary>

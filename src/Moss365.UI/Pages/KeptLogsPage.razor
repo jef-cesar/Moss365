@@ -4,7 +4,14 @@
 @* The sign-in and audit logs kept in the tenant database (R18, U19): Microsoft keeps them 7 to 30 days, here they stay
    for the retention period. Viewing them goes to the access log (who viewed what, never the content). *@
 
-<h1>@T["menu.bewaarde-logboeken"]</h1>
+<h1>@T["menu.bewaarde-logboeken"] <PlatformLabel Platform="@(google ? Platform.GoogleWorkspace : Platform.EntraId)" /></h1>
+@if (State.HasMicrosoft365 && State.HasGoogle)
+{
+    <div class="kb-filters" role="group" aria-label="@T["local-logs.source"]">
+        <button class="kb-knop kb-klein" aria-pressed="@(!google ? "true" : "false")" @onclick="() => Source(false)">@T["user-detail.entra-id"]</button>
+        <button class="kb-knop kb-klein" aria-pressed="@(google ? "true" : "false")" @onclick="() => Source(true)">@T["systems.google.name"]</button>
+    </div>
+}
 
 <p class="kb-zacht">@T.Format("local-logs.help", State.Config.Retention.LocalLogDays)</p>
 
@@ -13,7 +20,7 @@
     <div class="kb-melding">@T["local-logs.off"] <a href="databank">@T["menu.databank"]</a></div>
 }
 
-@if (State.LocalLogsLast is { } last)
+@if ((google ? State.GoogleLogsLast : State.LocalLogsLast) is { } last)
 {
     <p class="kb-zacht">@T.Format("local-logs.last", last.Time.LocalDateTime.ToString("g", T.Culture), last.SignIns, last.Audits)</p>
     @if (last.Message is { } message)
@@ -50,13 +57,32 @@ else
     <KbTable Id="bewaard-auditlogboek" ExportName="Bewaard-auditlogboek" Items="LocalLogs.Filter(audits, text).ToList()" Columns="auditColumns" />
 </section>
 
+@if (google && (alerts.Count > 0 || Moss365.Core.Setup.GoogleParts.IsOn(State.Config.PermissionParts, Moss365.Core.Setup.GoogleParts.Alerts)))
+{
+    <section class="kb-kaart" id="google-meldingen">
+        <h2>@T.Format("local-logs.google.alerts", alerts.Count)</h2>
+        <KbTable Id="bewaarde-google-meldingen" ExportName="Bewaarde-Google-meldingen" Items="LocalLogs.Filter(alerts, text).ToList()" Columns="auditColumns" />
+    </section>
+}
+
 @code {
     private DateTime from = DateTime.Today.AddDays(-30);
     private DateTime until = DateTime.Today;
     private string text = string.Empty;
     private string? reason;
+
+    /// <summary>The logs of Google Workspace (G1) instead of those of Entra; only Google for a tenant without Microsoft 365.</summary>
+    private bool google;
+
+    private void Source(bool toGoogle)
+    {
+        google = toGoogle;
+        reason = null;
+        Load();
+    }
     private IReadOnlyList<KeptSignIn> signIns = Array.Empty<KeptSignIn>();
     private IReadOnlyList<AuditEvent> audits = Array.Empty<AuditEvent>();
+    private IReadOnlyList<AuditEvent> alerts = Array.Empty<AuditEvent>();
     private IReadOnlyList<Column<KeptSignIn>> signInColumns = Array.Empty<Column<KeptSignIn>>();
     private IReadOnlyList<Column<AuditEvent>> auditColumns = Array.Empty<Column<AuditEvent>>();
 
@@ -83,6 +109,7 @@ else
             new() { Key = "dienst", Title = T["local-logs.col.service"], Cell = a => @<text>@a.Service</text>, SortBy = a => a.Service, Hidden = true },
             new() { Key = "resultaat", Title = T["local-logs.col.result"], Cell = a => @<text>@a.Result</text>, SortBy = a => a.Result },
         };
+        google = State.HasGoogle && !State.HasMicrosoft365;
         Load();
     }
 
@@ -90,8 +117,9 @@ else
     {
         var start = new DateTimeOffset(from.Date);
         var end = new DateTimeOffset(until.Date.AddDays(1));
-        signIns = State.KeptSignIns(start, end);
-        audits = State.KeptAudits(start, end);
+        signIns = State.KeptSignIns(start, end, google);
+        audits = State.KeptAudits(start, end, google);
+        alerts = google ? State.KeptGoogleAlerts(start, end) : Array.Empty<AuditEvent>();
         State.Access("Bewaarde logboeken bekeken", T.Format("local-logs.access", from.ToString("yyyy-MM-dd", T.Culture), until.ToString("yyyy-MM-dd", T.Culture), signIns.Count, audits.Count));
     }
 }

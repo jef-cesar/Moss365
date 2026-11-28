@@ -374,4 +374,7 @@ public static class Documents
 
     /// <summary>The sign-in of Microsoft, encrypted with the Windows account (0.33, only when chosen).</summary>
     public const string SignInCache = "aanmeldcache";
+
+    /// <summary>The kept sign-in at Google (G1): the refresh token, encrypted with the Windows account.</summary>
+    public const string GoogleSignInCache = "google-aanmelding";
 }

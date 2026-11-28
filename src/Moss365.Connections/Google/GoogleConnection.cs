@@ -21,15 +21,97 @@ public sealed class GoogleConnection : IGoogleConnection
 {
     internal const string Directory = "https://admin.googleapis.com/admin/directory/v1";
 
+    internal const string Reports = "https://admin.googleapis.com/admin/reports/v1";
+    internal const string Licensing = "https://licensing.googleapis.com/apps/licensing/v1";
+    internal const string GroupsSettings = "https://www.googleapis.com/groups/v1/groups";
+    internal const string AlertCenter = "https://alertcenter.googleapis.com/v1beta1";
+
     private readonly HttpClient _http;
     private readonly Func<CancellationToken, Task<string>> _token;
     private readonly Func<string?> _signedInAs;
+    private readonly IReadOnlyList<string> _parts;
+    private readonly string _domain;
 
-    public GoogleConnection(HttpClient http, Func<CancellationToken, Task<string>> token, Func<string?>? signedInAs = null)
+    public GoogleConnection(HttpClient http, Func<CancellationToken, Task<string>> token, Func<string?>? signedInAs = null,
+        IReadOnlyList<string>? parts = null, string domain = "")
     {
         _http = http;
         _token = token;
         _signedInAs = signedInAs ?? (() => null);
+        _parts = parts ?? Array.Empty<string>();
+        _domain = domain.Trim();
+    }
+
+    private bool PartOn(string part) => Core.Setup.GoogleParts.IsOn(_parts, part);
+
+    /// <summary>The check of the own project (G1): the sign-in, then one small question per API Moss365 uses (a part only
+    /// when it is on), each with what to do when it does not work.</summary>
+    public async Task<IReadOnlyList<GoogleCheck>> CheckAsync(CancellationToken cancel)
+    {
+        var checks = new List<GoogleCheck>();
+        try
+        {
+            await _token(cancel);
+            checks.Add(new GoogleCheck(Texts.T["google.check.sign-in"], true, SignedInAs));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or HttpRequestException)
+        {
+            checks.Add(new GoogleCheck(Texts.T["google.check.sign-in"], false, ex.Message));
+            return checks;
+        }
+
+        var probes = new List<(string Name, string Url, string Api)>
+        {
+            (Texts.T["google.read.users"], $"{Directory}/users?customer=my_customer&maxResults=1", "admin.googleapis.com"),
+            (Texts.T["google.read.org-units"], $"{Directory}/customer/my_customer/orgunits?type=children", "admin.googleapis.com"),
+            (Texts.T["google.read.groups"], $"{Directory}/groups?customer=my_customer&maxResults=1", "admin.googleapis.com"),
+            (Texts.T["google.read.resources"], $"{Directory}/customer/my_customer/resources/calendars?maxResults=1", "admin.googleapis.com"),
+            (Texts.T["google.read.roles"], $"{Directory}/customer/my_customer/roles?maxResults=1", "admin.googleapis.com"),
+            (Texts.T["google.read.logs"], $"{Reports}/activity/users/all/applications/login?maxResults=1", "admin.googleapis.com"),
+        };
+        if (PartOn(Core.Setup.GoogleParts.Licences))
+        {
+            probes.Add((Texts.T["google.read.licences"], $"{Licensing}/product/Google-Apps/users?customerId={Uri.EscapeDataString(_domain)}&maxResults=1", "licensing.googleapis.com"));
+        }
+
+        if (PartOn(Core.Setup.GoogleParts.Alerts))
+        {
+            probes.Add((Texts.T["google.read.alerts"], $"{AlertCenter}/alerts?pageSize=1", "alertcenter.googleapis.com"));
+        }
+
+        foreach (var (name, url, api) in probes)
+        {
+            try
+            {
+                await GetAsync(url, cancel);
+                checks.Add(new GoogleCheck(name, true));
+            }
+            catch (GoogleError ex)
+            {
+                checks.Add(new GoogleCheck(name, false, Advice(ex, api)));
+            }
+        }
+
+        return checks;
+    }
+
+    /// <summary>What to do about an error of the check: the API off in the project, a scope not granted, or no
+    /// administrator.</summary>
+    internal static string Advice(GoogleError ex, string api)
+    {
+        var m = ex.Message;
+        if (m.Contains("has not been used in project", StringComparison.OrdinalIgnoreCase) || m.Contains("is disabled", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("SERVICE_DISABLED", StringComparison.Ordinal) || m.Contains("accessNotConfigured", StringComparison.OrdinalIgnoreCase))
+        {
+            return Texts.T.Format("google.check.api-off", api);
+        }
+
+        if (m.Contains("insufficient", StringComparison.OrdinalIgnoreCase) && m.Contains("scope", StringComparison.OrdinalIgnoreCase))
+        {
+            return Texts.T["google.check.scope"];
+        }
+
+        return ex.Status == HttpStatusCode.Forbidden ? Texts.T["google.check.not-admin"] : m;
     }
 
     public string? SignedInAs => _signedInAs();
@@ -44,6 +126,11 @@ public sealed class GoogleConnection : IGoogleConnection
         var units = unitItems.Select(ToOrgUnit).ToList();
         progress?.Report(Texts.T["google.read.groups"]);
         var groups = (await AllAsync($"{Directory}/groups?customer=my_customer&maxResults=200", "groups", cancel)).Select(ToGroup).ToList();
+        if (PartOn(Core.Setup.GoogleParts.GroupSettings))
+        {
+            progress?.Report(Texts.T["google.read.group-settings"]);
+            groups = await WithSettingsAsync(groups, progress, cancel);
+        }
 
         // Resources and admin roles: each on its own, so that a missing right leaves the rest (null = not read)
         IReadOnlyList<GoogleResource>? resources = null;
@@ -72,12 +159,163 @@ public sealed class GoogleConnection : IGoogleConnection
             progress?.Report(Texts.T.Format("google.read.part-failed", Texts.T["google.read.roles"], ex.Message));
         }
 
+        // Licences only with their part (U40): its scope can also assign them
+        IReadOnlyList<GoogleLicence>? licences = null;
+        if (PartOn(Core.Setup.GoogleParts.Licences))
+        {
+            progress?.Report(Texts.T["google.read.licences"]);
+            licences = await LicencesAsync(progress, cancel);
+        }
+
         progress?.Report(Texts.T.Format("google.read.done", users.Count, groups.Count, units.Count));
-        return new GoogleData(users, groups, units, resources, roles);
+        return new GoogleData(users, groups, units, resources, roles, licences);
     }
 
-    /// <summary>All items of a list across its pages.</summary>
-    internal async Task<List<JsonElement>> AllAsync(string url, string property, CancellationToken cancel)
+    /// <summary>The licences per product; a product the customer does not have is skipped, and when none can be read the
+    /// licences are not read (null).</summary>
+    private async Task<IReadOnlyList<GoogleLicence>?> LicencesAsync(IProgress<string>? progress, CancellationToken cancel)
+    {
+        var output = new List<GoogleLicence>();
+        var anyRead = false;
+        string? last = null;
+        foreach (var product in Core.Google.GoogleEditions.Products)
+        {
+            try
+            {
+                output.AddRange((await AllAsync($"{Licensing}/product/{product}/users?customerId={Uri.EscapeDataString(_domain)}&maxResults=1000", "items", cancel))
+                    .Select(ToLicence).Where(l => l.UserEmail.Length > 0));
+                anyRead = true;
+            }
+            catch (GoogleError ex) when (ex.Status is HttpStatusCode.BadRequest or HttpStatusCode.NotFound)
+            {
+                // The customer has no subscription of this product
+                anyRead = true;
+            }
+            catch (GoogleError ex)
+            {
+                last = ex.Message;
+            }
+        }
+
+        if (!anyRead)
+        {
+            progress?.Report(Texts.T.Format("google.read.part-failed", Texts.T["google.read.licences"], last ?? string.Empty));
+            return null;
+        }
+
+        return output;
+    }
+
+    /// <summary>The settings of every group (one question per group); a group whose settings cannot be read keeps none.</summary>
+    private async Task<List<GoogleGroup>> WithSettingsAsync(List<GoogleGroup> groups, IProgress<string>? progress, CancellationToken cancel)
+    {
+        var output = new List<GoogleGroup>(groups.Count);
+        string? failed = null;
+        foreach (var g in groups)
+        {
+            try
+            {
+                output.Add(WithSettings(g, await GetAsync($"{GroupsSettings}/{Uri.EscapeDataString(g.Email)}?alt=json", cancel)));
+            }
+            catch (GoogleError ex)
+            {
+                failed ??= ex.Message;
+                output.Add(g);
+            }
+        }
+
+        if (failed is not null)
+        {
+            progress?.Report(Texts.T.Format("google.read.part-failed", Texts.T["google.read.group-settings"], failed));
+        }
+
+        return output;
+    }
+
+    internal static GoogleGroup WithSettings(GoogleGroup g, JsonElement s) => g with
+    {
+        WhoCanJoin = S(s, "whoCanJoin"),
+        WhoCanPost = S(s, "whoCanPostMessage"),
+        WhoCanViewMembership = S(s, "whoCanViewMembership"),
+        // A text "true" or "false" in this API
+        AllowExternalMembers = S(s, "allowExternalMembers") is { Length: > 0 } x ? string.Equals(x, "true", StringComparison.OrdinalIgnoreCase) : null,
+    };
+
+    public async Task<IReadOnlyList<Core.Security.AuditEvent>> ReadAlertsAsync(DateTimeOffset since, int max, CancellationToken cancel)
+    {
+        var at = since.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+        var filter = Uri.EscapeDataString($"createTime >= \"{at}\"");
+        return (await AllAsync($"{AlertCenter}/alerts?pageSize=100&filter={filter}", "alerts", cancel, max)).Select(ToAlert).ToList();
+    }
+
+    /// <summary>An alert as an audit line: the type, the severity, the source, the address it is about, the status.</summary>
+    internal static Core.Security.AuditEvent ToAlert(JsonElement a)
+    {
+        var meta = a.TryGetProperty("metadata", out var m) ? m : default;
+        var data = a.TryGetProperty("data", out var d) ? d : default;
+        var about = S(data, "email") is { Length: > 0 } email ? email
+            : Items(data, "loginDetails").Select(l => S(l, "email")).FirstOrDefault(e => e.Length > 0) ?? S(data, "actorEmail");
+        var time = DateTimeOffset.TryParse(S(a, "createTime"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var t) ? t : DateTimeOffset.MinValue;
+        return new Core.Security.AuditEvent(S(a, "alertId"), time, S(a, "type"), S(meta, "severity"), S(a, "source"), string.Empty, string.Empty, about, S(meta, "status"));
+    }
+
+    internal static GoogleLicence ToLicence(JsonElement l) => new(S(l, "userId"), S(l, "productId"), S(l, "skuId"), S(l, "skuName"));
+
+
+    public async Task<GoogleLogs> ReadLogsAsync(DateTimeOffset loginsSince, DateTimeOffset adminSince, int max, CancellationToken cancel)
+    {
+        string Since(DateTimeOffset t) => Uri.EscapeDataString(t.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture));
+        var logins = (await AllAsync($"{Reports}/activity/users/all/applications/login?startTime={Since(loginsSince)}&maxResults=1000", "items", cancel, max))
+            .SelectMany(ToLogins).ToList();
+        var admin = (await AllAsync($"{Reports}/activity/users/all/applications/admin?startTime={Since(adminSince)}&maxResults=1000", "items", cancel, max))
+            .SelectMany(ToAdminEvents).ToList();
+        return new GoogleLogs(logins, admin);
+    }
+
+    /// <summary>The logins of one activity (one per event): a failure has error code 1, a suspicious login risk "high";
+    /// the id is the unique qualifier of Google with the event, so a line is never kept twice.</summary>
+    internal static IEnumerable<SignInEvent> ToLogins(JsonElement a)
+    {
+        var id = a.TryGetProperty("id", out var i) ? i : default;
+        var actor = a.TryGetProperty("actor", out var ac) ? ac : default;
+        var time = DateTimeOffset.TryParse(S(id, "time"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var t) ? t : DateTimeOffset.MinValue;
+        var n = 0;
+        foreach (var e in Items(a, "events"))
+        {
+            var name = S(e, "name");
+            var suspicious = name.StartsWith("suspicious_", StringComparison.Ordinal) || Parameters(e).Any(p => p.Name == "is_suspicious" && p.Value == "true");
+            var failed = name is "login_failure" || name.StartsWith("account_disabled", StringComparison.Ordinal);
+            yield return new SignInEvent(
+                time, S(actor, "profileId"), S(actor, "email"), string.Empty, "Google", S(a, "ipAddress"), string.Empty,
+                failed ? 1 : 0, failed || suspicious ? name : string.Empty,
+                Parameters(e).FirstOrDefault(p => p.Name == "login_type").Value ?? string.Empty,
+                Id: $"{S(id, "uniqueQualifier")}:{n++}", Risk: suspicious ? "high" : string.Empty);
+        }
+    }
+
+    /// <summary>The admin activities of one item, as audit lines (who, what, on which user or group).</summary>
+    internal static IEnumerable<Core.Security.AuditEvent> ToAdminEvents(JsonElement a)
+    {
+        var id = a.TryGetProperty("id", out var i) ? i : default;
+        var actor = a.TryGetProperty("actor", out var ac) ? ac : default;
+        var time = DateTimeOffset.TryParse(S(id, "time"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var t) ? t : DateTimeOffset.MinValue;
+        var n = 0;
+        foreach (var e in Items(a, "events"))
+        {
+            var parameters = Parameters(e).ToList();
+            var target = parameters.FirstOrDefault(p => p.Name is "USER_EMAIL" or "GROUP_EMAIL" or "ORG_UNIT_NAME" or "DEVICE_ID").Value ?? string.Empty;
+            yield return new Core.Security.AuditEvent($"{S(id, "uniqueQualifier")}:{n++}", time, S(e, "name"), S(e, "type"), "Google Admin", S(actor, "email"),
+                string.Empty, target, string.Empty);
+        }
+    }
+
+    private static IEnumerable<(string Name, string? Value)> Parameters(JsonElement e)
+        => Items(e, "parameters").Select(p => (S(p, "name"), p.TryGetProperty("value", out var v) ? v.GetString()
+            : p.TryGetProperty("boolValue", out var b) ? (b.ValueKind == JsonValueKind.True ? "true" : "false")
+            : p.TryGetProperty("multiValue", out var m) && m.ValueKind == JsonValueKind.Array ? string.Join(", ", m.EnumerateArray().Select(x => x.GetString())) : null));
+
+    /// <summary>All items of a list across its pages (at most <paramref name="max"/>).</summary>
+    internal async Task<List<JsonElement>> AllAsync(string url, string property, CancellationToken cancel, int max = int.MaxValue)
     {
         var output = new List<JsonElement>();
         string? page = null;
@@ -87,9 +325,9 @@ public sealed class GoogleConnection : IGoogleConnection
             output.AddRange(Items(answer, property));
             page = answer.TryGetProperty("nextPageToken", out var next) ? next.GetString() : null;
         }
-        while (!string.IsNullOrEmpty(page));
+        while (!string.IsNullOrEmpty(page) && output.Count < max);
 
-        return output;
+        return output.Count > max ? output.Take(max).ToList() : output;
     }
 
     private async Task<JsonElement> GetAsync(string url, CancellationToken cancel)

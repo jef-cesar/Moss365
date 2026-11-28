@@ -79,6 +79,10 @@ else
                     {
                         <tr><th>@T["google.user.roles"]</th><td>@string.Join(", ", roles.Select(r => $"{r.Role} ({(r.Scope == "CUSTOMER" ? T["google.role.customer"] : r.Scope)})"))</td></tr>
                     }
+                    @if (State.Data.GoogleLicences.Where(l => string.Equals(l.UserEmail, google.PrimaryEmail, StringComparison.OrdinalIgnoreCase)).ToList() is { Count: > 0 } licences)
+                    {
+                        <tr><th>@T["google.user.licences"]</th><td>@string.Join(", ", licences.Select(l => l.SkuName.Length > 0 ? l.SkuName : l.SkuId))</td></tr>
+                    }
                     <tr><th>@T["google.user.last-login"]</th><td>@(google.LastLogin.Length > 0 ? google.LastLogin : T["google.user.never"])</td></tr>
                 </tbody>
             </table>

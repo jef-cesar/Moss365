@@ -59,7 +59,9 @@ public static class Access
 
         return first switch
         {
-            "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "contacten" or "contact" or "beveiliging" or "conditional-access" or "inrichten" or "bewaarde-logboeken" => hasMicrosoft365,
+            "gasten" or "postvakken" or "postvak" or "rooms" or "room" or "contacten" or "contact" or "beveiliging" or "conditional-access" or "inrichten" => hasMicrosoft365,
+            // G1: the logs of Google are kept too
+            "bewaarde-logboeken" => hasMicrosoft365 || systems.HasFlag(TenantSystems.GoogleWorkspace),
             "vergelijk" => hasAd && hasMicrosoft365,
             "logonscripts" or "wachtwoorden" => hasAd,
             "licenties" or "samenwerking" or "gastenverlenging" => hasMicrosoft365,

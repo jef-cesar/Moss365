@@ -21,6 +21,15 @@ public sealed partial class PlanScreenTests
             Reads++;
             return Task.FromResult(data);
         }
+
+        public Task<GoogleLogs> ReadLogsAsync(DateTimeOffset loginsSince, DateTimeOffset adminSince, int max, CancellationToken cancel)
+            => Task.FromResult(new GoogleLogs(
+                new[]
+                {
+                    new SignInEvent(DateTimeOffset.Now.AddHours(-1), "g-cas", "cas.vos@test.be", "", "Google", "192.0.2.1", "", 1, "login_failure", "", Id: "q1:0"),
+                    new SignInEvent(DateTimeOffset.Now.AddHours(-1), "g-nieuw", "nieuw@test.be", "", "Google", "192.0.2.2", "", 0, "", "", Id: "q2:0"),
+                },
+                new[] { new Moss365.Core.Security.AuditEvent("a1:0", DateTimeOffset.Now.AddHours(-1), "CHANGE_PASSWORD", "USER_SETTINGS", "Google Admin", "admin@test.be", "", "cas.vos@test.be", "") }));
     }
 
     private sealed partial class FakeFactory
@@ -64,6 +73,13 @@ public sealed partial class PlanScreenTests
         Assert.Single(s.Data.GoogleGroups);
         Assert.Single(s.Data.GoogleOrgUnits);
         Assert.Contains(s.SnapshotList().Last().Tables, t => t == InventoryLoader.GoogleUsersFile);
+
+        // The logs of Google kept locally, apart from those of Entra: the failure, not the normal sign-in
+        var kept = s.KeptSignIns(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddDays(1), google: true);
+        Assert.Equal("q1:0", Assert.Single(kept).SignIn.Id);
+        Assert.Single(s.KeptAudits(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddDays(1), google: true));
+        Assert.DoesNotContain(s.KeptSignIns(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddDays(1)), k => k.SignIn.Id == "q1:0");
+        Assert.Equal(1, s.GoogleLogsLast!.SignIns);
 
         // Linked to the person with the same address
         var cas = s.Data.Persons.Single(p => p.Ad?.SamAccountName == "cas.vos");

@@ -16,7 +16,7 @@ public sealed partial class PlanScreenTests
     private static readonly string[] AdPages = { "logonscripts", "wachtwoorden" };
 
     private static readonly string[] Microsoft365Pages =
-        { "gasten", "postvakken", "rooms", "contacten", "beveiliging", "conditional-access", "inrichten", "bewaarde-logboeken", "licenties", "samenwerking", "gastenverlenging" };
+        { "gasten", "postvakken", "rooms", "contacten", "beveiliging", "conditional-access", "inrichten", "licenties", "samenwerking", "gastenverlenging" };
 
     [Fact]
     public void EveryCombinationOfSystemsShowsOnlyItsPages()
@@ -34,6 +34,7 @@ public sealed partial class PlanScreenTests
             Assert.Equal(hasAd || hasMicrosoft365, Fits("nieuw"));
             Assert.Equal(systems.Count() >= 2, Fits("koppelingen"));
             Assert.Equal(systems.Count() >= 2, Fits("bron"));
+            Assert.Equal(hasMicrosoft365 || systems.HasGoogle(), Fits("bewaarde-logboeken")); // G1: the Google logs too
 
             // Every page of the menu either fits or belongs to a system the tenant does not have
             foreach (var page in MenuModel.AllPages.Select(i => i.Href.Split('?')[0]))
@@ -41,7 +42,8 @@ public sealed partial class PlanScreenTests
                 var first = page.Split('/')[0];
                 var belongsElsewhere = (AdPages.Contains(first) && !hasAd) || (Microsoft365Pages.Contains(first) && !hasMicrosoft365)
                                        || (first == "vergelijk" && !(hasAd && hasMicrosoft365)) || (first == "nieuw" && !(hasAd || hasMicrosoft365))
-                                       || (first is "koppelingen" or "bron" && systems.Count() < 2);
+                                       || (first is "koppelingen" or "bron" && systems.Count() < 2)
+                                       || (first == "bewaarde-logboeken" && !(hasMicrosoft365 || systems.HasGoogle()));
                 Assert.True(Fits(page) || belongsElsewhere, $"{systems}: {page}");
             }
         }

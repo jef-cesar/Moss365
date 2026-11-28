@@ -10,7 +10,7 @@ feature needs a server or a service of the makers.
 Plan: [docs/roadmap-1.0.md](docs/roadmap-1.0.md). Current state: R1 to R14 are done (0.37.0); R16 to R20 have their first
 version in 0.39.0 and are complete in 0.40.0 (only the test in a test tenant remains, issue 19); G0, the platform basis,
 has its first version for 0.41.0 (issue 46), and so have R21 (issue 44: every item; the logon name in AD stays a limitation,
-issue 57) and the first part of G1 (issue 47: reading Google users, groups and organisational units); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
+issue 57) and G1 (issue 47: reading Google Workspace, every item in 0.42.0); R15: every screen, Core and the connections take their text from the dictionaries since 0.38.5 (translations still to be reviewed by native speakers): code in English, one database
 per tenant, several tenants, snapshots, the set-up wizard, maintenance, encryption, updates and the script library. The code targets .NET 10 (U22, in the CHANGELOG under 0.39.0: .NET 8 has no support since 10 November 2026; `bunit` stays 1.40 until a separate move to bUnit 2). Next, before 1.0 (decided 26 November 2026, U15): R16 security advice (explanation, solving as a plan, guided for high risk, exceptions, hardening score, compromised account), R17 devices and Intune (a destructive action: one device per plan, never a personal device; a device record is deleted only after 90 days disabled), R18 own data (sign-in and audit logs kept locally, reading without a window), R19 the overview (All tenants: only scores and counts, never stored together), R20 access reviews; then (27 November 2026, U27 and U28) G0 the platform basis (Google Workspace as a third system per tenant,
 platform labels, where the mail lives, linking persons, the source of truth), R21 edit every object (every field, one
 intuitive way of editing, plans with undo), R22 the mailbox as PST at offboarding, and G1 to G5 Google Workspace
@@ -87,7 +87,11 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   is refused; tokens only in memory, never without a window) and `GoogleConnection.cs` (Directory API with paging);
   `IConnectionFactory.Google`, settings `GoogleDomain`/`GoogleClientId`/`GoogleClientSecret` (only through
   `EffectiveSettings` for a tenant with Google), lane "Google" in `StartLoading`, `InventoryComponent.Google` and the
-  tables `google-gebruikers.csv`, `google-groepen.csv`, `google-eenheden.csv`; `tools/Register-GoogleApp.ps1` (gcloud).
+  tables `google-gebruikers.csv`, `google-groepen.csv`, `google-eenheden.csv`, `google-agendabronnen.csv`,
+  `google-rollen.csv`, `google-licenties.csv`; `tools/Register-GoogleApp.ps1` (gcloud). A Google scope that can also
+  write is a part (`Setup/GoogleParts.cs`, U40: licences, group settings, alerts; `ConnectionSettings.GoogleParts`),
+  asked only when on. Stay signed in keeps the refresh token in document `google-aanmelding` (DPAPI). The logs go to
+  `LocalLog` as kinds `google-signin`, `google-audit`, `google-alert`. Editions are data (`Google/GoogleEditions.cs`).
 - Linking persons (G0, U32): `Linking/PersonLinks.cs` (AD and Entra by the anchor as before; a Google account by address,
   employee id, alias; links by hand win, document `koppelingen`; doubtful cases, also AD accounts not synchronised next
   to a cloud account with their address), applied in `State.Data` once there are Google users; page `koppelingen`.

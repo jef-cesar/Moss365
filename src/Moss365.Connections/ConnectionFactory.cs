@@ -65,20 +65,23 @@ public sealed class ConnectionFactory : IConnectionFactory
             return null;
         }
 
-        var key = $"{settings.GoogleDomain.Trim()}|{settings.GoogleClientId.Trim()}";
+        var scopes = Core.Setup.GoogleParts.Scopes(settings.GoogleParts);
+        var key = $"{settings.GoogleDomain.Trim()}|{settings.GoogleClientId.Trim()}|{string.Join(' ', scopes)}|{settings.RememberSignIn}";
         Google.GoogleSignIn signIn;
         lock (_lock)
         {
             if (_google is null || _googleKey != key)
             {
-                _google = new Google.GoogleSignIn(_http, settings.GoogleClientId, settings.GoogleClientSecret, settings.GoogleDomain, _signIn, _withoutWindow);
+                // "Stay signed in" (as for Microsoft): the refresh token encrypted with the Windows account
+                var cache = settings.RememberSignIn && settings.GoogleTokenCache is { } store && OperatingSystem.IsWindows() ? new Check.ProtectedTokenStore(store) : null;
+                _google = new Google.GoogleSignIn(_http, settings.GoogleClientId, settings.GoogleClientSecret, settings.GoogleDomain, _signIn, _withoutWindow, scopes, cache);
                 _googleKey = key;
             }
 
             signIn = _google;
         }
 
-        return new Google.GoogleConnection(_http, signIn.TokenAsync, () => signIn.SignedInAs);
+        return new Google.GoogleConnection(_http, signIn.TokenAsync, () => signIn.SignedInAs, settings.GoogleParts, settings.GoogleDomain);
     }
 
     public IExchangeConnection? Exchange(ConnectionSettings settings)
