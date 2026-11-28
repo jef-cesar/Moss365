@@ -4037,5 +4037,9 @@
   "mailbox.on-behalf.placeholder": "(do not change; - is nobody)",
   "mailbox.now": "now: {0}",
   "user-detail.field": "Field",
-  "user-detail.all-fields": "all fields"
+  "user-detail.all-fields": "all fields",
+  "room-form.audio": "Audio (device)",
+  "room-form.video": "Video (camera)",
+  "room-form.display": "Screen",
+  "room-form.wheelchair": "Wheelchair accessible"
 }

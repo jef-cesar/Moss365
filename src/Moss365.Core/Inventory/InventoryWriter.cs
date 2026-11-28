@@ -160,6 +160,9 @@ public static class InventoryWriter
             {
                 ["Smtp"] = r.Smtp, ["DisplayName"] = r.DisplayName, ["Alias"] = r.Alias, ["Gebouw"] = r.Building, ["Verdieping"] = r.Floor,
                 ["VerdiepingLabel"] = r.FloorLabel, ["Capaciteit"] = N(r.Capacity), ["Hidden"] = B(r.Hidden),
+                ["Stad"] = r.City, ["Straat"] = r.Street, ["Postcode"] = r.PostalCode, ["Land"] = r.Country,
+                ["Audio"] = r.AudioDevice, ["Video"] = r.VideoDevice, ["Scherm"] = r.DisplayDevice,
+                ["Rolstoel"] = r.WheelchairAccessible is null ? string.Empty : B(r.WheelchairAccessible.Value),
                 ["AutomateProcessing"] = r.AutomateProcessing, ["AllBookInPolicy"] = B(r.AllBookInPolicy), ["AllRequestInPolicy"] = B(r.AllRequestInPolicy),
                 ["BookInPolicy"] = r.BookInPolicy, ["ResourceDelegates"] = r.ResourceDelegates, ["BookingWindowInDays"] = N(r.BookingWindowInDays),
                 ["MaximumDurationInMinutes"] = N(r.MaximumDurationInMinutes), ["AllowConflicts"] = B(r.AllowConflicts),

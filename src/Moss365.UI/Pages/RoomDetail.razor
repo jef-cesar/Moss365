@@ -28,6 +28,11 @@ else
                     <tr><th>@T["room-form.building"]</th><td>@room.Building</td></tr>
                     <tr><th>@T["room-form.floor"]</th><td>@room.Floor @(room.FloorLabel.Length > 0 ? $"({room.FloorLabel})" : null)</td></tr>
                     <tr><th>@T["room-form.capacity"]</th><td>@room.Capacity</td></tr>
+                    @if (room.Street.Length > 0 || room.City.Length > 0) { <tr><th>@T["attribute.streetaddress"]</th><td>@string.Join(", ", new[] { room.Street, $"{room.PostalCode} {room.City}".Trim(), room.Country }.Where(x => x.Length > 0))</td></tr> }
+                    @if (room.AudioDevice.Length > 0) { <tr><th>@T["room-form.audio"]</th><td>@room.AudioDevice</td></tr> }
+                    @if (room.VideoDevice.Length > 0) { <tr><th>@T["room-form.video"]</th><td>@room.VideoDevice</td></tr> }
+                    @if (room.DisplayDevice.Length > 0) { <tr><th>@T["room-form.display"]</th><td>@room.DisplayDevice</td></tr> }
+                    @if (room.WheelchairAccessible is { } wheelchair) { <tr><th>@T["room-form.wheelchair"]</th><td>@(wheelchair ? T["word.yes"] : T["word.no"])</td></tr> }
                 </tbody>
             </table>
         </section>

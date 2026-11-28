@@ -45,7 +45,8 @@ $Toegestaan = @{
     'LidVerwijderen'   = @('Identity', 'Member')
     'Agendaverwerking' = @('Identity', 'AutomateProcessing', 'BookingWindowInDays', 'MaximumDurationInMinutes', 'AllowConflicts',
         'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject')
-    'Place'            = @('Identity', 'Building', 'Floor', 'FloorLabel', 'Capacity')
+    'Place'            = @('Identity', 'Building', 'Floor', 'FloorLabel', 'Capacity', 'City', 'Street', 'PostalCode', 'CountryOrRegion',
+                           'AudioDeviceName', 'VideoDeviceName', 'DisplayDeviceName', 'IsWheelChairAccessible')
     'AgendaRecht'      = @('Identity', 'User', 'AccessRights')
     'NaarGedeeld'      = @('Identity')
     'LeesRooms'        = @()
@@ -66,7 +67,7 @@ $Toegestaan = @{
 }
 $Getallen = @('BookingWindowInDays', 'MaximumDurationInMinutes', 'Floor', 'Capacity')
 $JaNee = @('AllowConflicts', 'AllowRecurringMeetings', 'AddOrganizerToSubject', 'DeleteSubject', 'HiddenFromAddressListsEnabled', 'DeliverToMailboxAndForward',
-    'RequireSenderAuthenticationEnabled', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled')
+    'RequireSenderAuthenticationEnabled', 'MessageCopyForSentAsEnabled', 'MessageCopyForSendOnBehalfEnabled', 'IsWheelChairAccessible')
 $PostvakRechten = @('FullAccess', 'SendAs')
 $AutoAntwoordStanden = @('Enabled', 'Disabled', 'Scheduled')
 $AgendaRechten = @('None', 'AvailabilityOnly', 'LimitedDetails', 'Reviewer', 'Author', 'Editor', 'PublishingEditor', 'Owner')
@@ -132,6 +133,14 @@ function Get-RoomsVoorApp {
             Verdieping               = "$($place.Floor)"
             VerdiepingLabel          = "$($place.FloorLabel)"
             Capaciteit               = "$($place.Capacity)"
+            Stad                     = "$($place.City)"
+            Straat                   = "$($place.Street)"
+            Postcode                 = "$($place.PostalCode)"
+            Land                     = "$($place.CountryOrRegion)"
+            Audio                    = "$($place.AudioDeviceName)"
+            Video                    = "$($place.VideoDeviceName)"
+            Scherm                   = "$($place.DisplayDeviceName)"
+            Rolstoel                 = "$($place.IsWheelChairAccessible)"
             Hidden                   = "$($r.HiddenFromAddressListsEnabled)"
             AutomateProcessing       = "$($cal.AutomateProcessing)"
             AllBookInPolicy          = "$($cal.AllBookInPolicy)"

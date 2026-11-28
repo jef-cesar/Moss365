@@ -247,3 +247,24 @@ public sealed partial class PlanScreenTests
         Assert.Contains("Department: Verkoop → Boekhouding", cut.Markup, StringComparison.Ordinal);
     }
 }
+
+/// <summary>R21: the address and the equipment of a room, with undo.</summary>
+public sealed partial class PlanScreenTests
+{
+    [Fact]
+    public void TheAddressAndEquipmentOfARoomAreAPlanWithUndo()
+    {
+        var room = new Moss365.Core.Inventory.Room { Smtp = "rm-onthaal@contoso.com", DisplayName = "Onthaal", Capacity = 6, City = "Gent", WheelchairAccessible = null };
+        var plan = PlanBuilder.Room(room, new RoomDesired { City = "Brugge", Street = "Markt 1", VideoDevice = "Camera", WheelchairAccessible = true });
+        var place = Assert.Single(plan, c => c.ChangeAction == ChangeAction.ExchangeRoomPlace);
+        Assert.Equal("Brugge", place.P("City"));
+        Assert.Equal("Markt 1", place.P("Street"));
+        Assert.Equal("True", place.P("IsWheelChairAccessible"));
+        Assert.Equal("Gent", place.Previous!["City"]);
+        Assert.Equal(string.Empty, place.Previous["Street"]);
+        Assert.False(place.Previous.ContainsKey("IsWheelChairAccessible")); // unknown before: cannot be put back
+        var entry = new Moss365.Core.Changes.LogEntry(DateTimeOffset.Now, "admin", "test", "Exchange", nameof(ChangeAction.ExchangeRoomPlace), room.Smtp, room.DisplayName, "x",
+            place.Parameters, nameof(ResultStatus.Succeeded), string.Empty, Previous: place.Previous);
+        Assert.Null(Undo.WhyNot(entry));
+    }
+}

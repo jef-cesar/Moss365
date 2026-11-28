@@ -14,7 +14,9 @@ BeforeAll {
         $global:ExoAanroepen.Add("Remove $Identity $Member") }
     function global:Set-CalendarProcessing { param($Identity, $AutomateProcessing, $BookingWindowInDays, $AllowConflicts, $DeleteSubject, $ErrorAction)
         $global:ExoAanroepen.Add("Cal $Identity $($BookingWindowInDays.GetType().Name)=$BookingWindowInDays $($DeleteSubject.GetType().Name)=$DeleteSubject") }
-    function global:Set-Place { param($Identity, $Floor, $Capacity, $Building, $ErrorAction) $global:ExoAanroepen.Add("Place $Identity $Floor $Capacity") }
+    function global:Set-Place { param($Identity, $Floor, $Capacity, $Building, $City, $Street, $PostalCode, $CountryOrRegion, $AudioDeviceName, $VideoDeviceName, $DisplayDeviceName, $IsWheelChairAccessible, $ErrorAction)
+        if ($City -or $null -ne $IsWheelChairAccessible) { $global:ExoAanroepen.Add("PlaceR21 $Identity $City $Street Wheel=$IsWheelChairAccessible/$($IsWheelChairAccessible.GetType().Name) Video=$VideoDeviceName"); return }
+        $global:ExoAanroepen.Add("Place $Identity $Floor $Capacity") }
     function global:Set-MailboxFolderPermission { param($Identity, $User, $AccessRights, $ErrorAction)
         if ($Identity -like '*:\Calendar') { throw 'map niet gevonden' }
         $global:ExoAanroepen.Add("Perm $Identity $User $AccessRights") }
@@ -215,6 +217,12 @@ Describe 'Exchange.ps1' {
         $r2 = Voer @(@{ id = 'd'; op = 'GroepInstellen'; params = @{ Identity = 'sg@test.be'; HiddenFromAddressListsEnabled = 'False' } })
         $r2[0].status | Should -Be 'Gelukt'
         $global:ExoAanroepen | Should -Contain 'SetDgOpt sg@test.be Hidden=False/Boolean Auth= Join='
+    }
+
+    It 'sets the address and the equipment of a room (R21)' {
+        $r = Voer @(@{ id = 'a'; op = 'Place'; params = @{ Identity = 'rm-a@test.be'; City = 'Gent'; Street = 'Kouter 1'; IsWheelChairAccessible = 'False'; VideoDeviceName = 'Camera' } })
+        $r[0].status | Should -Be 'Gelukt'
+        $global:ExoAanroepen | Should -Contain 'PlaceR21 rm-a@test.be Gent Kouter 1 Wheel=False/Boolean Video=Camera'
     }
 
     It 'sets the copy of sent items and who sends on behalf of a mailbox (R21)' {

@@ -179,6 +179,16 @@ public sealed record Room
     public string Floor { get; init; } = string.Empty;
     public string FloorLabel { get; init; } = string.Empty;
     public int? Capacity { get; init; }
+
+    // R21: the address and the equipment of the room (Get-Place); empty when not read
+    public string City { get; init; } = string.Empty;
+    public string Street { get; init; } = string.Empty;
+    public string PostalCode { get; init; } = string.Empty;
+    public string Country { get; init; } = string.Empty;
+    public string AudioDevice { get; init; } = string.Empty;
+    public string VideoDevice { get; init; } = string.Empty;
+    public string DisplayDevice { get; init; } = string.Empty;
+    public bool? WheelchairAccessible { get; init; }
     public bool Hidden { get; init; }
     public string AutomateProcessing { get; init; } = string.Empty;
     public bool AllBookInPolicy { get; init; }
