@@ -49,6 +49,12 @@ that reads saved data, and `LegacyNames.TryParseEnum` for enum names stored as t
   `tools/Register-App.ps1` the same (permissions, app role ids). A broad or rarely needed permission belongs to a part
   (`Setup/PermissionParts.cs`, U25, U26; `OrganisationConfig.PermissionParts`; `-Onderdelen` in the script): asked
   only when the part is on, taken away when it is off, and the engine refuses the changes of a part that is off.
+  Google (U41): `Setup/GoogleSetup.cs` (`Assess` compares gcloud's `GcloudState` and the check of the project with what
+  is needed; the actions `GcloudCreateProject`, `GcloudEnableServices`, `GcloudCreateServiceAccount`,
+  `GcloudCreateServiceAccountKey`, role Settings), run by `Connections/Google/GcloudSetup.cs` (gcloud of the PC, fixed
+  commands with checked arguments; the key comes back in `Secret` and `ManagementState.ExecuteGoogleSetupAsync` keeps
+  it with `SaveGmailKey`), shown by `GoogleSetupPanel` on `inrichten` (which fits Microsoft 365 or Google); the
+  consent screen, the OAuth client and the domain-wide delegation stay by hand and are checked afterwards.
 - Maintenance (`Storage/Maintenance.cs`): retention in `OrganisationConfig.Retention`; cleaning up is always preview,
   confirmation, archive (change log, access log), then remove. `RemoveSnapshots` keeps every remaining date exact
   (a test compares all of them).

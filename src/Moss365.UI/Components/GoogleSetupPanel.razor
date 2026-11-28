@@ -1,0 +1,147 @@
+@using Moss365.Core.Setup
+@using Moss365.Core.Permissions
+@* The wizard for Google Workspace (U41): gcloud on this PC reads the own Google Cloud project and runs what Google
+   allows by command as a plan; the consent screen, the OAuth client and the domain-wide delegation are explained step
+   by step and checked afterwards. *@
+@inject ManagementState State
+
+<section class="kb-kaart" id="google-inrichten">
+    <h2>@T["google-setup.title"] <PlatformLabel Platform="Platform.GoogleWorkspace" /></h2>
+    <p class="kb-zacht">@T["google-setup.intro"]</p>
+
+    <h3>@T["google-setup.step1"]</h3>
+    <div class="kb-raster">
+        <label>@T["google-setup.project-id"] <input class="kb-invoer" value="@projectId" @oninput="e => projectId = e.Value?.ToString() ?? string.Empty" disabled="@(!CanSet)" aria-label="@T["google-setup.project-id"]" placeholder="@ExampleProject" spellcheck="false" /></label>
+        <label>@T["connections.google.domain"] <input class="kb-invoer" value="@domain" @oninput="e => domain = e.Value?.ToString() ?? string.Empty" disabled="@(!CanSet)" aria-label="@T["connections.google.domain"]" spellcheck="false" /></label>
+        <label>@T["connections.google.client-id"] <input class="kb-invoer" value="@clientId" @oninput="e => clientId = e.Value?.ToString() ?? string.Empty" disabled="@(!CanSet)" aria-label="@T["connections.google.client-id"]" autocomplete="off" spellcheck="false" /></label>
+        <label>@T["connections.google.client-secret"] <input class="kb-invoer" type="password" value="@secret" @oninput="e => secret = e.Value?.ToString() ?? string.Empty" disabled="@(!CanSet)" aria-label="@T["connections.google.client-secret"]" autocomplete="off" placeholder="@SecretHint" /></label>
+    </div>
+    @if (projectId.Trim().Length > 0 && !GoogleSetup.ValidProjectId(projectId.Trim())) { <span class="kb-waarschuwing">@T["google-setup.project.invalid"]</span> }
+    <div class="kb-filters">
+        <button class="kb-knop" disabled="@(!CanSet)" @onclick="Save">@T["connections.save-settings"]</button>
+        @if (State.GoogleCloud is { Installed: true, Account: null })
+        {
+            <button class="kb-knop kb-primair" disabled="@busy" @onclick="SignIn">@T["google-setup.sign-in-gcloud"]</button>
+        }
+        <button class="kb-knop kb-primair" disabled="@(busy || !State.GoogleSetupAvailable)" @onclick="Read">@(State.GoogleCloud is null ? T["google-setup.check"] : T["code.set-up-tenant.check-again"])</button>
+        @if (busy && progress is not null) { <span class="kb-zacht">@progress</span> }
+    </div>
+    @if (!State.GoogleSetupAvailable) { <div class="kb-melding">@T["google-setup.not-available"]</div> }
+    @if (error is not null) { <div class="kb-melding kb-fout">@error</div> }
+
+    @if (State.GoogleSetupAssessment is { } a)
+    {
+        <h3>@T["google-setup.step2"]</h3>
+        <table class="kb-tabel">
+            <thead><tr><th></th><th>@T["tenant-compare.area"]</th><th>@T["service-health-card.what"]</th><th>@T["this-computer.found"]</th></tr></thead>
+            <tbody>
+                @foreach (var i in a.Items)
+                {
+                    <tr class="kb-controle-@Css(i.Status)">
+                        <td aria-label="@i.Status">@(i.Status switch { SetupStatus.InOrder => "✓", SetupStatus.Missing => "✗", SetupStatus.Unknown => "?", _ => "!" })</td>
+                        <td>@i.Step</td>
+                        <td>@i.Name</td>
+                        <td>@i.Explanation</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (a.Plan.Count > 0)
+        {
+            <PlanView @key="planKey" Plan="a.Plan" Title="@T["google-setup.plan"]" Context="@($"Google inrichten {State.Tenant.Name}")" Run="(p, c, r) => State.ExecuteGoogleSetupAsync(p, c, r)" Executed="_ => planKey++" />
+        }
+
+        <h3>@T["google-setup.step3"]</h3>
+        <ol class="kb-stappen">
+            <li>@T["google-setup.manual.consent"] <a href="@ConsentLink" target="_blank" rel="noopener">@T["google-setup.open-console"]</a></li>
+            <li>@T["google-setup.manual.client"] <a href="@ClientLink" target="_blank" rel="noopener">@T["google-setup.open-console"]</a></li>
+            @if (GmailOn)
+            {
+                <li>
+                    @T["google-setup.manual.delegation"] <a href="@GoogleSetup.DelegationUrl" target="_blank" rel="noopener">@T["google-setup.open-admin"]</a>
+                    @if (DelegationClientId is { Length: > 0 } id)
+                    {
+                        <div class="kb-raster">
+                            <div class="kb-veld"><span>@T["connections.gmail.client-id"]</span><CopyField Value="@id" Label="@T["connections.gmail.client-id"]" /></div>
+                            <div class="kb-veld"><span>@T["connections.gmail.scopes"]</span><CopyField Value="@GmailScopes" Label="@T["connections.gmail.scopes"]" /></div>
+                        </div>
+                    }
+                </li>
+            }
+        </ol>
+        <p class="kb-zacht">@T["google-setup.after-manual"]</p>
+    }
+</section>
+
+@code {
+    private string projectId = string.Empty;
+    private string domain = string.Empty;
+    private string clientId = string.Empty;
+    private string secret = string.Empty;
+    private bool busy;
+    private string? progress;
+    private string? error;
+    private int planKey;
+
+    private const string ExampleProject = "moss365-contoso";
+
+    private bool CanSet => !State.IsHistoric && State.Can(Permission.Settings);
+
+    private bool GmailOn => Moss365.Core.Setup.GoogleParts.IsOn(State.Config.PermissionParts, Moss365.Core.Setup.GoogleParts.GmailSettings);
+
+    private string SecretHint => State.Settings.GoogleClientSecret.Length > 0 ? T["google-setup.secret-kept"] : string.Empty;
+
+    private string Project => GoogleSetup.ValidProjectId(State.Settings.GoogleProjectId) ? State.Settings.GoogleProjectId : string.Empty;
+
+    private string ConsentLink => Project.Length > 0 ? GoogleSetup.ConsentUrl(Project) : "https://console.cloud.google.com/apis/credentials/consent";
+
+    private string ClientLink => Project.Length > 0 ? GoogleSetup.ClientUrl(Project) : "https://console.cloud.google.com/apis/credentials";
+
+    private static string GmailScopes => string.Join(",", Moss365.Core.Setup.GoogleParts.GmailScopes);
+
+    private string? DelegationClientId => State.GmailKey?.ClientId ?? State.GoogleCloud?.ServiceAccountClientId;
+
+    protected override void OnInitialized()
+    {
+        (projectId, domain, clientId) = (State.Settings.GoogleProjectId, State.Settings.GoogleDomain, State.Settings.GoogleClientId);
+    }
+
+    private void Save()
+    {
+        State.SaveGoogleSetupSettings(projectId, domain, clientId, secret);
+        secret = string.Empty;
+        planKey++;
+    }
+
+    private async Task Read()
+    {
+        busy = true;
+        error = null;
+        if (projectId != State.Settings.GoogleProjectId || domain != State.Settings.GoogleDomain || clientId != State.Settings.GoogleClientId || secret.Length > 0)
+        {
+            Save();
+        }
+
+        var p = new Progress<string>(t => { progress = t; _ = InvokeAsync(StateHasChanged); });
+        error = await State.ReadGoogleSetupAsync(p);
+        planKey++;
+        busy = false;
+        progress = null;
+    }
+
+    private async Task SignIn()
+    {
+        busy = true;
+        error = await State.SignInGcloudAsync();
+        planKey++;
+        busy = false;
+    }
+
+    private static string Css(SetupStatus s) => s switch
+    {
+        SetupStatus.InOrder => "good",
+        SetupStatus.Missing => "error",
+        _ => "warning",
+    };
+}

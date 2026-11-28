@@ -244,4 +244,88 @@ public sealed partial class PlanScreenTests
         s.Config.PermissionParts.Clear();
         Assert.Empty(ctx.RenderComponent<UserDetail>(p => p.Add(x => x.Key, cas.Key)).FindAll("#gmail"));
     }
+
+    /// <summary>U41: gcloud as the wizard sees it: a project that is not there yet, until the plan made it.</summary>
+    private sealed class FakeGoogleSetup : IGoogleSetupConnection
+    {
+        public List<Change> Executed { get; } = new();
+
+        public TargetSystem TargetSystem => TargetSystem.Google;
+
+        public Task<GcloudState> ReadAsync(string projectId, CancellationToken cancel)
+        {
+            var made = Executed.Any(w => w.ChangeAction == ChangeAction.GcloudCreateProject);
+            return Task.FromResult(new GcloudState(true, "beheer@test.be", made,
+                made ? GoogleSetup.NeededApis(new[] { GoogleParts.GmailSettings }) : null,
+                Executed.Any(w => w.ChangeAction == ChangeAction.GcloudCreateServiceAccount) ? "1234567890" : null));
+        }
+
+        public Task<string?> SignInAsync(CancellationToken cancel) => Task.FromResult<string?>("beheer@test.be");
+
+        public Task<IReadOnlyList<ChangeResult>> ExecuteAsync(IReadOnlyList<Change> changes, CancellationToken cancel)
+        {
+            foreach (var w in changes.Where(w => w.ChangeAction == ChangeAction.GcloudCreateServiceAccountKey))
+            {
+                w.Secret = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+                {
+                    ["type"] = "service_account", ["project_id"] = w.Target, ["private_key_id"] = "kid-9", ["client_id"] = "1234567890",
+                    ["private_key"] = "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n",
+                    ["client_email"] = GoogleSetup.ServiceAccountEmail(w.Target), ["token_uri"] = Moss365.Core.Google.GmailKey.GoogleTokenUri,
+                });
+            }
+
+            Executed.AddRange(changes);
+            return Task.FromResult<IReadOnlyList<ChangeResult>>(changes.Select(w => ChangeResult.Ok(w)).ToList());
+        }
+    }
+
+    private sealed partial class FakeFactory
+    {
+        public IGoogleSetupConnection? GoogleSetupFake { get; set; }
+
+        public IGoogleSetupConnection? GoogleSetup() => GoogleSetupFake;
+    }
+
+    [Fact]
+    public void TheWizardSetsUpGoogleWithGcloudAsAPlanAndKeepsTheKeyEncrypted()
+    {
+        var (hub, factories, _) = Hub("u41-wizard");
+        using var _ = hub;
+        hub.Update(hub.CurrentTenant with { Systems = TenantSystems.GoogleWorkspace });
+        var s = hub.Current;
+        var factory = factories[hub.CurrentTenant.Id];
+        var cloud = new FakeGoogleSetup();
+        factory.GoogleSetupFake = cloud;
+        s.Config.PermissionParts.Add(GoogleParts.GmailSettings);
+        Assert.True(Access.FitsTenant("inrichten", s.Systems));
+        using var ctx = new Bunit.TestContext();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddSingleton(s);
+        ctx.Services.AddSingleton<IConnectionFactory>(factory);
+        ctx.Services.AddSingleton<IAppEnvironment>(Services.GetRequiredService<IAppEnvironment>());
+
+        // A tenant with only Google: the wizard of Google, not that of Microsoft 365
+        var page = ctx.RenderComponent<SetUpTenant>();
+        Assert.Contains("Google Workspace inrichten", page.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("1. Tenant", page.Markup, StringComparison.Ordinal);
+
+        Do(page, () => page.Find("input[aria-label='Project-ID']").Input("moss365-contoso"));
+        Do(page, () => page.FindAll("button").First(b => b.TextContent == "Controleren met gcloud").Click());
+        page.WaitForAssertion(() => Assert.Contains("Wat gcloud doet in het project", page.Markup, StringComparison.Ordinal));
+        Assert.Equal("moss365-contoso", s.Settings.GoogleProjectId);
+        ConfirmSteady(page, () => { });
+        page.WaitForAssertion(() => Assert.Contains(cloud.Executed, w => w.ChangeAction == ChangeAction.GcloudCreateServiceAccountKey));
+        Assert.Equal(new[] { ChangeAction.GcloudCreateProject, ChangeAction.GcloudEnableServices, ChangeAction.GcloudCreateServiceAccount, ChangeAction.GcloudCreateServiceAccountKey },
+            cloud.Executed.Select(w => w.ChangeAction));
+
+        // The key is kept (encrypted on Windows), gone from the plan and never in the change log
+        page.WaitForAssertion(() => Assert.Equal("1234567890", s.GmailKey?.ClientId));
+        Assert.All(cloud.Executed, w => Assert.Null(w.Secret));
+        Assert.Contains(s.ChangeLog.Recent(10), r => r.ChangeAction == nameof(ChangeAction.GcloudCreateProject));
+        Assert.DoesNotContain(s.ChangeLog.Recent(10), r => r.Parameters.Values.Any(v => v.Contains("PRIVATE", StringComparison.Ordinal)));
+
+        // Checked again: nothing is left to do by command, the delegation stays by hand with the client id
+        page.WaitForAssertion(() => Assert.Contains("1234567890", page.Find("#google-inrichten").TextContent, StringComparison.Ordinal));
+        Assert.Empty(s.GoogleSetupAssessment!.Plan);
+    }
 }

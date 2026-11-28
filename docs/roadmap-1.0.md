@@ -683,6 +683,7 @@ U14 to U26 interactively on 26 November 2026; U27 to U36 on 27 November 2026 (U2
 | U38 | **Where the PST goes** | **A folder of choice**, asked at every export; the change log keeps who, when, where and the SHA-256 |
 | U39 | **What stays after the export** | **Nothing**: once the PST is written and checked, every temporary part is removed; nothing of the mailbox stays in the tenant database |
 | U40 | **Google scopes that can also write** (28 November 2026) | **A part per tenant, off by default** (as U25): licences, group settings and the alerts have only a scope that can also write; it is asked only when its part is on, although Moss365 only reads with it in G1 |
+| U41 | **A wizard for Google, as for Microsoft 365** (28 November 2026) | **gcloud on this PC, on the page Inrichten**: the Google Cloud CLI signs in with its own client (as Graph PowerShell for Microsoft 365) and creates what Google allows by command, as a plan: the project, its APIs, the service account of the part Gmail settings and its key (kept encrypted, never on disk). The consent screen, the OAuth client and the domain-wide delegation have no command at Google: explained step by step and checked afterwards (sign-in, admin role, every API, the delegation) |
 
 ## 13. The steps to 1.0
 

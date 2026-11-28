@@ -71,7 +71,7 @@ public static class Platforms
         var name = action.ToString();
         return name.StartsWith("Intune", StringComparison.Ordinal) ? Platform.Intune
             : name.StartsWith("Gmail", StringComparison.Ordinal) ? Platform.Gmail
-            : name.StartsWith("Google", StringComparison.Ordinal) ? Platform.GoogleWorkspace
+            : name.StartsWith("Google", StringComparison.Ordinal) || name.StartsWith("Gcloud", StringComparison.Ordinal) ? Platform.GoogleWorkspace
             : name.StartsWith("Graph", StringComparison.Ordinal) ? Platform.EntraId
             : name.StartsWith("Exchange", StringComparison.Ordinal) ? Platform.ExchangeOnline
             : Platform.ActiveDirectory;

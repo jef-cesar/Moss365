@@ -18,7 +18,7 @@ public sealed partial class PlanScreenTests
     private static readonly string[] GooglePages = { "google-nieuw", "google-groepen", "google-groep", "google-bronnen" };
 
     private static readonly string[] Microsoft365Pages =
-        { "gasten", "postvakken", "rooms", "contacten", "beveiliging", "conditional-access", "inrichten", "licenties", "samenwerking", "gastenverlenging" };
+        { "gasten", "postvakken", "rooms", "contacten", "beveiliging", "conditional-access", "licenties", "samenwerking", "gastenverlenging" };
 
     [Fact]
     public void EveryCombinationOfSystemsShowsOnlyItsPages()
@@ -38,6 +38,7 @@ public sealed partial class PlanScreenTests
             Assert.Equal(systems.Count() >= 2, Fits("bron"));
             Assert.Equal(hasMicrosoft365 || systems.HasGoogle(), Fits("bewaarde-logboeken")); // G1: the Google logs too
             Assert.All(GooglePages, p => Assert.Equal(systems.HasGoogle(), Fits(p))); // G2
+            Assert.Equal(hasMicrosoft365 || systems.HasGoogle(), Fits("inrichten")); // U41: the wizard for Google too
 
             // Every page of the menu either fits or belongs to a system the tenant does not have
             foreach (var page in MenuModel.AllPages.Select(i => i.Href.Split('?')[0]))
@@ -47,7 +48,8 @@ public sealed partial class PlanScreenTests
                                        || (first == "vergelijk" && !(hasAd && hasMicrosoft365)) || (first == "nieuw" && !(hasAd || hasMicrosoft365))
                                        || (first is "koppelingen" or "bron" && systems.Count() < 2)
                                        || (first == "bewaarde-logboeken" && !(hasMicrosoft365 || systems.HasGoogle()))
-                                       || (GooglePages.Contains(first) && !systems.HasGoogle());
+                                       || (GooglePages.Contains(first) && !systems.HasGoogle())
+                                       || (first == "inrichten" && !(hasMicrosoft365 || systems.HasGoogle()));
                 Assert.True(Fits(page) || belongsElsewhere, $"{systems}: {page}");
             }
         }
@@ -175,9 +177,11 @@ public class PlatformLabelTests
             var name = action.ToString();
             Assert.True(name.StartsWith("Ad", StringComparison.Ordinal) || name.StartsWith("Graph", StringComparison.Ordinal)
                         || name.StartsWith("Exchange", StringComparison.Ordinal) || name.StartsWith("Intune", StringComparison.Ordinal)
-                        || name.StartsWith("Google", StringComparison.Ordinal) || name.StartsWith("Gmail", StringComparison.Ordinal), name);
+                        || name.StartsWith("Google", StringComparison.Ordinal) || name.StartsWith("Gmail", StringComparison.Ordinal)
+                        || name.StartsWith("Gcloud", StringComparison.Ordinal), name);
             var system = name.StartsWith("Ad", StringComparison.Ordinal) ? TenantSystems.ActiveDirectory
-                : name.StartsWith("Google", StringComparison.Ordinal) || name.StartsWith("Gmail", StringComparison.Ordinal) ? TenantSystems.GoogleWorkspace
+                : name.StartsWith("Google", StringComparison.Ordinal) || name.StartsWith("Gmail", StringComparison.Ordinal)
+                  || name.StartsWith("Gcloud", StringComparison.Ordinal) ? TenantSystems.GoogleWorkspace
                 : TenantSystems.Microsoft365;
             Assert.Equal(system, Moss365.Core.Changes.Platforms.System(platform));
         }

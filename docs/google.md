@@ -7,7 +7,30 @@ onboarding and offboarding over all platforms, security and costs is chapter 15 
 ## Your own Google project (U35)
 
 Moss365 talks to Google with an OAuth client of the organisation itself, never with a client of the makers. You make
-this project once per organisation. The steps:
+this project once per organisation.
+
+### With the wizard (U41)
+
+On the page *Inrichten* (settings), a tenant with Google has a part *Google Workspace inrichten*:
+
+1. Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) on this PC (or `winget install
+   Google.CloudSDK`). Fill in a project id (6 to 30 lowercase letters, digits and hyphens, for example
+   `moss365-contoso`) and the primary domain, and choose *Controleren met gcloud*. *Aanmelden bij gcloud* signs gcloud in
+   in the browser, with an account that may create projects; gcloud uses its own client for that, as the wizard of
+   Microsoft 365 uses Graph PowerShell.
+2. The overview says what is in order and what is missing. What gcloud can do becomes a plan: the project, its APIs
+   (the Admin SDK and those of the parts that are on) and, with the part Gmail settings, the service account and its
+   key. The key goes straight into the tenant database, encrypted with your Windows account; the file gcloud writes is in
+   a folder of its own in the temporary folder and is removed at once.
+3. By hand, as Google has no command for it: the consent screen of the type Internal and an OAuth client of the type
+   Desktop app (fill in its client ID and secret on the same page), and with the part Gmail settings the domain-wide
+   delegation (the page shows the client id and the scopes to copy).
+4. *Opnieuw controleren* after each step signs in at Google and checks the sign-in, the admin role, every API and the
+   delegation.
+
+### With the script
+
+Whoever prefers a script, or works on another PC, does the same with the script:
 
 1. **The project and the API.** Run [`tools/Register-GoogleApp.ps1`](../tools/Register-GoogleApp.ps1) with the Google
    Cloud CLI (`gcloud`), signed in as someone who may create projects:

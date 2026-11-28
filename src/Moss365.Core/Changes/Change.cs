@@ -135,6 +135,12 @@ public enum ChangeAction
     GmailAddFilter,               // Target = the address of the user; json (criteria and action, as Gmail gives them)
     GmailRemoveFilter,            // Target = the address of the user; id; Previous json (to add it again)
     GoogleSetGroupMemberRole,     // Target = the address of the member; groep, rol (MEMBER, MANAGER, OWNER); Previous rol
+
+    // Setting up the own Google Cloud project with gcloud (the wizard, U41). Target = the project id
+    GcloudCreateProject,          // naam
+    GcloudEnableServices,         // apis (separated by spaces)
+    GcloudCreateServiceAccount,   // the service account of the part Gmail settings
+    GcloudCreateServiceAccountKey, // its key comes back in Secret, is kept encrypted and never logged
 }
 
 /// <summary>
